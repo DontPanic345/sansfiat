@@ -1,4 +1,4 @@
-import { TERRAIN } from './data.js';
+import { MAP, TERRAIN } from './data.js';
 import { key, neighbors, toPixel } from './hex.js';
 import { marketReach, total } from './rules.js';
 
@@ -18,6 +18,11 @@ export function draw(ctx, s, view) {
     hexPath(ctx, at(t), size);
     ctx.fillStyle = t.shallows ? '#3a72a0' : TERRAIN[t.terrain].color;
     ctx.fill();
+    if (TERRAIN[t.terrain].passable) {
+      const [lo, hi] = MAP.yieldRange;
+      ctx.fillStyle = `rgba(0,0,0,${0.35 * (hi - t.fertility) / (hi - lo)})`;
+      ctx.fill();
+    }
     const cap = total(t.cap);
     if (view.depletion && cap > 0) {
       ctx.fillStyle = `rgba(20,12,4,${0.65 * (1 - total(t.stock) / cap)})`;

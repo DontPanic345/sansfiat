@@ -27,7 +27,8 @@ export const FEATURES = {
   shallows: { fish: 4, shellfish: 4 },
 };
 
-export const MAP = { width: 44, height: 28, rivers: 24, ridges: 5, passChance: 0.06, inlets: 5, inlandSeas: 2, desertShare: 0.2, minRegion: 30 };
+// yieldRange: every food cap on a tile is scaled by its fertility, drawn from this range in patches.
+export const MAP = { width: 44, height: 28, rivers: 24, ridges: 5, passChance: 0.06, inlets: 5, inlandSeas: 2, desertShare: 0.2, minRegion: 30, yieldRange: [0.4, 2] };
 
 // need = pop food per turn. A food counts in full up to dietShare of need, and
 // at excessValue beyond that, so living on one food takes 2.4x the harvest.
@@ -44,10 +45,11 @@ export const CLAN = {
   spoilage: 0.3,
   splitAt: 12,
   hungrySplit: 8,
+  settleFed: 0.9,
   patience: 3,
   moveRange: 4,
-  spacing: 2,
-  crowding: 0.08,
+  scoutRange: 6,
+  spacing: 1,
   choiceSpread: 0.05,
   moveMargin: 0.1,
   trail: 8,
@@ -56,7 +58,7 @@ export const CLAN = {
 export const NAME_SYLLABLES = ['ka', 'ru', 'mo', 'ta', 'ne', 'shi', 'ba', 'lo', 'vi', 'den', 'ur', 'ash', 'el', 'tor', 'mi', 'ga', 'son', 'ya', 'hu', 'ze', 'ro', 'an', 'ki', 'pa'];
 
 // reach is in path cost (terrain moveCost). tripCost is the share of labour lost per unit of path cost.
-export const MARKET = { formAfter: 60, spacing: 7, reach: 6, tripCost: 0.04, accessBonus: 0.2, history: 200 };
+export const MARKET = { formAfter: 40, spacing: 5, reach: 3, tripCost: 0.05, accessBonus: 0.2, history: 200 };
 
 export const PREGAME = { minTurns: 100, maxTurns: 400, window: 20, minGrowth: 0.01 };
 

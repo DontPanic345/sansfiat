@@ -7,12 +7,12 @@ export function generateMap(state, width, height) {
   for (let row = 0; row < height; row++)
     for (let col = 0; col < width; col++) {
       const edge = Math.min(col, row, width - 1 - col, height - 1 - row);
-      cells.push({ ...fromOffset(col, row), edge, h: rand(state), m: rand(state) });
+      cells.push({ ...fromOffset(col, row), edge, h: rand(state), m: rand(state), y: rand(state) });
     }
   const byKey = Object.fromEntries(cells.map((c) => [key(c), c]));
 
   for (let pass = 0; pass < 3; pass++)
-    for (const field of ['h', 'm']) {
+    for (const field of ['h', 'm', 'y']) {
       const next = cells.map((c) => {
         const ns = neighbors(c).map((n) => byKey[key(n)]).filter(Boolean);
         return (c[field] * 2 + ns.reduce((s, n) => s + n[field], 0)) / (ns.length + 2);
@@ -27,6 +27,7 @@ export function generateMap(state, width, height) {
   };
   norm('h');
   norm('m');
+  norm('y');
 
   const tiles = {};
   for (const c of cells) {
@@ -37,7 +38,9 @@ export function generateMap(state, width, height) {
       : c.h > 0.72 ? 'hills'
       : c.m > 0.6 ? 'forest'
       : 'plains';
-    tiles[key(c)] = { q: c.q, r: c.r, terrain, river: false, coast: false, occ: 0, occTotal: 0 };
+    const [lo, hi] = MAP.yieldRange;
+    const fertility = Math.round((lo + (hi - lo) * c.y ** 1.5) * 10) / 10;
+    tiles[key(c)] = { q: c.q, r: c.r, terrain, fertility, river: false, coast: false, occ: 0, occTotal: 0 };
   }
   const setTerrain = (h, terrain, height) => {
     const t = tiles[key(h)];
@@ -65,7 +68,7 @@ export function generateMap(state, width, height) {
         + (t.river ? FEATURES.river[f] ?? 0 : 0)
         + (t.coast ? FEATURES.coast[f] ?? 0 : 0)
         + (t.shallows ? FEATURES.shallows[f] ?? 0 : 0);
-      if (v) t.cap[f] = v;
+      if (v) t.cap[f] = Math.round(v * t.fertility * 10) / 10;
     }
     t.stock = { ...t.cap };
   }

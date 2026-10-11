@@ -83,17 +83,14 @@ function harvest(s, clan, labourShare) {
   return plan;
 }
 
-function siteScore(s, h, pop, store, rs) {
-  const fed = nutrition(add(store, planHarvest(s, h, pop, 1, store)), pop) / pop;
-  return fed + (nearestMarket(rs, h) ? MARKET.accessBonus : 0);
-}
+const siteFed = (s, h, pop, store) => nutrition(add(store, planHarvest(s, h, pop, 1, store)), pop) / pop;
 
-// Tiles a clan can walk to within moveRange steps without passing another clan.
+// Tiles a clan can walk to within `range` steps without passing another clan.
 // Returns a map of tile key -> previous key on the way there.
-function walkable(s, from, blocked) {
+function walkable(s, from, blocked, range) {
   const prev = new Map([[key(from), null]]);
   let frontier = [from];
-  for (let d = 0; d < CLAN.moveRange; d++) {
+  for (let d = 0; d < range; d++) {
     const next = [];
     for (const h of frontier)
       for (const n of neighbors(h)) {
@@ -113,21 +110,24 @@ function routeTo(prev, k) {
   return route;
 }
 
-// Scores every free tile the clan could walk to. A site loses a little for each clan
-// (or clan's destination) within 3 hexes, and none may be closer than `spacing`.
-function siteOptions(s, clan, rs, { includeHere = true } = {}) {
+// Scores every free tile the clan could walk to, none closer than `spacing` to another
+// clan or its destination.
+function siteOptions(s, clan, rs, { includeHere = true, range = CLAN.moveRange, pop = clan.pop } = {}) {
   const others = Object.values(s.clans).filter((c) => c.id !== clan.id);
   const claimed = others.flatMap((c) => (c.dest ? [c, s.map.tiles[c.dest]] : [c]));
-  const prev = walkable(s, clan, new Set(others.map(key)));
-  const score = (h) => siteScore(s, h, clan.pop, clan.store, rs)
-    - CLAN.crowding * claimed.filter((c) => distance(c, h) <= 3).length;
+  const prev = walkable(s, clan, new Set(others.map(key)), range);
+  const option = (h) => {
+    const fed = siteFed(s, h, pop, clan.store);
+    const score = fed + (nearestMarket(rs, h) ? MARKET.accessBonus : 0);
+    return { k: key(h), fed, score };
+  };
   const options = [];
   for (const k of prev.keys()) {
     const h = s.map.tiles[k];
     if (k === key(clan) ? !includeHere : claimed.some((c) => distance(c, h) < CLAN.spacing)) continue;
-    options.push({ k, score: score(h) });
+    options.push(option(h));
   }
-  return { prev, options, here: score(clan) };
+  return { prev, options, here: option(clan).score };
 }
 
 // Picks among sites scoring above `min`, favouring better ones without always taking the best.
@@ -257,9 +257,10 @@ function trade(s) {
 }
 
 // A daughter takes half the clan and walks off to a site of her own, starting next door.
+// She only goes if some site in reach would feed her.
 function split(s, clan, rs) {
-  const { prev, options } = siteOptions(s, clan, rs, { includeHere: false });
-  const dest = pickSite(s, options, -Infinity);
+  const { prev, options } = siteOptions(s, clan, rs, { includeHere: false, range: CLAN.scoutRange, pop: clan.pop / 2 });
+  const dest = pickSite(s, options.filter((o) => o.fed >= CLAN.settleFed), -Infinity);
   if (!dest) return;
   const route = routeTo(prev, dest);
   clan.pop /= 2;

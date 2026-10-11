@@ -150,6 +150,7 @@ function renderPanel() {
     const market = rules.marketAt(state, sel) ?? (clan && state.markets[clan.market]);
     const feats = [t.river && 'river', t.coast && 'coast', t.shallows && 'shallows'].filter(Boolean).join(', ');
     let html = `<b>${t.terrain}</b>${feats ? ` (${feats})` : ''} · ${sel.q},${sel.r}<br>` +
+      `Fertility ×${t.fertility}<br>` +
       `Lived on ${t.occTotal} turns (${t.occ} in a row)<br>` +
       FOODS.filter((f) => t.cap[f]).map((f) => `${swatch(FOOD[f].color)}${f} ${fmt(t.stock[f])}/${t.cap[f]}`).join('<br>');
     if (clan)
