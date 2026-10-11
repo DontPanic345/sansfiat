@@ -157,7 +157,7 @@ export function draw(ctx, s, view) {
     const { x, y } = at(c);
     ctx.beginPath();
     ctx.arc(x, y, Math.min(0.6, 0.14 * Math.sqrt(c.pop)) * size, 0, Math.PI * 2);
-    ctx.fillStyle = c.fed ? '#f4ead2' : c.fedRatio > 0.85 ? '#e8a33d' : '#d9534f';
+    ctx.fillStyle = c.fed ? '#f4ead2' : c.starving ? '#d9534f' : '#e8a33d';
     ctx.fill();
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = '#1a1208';

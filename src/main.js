@@ -155,7 +155,8 @@ function renderPanel() {
   document.getElementById('play').textContent = timer ? 'Pause (P)' : 'Play (P)';
   document.getElementById('summary').innerHTML =
     `Population ${fmt(rules.totalPop(state))} · ${clans.length} clans<br>` +
-    `${clans.filter((c) => c.fed).length} fed · ${clans.filter((c) => c.market != null).length} trading · ` +
+    `${clans.filter((c) => c.fed).length} growing · ${clans.filter((c) => !c.fed && !c.starving).length} stable · ` +
+    `${clans.filter((c) => c.starving).length} starving<br>${clans.filter((c) => c.market != null).length} trading · ` +
     `${Object.keys(state.markets).length} ${state.phase === 'pregame' ? 'gatherings' : 'markets'}<br>` +
     (state.phase === 'pregame' ? `Domesticated hearths ${rules.hearths(state).length} of ${state.players.length}` : '') +
     `<svg width="236" height="40" class="spark">${sparkline(state.stats.pop)}</svg>` +
@@ -176,10 +177,10 @@ function renderPanel() {
       (t.wildGrain != null ? `Grain ${t.tame === 1 ? 'domesticated' : `${Math.round(t.tame * 100)}% tamed`}<br>` : '') +
       FOODS.filter((f) => t.cap[f]).map((f) => `${swatch(FOOD[f].color)}${f} ${fmt(t.stock[f])}/${t.cap[f]}`).join('<br>');
     if (clan)
-      html += `<hr><b>${clan.name}</b> · pop ${fmt(clan.pop)} · ${clan.fed ? 'fed' : `${Math.round(clan.fedRatio * 100)}% fed`}<br>` +
-        `Holds ${clan.land.length} tile${clan.land.length === 1 ? '' : 's'} · settled ${clan.since} turns<br>` +
+      html += `<hr><b>${clan.name}</b> · pop ${fmt(clan.pop)} · ${clan.fed ? 'growing' : `${Math.round(clan.fedRatio * 100)}% fed, ${clan.starving ? 'starving' : 'stable'}`}<br>` +
+        `Holds ${clan.land.length} tile${clan.land.length === 1 ? '' : 's'} (roam ${rules.roamCost(state, clan.land)}/${CLAN.roam}) · settled ${clan.since} turns<br>` +
         (clan.dest ? `Walking to ${clan.dest}, ${clan.route.length} steps left<br>`
-          : !clan.fed ? `Hungry ${clan.hungry} turn${clan.hungry === 1 ? '' : 's'}; moves on after ${CLAN.patience}<br>` : '') +
+          : clan.starving ? `Starving ${clan.hungry} turn${clan.hungry === 1 ? '' : 's'}; moves on after ${CLAN.patience}<br>` : '') +
         `<div class="sub">Harvest</div>${basketRow(clan.harvest)}` +
         `<div class="sub">After trade</div>${basketRow(clan.basket)}` +
         `<div class="sub">Store</div>${basketRow(clan.store)}` +

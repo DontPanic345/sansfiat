@@ -140,7 +140,7 @@ test('hunted-out game comes back slowly; held grain gets tamer', () => {
   assert.ok(s.map.tiles[key(held)].cap.grain > 10);
 });
 
-test('clans walk one tile a turn over land, and daughters start next to their parent', () => {
+test('clans walk one tile a turn over land, and daughters start next to or on their parent land', () => {
   let s = newGame({ seed: 6 });
   for (let i = 0; i < 150; i++) {
     const before = structuredClone(s.clans);
@@ -149,7 +149,7 @@ test('clans walk one tile a turn over land, and daughters start next to their pa
       assert.ok(passable(s, c), `${c.name} on impassable tile`);
       const was = before[c.id];
       if (was) assert.ok(distance(was, c) <= 1, `${c.name} jumped ${distance(was, c)} tiles`);
-      else assert.ok(Object.values(before).some((p) => distance(p, c) === 1), `${c.name} appeared away from any parent`);
+      else assert.ok(Object.values(before).some((p) => distance(p, c) === 1 || p.land.some((k) => distance(s.map.tiles[k], c) <= 1)), `${c.name} appeared away from any parent`);
     }
   }
 });

@@ -181,9 +181,11 @@ function eat(clan) {
   for (const [f, v] of Object.entries(left)) if (v * keep > 0.01) clan.store[f] = v * keep * (1 - CLAN.spoilage);
   clan.fedRatio = got / need;
   clan.fed = clan.fedRatio >= 0.999;
+  clan.starving = clan.fedRatio < CLAN.stableAt;
   const [mobile, settled] = CLAN.growth;
   const growth = mobile + (settled - mobile) * Math.min(1, clan.since / CLAN.settleTurns);
-  clan.pop *= clan.fed ? 1 + growth : 1 - CLAN.starve * (1 - clan.fedRatio);
+  if (clan.fed) clan.pop *= 1 + growth;
+  else if (clan.starving) clan.pop *= 1 - CLAN.starve * (1 - clan.fedRatio / CLAN.stableAt);
 }
 
 export function clanName(s) {
@@ -192,14 +194,14 @@ export function clanName(s) {
   return name[0].toUpperCase() + name.slice(1);
 }
 
-// The clan claims `home`, which is where it stands unless it is walking there.
-export function spawnClan(s, hex, pop, store = {}, home = key(hex)) {
+// The clan claims `land`, centred on where it stands unless it is walking to `land[0]`.
+export function spawnClan(s, hex, pop, store = {}, land = [key(hex)]) {
   const id = s.nextId++;
   const clan = s.clans[id] = {
-    id, name: clanName(s), q: hex.q, r: hex.r, pop, store, harvest: {}, basket: {}, fed: true, fedRatio: 1,
-    hungry: 0, route: [], dest: null, blocked: 0, trail: [], market: null, trip: 0, land: [], since: 0,
+    id, name: clanName(s), q: hex.q, r: hex.r, pop, store, harvest: {}, basket: {}, fed: true, starving: false,
+    fedRatio: 1, hungry: 0, route: [], dest: null, blocked: 0, trail: [], market: null, trip: 0, land: [], since: 0,
   };
-  claimTile(s, clan, home);
+  for (const k of land) claimTile(s, clan, k);
   return clan;
 }
 
@@ -226,57 +228,85 @@ function connected(s, land) {
   return seen.size === land.length;
 }
 
-const newHome = (s, clan, land) =>
-  land.map((k) => s.map.tiles[k]).find((t) => distance(t, clan) === 1 && !clanAt(s, t));
+// The clan walks its whole land each turn, so its land's move cost is held to CLAN.roam.
+export const roamCost = (s, land) => land.reduce((a, k) => a + TERRAIN[s.map.tiles[k].terrain].moveCost, 0);
 
-// Tiles the clan could give up and stay in one piece, best value left first. Its home can go
-// only once a turn, and only if the clan can step to another tile of its land.
-function drops(s, clan, land, value, homeOk) {
+// The tile with the least total distance to the rest of the land.
+function centre(s, land, prefer) {
+  const tiles = land.map((k) => s.map.tiles[k]);
+  const spread = (t) => tiles.reduce((a, x) => a + distance(t, x), 0);
+  return tiles.reduce((best, t) => {
+    const d = spread(t) - spread(best);
+    return d < 0 || (d === 0 && key(t) === prefer) ? t : best;
+  });
+}
+
+// Home steps one tile a turn toward the centre of the clan's land.
+function recentre(s, clan) {
+  const c = centre(s, clan.land, key(clan));
+  if (distance(c, clan) === 0) return;
+  const step = clan.land.map((k) => s.map.tiles[k])
+    .filter((t) => distance(t, clan) === 1 && distance(t, c) < distance(clan, c) && !clanAt(s, t))[0];
+  if (!step) return;
+  clan.trail.push(key(clan));
+  Object.assign(clan, { q: step.q, r: step.r });
+}
+
+// Tiles other than home the clan could give up and stay in one piece, best value left first.
+function drops(s, clan, land, value) {
   return land.filter((k) => {
     const rest = land.filter((x) => x !== k);
-    if (!rest.length || !connected(s, rest)) return false;
-    return k !== key(clan) || (homeOk && !!newHome(s, clan, rest));
+    return k !== key(clan) && connected(s, rest);
   }).map((k) => ({ k, v: value(land.filter((x) => x !== k)) })).sort((a, b) => b.v - a.v);
 }
 
-// Returns whether the clan had to move home.
-function release(s, clan, k) {
-  releaseTile(s, clan, k);
-  if (k !== key(clan)) return false;
-  const t = newHome(s, clan, clan.land);
-  clan.trail.push(k);
-  Object.assign(clan, { q: t.q, r: t.r });
-  return true;
-}
-
-// A clan holds a tile per CLAN.popPerTile people. A hungry clan takes the best free tile next
-// to its land, or once it holds all it can, swaps its worst tile for it, so land creeps toward
-// better ground.
+// A clan that isn't growing takes the best free tile next to its land, or once it can roam no
+// further, swaps its worst tile for it, so land creeps toward better ground.
 function adjustLand(s, clan) {
   if (!clan.land.length) {
     if (tileAt(s, clan).claim == null) claimTile(s, clan, key(clan));
     else clan.hungry = Math.max(clan.hungry, CLAN.patience);
     return;
   }
-  const value = (land) => potential(range(s, land, clan.id), clan.pop);
-  const most = Math.max(1, Math.floor(clan.pop / CLAN.popPerTile));
-  let homeOk = true;
-  while (clan.land.length > most) {
-    const drop = drops(s, clan, clan.land, value, homeOk)[0];
-    if (!drop) break;
-    if (release(s, clan, drop.k)) homeOk = false;
+  if (!clan.fed) {
+    const value = (land) => potential(range(s, land, clan.id), clan.pop);
+    const now = value(clan.land);
+    const edge = new Set(clan.land.flatMap((k) => neighbors(s.map.tiles[k]).map(key))
+      .filter((k) => s.map.tiles[k]?.claim == null && passable(s, s.map.tiles[k])));
+    const adds = [...edge].map((k) => ({ k, v: value([...clan.land, k]) })).filter((a) => a.v > now).sort((a, b) => b.v - a.v);
+    const fits = adds.find((a) => roamCost(s, [...clan.land, a.k]) <= CLAN.roam);
+    if (fits) claimTile(s, clan, fits.k);
+    else if (adds.length) {
+      const add = adds[0];
+      const land = [...clan.land, add.k];
+      const drop = drops(s, clan, land, value)
+        .find((d) => d.k !== add.k && roamCost(s, land.filter((x) => x !== d.k)) <= CLAN.roam);
+      if (drop && drop.v > now + CLAN.landMargin) {
+        claimTile(s, clan, add.k);
+        releaseTile(s, clan, drop.k);
+      }
+    }
   }
-  if (clan.fed) return;
-  const now = value(clan.land);
-  const edge = new Set(clan.land.flatMap((k) => neighbors(s.map.tiles[k]).map(key))
-    .filter((k) => s.map.tiles[k]?.claim == null && passable(s, s.map.tiles[k])));
-  const add = [...edge].map((k) => ({ k, v: value([...clan.land, k]) })).sort((a, b) => b.v - a.v)[0];
-  if (!add || add.v <= now) return;
-  if (clan.land.length < most) return claimTile(s, clan, add.k);
-  const drop = drops(s, clan, [...clan.land, add.k], value, homeOk).find((d) => d.k !== add.k);
-  if (!drop || drop.v <= now + CLAN.landMargin) return;
-  claimTile(s, clan, add.k);
-  release(s, clan, drop.k);
+  recentre(s, clan);
+}
+
+// Splits land in two connected halves grown out from its two farthest tiles.
+function halve(s, land) {
+  const tiles = land.map((k) => s.map.tiles[k]);
+  let seeds = [tiles[0], tiles[0]];
+  for (const a of tiles) for (const b of tiles) if (distance(a, b) > distance(...seeds)) seeds = [a, b];
+  const parts = seeds.map((t) => [key(t)]);
+  const left = new Set(land.filter((k) => !parts.some((p) => p[0] === k)));
+  while (left.size) {
+    let grew = false;
+    parts.forEach((part, i) => {
+      const next = [...left].filter((k) => part.some((p) => distance(s.map.tiles[p], s.map.tiles[k]) === 1))
+        .sort((a, b) => distance(s.map.tiles[a], seeds[i]) - distance(s.map.tiles[b], seeds[i]))[0];
+      if (next) { part.push(next); left.delete(next); grew = true; }
+    });
+    if (!grew) break;
+  }
+  return parts;
 }
 
 function regrow(s) {
@@ -373,6 +403,22 @@ function trade(s) {
   }
 }
 
+// The clan divides like a cell: its land splits down the middle, and the daughter takes the
+// half away from home with half the people and store.
+function divide(s, clan) {
+  const [a, b] = halve(s, clan.land);
+  const [keep, give] = a.includes(key(clan)) ? [a, b] : [b, a];
+  const home = centre(s, give.filter((k) => !clanAt(s, s.map.tiles[k])), null);
+  if (!keep.length || !home) return false;
+  for (const k of give) releaseTile(s, clan, k);
+  clan.pop /= 2;
+  clan.store = Object.fromEntries(Object.entries(clan.store).map(([f, v]) => [f, v / 2]));
+  const daughter = spawnClan(s, home, clan.pop, { ...clan.store }, give);
+  daughter.since = clan.since;
+  s.events.push(`Turn ${s.turn}: ${clan.name} divides; ${daughter.name} takes ${give.length} of its tiles`);
+  return true;
+}
+
 // A daughter takes half the clan, or half of splitAt from a big one, and walks off to a site
 // of her own, starting next door. She only goes if some site in reach would feed her.
 function split(s, clan, rs) {
@@ -386,7 +432,7 @@ function split(s, clan, rs) {
   clan.store = Object.fromEntries(Object.entries(clan.store).map(([f, v]) => [f, v * (1 - share)]));
   clan.pop -= pop;
   clan.hungry = 0;
-  const daughter = spawnClan(s, s.map.tiles[route[0]], pop, store, dest);
+  const daughter = spawnClan(s, s.map.tiles[route[0]], pop, store, [dest]);
   daughter.trail = [key(clan)];
   if (route.length > 1) Object.assign(daughter, { route: route.slice(1), dest });
   s.events.push(`Turn ${s.turn}: ${clan.name} splits; ${daughter.name} heads for ${dest}`);
@@ -395,7 +441,7 @@ function split(s, clan, rs) {
 function settle(s, rs) {
   for (const clan of Object.values(s.clans)) {
     eat(clan);
-    clan.hungry = clan.fed ? 0 : clan.hungry + 1;
+    clan.hungry = clan.starving ? clan.hungry + 1 : 0;
     if (clan.pop < 1) {
       releaseAll(s, clan);
       delete s.clans[clan.id];
@@ -404,7 +450,10 @@ function settle(s, rs) {
     }
     const settled = !clan.route.length;
     if (settled) clan.since++;
-    if (settled && (clan.pop >= CLAN.splitAt || (!clan.fed && clan.pop >= CLAN.hungrySplit))) split(s, clan, rs);
+    if (!settled) continue;
+    if (clan.pop >= CLAN.splitAt) {
+      if (clan.land.length < 2 || !divide(s, clan)) split(s, clan, rs);
+    } else if (clan.starving && clan.pop >= CLAN.hungrySplit) split(s, clan, rs);
   }
 }
 

@@ -31,9 +31,10 @@ export const FEATURES = {
 // yieldRange: every food cap on a tile is scaled by its fertility, drawn from this range in patches.
 export const MAP = { width: 44, height: 28, rivers: 24, ridges: 5, passChance: 0.06, inlets: 5, inlandSeas: 2, desertShare: 0.2, minRegion: 30, yieldRange: [0.4, 2] };
 
-// need = pop food per turn. growth runs from the first value for a clan that just moved
-// to the second once it has stayed settleTurns. A clan holds one tile per popPerTile people
-// and forages its land plus the unclaimed tiles around it. A food counts in full up to dietShare of need, and
+// need = pop food per turn. A fully fed clan grows: from the first growth value for a clan
+// that just moved to the second once it has stayed settleTurns. Fed below stableAt it shrinks;
+// in between it holds steady. A clan forages its land plus the unclaimed tiles around it, and
+// walks all of it each turn, so its land's total move cost is at most `roam`. A food counts in full up to dietShare of need, and
 // at excessValue beyond that, so living on one food takes 2.4x the harvest.
 export const CLAN = {
   seeds: 3,
@@ -45,6 +46,7 @@ export const CLAN = {
   excessValue: 0.3,
   growth: [0.03, 0.07],
   settleTurns: 30,
+  stableAt: 0.8,
   starve: 0.5,
   spoilage: 0.3,
   splitAt: 12,
@@ -53,7 +55,7 @@ export const CLAN = {
   patience: 3,
   moveRange: 4,
   scoutRange: 6,
-  popPerTile: 2,
+  roam: 6,
   landMargin: 0.02,
   choiceSpread: 0.05,
   moveMargin: 0.1,

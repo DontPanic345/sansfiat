@@ -17,8 +17,9 @@ npm run sim -- --seed 3 --players 3 [--turns 400] [--every 25] [--json]
 - `src/rules.js` — all game logic. `dispatch(state, action) -> {state, error?}` is pure.
   - A turn runs the steps in `TURN` in order: regrow → forage (move or adjust land, decide to trade, harvest) → trade → settle (eat, grow, split, die) → occupy (tend grain) → gatherings/markets → stats → game-start check.
   - Add an action: an entry in `ACTIONS` with `validate`, `apply`, `candidates`. Only `endTurn` exists so far.
-  - A clan holds `land` (tiles with `claim` = its id, connected, including its home) and forages it plus unclaimed neighbours. A hungry clan grows or shifts its land a tile at a turn; settled clans grow faster.
-  - Clans walk one tile a turn along a `route` and harvest as they go. A clan sets out only after `CLAN.patience` hungry turns, and a hungry clan big enough splits instead. A daughter splits off only if a site within `CLAN.scoutRange` would feed her; she starts next to her parent and walks there.
+  - A clan holds `land` (tiles with `claim` = its id, connected, home at the centre) and forages it plus unclaimed neighbours. Land's total move cost is capped at `CLAN.roam`. A clan that isn't growing gains or shifts land a tile a turn; settled clans grow faster.
+  - Fed in full a clan grows, below `CLAN.stableAt` it starves, in between it holds steady. A big clan divides its land down the middle; a starving one sends a daughter off.
+  - Clans walk one tile a turn along a `route` and harvest as they go. A clan sets out only after `CLAN.patience` starving turns, and a starving clan big enough splits instead. A daughter who leaves goes only if a site within `CLAN.scoutRange` would feed her; she starts next to her parent and walks there.
 - `src/market.js` — `clear(baskets)`: searches for exchange ratios where supply meets demand, then rations. Each clan values a basket at Σ sqrt(amount), so trades are value-neutral and there is no numeraire.
 - `src/game.js` — `newGame(config)`, `replay(config, actions)`, `runPregame(s, n)`.
 - `src/mapgen.js` (terrain, inlets and inland seas, mountain ridges, deserts, rivers, coast/shallows, patchy fertility scaling food caps), `src/hex.js` (axial, pointy-top), `src/rng.js`.

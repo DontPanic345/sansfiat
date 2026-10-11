@@ -18,10 +18,11 @@ const line = (s) => {
   const clans = Object.values(s.clans);
   const markets = Object.values(s.markets);
   const fed = clans.filter((c) => c.fed).length;
+  const starving = clans.filter((c) => c.starving).length;
   const trading = clans.filter((c) => c.market != null).length;
   const volume = markets.reduce((a, m) => a + m.lastVolume, 0);
   return `t${String(s.turn - 1).padStart(4)}  pop ${totalPop(s).toFixed(0).padStart(5)}  clans ${String(clans.length).padStart(4)}` +
-    `  fed ${String(fed).padStart(4)}  trading ${String(trading).padStart(4)}  markets ${markets.length}  traded ${volume.toFixed(1)}` +
+    `  growing ${String(fed).padStart(4)}  starving ${String(starving).padStart(4)}  trading ${String(trading).padStart(4)}  markets ${markets.length}  traded ${volume.toFixed(1)}` +
     `  hearths ${hearths(s).length}`;
 };
 
