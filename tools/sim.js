@@ -2,7 +2,7 @@
 import { parseArgs } from 'node:util';
 import { FOODS } from '../src/data.js';
 import { newGame } from '../src/game.js';
-import { dispatch, total, totalPop } from '../src/rules.js';
+import { dispatch, hearths, total, totalPop } from '../src/rules.js';
 
 const { values: opt } = parseArgs({
   options: {
@@ -21,7 +21,8 @@ const line = (s) => {
   const trading = clans.filter((c) => c.market != null).length;
   const volume = markets.reduce((a, m) => a + m.lastVolume, 0);
   return `t${String(s.turn - 1).padStart(4)}  pop ${totalPop(s).toFixed(0).padStart(5)}  clans ${String(clans.length).padStart(4)}` +
-    `  fed ${String(fed).padStart(4)}  trading ${String(trading).padStart(4)}  markets ${markets.length}  traded ${volume.toFixed(1)}`;
+    `  fed ${String(fed).padStart(4)}  trading ${String(trading).padStart(4)}  markets ${markets.length}  traded ${volume.toFixed(1)}` +
+    `  hearths ${hearths(s).length}`;
 };
 
 let s = newGame({ seed: Number(opt.seed), players: Number(opt.players) });

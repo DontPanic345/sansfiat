@@ -40,7 +40,7 @@ export function generateMap(state, width, height) {
       : 'plains';
     const [lo, hi] = MAP.yieldRange;
     const fertility = Math.round((lo + (hi - lo) * c.y ** 1.5) * 10) / 10;
-    tiles[key(c)] = { q: c.q, r: c.r, terrain, fertility, river: false, coast: false, occ: 0, occTotal: 0 };
+    tiles[key(c)] = { q: c.q, r: c.r, terrain, fertility, river: false, coast: false, claim: null, occ: 0, occTotal: 0 };
   }
   const setTerrain = (h, terrain, height) => {
     const t = tiles[key(h)];
@@ -70,6 +70,7 @@ export function generateMap(state, width, height) {
         + (t.shallows ? FEATURES.shallows[f] ?? 0 : 0);
       if (v) t.cap[f] = Math.round(v * t.fertility * 10) / 10;
     }
+    if (t.cap.grain) Object.assign(t, { wildGrain: t.cap.grain, tame: 0 });
     t.stock = { ...t.cap };
   }
   return { width, height, tiles };

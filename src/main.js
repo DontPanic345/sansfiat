@@ -1,9 +1,9 @@
-import { CLAN, FOOD, FOODS } from './data.js';
+import { CLAN, FOOD, FOODS, MARKET } from './data.js';
 import { fromPixel } from './hex.js';
 import { newGame, replay } from './game.js';
 import { draw } from './render.js';
 import * as rules from './rules.js';
-import { VIEWS, rampCss } from './views.js';
+import { VIEWS, VIEW_KEYS, rampCss } from './views.js';
 
 const params = new URLSearchParams(location.search);
 const config = {
@@ -72,7 +72,7 @@ document.getElementById('seedForm').onsubmit = (e) => {
 };
 document.getElementById('seed').value = config.seed;
 const modeSelect = document.getElementById('mode');
-modeSelect.innerHTML = Object.entries(VIEWS).map(([k, v], i) => `<option value="${k}">${i + 1}. ${v.label}</option>`).join('');
+modeSelect.innerHTML = Object.entries(VIEWS).map(([k, v], i) => `<option value="${k}">${VIEW_KEYS[i]}. ${v.label}</option>`).join('');
 const setMode = (m) => { mode = m; modeSelect.value = m; update(); };
 modeSelect.onchange = () => setMode(modeSelect.value);
 document.getElementById('depletion').onchange = (e) => { depletion = e.target.checked; update(); };
@@ -89,7 +89,7 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'g') run('fast');
   else if (e.key === 'd') { depletion = !depletion; document.getElementById('depletion').checked = depletion; update(); }
   else if (e.key === 'Escape') { sel = null; update(); }
-  else if (/^[1-9]$/.test(e.key) && Object.keys(VIEWS)[e.key - 1]) setMode(Object.keys(VIEWS)[e.key - 1]);
+  else if (VIEW_KEYS.includes(e.key) && Object.keys(VIEWS)[VIEW_KEYS.indexOf(e.key)]) setMode(Object.keys(VIEWS)[VIEW_KEYS.indexOf(e.key)]);
 });
 addEventListener('resize', update);
 
@@ -127,7 +127,8 @@ function sparkline(series, { width = 236, height = 40, color = '#dde3ea', min, m
 }
 
 function marketHtml(m) {
-  const owner = m.owner == null ? 'Neutral market' : `${swatch(state.players[m.owner].color)}${state.players[m.owner].name}`;
+  const owner = m.owner != null ? `${swatch(state.players[m.owner].color)}${state.players[m.owner].name}`
+    : m.temporary ? 'Gathering' : 'Neutral market';
   const goods = FOODS.filter((f) => m.prices[f]);
   const hi = Math.max(...goods.map((f) => m.prices[f]), 1);
   const bars = goods.map((f) =>
@@ -137,6 +138,7 @@ function marketHtml(m) {
   const lines = goods.map((f) => sparkline(hist.map((h) => Math.log(h.prices[f])),
     { color: FOOD[f].color, min: Math.min(...all), max: Math.max(...all), height: 60 })).join('');
   return `<b>${owner}</b> · since turn ${m.founded}<br>` +
+    (m.temporary ? `Disperses when trade falls below ${MARKET.gathering.minVolume} a turn (now ${fmt(m.activity)})<br>` : '') +
     `${m.traders} clans trading · ${fmt(m.lastVolume)} food changed hands last turn<br>` +
     `<div class="sub">Exchange ratios (geometric mean = 1)</div>${bars}` +
     (lines ? `<svg width="236" height="60" class="spark">${lines}</svg>` : '');
@@ -154,7 +156,8 @@ function renderPanel() {
   document.getElementById('summary').innerHTML =
     `Population ${fmt(rules.totalPop(state))} · ${clans.length} clans<br>` +
     `${clans.filter((c) => c.fed).length} fed · ${clans.filter((c) => c.market != null).length} trading · ` +
-    `${Object.keys(state.markets).length} markets` +
+    `${Object.keys(state.markets).length} ${state.phase === 'pregame' ? 'gatherings' : 'markets'}<br>` +
+    (state.phase === 'pregame' ? `Domesticated hearths ${rules.hearths(state).length} of ${state.players.length}` : '') +
     `<svg width="236" height="40" class="spark">${sparkline(state.stats.pop)}</svg>` +
     state.players.filter((p) => p.market != null)
       .map((p) => `${swatch(p.color)}${p.name} at ${state.markets[p.market].q},${state.markets[p.market].r}`).join('<br>');
@@ -164,15 +167,17 @@ function renderPanel() {
     el.innerHTML = '<i>Click a tile</i>';
   } else {
     const t = rules.tileAt(state, sel);
-    const clan = rules.clanAt(state, sel);
+    const clan = rules.clanAt(state, sel) ?? rules.holder(state, sel);
     const market = rules.marketAt(state, sel) ?? (clan && state.markets[clan.market]);
     const feats = [t.river && 'river', t.coast && 'coast', t.shallows && 'shallows'].filter(Boolean).join(', ');
     let html = `<b>${t.terrain}</b>${feats ? ` (${feats})` : ''} · ${sel.q},${sel.r}<br>` +
       `Fertility ×${t.fertility}<br>` +
-      `Lived on ${t.occTotal} turns (${t.occ} in a row)<br>` +
+      `Held ${t.occTotal} turns (${t.occ} in a row)<br>` +
+      (t.wildGrain != null ? `Grain ${t.tame === 1 ? 'domesticated' : `${Math.round(t.tame * 100)}% tamed`}<br>` : '') +
       FOODS.filter((f) => t.cap[f]).map((f) => `${swatch(FOOD[f].color)}${f} ${fmt(t.stock[f])}/${t.cap[f]}`).join('<br>');
     if (clan)
       html += `<hr><b>${clan.name}</b> · pop ${fmt(clan.pop)} · ${clan.fed ? 'fed' : `${Math.round(clan.fedRatio * 100)}% fed`}<br>` +
+        `Holds ${clan.land.length} tile${clan.land.length === 1 ? '' : 's'} · settled ${clan.since} turns<br>` +
         (clan.dest ? `Walking to ${clan.dest}, ${clan.route.length} steps left<br>`
           : !clan.fed ? `Hungry ${clan.hungry} turn${clan.hungry === 1 ? '' : 's'}; moves on after ${CLAN.patience}<br>` : '') +
         `<div class="sub">Harvest</div>${basketRow(clan.harvest)}` +

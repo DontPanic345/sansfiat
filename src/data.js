@@ -1,8 +1,9 @@
 export const FOODS = ['game', 'grain', 'fruit', 'fish', 'shellfish'];
 
-// regen: share of a tile's cap that regrows each turn.
+// regen: share of a tile's cap that regrows each turn. Game breeds instead: regen scales
+// with the herd left, so a hunted-out tile recovers slowly, plus `restock` wandering in.
 export const FOOD = {
-  game:      { color: '#c0703a', regen: 0.15 },
+  game:      { color: '#c0703a', regen: 0.35, breeds: true, restock: 0.02 },
   grain:     { color: '#e3c95a', regen: 0.25 },
   fruit:     { color: '#c4487a', regen: 0.2 },
   fish:      { color: '#4aa3df', regen: 0.3 },
@@ -30,7 +31,9 @@ export const FEATURES = {
 // yieldRange: every food cap on a tile is scaled by its fertility, drawn from this range in patches.
 export const MAP = { width: 44, height: 28, rivers: 24, ridges: 5, passChance: 0.06, inlets: 5, inlandSeas: 2, desertShare: 0.2, minRegion: 30, yieldRange: [0.4, 2] };
 
-// need = pop food per turn. A food counts in full up to dietShare of need, and
+// need = pop food per turn. growth runs from the first value for a clan that just moved
+// to the second once it has stayed settleTurns. A clan holds one tile per popPerTile people
+// and forages its land plus the unclaimed tiles around it. A food counts in full up to dietShare of need, and
 // at excessValue beyond that, so living on one food takes 2.4x the harvest.
 export const CLAN = {
   seeds: 3,
@@ -40,7 +43,8 @@ export const CLAN = {
   surplusTarget: 1.2,
   dietShare: 0.4,
   excessValue: 0.3,
-  growth: 0.05,
+  growth: [0.03, 0.07],
+  settleTurns: 30,
   starve: 0.5,
   spoilage: 0.3,
   splitAt: 12,
@@ -49,7 +53,8 @@ export const CLAN = {
   patience: 3,
   moveRange: 4,
   scoutRange: 6,
-  spacing: 1,
+  popPerTile: 2,
+  landMargin: 0.02,
   choiceSpread: 0.05,
   moveMargin: 0.1,
   trail: 8,
@@ -58,9 +63,19 @@ export const CLAN = {
 export const NAME_SYLLABLES = ['ka', 'ru', 'mo', 'ta', 'ne', 'shi', 'ba', 'lo', 'vi', 'den', 'ur', 'ash', 'el', 'tor', 'mi', 'ga', 'son', 'ya', 'hu', 'ze', 'ro', 'an', 'ki', 'pa'];
 
 // reach is in path cost (terrain moveCost). tripCost is the share of labour lost per unit of path cost.
-export const MARKET = { formAfter: 40, spacing: 5, reach: 3, tripCost: 0.05, accessBonus: 0.2, history: 200 };
+// Pre-game markets are gatherings: one forms where minClans live within reach, and disperses
+// when its traded volume, averaged with weight `fade` on the past, falls below minVolume.
+export const MARKET = {
+  formAfter: 20, spacing: 5, reach: 3, tripCost: 0.05, accessBonus: 0.2, history: 200,
+  gathering: { minClans: 4, fade: 0.8, minVolume: 2 },
+};
 
-export const PREGAME = { minTurns: 100, maxTurns: 400, window: 20, minGrowth: 0.01 };
+// Grain on land held tendAfter turns in a row gains `tame` each turn, and loses it when left.
+// At tame 1 the tile is domesticated: grain cap x domestic. The game starts once domesticated
+// hearths exist hearthSpacing apart, one per player.
+export const TENDING = { tendAfter: 15, rate: 1 / 120, domestic: 2.5, hearthSpacing: 8 };
+
+export const PREGAME = { minTurns: 100, maxTurns: 500 };
 
 export const PLAYERS = [
   { name: 'Red',  color: '#d64545' },

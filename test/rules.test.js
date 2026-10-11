@@ -4,7 +4,7 @@ import { FOODS, MARKET } from '../src/data.js';
 import { distance, fromPixel, key, neighbors, toPixel } from '../src/hex.js';
 import { newGame, replay, runPregame } from '../src/game.js';
 import { clear, utility } from '../src/market.js';
-import { dispatch, nutrition, passable, total } from '../src/rules.js';
+import { dispatch, hearths, nutrition, passable, total } from '../src/rules.js';
 
 test('hex pixel round-trip', () => {
   for (const h of [{ q: 0, r: 0 }, { q: 3, r: -2 }, { q: -5, r: 7 }]) {
@@ -74,24 +74,70 @@ test('replaying the action history reproduces the state', () => {
   assert.deepEqual(replay(config, history), s);
 });
 
-test('the pre-game spreads clans, forms markets and hands them to players', () => {
+// Every clan holds a connected patch of land including its home, and no tile has two holders.
+function checkLand(s) {
+  const held = Object.values(s.map.tiles).filter((t) => t.claim != null);
+  const clans = Object.values(s.clans);
+  assert.equal(held.length, clans.reduce((a, c) => a + c.land.length, 0));
+  for (const c of clans) {
+    for (const k of c.land) {
+      assert.equal(s.map.tiles[k].claim, c.id);
+      assert.ok(passable(s, s.map.tiles[k]));
+    }
+    if (c.route.length || !c.land.length) continue;
+    assert.ok(c.land.includes(key(c)), `${c.name} is off its land`);
+    const seen = new Set([c.land[0]]);
+    for (const k of seen) for (const n of neighbors(s.map.tiles[k])) if (c.land.includes(key(n))) seen.add(key(n));
+    assert.equal(seen.size, c.land.length, `${c.name} land is split`);
+  }
+}
+
+test('the pre-game spreads clans over land of their own, and ends when grain is domesticated', () => {
   for (const seed of [1, 2]) {
     let s = newGame({ seed, players: 3 });
+    let gathered = false;
     for (let i = 0; i < 500 && s.phase === 'pregame'; i++) {
       s = runPregame(s, 25);
       const clans = Object.values(s.clans);
       assert.ok(clans.every((c) => passable(s, c)), `clan on impassable tile (seed ${seed})`);
       assert.equal(new Set(clans.map(key)).size, clans.length, `clans share a tile (seed ${seed})`);
       assert.ok(clans.every((c) => c.pop >= 1));
+      checkLand(s);
+      if (s.phase === 'pregame') {
+        assert.ok(Object.values(s.markets).every((m) => m.temporary && m.owner == null));
+        gathered ||= Object.keys(s.markets).length > 0;
+      }
     }
+    assert.ok(gathered, 'clans should gather to trade in the pre-game');
     assert.equal(s.phase, 'game');
+    assert.equal(hearths(s).length, 3);
     assert.ok(Object.keys(s.clans).length > 50, 'clans should have spread');
     const owned = Object.values(s.markets).filter((m) => m.owner != null);
     assert.equal(owned.length, 3);
-    assert.ok(owned.some((m) => m.volume > 0), 'some trade should have happened');
+    assert.ok(Object.values(s.markets).every((m) => !m.temporary));
+    for (let i = 0; i < 5; i++) s = dispatch(s, { type: 'endTurn' }).state;
+    assert.ok(owned.some((m) => s.markets[m.id].volume > 0), 'player markets should trade');
     const ms = Object.values(s.markets);
     for (const a of ms) for (const b of ms) if (a !== b) assert.ok(distance(a, b) >= MARKET.spacing);
   }
+});
+
+test('hunted-out game comes back slowly; held grain gets tamer', () => {
+  let s = newGame({ seed: 3 });
+  const tiles = Object.values(s.map.tiles);
+  const t = tiles.find((x) => x.cap.game && x.cap.grain && x.claim == null);
+  t.stock.game = 0.05 * t.cap.game;
+  t.stock.grain = 0.05 * t.cap.grain;
+  s = dispatch(s, { type: 'endTurn' }).state;
+  const after = s.map.tiles[key(t)];
+  assert.ok(after.stock.game / after.cap.game < after.stock.grain / after.cap.grain / 2);
+
+  const held = Object.values(s.map.tiles).find((x) => x.claim != null);
+  Object.assign(held, { wildGrain: 10, tame: 0, occ: 100 });
+  held.cap.grain = 10;
+  s = dispatch(s, { type: 'endTurn' }).state;
+  assert.ok(s.map.tiles[key(held)].tame > 0);
+  assert.ok(s.map.tiles[key(held)].cap.grain > 10);
 });
 
 test('clans walk one tile a turn over land, and daughters start next to their parent', () => {

@@ -3,16 +3,19 @@ import { key } from './hex.js';
 import { footprint, total } from './rules.js';
 
 // Debug map views. Each `values(s)` returns a Map of tile key -> number; tiles left out
-// are drawn as `none`. Hot keys are the number of the view in this list.
+// are drawn as `none`. Hot keys follow VIEW_KEYS in list order.
+export const VIEW_KEYS = '1234567890-';
 export const VIEWS = {
   terrain: { label: 'Terrain' },
   population: {
     label: 'Population',
-    note: 'People drawing food from each tile',
+    note: 'People per tile of clan land',
     values: (s) => {
       const out = new Map();
-      for (const c of Object.values(s.clans))
-        for (const t of footprint(s, c)) if (t.terrain !== 'mountain') out.set(key(t), (out.get(key(t)) ?? 0) + c.pop);
+      for (const c of Object.values(s.clans)) {
+        const land = c.route.length || !c.land.length ? [key(c)] : c.land;
+        for (const k of land) out.set(k, (out.get(k) ?? 0) + c.pop / land.length);
+      }
       return out;
     },
   },
@@ -43,8 +46,18 @@ export const VIEWS = {
   },
   occupation: {
     label: 'Occupation',
-    note: 'Turns any clan has lived on the tile',
+    note: 'Turns any clan has held the tile',
     values: (s) => landMap(s, (t) => t.occTotal || null),
+  },
+  settled: {
+    label: 'Settled',
+    note: 'Turns since the clan holding the tile last moved',
+    values: (s) => new Map(Object.values(s.clans).flatMap((c) => c.land.map((k) => [k, c.since]))),
+  },
+  tame: {
+    label: 'Tended grain',
+    note: 'Grain tiles from wild (0) to domesticated (1)',
+    values: (s) => tileMap(s, (t) => t.tame ?? null),
   },
   passable: { label: 'Impassable', note: 'White walkable, red blocked, black sea' },
 };
