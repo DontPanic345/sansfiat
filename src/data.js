@@ -34,8 +34,9 @@ export const MAP = { width: 44, height: 28, rivers: 24, ridges: 5, passChance: 0
 // need = pop food per turn. A fully fed clan grows: from the first growth value for a clan
 // that just moved to the second once it has stayed settleTurns. Fed below stableAt it shrinks;
 // in between it holds steady. A clan forages its land plus the unclaimed tiles around it, and
-// walks all of it each turn, so its land's total move cost is at most `roam`. A food counts in full up to dietShare of need, and
-// at excessValue beyond that, so living on one food takes 2.4x the harvest.
+// walks all of it each turn, so its land's total move cost is at most `roam`.
+// A food counts in full up to dietShare of need, and at excessValue beyond that, so living on
+// one food takes 2.4x the harvest.
 export const CLAN = {
   seeds: 3,
   startPop: 6,
