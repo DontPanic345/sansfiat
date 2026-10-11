@@ -1,8 +1,10 @@
 import { MAP, TERRAIN } from './data.js';
 import { key, neighbors, toPixel } from './hex.js';
 import { marketReach, total } from './rules.js';
+import { VIEWS, ramp } from './views.js';
 
-// view: {size, ox, oy, selected?: {q,r}, depletion: bool}
+// view: {size, ox, oy, selected?: {q,r}, depletion: bool, mode: key of VIEWS}
+// Returns the value range of a debug view, for the legend.
 export function draw(ctx, s, view) {
   const { size } = view;
   const at = (h) => {
@@ -13,6 +15,32 @@ export function draw(ctx, s, view) {
 
   ctx.fillStyle = '#10161d';
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  const mode = view.mode ?? 'terrain';
+  if (mode !== 'terrain') {
+    const range = drawDebug(ctx, s, mode, at, size);
+    for (const c of Object.values(s.clans)) {
+      const { x, y } = at(c);
+      ctx.beginPath();
+      ctx.arc(x, y, Math.min(0.5, 0.11 * Math.sqrt(c.pop)) * size, 0, Math.PI * 2);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = mode === 'passable' ? '#1a6fd6' : '#fff';
+      ctx.stroke();
+    }
+    for (const m of Object.values(s.markets)) {
+      const { x, y } = at(m);
+      ctx.strokeStyle = '#ff3df2';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - size * 0.45, y - size * 0.45, size * 0.9, size * 0.9);
+    }
+    if (view.selected) {
+      hexPath(ctx, at(view.selected), size * 0.95);
+      ctx.strokeStyle = '#ff3df2';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    return range;
+  }
 
   for (const t of Object.values(tiles)) {
     hexPath(ctx, at(t), size);
@@ -121,6 +149,34 @@ export function draw(ctx, s, view) {
     const clan = Object.values(s.clans).find((c) => c.q === view.selected.q && c.r === view.selected.r);
     if (clan) label(ctx, clan.name, at(clan).x, at(clan).y - size * 1.1, Math.max(11, size * 0.6));
   }
+}
+
+function drawDebug(ctx, s, mode, at, size) {
+  const tiles = Object.values(s.map.tiles);
+  if (mode === 'passable') {
+    for (const t of tiles) {
+      hexPath(ctx, at(t), size);
+      ctx.fillStyle = t.terrain === 'ocean' ? '#000' : TERRAIN[t.terrain].passable ? '#fff' : '#e8202a';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(128,128,128,0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    return null;
+  }
+  const values = VIEWS[mode].values(s);
+  const vs = [...values.values()];
+  const lo = Math.min(...vs), hi = Math.max(...vs);
+  for (const t of tiles) {
+    const v = values.get(`${t.q},${t.r}`);
+    hexPath(ctx, at(t), size);
+    ctx.fillStyle = v == null ? (t.terrain === 'ocean' ? '#0b1118' : '#2a2a2a') : ramp((v - lo) / (hi - lo || 1));
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  return vs.length ? { lo, hi } : null;
 }
 
 function label(ctx, text, x, y, px) {

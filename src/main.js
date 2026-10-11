@@ -3,6 +3,7 @@ import { fromPixel } from './hex.js';
 import { newGame, replay } from './game.js';
 import { draw } from './render.js';
 import * as rules from './rules.js';
+import { VIEWS, rampCss } from './views.js';
 
 const params = new URLSearchParams(location.search);
 const config = {
@@ -15,6 +16,8 @@ const history = [];
 const log = [];
 let sel = null; // {q, r}
 let depletion = true;
+let mode = 'terrain';
+let range = null;
 let timer = null;
 
 const canvas = document.getElementById('map');
@@ -57,10 +60,21 @@ function stop() {
 document.getElementById('step').onclick = () => { stop(); step(); };
 document.getElementById('play').onclick = () => (timer ? (stop(), update()) : run('play'));
 document.getElementById('fast').onclick = () => run('fast');
-document.getElementById('newMap').onclick = () => {
-  params.set('seed', Math.floor(Math.random() * 1e9));
+const loadSeed = (seed) => {
+  params.set('seed', seed);
   location.search = params;
 };
+document.getElementById('newMap').onclick = (e) => { e.preventDefault(); loadSeed(Math.floor(Math.random() * 1e9)); };
+document.getElementById('seedForm').onsubmit = (e) => {
+  e.preventDefault();
+  const v = document.getElementById('seed').value;
+  if (v !== '') loadSeed(Math.floor(Number(v)));
+};
+document.getElementById('seed').value = config.seed;
+const modeSelect = document.getElementById('mode');
+modeSelect.innerHTML = Object.entries(VIEWS).map(([k, v], i) => `<option value="${k}">${i + 1}. ${v.label}</option>`).join('');
+const setMode = (m) => { mode = m; modeSelect.value = m; update(); };
+modeSelect.onchange = () => setMode(modeSelect.value);
 document.getElementById('depletion').onchange = (e) => { depletion = e.target.checked; update(); };
 canvas.addEventListener('click', (ev) => {
   const rect = canvas.getBoundingClientRect();
@@ -69,12 +83,13 @@ canvas.addEventListener('click', (ev) => {
   update();
 });
 addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
+  if (['INPUT', 'SELECT'].includes(e.target.tagName)) return;
   if (e.key === ' ') { e.preventDefault(); stop(); step(); }
   else if (e.key === 'p') document.getElementById('play').click();
   else if (e.key === 'g') run('fast');
   else if (e.key === 'd') { depletion = !depletion; document.getElementById('depletion').checked = depletion; update(); }
   else if (e.key === 'Escape') { sel = null; update(); }
+  else if (/^[1-9]$/.test(e.key) && Object.keys(VIEWS)[e.key - 1]) setMode(Object.keys(VIEWS)[e.key - 1]);
 });
 addEventListener('resize', update);
 
@@ -92,7 +107,7 @@ function layout() {
 
 function update() {
   layout();
-  draw(ctx, state, { ...view, selected: sel, depletion });
+  range = draw(ctx, state, { ...view, selected: sel, depletion, mode });
   renderPanel();
 }
 
@@ -131,7 +146,10 @@ function renderPanel() {
   const clans = Object.values(state.clans);
   document.getElementById('status').textContent =
     `Turn ${state.turn} · ${state.phase === 'pregame' ? 'Pre-game' : 'Game'}`;
-  document.getElementById('seed').textContent = `Seed ${config.seed}`;
+  const v = VIEWS[mode];
+  document.getElementById('legend').innerHTML = mode === 'terrain' ? '' :
+    `<div class="sub">${v.note}</div>` +
+    (range ? `<div class="ramp" style="background:${rampCss}"></div><div class="ends"><span>${fmt(range.lo)}</span><span>${fmt(range.hi)}</span></div>` : '');
   document.getElementById('play').textContent = timer ? 'Pause (P)' : 'Play (P)';
   document.getElementById('summary').innerHTML =
     `Population ${fmt(rules.totalPop(state))} · ${clans.length} clans<br>` +

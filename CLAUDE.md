@@ -21,7 +21,7 @@ npm run sim -- --seed 3 --players 3 [--turns 400] [--every 25] [--json]
 - `src/market.js` — `clear(baskets)`: searches for exchange ratios where supply meets demand, then rations. Each clan values a basket at Σ sqrt(amount), so trades are value-neutral and there is no numeraire.
 - `src/game.js` — `newGame(config)`, `replay(config, actions)`, `runPregame(s, n)`.
 - `src/mapgen.js` (terrain, inlets and inland seas, mountain ridges, deserts, rivers, coast/shallows, patchy fertility scaling food caps), `src/hex.js` (axial, pointy-top), `src/rng.js`.
-- `src/render.js` (canvas) and `src/main.js` (controls, side panel) are the only DOM code.
+- `src/render.js` (canvas) and `src/main.js` (controls, side panel) are the only DOM code. `src/views.js` holds the debug map views (keys 1–9).
 
 ## Invariants
 
