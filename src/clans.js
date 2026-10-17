@@ -408,6 +408,7 @@ export function trade(s) {
     m.traders = traders.length + Object.keys(posts).length;
     m.lastVolume = total(res.volume);
     m.lastTrade = res.volume;
+    m.lastTraders = [...traders.map((c) => c.name), ...Object.keys(posts).map((id) => s.civs[id]?.name ?? `trader ${id}`)];
     m.volume += m.lastVolume;
     m.activity = MARKET.gathering.fade * m.activity + (1 - MARKET.gathering.fade) * m.lastVolume;
     m.history.push({ turn: s.turn, prices: { ...res.prices }, volume: m.lastVolume });
@@ -420,7 +421,8 @@ export function trade(s) {
 function divide(s, clan) {
   const [a, b] = halve(s, clan.land);
   const [keep, give] = a.includes(key(clan)) ? [a, b] : [b, a];
-  const home = centre(s, give.filter((k) => !clanAt(s, s.map.tiles[k])), null);
+  const free = give.filter((k) => !clanAt(s, s.map.tiles[k]));
+  const home = free.length ? centre(s, free, null) : null;
   if (!keep.length || !home) return false;
   for (const k of give) releaseTile(s, clan, k);
   clan.pop /= 2;

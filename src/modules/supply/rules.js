@@ -242,9 +242,10 @@ function armiesStep(s) {
     ensure(u);
     if (u.supply.auto && u.supply.food < u.supply.foodMax) doResupply(s, u);
     const n = troopsOf(u);
+    const need = n * SUPPLY.eatPerTroop;
     const kids = Object.values(s.units).filter((d) => d.type === 'detachment' && (d.army?.captainId ?? d.captainId) === u.id);
-    if (u.supply.food >= n) {
-      u.supply.food -= n;
+    if (u.supply.food >= need) {
+      u.supply.food -= need;
       u.hungry = false;
       for (const d of kids) d.hungry = false;
       const max = u.army?.troopsMax ?? u.troopsMax;

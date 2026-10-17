@@ -178,7 +178,9 @@ function marketHtml(m) {
   return `<b>${owner}</b> · since turn ${m.founded}<br>` +
     (m.temporary ? `Disperses when trade falls below ${MARKET.gathering.minVolume} a turn (now ${fmt(m.activity)})<br>` : '') +
     `${m.traders} clans trading · ${fmt(m.lastVolume)} food changed hands last turn<br>` +
-    `<div class="sub">Exchange ratios (geometric mean = 1)</div>${bars}` +
+    `<div class="sub">Exchange ratios last turn (geometric mean = 1)</div>${bars}` +
+    `<div class="sub">Volume by good</div>${basketRow(m.lastTrade ?? {})}` +
+    `<div class="sub">Traded</div>${(m.lastTraders ?? []).join(', ') || '—'}` +
     (lines ? `<svg width="236" height="60" class="spark">${lines}</svg>` : '') + whyHtml(m.id);
 }
 

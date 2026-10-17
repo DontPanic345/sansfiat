@@ -42,7 +42,16 @@ while (s.turn <= Number(opt.turns) && s.phase === 'pregame') endTurn();
 const pregameMs = performance.now() - t0;
 if (s.phase === 'choose') {
   s = dispatch(s, { type: 'chooseCiv', civ: null }).state;
-  for (let i = 0; i < Number(opt.main); i++) endTurn();
+  for (let i = 0; i < Number(opt.main) && s.winner == null; i++) endTurn();
+}
+if (s.phase === 'main' && !opt.json) {
+  const cities = Object.fromEntries(Object.values(s.civs).map((c) => [c.name, Object.values(s.cities).filter((x) => x.owner === c.id).length]));
+  const built = Object.values(s.cities).reduce((a, c) => a + Object.keys(c.buildings ?? {}).length, 0);
+  const trails = Object.values(s.map.tiles).filter((t) => t.trail).length;
+  const forts = Object.values(s.map.tiles).filter((t) => t.fort).length;
+  const units = Object.values(s.units).reduce((a, u) => (a[u.type] = (a[u.type] ?? 0) + 1, a), {});
+  console.log(`GAME winner ${s.winner != null ? s.civs[s.winner].name : 'none'} kind ${s.mods.civ.winKind} turn ${s.turn - 1} cities ${JSON.stringify(cities)}` +
+    ` buildings ${built} trailTiles ${trails} forts ${forts} units ${JSON.stringify(units)} fights ${s.mods.army.fights ?? 0} captures ${s.mods.army.captures ?? 0}`);
 }
 
 if (opt.json) {

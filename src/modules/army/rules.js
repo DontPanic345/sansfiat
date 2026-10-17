@@ -2,7 +2,7 @@
 // Captain: unit type 'captain', u.army = {troops, zone:[keys], movedTurn}. Deployed (zone non-empty)
 // => troops live in detachments (units type 'detachment', u.army = {captainId, troops, entr}).
 // Undeployed => no detachments, all troops ride on the captain. Hungry: u.hungry or u.supply.hungry.
-import { note, event, tileAt, passable, stepCost, cityAt, unitsAt, civCities, civClans, takeGoods, transferCity, spawnUnit, removeUnit } from '../../core.js';
+import { note, event, tileAt, passable, stepCost, pathCost, cityAt, unitsAt, civCities, civClans, takeGoods, transferCity, spawnUnit, removeUnit } from '../../core.js';
 import { key, neighbors, distance } from '../../hex.js';
 import { rand } from '../../rng.js';
 import { ARMY } from './data.js';
@@ -264,6 +264,7 @@ function skirmish(s) {
     const fortSide = gar && !sides[gOwner] && owners.length ? gOwner : null;
     if (fortSide != null) owners.push(fortSide);
     if (owners.length < 2) continue;
+    s.mods.army.fights = (s.mods.army.fights ?? 0) + 1;
     const pw = {}, tr = {};
     for (const o of owners) {
       if (o === fortSide) { pw[o] = gar.garrison * (1 + ARMY.entrBonus * ARMY.maxEntr) * (city && city.owner === o && !t.fort ? 1.5 * (city.buildings?.wall ? ARMY.wallMult : 1) : 1); tr[o] = gar.garrison; continue; }
@@ -322,6 +323,7 @@ function capture(s) {
     if (city.garrison === undefined) city.garrison = ARMY.garrison;
     if (t.held == null || t.held === city.owner) { if (city.garrison < ARMY.garrison && !t.held) city.garrison++; continue; }
     if (city.garrison <= 0 && s.civs[t.held]) {
+      s.mods.army.captures = (s.mods.army.captures ?? 0) + 1;
       transferCity(s, city.id, t.held);
       city.garrison = ARMY.garrison;
       note(s, city.id, `captured by civ ${t.held}; its clans stay`);
@@ -354,9 +356,9 @@ export function ai(s, civId) {
       if (zoneConnected(cap.army.zone.filter((k) => k !== far))) out.push({ type: 'unpaint', civ: civId, unit: cap.id, ...parse(far) });
     }
     if (cap.army.movedTurn === s.turn || distance(cap, goalC) === 0) continue;
-    const n = neighbors(cap).filter((h) => tileAt(s, h) && passable(s, h) && stepCost(s, tileAt(s, h)) < Infinity)
-      .sort((a, b) => distance(a, goalC) - distance(b, goalC))[0];
-    if (n && distance(n, goalC) < distance(cap, goalC)) out.push({ type: 'moveCaptain', civ: civId, unit: cap.id, q: n.q, r: n.r });
+    const pc = pathCost(s, cap, goalC, { maxCost: 200 });
+    const n = pc?.path?.length ? pc.path.find((h) => key(h) !== key(cap)) : null;
+    if (n) out.push({ type: 'moveCaptain', civ: civId, unit: cap.id, q: n.q, r: n.r });
   }
   return out;
 }

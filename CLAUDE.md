@@ -108,8 +108,8 @@ s.clans    {id: clan}   s.markets {id: market}   s.civs {id: civ}   s.cities {id
 - **tile**: `q, r, terrain, fertility, river, coast, shallows, flow?, cap, stock, wildGrain?, tame?,
   occ, occTotal`; `claim` (clan id holding it as land, or null); `trailCost` (hidden: cost once trailed,
   null = never; forest/hills/mountain only); `span` (mountains: bridge span needed); `trail` (built,
-  shared by everyone; scout); `fort` (null | `{owner, ...}`; army); `cache` (null | `{owner, store}`;
-  supply); `fallow` (turns left yielding nothing; supply sets, core counts down); `held` (civ id of
+  shared by everyone; scout); `fort` (null | `{owner, ...}`; army); `cache` (null | `{owner, food}`;
+  supply; changes owner with the tile when `held`/territory changes); `fallow` (turns left yielding nothing; supply sets, core counts down); `held` (civ id of
   troops standing on it, or null; army keeps it current).
 - **clan**: hex-economy fields (`pop, land, store, harvest, basket, fed, starving, fedRatio, hungry,
   route, dest, market, trip, since, trail`...) plus `owner` (civ id or null = unaligned) and
@@ -124,8 +124,12 @@ s.clans    {id: clan}   s.markets {id: market}   s.civs {id: civ}   s.cities {id
   (projects, buildings). Capture goes through `transferCity`.
 - **unit**: core fields `id, owner, type, q, r, labour, labourMax` (`spawnUnit`, `removeUnit`).
   Module fields live under the module's name: `u.scout`, `u.army`, `u.supply`. Agreed cross-module
-  fields: `u.supply.food` / `u.supply.foodMax` (supply owns; army may subtract food eaten in a fight),
-  `u.army.troops` and `u.army.zone` (army owns; supply reads them to cost a captain's line).
+  fields: captain `u.supply = {food, foodMax, auto}` and `u.hungry` (supply owns; also set on its
+  detachments, found via `d.army.captainId`; army halves power when `u.hungry`/`u.supply.hungry`);
+  captain `u.army = {troops, zone, movedTurn}`, detachment `u.army = {captainId, troops, entr}`
+  (army owns; supply reads troops from `u.troops` or `u.army.troops`). Cities hold `city.garrison`
+  (army, default 3; must be beaten before capture) and `city.buildings.wall` (civ; army multiplies
+  defender power by `ARMY.wallMult`). Army counts `s.mods.army.fights/captures`.
 
 ## Core helpers (`src/core.js`)
 

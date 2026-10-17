@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import * as mod from '../src/modules/supply/rules.js';
 import { newGame } from '../src/game.js';
 import { spawnUnit } from '../src/core.js';
+import { SUPPLY } from '../src/modules/supply/data.js';
+SUPPLY.eatPerTroop = 1; // tests count food per troop
 
 const step = (phase) => mod.turnSteps.find((t) => t.phase === phase);
 const act = (s, a) => { const x = mod.actions[a.type]; const e = x.validate(s, a); if (!e) x.apply(s, a); return e; };
