@@ -8,3 +8,10 @@ export function rand(state) {
 
 export const randInt = (state, n) => Math.floor(rand(state) * n);
 export const pick = (state, arr) => arr[randInt(state, arr.length)];
+
+// Picks a value from [value, weight] pairs.
+export function weighted(state, pairs) {
+  let x = rand(state) * pairs.reduce((sum, [, w]) => sum + w, 0);
+  for (const [value, w] of pairs) if ((x -= w) < 0) return value;
+  return pairs.at(-1)[0];
+}

@@ -1,8 +1,11 @@
-import { CLAN, FOOD, FOODS, MARKET } from './data.js';
-import { fromPixel } from './hex.js';
-import { newGame, replay } from './game.js';
+import { CLAN, FOOD, GOODS, MARKET } from './data.js';
+import { fromPixel, key } from './hex.js';
+import { newGame, replay, runPregameCounted } from './game.js';
+import { clanAt, holder, humanCiv, marketAt, notesFor, tileAt, totalPop } from './core.js';
+import { hearths, roamCost } from './clans.js';
 import { draw } from './render.js';
 import * as rules from './rules.js';
+import { MODULE_UIS } from './modules/ui.js';
 import { VIEWS, VIEW_KEYS, rampCss } from './views.js';
 
 const params = new URLSearchParams(location.search);
@@ -19,6 +22,9 @@ let depletion = true;
 let mode = 'terrain';
 let range = null;
 let timer = null;
+// UI-only state per module (selected unit, paint brush, ...). Never part of game state.
+const locals = Object.fromEntries(MODULE_UIS.map((u) => [u.name, {}]));
+const uiFor = (name) => ({ act: (a) => { const ok = act(a); update(); return ok; }, local: locals[name], selection: sel });
 
 const canvas = document.getElementById('map');
 const ctx = canvas.getContext('2d');
@@ -39,9 +45,19 @@ function act(action) {
 function step(n = 1) {
   for (let i = 0; i < n; i++) {
     const before = state.phase;
-    act({ type: 'endTurn' });
-    if (state.phase !== before) { stop(); break; }
+    if (!act({ type: 'endTurn' }) || state.phase !== before) { stop(); break; }
   }
+  update();
+}
+
+// Runs the rest of the pre-game at once (headless fast path) and records the turns for replay.
+function skipPregame() {
+  stop();
+  if (state.phase !== 'pregame') return;
+  const { state: next, turns } = runPregameCounted(state);
+  for (let i = 0; i < turns; i++) history.push({ type: 'endTurn' });
+  state = next;
+  log.unshift(...state.events.slice().reverse());
   update();
 }
 
@@ -60,6 +76,15 @@ function stop() {
 document.getElementById('step').onclick = () => { stop(); step(); };
 document.getElementById('play').onclick = () => (timer ? (stop(), update()) : run('play'));
 document.getElementById('fast').onclick = () => run('fast');
+document.getElementById('skip').onclick = () => skipPregame();
+// Any element with data-action='{json}' (module panels, the founding choice) dispatches it.
+document.querySelector('aside').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  e.preventDefault();
+  act(JSON.parse(el.dataset.action));
+  update();
+});
 const loadSeed = (seed) => {
   params.set('seed', seed);
   location.search = params;
@@ -79,7 +104,9 @@ document.getElementById('depletion').onchange = (e) => { depletion = e.target.ch
 canvas.addEventListener('click', (ev) => {
   const rect = canvas.getBoundingClientRect();
   const h = fromPixel(ev.clientX - rect.left - view.ox, ev.clientY - rect.top - view.oy, view.size);
-  sel = rules.tileAt(state, h) ? h : null;
+  if (!tileAt(state, h)) { sel = null; update(); return; }
+  for (const ui of MODULE_UIS) if (ui.onClick?.(state, h, uiFor(ui.name))) { update(); return; }
+  sel = h;
   update();
 });
 addEventListener('keydown', (e) => {
@@ -87,6 +114,7 @@ addEventListener('keydown', (e) => {
   if (e.key === ' ') { e.preventDefault(); stop(); step(); }
   else if (e.key === 'p') document.getElementById('play').click();
   else if (e.key === 'g') run('fast');
+  else if (e.key === 'k') skipPregame();
   else if (e.key === 'd') { depletion = !depletion; document.getElementById('depletion').checked = depletion; update(); }
   else if (e.key === 'Escape') { sel = null; update(); }
   else if (VIEW_KEYS.includes(e.key) && Object.keys(VIEWS)[VIEW_KEYS.indexOf(e.key)]) setMode(Object.keys(VIEWS)[VIEW_KEYS.indexOf(e.key)]);
@@ -107,17 +135,28 @@ function layout() {
 
 function update() {
   layout();
-  range = draw(ctx, state, { ...view, selected: sel, depletion, mode });
+  range = draw(ctx, state, { ...view, selected: sel, depletion, mode, viewer: humanCiv(state)?.id ?? null, locals });
   renderPanel();
 }
 
 const fmt = (v) => (v >= 10 ? v.toFixed(0) : v.toFixed(1));
 const swatch = (color) => `<span class="swatch" style="background:${color}"></span>`;
 
+const goodColor = (g) => FOOD[g]?.color ?? '#9aa4ae';
 function basketRow(b) {
-  const parts = FOODS.filter((f) => (b[f] ?? 0) > 0.05).map((f) => `${swatch(FOOD[f].color)}${fmt(b[f])}`);
+  const parts = GOODS.filter((f) => (b[f] ?? 0) > 0.05).map((f) => `${swatch(goodColor(f))}${fmt(b[f])}`);
   return parts.length ? parts.join(' ') : '—';
 }
+
+// The "why" log of an entity, newest first.
+function whyHtml(id) {
+  const notes = notesFor(state, id);
+  if (!notes.length) return '';
+  return `<div class="sub">Why</div><ul class="why">${notes.slice().reverse()
+    .map((n) => `<li><span>t${n.turn}</span> ${n.text}</li>`).join('')}</ul>`;
+}
+
+const civName = (id) => (state.civs[id] ? `${swatch(state.civs[id].color)}${state.civs[id].name}` : '');
 
 function sparkline(series, { width = 236, height = 40, color = '#dde3ea', min, max } = {}) {
   if (series.length < 2) return '';
@@ -127,67 +166,82 @@ function sparkline(series, { width = 236, height = 40, color = '#dde3ea', min, m
 }
 
 function marketHtml(m) {
-  const owner = m.owner != null ? `${swatch(state.players[m.owner].color)}${state.players[m.owner].name}`
-    : m.temporary ? 'Gathering' : 'Neutral market';
-  const goods = FOODS.filter((f) => m.prices[f]);
+  const owner = m.owner != null ? civName(m.owner) : m.temporary ? 'Gathering' : 'Neutral market';
+  const goods = GOODS.filter((f) => m.prices[f]);
   const hi = Math.max(...goods.map((f) => m.prices[f]), 1);
   const bars = goods.map((f) =>
-    `<div class="bar"><span>${f}</span><i style="width:${(m.prices[f] / hi) * 100}%;background:${FOOD[f].color}"></i><b>${m.prices[f].toFixed(2)}</b></div>`).join('');
+    `<div class="bar"><span>${f}</span><i style="width:${(m.prices[f] / hi) * 100}%;background:${goodColor(f)}"></i><b>${m.prices[f].toFixed(2)}</b></div>`).join('');
   const hist = m.history.filter((h) => goods.every((f) => h.prices[f]));
   const all = hist.flatMap((h) => goods.map((f) => Math.log(h.prices[f])));
   const lines = goods.map((f) => sparkline(hist.map((h) => Math.log(h.prices[f])),
-    { color: FOOD[f].color, min: Math.min(...all), max: Math.max(...all), height: 60 })).join('');
+    { color: goodColor(f), min: Math.min(...all), max: Math.max(...all), height: 60 })).join('');
   return `<b>${owner}</b> · since turn ${m.founded}<br>` +
     (m.temporary ? `Disperses when trade falls below ${MARKET.gathering.minVolume} a turn (now ${fmt(m.activity)})<br>` : '') +
     `${m.traders} clans trading · ${fmt(m.lastVolume)} food changed hands last turn<br>` +
     `<div class="sub">Exchange ratios (geometric mean = 1)</div>${bars}` +
-    (lines ? `<svg width="236" height="60" class="spark">${lines}</svg>` : '');
+    (lines ? `<svg width="236" height="60" class="spark">${lines}</svg>` : '') + whyHtml(m.id);
+}
+
+const PHASE_LABEL = { pregame: 'Pre-game', choose: 'Founding', main: 'Game' };
+
+// Founding: the player picks which founding market to lead, or watches with all AI.
+function chooseHtml() {
+  const btn = (civ, label) => `<button data-action='${JSON.stringify({ type: 'chooseCiv', civ })}'>${label}</button>`;
+  return `<b>Choose your civ</b><div class="sub">The pre-game is over. Each founding market becomes a civ.</div>` +
+    Object.values(state.civs).map((c) => {
+      const m = state.markets[c.marketId];
+      return `<div class="row">${btn(c.id, `Lead ${c.name}`)} ${swatch(c.color)} market at ${key(m)}, ${m.traders} traders</div>`;
+    }).join('') + `<div class="row">${btn(null, 'Watch (all AI)')}</div>`;
 }
 
 function renderPanel() {
   const clans = Object.values(state.clans);
-  document.getElementById('status').textContent =
-    `Turn ${state.turn} · ${state.phase === 'pregame' ? 'Pre-game' : 'Game'}`;
+  document.getElementById('status').textContent = `Turn ${state.turn} · ${PHASE_LABEL[state.phase]}`;
+  document.getElementById('step').textContent = state.phase === 'main' ? 'End turn' : 'Step';
+  document.getElementById('skip').disabled = state.phase !== 'pregame';
+  document.getElementById('choose').innerHTML = state.phase === 'choose' ? chooseHtml() : '';
   const v = VIEWS[mode];
   document.getElementById('legend').innerHTML = mode === 'terrain' ? '' :
     `<div class="sub">${v.note}</div>` +
     (range ? `<div class="ramp" style="background:${rampCss}"></div><div class="ends"><span>${fmt(range.lo)}</span><span>${fmt(range.hi)}</span></div>` : '');
   document.getElementById('play').textContent = timer ? 'Pause (P)' : 'Play (P)';
   document.getElementById('summary').innerHTML =
-    `Population ${fmt(rules.totalPop(state))} · ${clans.length} clans<br>` +
+    `Population ${fmt(totalPop(state))} · ${clans.length} clans<br>` +
     `${clans.filter((c) => c.fed).length} growing · ${clans.filter((c) => !c.fed && !c.starving).length} stable · ` +
     `${clans.filter((c) => c.starving).length} starving<br>${clans.filter((c) => c.market != null).length} trading · ` +
     `${Object.keys(state.markets).length} ${state.phase === 'pregame' ? 'gatherings' : 'markets'}<br>` +
-    (state.phase === 'pregame' ? `Domesticated hearths ${rules.hearths(state).length} of ${state.players.length}` : '') +
+    (state.phase === 'pregame' ? `Domesticated hearths ${hearths(state).length} of ${state.config.players}` : '') +
     `<svg width="236" height="40" class="spark">${sparkline(state.stats.pop)}</svg>` +
-    state.players.filter((p) => p.market != null)
-      .map((p) => `${swatch(p.color)}${p.name} at ${state.markets[p.market].q},${state.markets[p.market].r}`).join('<br>');
+    Object.values(state.civs).map((c) => `${civName(c.id)}${c.isHuman ? ' (you)' : ''} at ${key(state.markets[c.marketId] ?? {})}`).join('<br>');
 
   const el = document.getElementById('selection');
   if (!sel) {
     el.innerHTML = '<i>Click a tile</i>';
   } else {
-    const t = rules.tileAt(state, sel);
-    const clan = rules.clanAt(state, sel) ?? rules.holder(state, sel);
-    const market = rules.marketAt(state, sel) ?? (clan && state.markets[clan.market]);
+    const t = tileAt(state, sel);
+    const clan = clanAt(state, sel) ?? holder(state, sel);
+    const market = marketAt(state, sel) ?? (clan && state.markets[clan.market]);
     const feats = [t.river && 'river', t.coast && 'coast', t.shallows && 'shallows'].filter(Boolean).join(', ');
     let html = `<b>${t.terrain}</b>${feats ? ` (${feats})` : ''} · ${sel.q},${sel.r}<br>` +
       `Fertility ×${t.fertility}<br>` +
       `Held ${t.occTotal} turns (${t.occ} in a row)<br>` +
       (t.wildGrain != null ? `Grain ${t.tame === 1 ? 'domesticated' : `${Math.round(t.tame * 100)}% tamed`}<br>` : '') +
-      FOODS.filter((f) => t.cap[f]).map((f) => `${swatch(FOOD[f].color)}${f} ${fmt(t.stock[f])}/${t.cap[f]}`).join('<br>');
+      Object.keys(FOOD).filter((f) => t.cap[f]).map((f) => `${swatch(FOOD[f].color)}${f} ${fmt(t.stock[f])}/${t.cap[f]}`).join('<br>');
     if (clan)
-      html += `<hr><b>${clan.name}</b> · pop ${fmt(clan.pop)} · ${clan.fed ? 'growing' : `${Math.round(clan.fedRatio * 100)}% fed, ${clan.starving ? 'starving' : 'stable'}`}<br>` +
-        `Holds ${clan.land.length} tile${clan.land.length === 1 ? '' : 's'} (roam ${rules.roamCost(state, clan.land)}/${CLAN.roam}) · settled ${clan.since} turns<br>` +
+      html += `<hr><b>${clan.name}</b>${clan.owner != null ? ` · ${civName(clan.owner)}` : ''} · pop ${fmt(clan.pop)} · ${clan.fed ? 'growing' : `${Math.round(clan.fedRatio * 100)}% fed, ${clan.starving ? 'starving' : 'stable'}`}<br>` +
+        `Holds ${clan.land.length} tile${clan.land.length === 1 ? '' : 's'} (roam ${roamCost(state, clan.land)}/${CLAN.roam}) · settled ${clan.since} turns<br>` +
         (clan.dest ? `Walking to ${clan.dest}, ${clan.route.length} steps left<br>`
           : clan.starving ? `Starving ${clan.hungry} turn${clan.hungry === 1 ? '' : 's'}; moves on after ${CLAN.patience}<br>` : '') +
         `<div class="sub">Harvest</div>${basketRow(clan.harvest)}` +
         `<div class="sub">After trade</div>${basketRow(clan.basket)}` +
         `<div class="sub">Store</div>${basketRow(clan.store)}` +
-        (clan.market != null ? `<div class="sub">Trips to market cost ${Math.round(clan.trip * 100)}% of labour</div>` : '');
+        (clan.market != null ? `<div class="sub">Trips to market cost ${Math.round(clan.trip * 100)}% of labour</div>` : '') +
+        whyHtml(clan.id);
     if (market) html += `<hr>${marketHtml(market)}`;
     el.innerHTML = html;
   }
+  document.getElementById('modules').innerHTML = MODULE_UIS
+    .map((ui) => ui.panel?.(state, sel, uiFor(ui.name)) ?? '').filter(Boolean).join('<hr>');
   document.getElementById('log').textContent = log.slice(0, 30).join('\n');
 }
 

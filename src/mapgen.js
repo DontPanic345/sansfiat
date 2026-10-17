@@ -1,6 +1,6 @@
-import { FEATURES, FOODS, MAP, TERRAIN } from './data.js';
+import { FEATURES, FOODS, MAP, TERRAIN, TRAILS } from './data.js';
 import { DIRS, fromOffset, key, neighbors, within } from './hex.js';
-import { rand, randInt } from './rng.js';
+import { rand, randInt, weighted } from './rng.js';
 
 export function generateMap(state, width, height) {
   const cells = [];
@@ -73,7 +73,26 @@ export function generateMap(state, width, height) {
     if (t.cap.grain) Object.assign(t, { wildGrain: t.cap.grain, tame: 0 });
     t.stock = { ...t.cap };
   }
+  rollTrails(state, tiles);
   return { width, height, tiles };
+}
+
+// Every tile gets the shared infrastructure fields; forest, hills and mountains also roll their
+// hidden trail cost (and mountains a bridge span). The rolls use their own stream seeded from
+// the main one, so adding them did not change the rest of the map or the pre-game.
+function rollTrails(state, tiles) {
+  const sub = { rng: (state.rng ^ 0x5bd1e995) >>> 0 };
+  for (const t of Object.values(tiles)) {
+    Object.assign(t, { trail: false, fort: null, cache: null, fallow: 0 });
+    const spec = TRAILS[t.terrain];
+    if (!spec) continue;
+    const span = spec.span ? weighted(sub, spec.span) : undefined;
+    if (span === null) t.trailCost = null;
+    else {
+      t.trailCost = weighted(sub, spec.cost);
+      if (span) t.span = span;
+    }
+  }
 }
 
 // A wandering line of hexes from `start`, mostly holding one heading.
@@ -104,16 +123,18 @@ function carveWater(state, cells, tiles, setTerrain) {
   }
 }
 
-// Long mountain chains with hills along their flanks and the odd pass.
+// Long wandering mountain chains with hills along their flanks and the odd pass (the same
+// generator as the scout prototype's; hex-economy's copy was already merged with it).
 function raiseRidges(state, tiles, setTerrain) {
   const land = Object.values(tiles).filter((t) => t.terrain !== 'ocean');
+  const [lo, hi] = MAP.ridgeLength;
   for (let i = 0; i < MAP.ridges; i++) {
-    const path = walk(state, land[randInt(state, land.length)], 10 + randInt(state, 14), 0.25);
+    const path = walk(state, land[randInt(state, land.length)], lo + randInt(state, hi - lo), 0.25);
     for (const h of path) {
       if (tiles[key(h)]?.terrain === 'ocean') continue;
       setTerrain(h, rand(state) < MAP.passChance ? 'hills' : 'mountain', 1);
       for (const n of neighbors(h))
-        if (tiles[key(n)] && ['plains', 'forest', 'desert'].includes(tiles[key(n)].terrain) && rand(state) < 0.4)
+        if (tiles[key(n)] && ['plains', 'forest', 'desert'].includes(tiles[key(n)].terrain) && rand(state) < MAP.flankHills)
           setTerrain(n, 'hills', 0.8);
     }
   }

@@ -26,6 +26,9 @@
     select { font: inherit; padding: 4px; }
     .ramp { height: 10px; border-radius: 2px; margin: 4px 0 2px; }
     .ends { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.8; }
+    .why { margin: 2px 0; padding-left: 16px; font-size: 12px; }
+    .why span { opacity: 0.5; }
+    #choose .row { margin: 4px 0; }
   </style>
 </head>
 <body>
@@ -39,15 +42,18 @@
     <div class="controls">
       <button id="step">Step</button>
       <button id="play">Play (P)</button>
-      <button id="fast">To game start (G)</button>
+      <button id="fast">Fast-forward (G)</button>
+      <button id="skip">Skip pre-game (K)</button>
     </div>
+    <div id="choose"></div>
     <label>View <select id="mode"></select></label>
     <div id="legend"></div>
     <label><input type="checkbox" id="depletion" checked> Show depletion (D)</label>
     <div id="summary"></div>
     <hr>
     <div id="selection"></div>
-    <div class="keys">Space: step · 1–0, -: views · Click: inspect tile, clan, market · Esc: clear</div>
+    <div id="modules"></div>
+    <div class="keys">Space: step · 1–0, -, =: views · Click: inspect tile, clan, market · Esc: clear</div>
     <div id="log"></div>
   </aside>
   <script type="module" src="src/main.js"></script>

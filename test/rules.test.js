@@ -109,12 +109,15 @@ test('the pre-game spreads clans over land of their own, and ends when grain is 
       }
     }
     assert.ok(gathered, 'clans should gather to trade in the pre-game');
-    assert.equal(s.phase, 'game');
+    assert.equal(s.phase, 'choose');
     assert.equal(hearths(s).length, 3);
     assert.ok(Object.keys(s.clans).length > 50, 'clans should have spread');
     const owned = Object.values(s.markets).filter((m) => m.owner != null);
     assert.equal(owned.length, 3);
+    assert.deepEqual(owned.map((m) => s.civs[m.owner].marketId).sort(), owned.map((m) => m.id).sort());
     assert.ok(Object.values(s.markets).every((m) => !m.temporary));
+    assert.match(dispatch(s, { type: 'endTurn' }).error, /choose/);
+    s = dispatch(s, { type: 'chooseCiv', civ: null }).state;
     for (let i = 0; i < 5; i++) s = dispatch(s, { type: 'endTurn' }).state;
     assert.ok(owned.some((m) => s.markets[m.id].volume > 0), 'player markets should trade');
     const ms = Object.values(s.markets);

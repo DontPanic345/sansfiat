@@ -1,10 +1,11 @@
 import { FOODS, TERRAIN } from './data.js';
 import { key } from './hex.js';
-import { footprint, total } from './rules.js';
+import { footprint } from './clans.js';
+import { total } from './core.js';
 
 // Debug map views. Each `values(s)` returns a Map of tile key -> number; tiles left out
 // are drawn as `none`. Hot keys follow VIEW_KEYS in list order.
-export const VIEW_KEYS = '1234567890-';
+export const VIEW_KEYS = '1234567890-=';
 export const VIEWS = {
   terrain: { label: 'Terrain' },
   population: {
@@ -58,6 +59,11 @@ export const VIEWS = {
     label: 'Tended grain',
     note: 'Grain tiles from wild (0) to domesticated (1)',
     values: (s) => tileMap(s, (t) => t.tame ?? null),
+  },
+  trailCost: {
+    label: 'Trail cost (hidden)',
+    note: 'Move cost a trail would bring the tile to; blank where none can be built. Debug: players see this only once scouted',
+    values: (s) => tileMap(s, (t) => t.trailCost ?? null),
   },
   passable: { label: 'Impassable', note: 'White walkable, red blocked, black sea' },
 };

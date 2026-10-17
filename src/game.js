@@ -1,24 +1,32 @@
-import { CLAN, MAP, PLAYERS } from './data.js';
+import { CLAN, MAP } from './data.js';
 import { key, neighbors } from './hex.js';
 import { generateMap, isLand } from './mapgen.js';
 import { pick } from './rng.js';
-import { dispatch, spawnClan } from './rules.js';
+import { spawnClan } from './clans.js';
+import { dispatch, initModules, runTurn } from './rules.js';
 
+// The shared state shape is documented in CLAUDE.md ("State shape").
+// players: how many civs the pre-game founds (one human, the rest AI).
 export function newGame({ seed = 1, players = 2, width = MAP.width, height = MAP.height } = {}) {
   const s = {
     config: { seed, players, width, height },
     rng: seed >>> 0,
     turn: 1,
-    phase: 'pregame',
+    phase: 'pregame', // 'pregame' -> 'choose' (pick a civ) -> 'main'
     nextId: 1,
     events: [],
-    players: PLAYERS.slice(0, players).map((p, id) => ({ id, ...p, market: null })),
     clans: {},
     markets: {},
+    civs: {},
+    cities: {},
+    units: {},
+    notes: {},
+    mods: {},
     stats: { pop: [], clans: [], volume: [] },
   };
   s.map = generateMap(s, width, height);
   seedClans(s);
+  initModules(s);
   return s;
 }
 
@@ -63,8 +71,18 @@ export function replay(config, actions) {
   return s;
 }
 
-// Steps until the pre-game hands over to the game, or `maxTurns` more turns pass.
-export function runPregame(s, maxTurns = Infinity) {
-  for (let i = 0; i < maxTurns && s.phase === 'pregame'; i++) s = dispatch(s, { type: 'endTurn' }).state;
-  return s;
+// Steps until the pre-game hands over to founding, or `maxTurns` more turns pass. Returns
+// {state, turns} where turns is how many endTurn actions it took (record that many in a replay
+// history). Headless fast path: clones once and runs the turns in place, which gives exactly
+// the state that dispatching endTurn that many times would (tested).
+export function runPregameCounted(s, maxTurns = Infinity) {
+  s = structuredClone(s);
+  let turns = 0;
+  for (; turns < maxTurns && s.phase === 'pregame'; turns++) {
+    s.events = [];
+    runTurn(s);
+  }
+  return { state: s, turns };
 }
+
+export const runPregame = (s, maxTurns = Infinity) => runPregameCounted(s, maxTurns).state;

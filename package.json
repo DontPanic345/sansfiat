@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node tools/serve.js",
     "test": "node --test",
-    "sim": "node tools/sim.js"
+    "sim": "node tools/sim.js",
+    "bench": "node tools/bench.js"
   }
 }

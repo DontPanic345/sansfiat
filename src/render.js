@@ -1,11 +1,30 @@
 import { MAP, TERRAIN } from './data.js';
 import { key, neighbors, toPixel } from './hex.js';
-import { marketReach, total } from './rules.js';
+import { marketReach } from './clans.js';
+import { total } from './core.js';
+import { MODULE_UIS } from './modules/ui.js';
 import { VIEWS, ramp } from './views.js';
 
-// view: {size, ox, oy, selected?: {q,r}, depletion: bool, mode: key of VIEWS}
+// view: {size, ox, oy, selected?: {q,r}, depletion: bool, mode: key of VIEWS, viewer, locals}
 // Returns the value range of a debug view, for the legend.
+// After the base map, every module's drawLayer runs (in z order) with the same helpers.
 export function draw(ctx, s, view) {
+  const range = drawBase(ctx, s, view);
+  const { size } = view;
+  const at = (h) => {
+    const p = toPixel(h, size);
+    return { x: p.x + view.ox, y: p.y + view.oy };
+  };
+  for (const ui of MODULE_UIS) {
+    if (!ui.drawLayer) continue;
+    ctx.save();
+    ui.drawLayer(ctx, s, { ...view, at, hexPath, local: view.locals?.[ui.name] ?? {} });
+    ctx.restore();
+  }
+  return range;
+}
+
+function drawBase(ctx, s, view) {
   const { size } = view;
   const at = (h) => {
     const p = toPixel(h, size);
@@ -113,7 +132,7 @@ export function draw(ctx, s, view) {
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
-    ctx.strokeStyle = m.owner == null ? 'rgba(255,255,255,0.35)' : hexAlpha(s.players[m.owner].color, 0.6);
+    ctx.strokeStyle = m.owner == null ? 'rgba(255,255,255,0.35)' : hexAlpha(s.civs[m.owner].color, 0.6);
     ctx.stroke();
   }
 
@@ -123,7 +142,7 @@ export function draw(ctx, s, view) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = m.owner != null ? s.players[m.owner].color : m.temporary ? 'rgba(233,228,216,0.35)' : '#e9e4d8';
+    ctx.fillStyle = m.owner != null ? s.civs[m.owner].color : m.temporary ? 'rgba(233,228,216,0.35)' : '#e9e4d8';
     ctx.strokeStyle = m.temporary ? '#e9e4d8' : '#111';
     ctx.lineWidth = 2;
     if (m.temporary) ctx.setLineDash([3, 3]);
@@ -244,7 +263,7 @@ function hexAlpha(hex, a) {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-function hexPath(ctx, { x, y }, size) {
+export function hexPath(ctx, { x, y }, size) {
   ctx.beginPath();
   for (let i = 0; i < 6; i++) {
     const a = (Math.PI / 180) * (60 * i - 30);
