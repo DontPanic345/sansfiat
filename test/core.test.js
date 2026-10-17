@@ -160,7 +160,9 @@ test('territory comes from troops, forts, then city radius; cities transfer; sto
   const m = s.markets[a.marketId];
   const id = s.nextId++;
   s.cities[id] = { id, owner: a.id, name: 'Test', q: m.q, r: m.r };
-  a.cityIds.push(id);
+  a.cityIds = [id];
+  b.cityIds = [];
+  for (const c of Object.values(s.cities)) if (c.id !== id) delete s.cities[c.id];
   const near = neighbors(m)[0];
   assert.equal(territoryOf(s, near), a.id);
   tileAt(s, near).fort = { owner: b.id };
