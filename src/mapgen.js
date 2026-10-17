@@ -83,7 +83,7 @@ export function generateMap(state, width, height) {
 function rollTrails(state, tiles) {
   const sub = { rng: (state.rng ^ 0x5bd1e995) >>> 0 };
   for (const t of Object.values(tiles)) {
-    Object.assign(t, { trail: false, fort: null, cache: null, fallow: 0 });
+    Object.assign(t, { trail: false, fort: null, cache: null, fallow: 0, held: null });
     const spec = TRAILS[t.terrain];
     if (!spec) continue;
     const span = spec.span ? weighted(sub, spec.span) : undefined;

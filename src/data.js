@@ -97,6 +97,10 @@ export const TENDING = { tendAfter: 15, rate: 1 / 120, domestic: 2.5, hearthSpac
 
 export const PREGAME = { minTurns: 100, maxTurns: 500 };
 
+// Civ cities (DESIGN.md "Civ settlements"): a city works tiles within workRadius and holds
+// territory within territoryRadius; new cities sit at least minSpacing from any other.
+export const CITY = { workRadius: 1, territoryRadius: 2, minSpacing: 3, defence: 0.5 };
+
 // The "why" log: each entity keeps its last `perSubject` reasons (see note() in core.js).
 export const NOTES = { perSubject: 8 };
 

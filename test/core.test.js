@@ -5,7 +5,8 @@ import { key, neighbors } from '../src/hex.js';
 import { newGame, replay, runPregame, runPregameCounted } from '../src/game.js';
 import { clear } from '../src/market.js';
 import {
-  civOf, costMap, note, notesFor, pathCost, spawnUnit, stepCost, sweepNotes, tileAt, unitsAt,
+  civOf, costMap, note, notesFor, pathCost, putGoods, spawnUnit, stepCost, sweepNotes, takeGoods, territoryOf,
+  tileAt, transferCity, unitsAt,
 } from '../src/core.js';
 import { ACTIONS, PHASES, PIPELINE, dispatch, legalActions } from '../src/rules.js';
 import { MODULES } from '../src/modules/index.js';
@@ -151,4 +152,25 @@ test('a seed plus the action list replays exactly through founding and into the 
   const again = replay(config, history);
   s.events = again.events = [];
   assert.deepEqual(again, s);
+});
+
+test('territory comes from troops, forts, then city radius; cities transfer; stores give what they have', () => {
+  const s = dispatch(founded(1), { type: 'chooseCiv', civ: null }).state;
+  const [a, b] = Object.values(s.civs);
+  const m = s.markets[a.marketId];
+  const id = s.nextId++;
+  s.cities[id] = { id, owner: a.id, name: 'Test', q: m.q, r: m.r };
+  a.cityIds.push(id);
+  const near = neighbors(m)[0];
+  assert.equal(territoryOf(s, near), a.id);
+  tileAt(s, near).fort = { owner: b.id };
+  assert.equal(territoryOf(s, near), b.id);
+  tileAt(s, near).held = a.id;
+  assert.equal(territoryOf(s, near), a.id);
+  assert.equal(territoryOf(s, { q: m.q + 9, r: m.r }), null);
+  transferCity(s, id, b.id);
+  assert.deepEqual([a.cityIds, b.cityIds], [[], [id]]);
+  putGoods(s, a.id, { grain: 3, wood: 1 });
+  assert.equal(takeGoods(s, a.id, 'grain', 5), 3);
+  assert.deepEqual(a.store, { wood: 1 });
 });

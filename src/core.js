@@ -2,8 +2,8 @@
 // note/event/spawnUnit/removeUnit, which only touch the clone dispatch hands out).
 // This file imports nothing from rules.js, clans.js or src/modules, so any module can import
 // it without creating an import cycle.
-import { NOTES, TERRAIN } from './data.js';
-import { key, neighbors } from './hex.js';
+import { CITY, NOTES, TERRAIN } from './data.js';
+import { distance, key, neighbors } from './hex.js';
 
 // ---- ids, events, the "why" log -------------------------------------------------------------
 
@@ -45,6 +45,22 @@ export function addGoods(a, b) {
 }
 
 export const scaleGoods = (basket, k) => Object.fromEntries(Object.entries(basket).map(([g, v]) => [g, v * k]));
+
+// The civ's store is the one pooled stock of goods every module draws on (supply feeds units
+// from its food, civ spends it on projects). Use these rather than editing civ.store directly.
+// takeGoods takes up to `amount` and returns what it actually took.
+export function takeGoods(s, civId, good, amount) {
+  const store = s.civs[civId].store;
+  const took = Math.max(0, Math.min(amount, store[good] ?? 0));
+  store[good] = (store[good] ?? 0) - took;
+  if (store[good] <= 1e-9) delete store[good];
+  return took;
+}
+
+export function putGoods(s, civId, basket) {
+  const store = s.civs[civId].store;
+  for (const [g, v] of Object.entries(basket)) if (v > 0) store[g] = (store[g] ?? 0) + v;
+}
 
 // ---- tiles and movement ----------------------------------------------------------------------
 
@@ -168,6 +184,31 @@ export function civOf(s, x) {
   if (!e) return null;
   if (s.civs[e.id] === e) return e;
   return e.owner != null ? s.civs[e.owner] ?? null : null;
+}
+
+// Who holds a tile in the main game: troops standing on it (tile.held, kept by the army
+// module), else a fort's owner, else the civ whose city is within CITY.territoryRadius
+// (nearest city wins). null is neutral. Supply lines and forage/pillage use this.
+export function territoryOf(s, h) {
+  const t = tileAt(s, h);
+  if (!t) return null;
+  if (t.held != null) return t.held;
+  if (t.fort?.owner != null) return t.fort.owner;
+  let best = null;
+  for (const c of Object.values(s.cities)) {
+    const d = distance(c, h);
+    if (d <= CITY.territoryRadius && (!best || d < best.d)) best = { d, owner: c.owner };
+  }
+  return best ? best.owner : null;
+}
+
+// Moves a city to another civ (capture), keeping both civs' cityIds in step.
+export function transferCity(s, cityId, civId) {
+  const city = s.cities[cityId];
+  const from = s.civs[city.owner];
+  if (from) from.cityIds = from.cityIds.filter((id) => id !== cityId);
+  city.owner = civId;
+  if (civId != null && !s.civs[civId].cityIds.includes(cityId)) s.civs[civId].cityIds.push(cityId);
 }
 
 export const civClans = (s, civId) => Object.values(s.clans).filter((c) => c.owner === civId);

@@ -109,7 +109,7 @@ function routeTo(prev, k) {
 const accessBonus = (rs, h) => (nearestMarket(rs, h) ? MARKET.accessBonus : 0);
 
 // Scores every unclaimed tile the clan could walk to, as a one-tile home.
-function siteOptions(s, clan, rs, { steps = CLAN.moveRange, pop = clan.pop } = {}) {
+export function siteOptions(s, clan, rs, { steps = CLAN.moveRange, pop = clan.pop } = {}) {
   const others = Object.values(s.clans).filter((c) => c.id !== clan.id);
   const prev = walkable(s, clan, new Set(others.map(key)), steps);
   const options = [];
@@ -123,7 +123,7 @@ function siteOptions(s, clan, rs, { steps = CLAN.moveRange, pop = clan.pop } = {
 }
 
 // Picks among sites scoring above `min`, favouring better ones without always taking the best.
-function pickSite(s, options, min) {
+export function pickSite(s, options, min) {
   const good = options.filter((o) => o.score > min);
   if (!good.length) return null;
   const best = Math.max(...good.map((o) => o.score));
