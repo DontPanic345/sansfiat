@@ -253,6 +253,7 @@ window.game = {
   act: (a) => { const ok = act(a); update(); return ok; },
   history,
   config,
+  get view() { return view; },
   rules,
   replay: () => replay(config, history),
 };
