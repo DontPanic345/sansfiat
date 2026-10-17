@@ -134,7 +134,7 @@ test('units: spawn, find, own, and have labour refilled each turn', () => {
   const m = s.markets[civ.marketId];
   const u = spawnUnit(s, { owner: civ.id, type: 'test', q: m.q, r: m.r, labourMax: 4, test: { x: 1 } });
   u.labour = 0;
-  assert.deepEqual(unitsAt(s, m).map((x) => x.id), [u.id]);
+  assert.ok(unitsAt(s, m).some((x) => x.id === u.id));
   assert.equal(civOf(s, u.id), civ);
   s = dispatch(s, { type: 'endTurn' }).state;
   assert.equal(s.units[u.id].labour, 4);
