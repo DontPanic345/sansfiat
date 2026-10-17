@@ -1,3 +1,17 @@
-// Tuning for the supply module. Import only from src/data.js here (never from rules or core),
-// so core and the UI can read it without import cycles.
-export const SUPPLY = {};
+// Tuning for the supply module.
+export const SUPPLY = {
+  range: 10,
+  costPerLabour: 3,
+  carryPerTroop: 4, // captain's foodMax = troops * this
+  attrition: 0.1, // share of troops lost per hungry turn (min 1)
+  heal: 1, // troops regained per fed turn, up to troopsMax if known
+  forageLabour: 2,
+  pillageLabour: 1,
+  gather: 4, // food taken from a tile
+  regrowTurns: 5,
+  cacheSpoil: 0.3,
+  porterCarry: 12,
+  porterEat: 1,
+  porterCost: 1, // food from the store to raise a porter
+  farFromHome: 8, // AI wants a cache when an army is farther (line cost) than this from every city
+};
