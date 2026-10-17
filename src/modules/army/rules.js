@@ -14,7 +14,7 @@ export function onStart(s) {}
 const parse = (k) => { const [q, r] = k.split(',').map(Number); return { q, r }; };
 const captains = (s, civ) => Object.values(s.units).filter((u) => u.type === 'captain' && (civ == null || u.owner === civ));
 const dets = (s, cid) => Object.values(s.units).filter((u) => u.type === 'detachment' && u.army.captainId === cid);
-const hungry = (u) => !!(u.hungry || u.supply?.hungry);
+const hungry = (u, s) => !!(u.hungry || u.supply?.hungry || (s && u.army?.captainId != null && (s.units[u.army.captainId]?.hungry || s.units[u.army.captainId]?.supply?.hungry)));
 
 // Tiles reachable from the captain's tile through zone tiles.
 function linked(s, cap) {
@@ -243,7 +243,7 @@ function spread(s) {
 
 const power = (s, d, tile) => {
   const city = cityAt(s, tile);
-  return d.army.troops * (1 + ARMY.entrBonus * (d.army.entr ?? 0)) * (hungry(d) ? 0.5 : 1) * (city && city.owner === d.owner ? 1.5 : 1);
+  return d.army.troops * (1 + ARMY.entrBonus * (d.army.entr ?? 0)) * (hungry(d, s) ? 0.5 : 1) * (city && city.owner === d.owner ? 1.5 * (city.buildings?.wall ? ARMY.wallMult : 1) : 1);
 };
 
 function skirmish(s) {
@@ -257,18 +257,22 @@ function skirmish(s) {
     for (const u of us) (sides[u.owner] ??= []).push(u);
     const owners = Object.keys(sides).map(Number);
     // a fort fights with its garrison for its owner if no own troops stand there
-    const fortSide = t.fort && !sides[t.fort.owner] && owners.length ? t.fort.owner : null;
+    const city = cityAt(s, t);
+    const gOwner = t.fort ? t.fort.owner : city?.owner ?? null;
+    const gar = t.fort ?? (city && city.owner != null ? city : null);
+    if (gar && gar.garrison === undefined) gar.garrison = ARMY.garrison;
+    const fortSide = gar && !sides[gOwner] && owners.length ? gOwner : null;
     if (fortSide != null) owners.push(fortSide);
     if (owners.length < 2) continue;
     const pw = {}, tr = {};
     for (const o of owners) {
-      if (o === fortSide) { pw[o] = ARMY.garrison * (1 + ARMY.entrBonus * ARMY.maxEntr); tr[o] = ARMY.garrison; continue; }
+      if (o === fortSide) { pw[o] = gar.garrison * (1 + ARMY.entrBonus * ARMY.maxEntr) * (city && city.owner === o && !t.fort ? 1.5 * (city.buildings?.wall ? ARMY.wallMult : 1) : 1); tr[o] = gar.garrison; continue; }
       pw[o] = sides[o].reduce((a, u) => a + power(s, u, t), 0);
       tr[o] = sides[o].reduce((a, u) => a + u.army.troops, 0);
     }
     for (const o of owners) {
       const foe = owners.filter((x) => x !== o).reduce((a, x) => a + pw[x], 0);
-      if (o === fortSide) { t.fort.garrison = Math.max(0, t.fort.garrison - Math.round(ARMY.dmg * foe / 1.75)); continue; }
+      if (o === fortSide) { gar.garrison = Math.max(0, gar.garrison - Math.round(ARMY.dmg * foe / 1.75)); continue; }
       if (foe / Math.max(1e-9, pw[o]) >= ARMY.retreatRatio && rand(s) < ARMY.retreatChance) {
         for (const u of sides[o]) {
           note(s, u.id, 'outnumbered, slipped away');
@@ -281,9 +285,11 @@ function skirmish(s) {
       const loss = Math.max(1, Math.round(ARMY.dmg * foe));
       for (const u of sides[o]) u.army.troops -= Math.min(u.army.troops, Math.ceil(loss * u.army.troops / tr[o]));
     }
-    if (fortSide != null && t.fort.garrison <= 0) {
+    if (fortSide != null && gar.garrison <= 0) {
       const winner = owners.find((o) => o !== fortSide && sides[o].some((u) => u.army.troops > 0));
-      if (winner != null) { t.fort = { owner: winner, garrison: ARMY.garrison }; event(s, 'a fort falls'); } else t.fort.garrison = 1;
+      if (winner != null && t.fort) { t.fort = { owner: winner, garrison: ARMY.garrison }; event(s, 'a fort falls'); }
+      else if (winner == null) gar.garrison = 1;
+      // a city with garrison 0 and a winner on the tile falls in capture()
     }
   }
   for (const u of Object.values(s.units)) { // clear the fallen
@@ -313,8 +319,11 @@ function hold(s) {
 function capture(s) {
   for (const city of Object.values(s.cities)) {
     const t = tileAt(s, city);
-    if (t.held != null && t.held !== city.owner && s.civs[t.held]) {
+    if (city.garrison === undefined) city.garrison = ARMY.garrison;
+    if (t.held == null || t.held === city.owner) { if (city.garrison < ARMY.garrison && !t.held) city.garrison++; continue; }
+    if (city.garrison <= 0 && s.civs[t.held]) {
       transferCity(s, city.id, t.held);
+      city.garrison = ARMY.garrison;
       note(s, city.id, `captured by civ ${t.held}; its clans stay`);
       event(s, `${s.civs[t.held].name} takes ${city.name ?? 'a city'}`);
     }

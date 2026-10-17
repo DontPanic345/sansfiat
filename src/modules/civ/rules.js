@@ -148,7 +148,7 @@ function weather(s) {
 
 const capOf = (s, civ) => {
   const cs = civCities(s, civ.id);
-  return CIV.baseCap * cs.length + CIV.storehouseCap * cs.filter((c) => c.buildings.storehouse).length;
+  return CIV.baseCap * cs.length + CIV.storehouseCap * cs.filter((c) => c.buildings?.storehouse).length;
 };
 
 const MAT_TILE = { wood: (t) => t.terrain === 'forest', stone: (t) => t.terrain === 'hills', clay: (t) => !!t.river };
@@ -241,7 +241,7 @@ function collect(s) {
 function upkeep(s) {
   for (const civ of Object.values(s.civs)) {
     const cities = civCities(s, civ.id);
-    const spoil = CLAN.spoilage * (cities.some((c) => c.buildings.granary) ? CIV.granarySpoil : 1);
+    const spoil = CLAN.spoilage * (cities.some((c) => c.buildings?.granary) ? CIV.granarySpoil : 1);
     const cap = capOf(s, civ);
     for (const g of Object.keys(civ.store)) {
       if (FOODS.includes(g)) civ.store[g] *= 1 - spoil;

@@ -242,7 +242,7 @@ function armiesStep(s) {
     ensure(u);
     if (u.supply.auto && u.supply.food < u.supply.foodMax) doResupply(s, u);
     const n = troopsOf(u);
-    const kids = Object.values(s.units).filter((d) => d.type === 'detachment' && d.captainId === u.id);
+    const kids = Object.values(s.units).filter((d) => d.type === 'detachment' && (d.army?.captainId ?? d.captainId) === u.id);
     if (u.supply.food >= n) {
       u.supply.food -= n;
       u.hungry = false;
@@ -254,8 +254,8 @@ function armiesStep(s) {
       u.hungry = true;
       for (const d of kids) {
         d.hungry = true;
-        d.troops = Math.max(0, d.troops - Math.max(1, Math.ceil(d.troops * SUPPLY.attrition)));
-        if (d.troops <= 0) removeUnit(s, d.id);
+        { const dn = troopsOf(d); setTroops(d, Math.max(0, dn - Math.max(1, Math.ceil(dn * SUPPLY.attrition)))); }
+        if (troopsOf(d) <= 0) removeUnit(s, d.id);
       }
       const left = n - Math.max(1, Math.ceil(n * SUPPLY.attrition));
       note(s, u.id, 'army is hungry and losing troops');

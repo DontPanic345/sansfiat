@@ -28,7 +28,7 @@ function world() {
   }
   s.cities = {};
   for (const c of Object.values(s.civs)) c.cityIds = [];
-  const mk = (id, owner, h) => { s.cities[id] = { id, owner, name: 'C' + id, q: h.q, r: h.r }; s.civs[owner].cityIds.push(id); };
+  const mk = (id, owner, h) => { s.cities[id] = { id, owner, name: 'C' + id, q: h.q, r: h.r, buildings: {}, project: null }; s.civs[owner].cityIds.push(id); };
   mk(9001, c1, chain[0]);
   return { s, c1, c2, chain, mk };
 }
