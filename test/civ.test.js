@@ -369,13 +369,22 @@ test('victory: conquest, prosperity, winTurn, lost civs and alerts', () => {
   assert.equal(s.winner, a.id);
   assert.equal(s.mods.civ.winTurn, s.turn);
   assert.equal(s.mods.civ.lost[b.id], s.turn);
-  assert.ok(s.events.some((e) => /! .*takes/.test(e)));
+  assert.ok(s.events.some((e) => /! .*taken by/.test(e)));
+  assert.equal(cb.name, `${a.name} town 2`, 'a captured city takes its new owner\'s naming scheme');
+  assert.ok(s.notes[cb.id].some((n) => /renamed from/.test(n.text)));
   assert.ok(s.events.some((e) => /! .*wins by conquest: you win/.test(e)));
   const p = mainGame();
   p.turn = p.mods.civ.startTurn + CIV.turnLimit;
   vic(p);
   assert.ok(p.winner != null);
   assert.equal(p.mods.civ.winKind, 'prosperity');
+});
+
+test('founding endowment: every civ starts the main game with CIV.endowment in its store', () => {
+  const s = mainGame();
+  for (const civ of Object.values(s.civs))
+    for (const [g, v] of Object.entries(CIV.endowment)) assert.ok((civ.store[g] ?? 0) >= v, `${civ.name} ${g}`);
+  assert.equal(Object.values(s.mods.civ.startPop).every((p) => p > 0), true, 'prosperity baseline is people, not goods');
 });
 
 test('prosperity rewards growth since founding, not the founding head start', () => {

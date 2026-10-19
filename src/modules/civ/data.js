@@ -15,6 +15,9 @@ export const CIV = {
   craft: 2,              // pottery one crafter makes from as much clay
   // Food income: fed member clans hand this share of their leftover store to the civ.
   levy: 0.5,
+  // Founding endowment: goods each civ's store starts the main game with, so its first gifts,
+  // porters and army provisions are affordable while its clans' own stores are still empty.
+  endowment: { grain: 30 },
   // Store. The whole store (all goods) holds baseCap per city plus storehouseCap per storehouse;
   // past that, goods are lost. Default posting keeps keep[kind] x cap of each good and posts the rest.
   baseCap: 50,

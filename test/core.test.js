@@ -172,6 +172,7 @@ test('territory comes from troops, forts, then city radius; cities transfer; sto
   assert.equal(territoryOf(s, { q: m.q + 9, r: m.r }), null);
   transferCity(s, id, b.id);
   assert.deepEqual([a.cityIds, b.cityIds], [[], [id]]);
+  a.store = {};
   putGoods(s, a.id, { grain: 3, wood: 1 });
   assert.equal(takeGoods(s, a.id, 'grain', 5), 3);
   assert.deepEqual(a.store, { wood: 1 });

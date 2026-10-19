@@ -42,10 +42,17 @@ export function init(s) {
   };
 }
 
+// "Red town 3": the civ's name, the kind, and the first number from n up that no city uses.
+function cityName(s, civ, kind, n) {
+  const used = new Set(Object.values(s.cities).map((c) => c.name));
+  while (used.has(`${civ.name} capital ${n}`) || used.has(`${civ.name} town ${n}`)) n++;
+  return `${civ.name} ${kind} ${n}`;
+}
+
 function newCity(s, civ, h, founding = false) {
   const id = newId(s);
   s.cities[id] = {
-    id, owner: civ.id, name: `${civ.name} ${founding ? 'capital' : 'town'} ${civ.cityIds.length + 1}`,
+    id, owner: civ.id, name: cityName(s, civ, founding ? 'capital' : 'town', civ.cityIds.length + 1),
     q: h.q, r: h.r, founded: s.turn, founding, buildings: {}, project: null,
   };
   civ.cityIds.push(id);
@@ -61,7 +68,8 @@ export function onStart(s) {
     const mk = s.markets[civ.marketId];
     newCity(s, civ, mk, true);
     m.disc[civ.id] = { practice: { pottery: 0, herding: 0 }, known: {} };
-    note(s, civ.id, `capital raised at the market ${key(mk)}`);
+    putGoods(s, civ.id, CIV.endowment);
+    note(s, civ.id, `capital raised at the market ${key(mk)}; the store starts with ${total(CIV.endowment)} goods`);
   }
   const reach = Object.fromEntries(civs.map((c) => [c.id, marketReach(s, s.markets[c.marketId])]));
   for (const clan of Object.values(s.clans)) {
@@ -688,13 +696,19 @@ export function prosperityWinner(s) {
   return rank[0].id;
 }
 
-// Alerts for cities changing hands (army captures with transferCity), and civs left with none.
+// Cities changing hands (army captures with transferCity) take the new owner's naming scheme
+// ("Red town 3" taken by Blue becomes "Blue town 4"), and civs left with none are noted.
 function watchCities(s) {
   const m = s.mods.civ;
   for (const city of Object.values(s.cities)) {
     const was = m.cityOwners[city.id];
-    if (was != null && was !== city.owner)
-      tell(s, [was, city.owner], `${s.civs[city.owner]?.name ?? 'someone'} takes ${city.name} from ${s.civs[was]?.name ?? 'its owner'}`);
+    const civ = s.civs[city.owner];
+    if (was != null && was !== city.owner && civ) {
+      const old = city.name;
+      city.name = cityName(s, civ, 'town', civ.cityIds.length);
+      note(s, city.id, `taken by ${civ.name} from ${s.civs[was]?.name ?? 'its owner'}; renamed from ${old}`);
+      tell(s, [was, city.owner], `${old}, taken by ${civ.name}, is now ${city.name}`);
+    }
     m.cityOwners[city.id] = city.owner;
   }
   for (const civ of Object.values(s.civs))
