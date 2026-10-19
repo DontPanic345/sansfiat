@@ -140,10 +140,12 @@ function raiseRidges(state, tiles, setTerrain) {
   }
 }
 
-// The driest share of flat land becomes desert, in blobs because moisture is smoothed noise.
+// The driest plains become desert until it is desertShare of the land (not ocean), in blobs
+// because moisture is smoothed noise.
 function makeDeserts(cells, tiles) {
+  const land = cells.filter((c) => tiles[key(c)].terrain !== 'ocean').length;
   const flat = cells.filter((c) => tiles[key(c)].terrain === 'plains').sort((a, b) => a.m - b.m);
-  for (const c of flat.slice(0, Math.floor(flat.length * MAP.desertShare))) tiles[key(c)].terrain = 'desert';
+  for (const c of flat.slice(0, Math.floor(land * MAP.desertShare))) tiles[key(c)].terrain = 'desert';
 }
 
 // Each river runs downhill from high ground and is kept only if it reaches the sea.

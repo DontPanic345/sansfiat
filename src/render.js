@@ -1,15 +1,27 @@
 import { MAP, TERRAIN } from './data.js';
 import { key, neighbors, toPixel } from './hex.js';
 import { marketReach } from './clans.js';
-import { total } from './core.js';
+import { humanCiv, total } from './core.js';
 import { MODULE_UIS } from './modules/ui.js';
-import { VIEWS, ramp } from './views.js';
+import { ramp, viewValues } from './views.js';
+
+// What the human civ knows in the main game: null (everything visible) in the pre-game, the
+// founding choice and watch mode, or when no fog map exists yet (scout stubbed).
+// seen(k): tile seen; revealed(k): its hidden trail cost is known.
+export function fogOf(s) {
+  const civ = s.phase === 'main' ? humanCiv(s) : null;
+  if (!civ?.seen) return null;
+  return { civ, seen: (k) => !!civ.seen[k], revealed: (k) => !!civ.revealed?.[k] };
+}
 
 // view: {size, ox, oy, selected?: {q,r}, depletion: bool, mode: key of VIEWS, viewer, locals}
 // Returns the value range of a debug view, for the legend.
-// After the base map, every module's drawLayer runs (in z order) with the same helpers.
+// Layers, bottom to top: terrain and clans/markets (base), every module's drawLayer in z order
+// (civ cities, scouts, armies, then scout's fog at z 90), then the selection outline on top.
+// Clans and markets on tiles the human has not seen are not drawn at all.
 export function draw(ctx, s, view) {
-  const range = drawBase(ctx, s, view);
+  const fog = fogOf(s);
+  const range = drawBase(ctx, s, view, fog);
   const { size } = view;
   const at = (h) => {
     const p = toPixel(h, size);
@@ -21,25 +33,37 @@ export function draw(ctx, s, view) {
     ui.drawLayer(ctx, s, { ...view, at, hexPath, local: view.locals?.[ui.name] ?? {} });
     ctx.restore();
   }
+  if (view.selected && s.map.tiles[key(view.selected)]) {
+    hexPath(ctx, at(view.selected), size * 0.95);
+    ctx.strokeStyle = (view.mode ?? 'terrain') === 'terrain' ? '#ffe14d' : '#ff3df2';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    const clan = Object.values(s.clans).find((c) => c.q === view.selected.q && c.r === view.selected.r);
+    if (clan && (!fog || fog.seen(key(clan)))) label(ctx, clan.name, at(clan).x, at(clan).y - size * 1.1, Math.max(11, size * 0.6));
+  }
   return range;
 }
 
-function drawBase(ctx, s, view) {
+function drawBase(ctx, s, view, fog) {
   const { size } = view;
   const at = (h) => {
     const p = toPixel(h, size);
     return { x: p.x + view.ox, y: p.y + view.oy };
   };
   const tiles = s.map.tiles;
+  const vis = (h) => !fog || fog.seen(typeof h === 'string' ? h : key(h));
+  const clansSeen = Object.values(s.clans).filter((c) => vis(c));
+  const marketsSeen = Object.values(s.markets).filter((m) => vis(m));
+  const civCol = (id) => s.civs[id]?.color;
 
   ctx.fillStyle = '#10161d';
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
   const mode = view.mode ?? 'terrain';
   if (mode !== 'terrain') {
-    const range = drawDebug(ctx, s, mode, at, size);
-    drawBorders(ctx, s, at, size, () => (mode === 'passable' ? 'rgba(26,111,214,0.8)' : 'rgba(255,255,255,0.7)'));
-    for (const c of Object.values(s.clans)) {
+    const range = drawDebug(ctx, s, mode, at, size, fog);
+    drawBorders(ctx, s, at, size, () => (mode === 'passable' ? 'rgba(26,111,214,0.8)' : 'rgba(255,255,255,0.7)'), vis);
+    for (const c of clansSeen) {
       const { x, y } = at(c);
       ctx.beginPath();
       ctx.arc(x, y, Math.min(0.5, 0.11 * Math.sqrt(c.pop)) * size, 0, Math.PI * 2);
@@ -47,17 +71,11 @@ function drawBase(ctx, s, view) {
       ctx.strokeStyle = mode === 'passable' ? '#1a6fd6' : '#fff';
       ctx.stroke();
     }
-    for (const m of Object.values(s.markets)) {
+    for (const m of marketsSeen) {
       const { x, y } = at(m);
       ctx.strokeStyle = '#ff3df2';
       ctx.lineWidth = 2;
       ctx.strokeRect(x - size * 0.45, y - size * 0.45, size * 0.9, size * 0.9);
-    }
-    if (view.selected) {
-      hexPath(ctx, at(view.selected), size * 0.95);
-      ctx.strokeStyle = '#ff3df2';
-      ctx.lineWidth = 3;
-      ctx.stroke();
     }
     return range;
   }
@@ -68,12 +86,13 @@ function drawBase(ctx, s, view) {
     ctx.fill();
     if (TERRAIN[t.terrain].passable) {
       const [lo, hi] = MAP.yieldRange;
-      ctx.fillStyle = `rgba(0,0,0,${0.35 * (hi - t.fertility) / (hi - lo)})`;
+      ctx.fillStyle = `rgba(0,0,0,${0.25 * (hi - t.fertility) / (hi - lo)})`;
       ctx.fill();
     }
     const cap = total(t.cap);
     if (view.depletion && cap > 0) {
-      ctx.fillStyle = `rgba(20,12,4,${0.65 * (1 - total(t.stock) / cap)})`;
+      // Light enough that a grazed-out region still reads as its terrain.
+      ctx.fillStyle = `rgba(30,20,8,${0.3 * (1 - total(t.stock) / cap)})`;
       ctx.fill();
     }
     ctx.strokeStyle = 'rgba(0,0,0,0.2)';
@@ -81,14 +100,19 @@ function drawBase(ctx, s, view) {
     ctx.stroke();
   }
 
+  // Civ clans in their civ's colour; unaligned clans grey once civs exist (pre-game: a hue each).
+  const civsExist = Object.keys(s.civs).length > 0;
+  const clanCol = (c, a) => (c.owner != null && civCol(c.owner) ? hexAlpha(civCol(c.owner), a)
+    : civsExist ? `rgba(170,170,170,${a})` : clanColor(c, a));
   for (const c of Object.values(s.clans))
     for (const k of c.land) {
+      if (!vis(k)) continue;
       hexPath(ctx, at(tiles[k]), size);
-      ctx.fillStyle = clanColor(c, 0.22);
+      ctx.fillStyle = clanCol(c, 0.22);
       ctx.fill();
     }
   for (const t of Object.values(tiles)) {
-    if (!t.tame) continue;
+    if (!t.tame || !vis(t)) continue;
     hexPath(ctx, at(t), size * 0.4);
     ctx.fillStyle = `rgba(250,215,90,${0.25 + 0.75 * t.tame})`;
     ctx.fill();
@@ -113,11 +137,12 @@ function drawBase(ctx, s, view) {
     ctx.stroke();
   }
 
-  drawBorders(ctx, s, at, size, (c) => clanColor(c, 0.9));
+  drawBorders(ctx, s, at, size, (c) => clanCol(c, 0.9), vis);
 
-  const selMarket = view.selected && Object.values(s.markets).find((m) => m.q === view.selected.q && m.r === view.selected.r);
+  const selMarket = view.selected && marketsSeen.find((m) => m.q === view.selected.q && m.r === view.selected.r);
   if (selMarket) {
     for (const k of marketReach(s, selMarket).keys()) {
+      if (!vis(k)) continue;
       hexPath(ctx, at(tiles[k]), size * 0.9);
       ctx.fillStyle = 'rgba(255,255,255,0.18)';
       ctx.fill();
@@ -125,24 +150,24 @@ function drawBase(ctx, s, view) {
   }
 
   ctx.lineWidth = 1.5;
-  for (const c of Object.values(s.clans)) {
+  for (const c of clansSeen) {
     const m = s.markets[c.market];
-    if (!m) continue;
+    if (!m || !vis(m)) continue;
     const a = at(c), b = at(m);
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
-    ctx.strokeStyle = m.owner == null ? 'rgba(255,255,255,0.35)' : hexAlpha(s.civs[m.owner].color, 0.6);
+    ctx.strokeStyle = m.owner == null || !civCol(m.owner) ? 'rgba(255,255,255,0.35)' : hexAlpha(civCol(m.owner), 0.6);
     ctx.stroke();
   }
 
-  for (const m of Object.values(s.markets)) {
+  for (const m of marketsSeen) {
     const { x, y } = at(m);
     const w = size * 1.1;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = m.owner != null ? s.civs[m.owner].color : m.temporary ? 'rgba(233,228,216,0.35)' : '#e9e4d8';
+    ctx.fillStyle = m.owner != null && civCol(m.owner) ? civCol(m.owner) : m.temporary ? 'rgba(233,228,216,0.35)' : '#e9e4d8';
     ctx.strokeStyle = m.temporary ? '#e9e4d8' : '#111';
     ctx.lineWidth = 2;
     if (m.temporary) ctx.setLineDash([3, 3]);
@@ -153,7 +178,7 @@ function drawBase(ctx, s, view) {
   }
 
   ctx.lineJoin = 'round';
-  for (const c of Object.values(s.clans)) {
+  for (const c of clansSeen) {
     if (c.trail.length) {
       ctx.beginPath();
       [...c.trail.map((k) => tiles[k]), c].forEach((h, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, at(h).x, at(h).y));
@@ -172,7 +197,7 @@ function drawBase(ctx, s, view) {
     }
   }
 
-  for (const c of Object.values(s.clans)) {
+  for (const c of clansSeen) {
     const { x, y } = at(c);
     ctx.beginPath();
     ctx.arc(x, y, Math.min(0.6, 0.14 * Math.sqrt(c.pop)) * size, 0, Math.PI * 2);
@@ -182,18 +207,10 @@ function drawBase(ctx, s, view) {
     ctx.strokeStyle = '#1a1208';
     ctx.stroke();
   }
-
-  if (view.selected) {
-    hexPath(ctx, at(view.selected), size * 0.95);
-    ctx.strokeStyle = '#ffe14d';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    const clan = Object.values(s.clans).find((c) => c.q === view.selected.q && c.r === view.selected.r);
-    if (clan) label(ctx, clan.name, at(clan).x, at(clan).y - size * 1.1, Math.max(11, size * 0.6));
-  }
+  return null;
 }
 
-function drawDebug(ctx, s, mode, at, size) {
+function drawDebug(ctx, s, mode, at, size, fog) {
   const tiles = Object.values(s.map.tiles);
   if (mode === 'passable') {
     for (const t of tiles) {
@@ -206,7 +223,7 @@ function drawDebug(ctx, s, mode, at, size) {
     }
     return null;
   }
-  const values = VIEWS[mode].values(s);
+  const values = viewValues(s, mode, fog);
   const vs = [...values.values()];
   const lo = Math.min(...vs), hi = Math.max(...vs);
   for (const t of tiles) {
@@ -224,13 +241,14 @@ function drawDebug(ctx, s, mode, at, size) {
 const clanColor = (c, a) => `hsla(${(c.id * 137.508) % 360},75%,60%,${a})`;
 
 // Outlines each clan's land along the edges it does not share with itself.
-function drawBorders(ctx, s, at, size, color) {
+function drawBorders(ctx, s, at, size, color, vis = () => true) {
   ctx.lineWidth = Math.max(1.5, size * 0.12);
   ctx.lineCap = 'round';
   for (const c of Object.values(s.clans)) {
     const mine = new Set(c.land);
     ctx.beginPath();
     for (const k of c.land) {
+      if (!vis(k)) continue;
       const t = s.map.tiles[k], a = at(t);
       for (const n of neighbors(t)) {
         if (mine.has(key(n))) continue;

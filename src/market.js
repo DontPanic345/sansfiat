@@ -1,11 +1,15 @@
 import { GOODS } from './data.js';
 
-// Each trader values a basket at Σ sqrt(amount), so given exchange ratios `prices`
-// it wants amount_f ∝ 1/p_f², spending exactly what its own basket is worth.
-export function demand(basket, prices, goods = GOODS) {
+// Each trader values a basket at Σ sqrt(amount) over the goods it wants, so given exchange
+// ratios `prices` it wants amount_f ∝ 1/p_f² of each wanted good, spending exactly what its
+// own basket (every good in `goods` it holds) is worth. A trader that wants none of the goods
+// keeps its basket.
+export function demand(basket, prices, goods = GOODS, wanted = goods) {
   const wealth = goods.reduce((s, f) => s + prices[f] * (basket[f] ?? 0), 0);
-  const denom = goods.reduce((s, f) => s + 1 / prices[f], 0);
-  return Object.fromEntries(goods.map((f) => [f, wealth / (prices[f] ** 2 * denom)]));
+  const denom = wanted.reduce((s, f) => s + 1 / prices[f], 0);
+  if (!denom) return Object.fromEntries(goods.map((f) => [f, basket[f] ?? 0]));
+  const want = new Set(wanted);
+  return Object.fromEntries(goods.map((f) => [f, want.has(f) ? wealth / (prices[f] ** 2 * denom) : 0]));
 }
 
 export const utility = (basket) => Object.values(basket).reduce((s, v) => s + Math.sqrt(Math.max(0, v)), 0);
@@ -13,18 +17,22 @@ export const utility = (basket) => Object.values(basket).reduce((s, v) => s + Ma
 // Finds exchange ratios at which posted supply meets demand, then hands out the goods.
 // Prices are relative only (geometric mean 1); no trader holds or receives them.
 // baskets: {id: {good: amount}}, any goods in GOODS (foods, materials, crafts).
-// Returns {prices, after: {id: basket}, volume: {good: amount}}.
-export function clear(baskets, startPrices = {}, { iterations = 300, step = 0.5, tolerance = 1e-5 } = {}) {
+// wants: {id: [good]} limits what a trader buys (clans want only foods); default every good.
+// Returns {prices, after: {id: basket}, volume: {good: amount}, cleared}. cleared is false when
+// there was nothing to clear (fewer than 2 traders or goods); prices are then only the start
+// prices (or 1) and are not a real ratio.
+export function clear(baskets, startPrices = {}, { iterations = 300, step = 0.5, tolerance = 1e-5, wants = {} } = {}) {
   const ids = Object.keys(baskets);
   const supply = Object.fromEntries(GOODS.map((f) => [f, ids.reduce((s, id) => s + (baskets[id][f] ?? 0), 0)]));
   const goods = GOODS.filter((f) => supply[f] > 1e-9);
   const prices = Object.fromEntries(goods.map((f) => [f, startPrices[f] ?? 1]));
-  if (ids.length < 2 || goods.length < 2) return { prices, after: structuredClone(baskets), volume: {} };
+  if (ids.length < 2 || goods.length < 2) return { prices, after: structuredClone(baskets), volume: {}, cleared: false };
+  const wanted = Object.fromEntries(ids.map((id) => [id, wants[id] ? goods.filter((f) => wants[id].includes(f)) : goods]));
 
   for (let i = 0; i < iterations; i++) {
     const want = Object.fromEntries(goods.map((f) => [f, 0]));
     for (const id of ids) {
-      const d = demand(baskets[id], prices, goods);
+      const d = demand(baskets[id], prices, goods, wanted[id]);
       for (const f of goods) want[f] += d[f];
     }
     let worst = 0;
@@ -40,7 +48,7 @@ export function clear(baskets, startPrices = {}, { iterations = 300, step = 0.5,
 
   // Ration whichever side of each good is long, so goods are conserved exactly.
   const net = Object.fromEntries(ids.map((id) => {
-    const d = demand(baskets[id], prices, goods);
+    const d = demand(baskets[id], prices, goods, wanted[id]);
     return [id, Object.fromEntries(goods.map((f) => [f, d[f] - (baskets[id][f] ?? 0)]))];
   }));
   const volume = {};
@@ -57,5 +65,5 @@ export function clear(baskets, startPrices = {}, { iterations = 300, step = 0.5,
       after[id][f] = (after[id][f] ?? 0) + (z > 0 ? z * (v / buys) : z * (v / sells));
     }
   }
-  return { prices, after, volume };
+  return { prices, after, volume, cleared: true };
 }

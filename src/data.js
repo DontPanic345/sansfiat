@@ -83,8 +83,9 @@ export const CLAN = {
 export const NAME_SYLLABLES = ['ka', 'ru', 'mo', 'ta', 'ne', 'shi', 'ba', 'lo', 'vi', 'den', 'ur', 'ash', 'el', 'tor', 'mi', 'ga', 'son', 'ya', 'hu', 'ze', 'ro', 'an', 'ki', 'pa'];
 
 // reach is in path cost (terrain moveCost). tripCost is the share of labour lost per unit of path cost.
-// Pre-game markets are gatherings: one forms where minClans live within reach, and disperses
-// when its traded volume, averaged with weight `fade` on the past, falls below minVolume.
+// A market forms where minClans live within reach (in the pre-game a temporary gathering). Any
+// market no civ owns disperses when its traded volume, averaged with weight `fade` on the past,
+// falls below minVolume.
 export const MARKET = {
   formAfter: 20, spacing: 5, reach: 3, tripCost: 0.05, accessBonus: 0.2, history: 200,
   gathering: { minClans: 4, fade: 0.8, minVolume: 2 },
@@ -96,6 +97,14 @@ export const MARKET = {
 export const TENDING = { tendAfter: 15, rate: 1 / 120, domestic: 2.5, hearthSpacing: 8 };
 
 export const PREGAME = { minTurns: 100, maxTurns: 500 };
+
+// The pre-game ends once each player has a founding site: a thriving market (at least minTraders
+// traders and smoothed volume minActivity) with a hearth in its reach, the markets `spacing`
+// apart, all on one landmass (counting land trails and bridges would open). See foundingSites.
+export const FOUNDING = { minTraders: 4, minActivity: 4, spacing: 8 };
+
+// Players: the human plus 1-3 AI civs.
+export const PLAYERS = { min: 2, max: 4 };
 
 // Civ cities (DESIGN.md "Civ settlements"): a city works tiles within workRadius and holds
 // territory within territoryRadius; new cities sit at least minSpacing from any other.

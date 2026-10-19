@@ -63,10 +63,23 @@ export const VIEWS = {
   trailCost: {
     label: 'Trail cost (hidden)',
     note: 'Move cost a trail would bring the tile to; blank where none can be built. Debug: players see this only once scouted',
+    fogNote: 'Move cost a trail would bring the tile to, where your scouts have revealed it',
+    // In the main game a human civ knows only the costs its scouts revealed.
+    known: (fog, k) => fog.revealed(k),
     values: (s) => tileMap(s, (t) => t.trailCost ?? null),
   },
   passable: { label: 'Impassable', note: 'White walkable, red blocked, black sea' },
 };
+
+// A view's values as the viewer may know them: with fog (see fogOf in render.js) only tiles the
+// human civ has seen (or, per view, `known`), so debug views never leak hidden information.
+export function viewValues(s, mode, fog) {
+  const v = VIEWS[mode];
+  const all = v.values(s);
+  if (!fog) return all;
+  const known = v.known ?? ((f, k) => f.seen(k));
+  return new Map([...all].filter(([k]) => known(fog, k)));
+}
 
 const tileMap = (s, f) => {
   const out = new Map();
