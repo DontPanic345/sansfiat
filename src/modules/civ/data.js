@@ -4,7 +4,7 @@ export const CIV = {
   // (a project, crafting, hunting, each material below matTarget), at most draftMax of a clan's
   // people. Starving clans are never drafted. One worker gives labourPerWorker labour.
   draftMax: 0.25,
-  workers: { project: 3, craft: 1, hunt: 1, farm: 1, material: 1 },
+  workers: { project: 3, craft: 1, hunt: 1, farm: 2, material: 1 },
   labourPerWorker: 1,
   matPerWorker: 1.5,     // materials one worker gathers in a turn
   tileMax: 1.5,          // ...but at most this per matching tile
@@ -14,7 +14,7 @@ export const CIV = {
   huntPerWorker: 1.5,    // game one hunter brings in (x herdBonus with herding)
   craft: 2,              // pottery one crafter makes from as much clay
   // Food income: fed member clans hand this share of their leftover store to the civ.
-  levy: 0.4,
+  levy: 0.5,
   // Store. The whole store (all goods) holds baseCap per city plus storehouseCap per storehouse;
   // past that, goods are lost. Default posting keeps keep[kind] x cap of each good and posts the rest.
   baseCap: 50,

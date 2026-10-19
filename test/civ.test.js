@@ -134,6 +134,10 @@ test('store cap counts every good; a storehouse raises it', () => {
   step('civ upkeep')(s);
   assert.ok(Math.abs(civ.store.wood + civ.store.stone - CIV.baseCap) < 1e-9);
   assert.ok(s.mods.civ.overflow[civ.id] > 0);
+  civ.store = { wood: 100, grain: 40 };
+  step('civ upkeep')(s);
+  assert.ok(Math.abs(civ.store.grain - 40 * (1 - CLAN.spoilage)) < 1e-9, 'food is kept, materials rot first');
+  assert.ok(Math.abs(civ.store.wood + civ.store.grain - CIV.baseCap) < 1e-9);
   city.buildings.storehouse = true;
   civ.store = { wood: 100, stone: 100 };
   step('civ upkeep')(s);
@@ -406,4 +410,24 @@ test('AI civs play: projects and gifts go through the same rules; a long run sta
   turns(s, 40);
   assert.ok(Object.keys(s.clans).length > 0);
   for (const g of Object.values(s.mods.civ.gifted)) for (const x of Object.values(g)) assert.ok(x.amount <= CIV.giftMax);
+});
+
+test('ui: panel shows store, labour, gifts with gain, and site buttons; drawLayer draws', async () => {
+  const ui = await import('../src/modules/civ/ui.js');
+  const s = mainGame();
+  const civ = Object.values(s.civs).find((c) => c.isHuman);
+  const city = civCities(s, civ.id)[0];
+  turns(s, 2);
+  const html = ui.panel(s, { q: city.q, r: city.r });
+  for (const want of ['Store', 'Labour', 'setPosting', 'Discoveries', 'Prosperity', 'join at']) assert.ok(html.includes(want), want);
+  const clan = Object.values(s.clans).find((c) => c.owner == null);
+  civ.seen = undefined;
+  const h2 = ui.panel(s, { q: clan.q, r: clan.r });
+  assert.match(h2, /Gift 5 food \(\+\d/);
+  assert.match(h2, /Found next city here/);
+  assert.equal(ui.panel(mainGame(false), null), '', 'no human, no panel');
+  const calls = [];
+  const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => calls.push(k)), set: (t, k, v) => { t[k] = v; return true; } });
+  ui.drawLayer(ctx, s, { size: 10, viewer: civ.id, at: (h) => ({ x: h.q * 10, y: h.r * 10 }), hexPath: () => {} });
+  assert.ok(calls.includes('fillText'));
 });

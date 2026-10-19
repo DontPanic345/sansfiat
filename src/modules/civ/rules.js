@@ -544,7 +544,16 @@ function upkeep(s) {
     }
     const cap = capOf(s, civ.id), held = total(civ.store);
     m.overflow[civ.id] = Math.max(0, held - cap);
-    if (held > cap) for (const g of Object.keys(civ.store)) civ.store[g] *= cap / held;
+    // past the cap, materials and crafts are left to rot first, then food
+    let over = held - cap;
+    for (const isFood of [false, true]) {
+      if (over <= 0) break;
+      const gs = Object.keys(civ.store).filter((g) => FOODS.includes(g) === isFood);
+      const sum = gs.reduce((a, g) => a + civ.store[g], 0);
+      const cut = Math.min(1, over / (sum || 1));
+      for (const g of gs) civ.store[g] *= 1 - cut;
+      over -= sum * cut;
+    }
     for (const g of Object.keys(civ.store)) if (civ.store[g] < 0.01) delete civ.store[g];
     expireSites(s, civ);
     if (cities.length && cities.length < CIV.maxCities) found(s, civ);
