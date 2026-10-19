@@ -1,6 +1,6 @@
 # Sans Fiat — Game Design Document
 
-Oct 17, 2026 · @Alan · updated Oct 20, 2026 to the proof of concept as built
+Oct 17, 2026 · @Alan · updated Oct 20, 2026 to the proof of concept as built (after the integration and polish passes)
 
 ## How to read this document
 
@@ -90,7 +90,8 @@ patches from 0.4× to 2×. Generation: height noise, inlets, inland seas, mounta
 deserts (about 20% of land), rivers, coast and shallows.
 
 - **Decision:** hills cost 2 (the table said 2–3).
-- **Decision / not built:** terrain defence bonuses are not used in combat; entrenchment, city defence and walls are.
+- **Terrain defence: built, decision.** Forest (+25%) and hills (+50%) help only troops dug in for at least a turn,
+  and garrisons; troops on the move get nothing from the ground.
 - **Hidden cost: built** for the whole map (forest, hills, mountains), revealed per civ by scouts.
 - **Fog of war: built**, opaque (see Exploration).
 
@@ -126,7 +127,9 @@ the last market cleared at, and that ratio is nobody's property.
 Baskets valued at Σ√amount; up to 300 iterations of price search; exact rationing; ratios relative with a geometric mean
 of 1. A clan goes to market only if the gain beats the trip (5% of labour per unit of path cost, reach 3). Gatherings form
 where 4+ clans are in reach and fade when smoothed volume falls under 2. **Decision:** in the main game neutral markets
-keep forming (on the longest-held site) and fading; a civ's founding market never fades.
+keep forming (on the longest-held site) and fading, but not within 5 of a market that fell quiet the same turn; a civ's
+founding market never fades. **Decision: civs buy only what they lack.** A civ takes in exchange only goods it is not
+posting itself, so it never buys back its own surplus.
 
 ### Goods — partial
 
@@ -141,6 +144,8 @@ keep forming (on the longest-held site) and fading; a civ's founding market neve
 
 - **Decision: one pooled store per civ** (`civ.store`), capped at 50 a city + 80 a storehouse; past the cap materials
   rot first, then food. Fed member clans hand half their leftover food to it (the levy).
+- **Decision: founding endowment.** Each civ's store starts the main game with 30 grain (`CIV.endowment`), since its
+  clans' stores are empty at founding; without it the first gifts, porters and army provisions are unaffordable.
 - **Decision: drafted labour.** Labour is people. Each turn a civ drafts up to 25% of each non-starving clan, as many as
   its cities need (project 3, farming 2, hunting 1, crafting 1, one per material below its target). Drafted people eat
   but do not forage, so labour spent on the civ is food the clans don't gather. Starving clans are spared.
@@ -150,7 +155,7 @@ keep forming (on the longest-held site) and fading; a civ's founding market neve
 | --- | --- | --- | --- | --- |
 | Granary | 10 | wood 4, clay 2 | Food spoilage × 0.3 (store, and clans within 3) | Built |
 | Storehouse | 12 | wood 6, stone 2 | Store cap +80 | Built |
-| Wall | 15 | stone 6, wood 2 | City defenders × 1.5 | Built |
+| Wall | 15 | stone 6, wood 2 | City defenders × 1.5, garrison +2 | Built |
 | Workshop, shrine | | | | Not built |
 
 - **The player gets goods by trading surplus. Built.** Everything above the civ's reserve is posted at its market and at
@@ -184,20 +189,28 @@ Full rules in [military.md](mechanics/military.md#scouts-trails-and-fog).
 Full rules in [military.md](mechanics/military.md#armies).
 
 - **Raising. Decision:** an army is `ARMY.size` 10 people taken from the civ's clans (which need 15+ people), provisioned
-  with up to 4 food a troop from the store. **Decision: captain cap and disband.** At most 3 captains; an army within 2 of
+  with up to 4 food a troop from the store. The army panel has one "Raise army" row with a button per city. **Decision: captain cap and disband.** At most 3 captains; an army within 2 of
   an own city may disband, and its troops rejoin the nearest clan. Unit scale is settled: a troop is a person.
 - **Zones, spread, deployed and undeployed, entrenchment (+25% a turn to +75%), retreat (3 to 1, 60%), skirmish per tile
   (half of enemy power):** built as designed.
 - **Cut-off detachments. Built:** walk back to the captain, or are promoted by the player (under the cap); after 8 turns
   cut off they go home. **Decision:** the link to a captain is a connected zone path.
 - **Territory. Built:** `territoryOf` = troops on the tile, else a fort, else the nearest city within 2.
-- **Forts. Built:** 2 labour, 2 wood, 2 stone; garrison 3; troops on it fully dug in; captured with the tile.
-- **Decision: city garrison and walls.** A city fights with a garrison of 3 (regrowing 1 a turn) at full entrenchment
-  when no own troops stand there; its defenders fight at × 1.5, × 2.25 with a wall. A city falls when an enemy holds its
-  tile with the garrison at 0. Its clans stay with their civ.
+- **Forts. Built:** 2 labour, 2 wood, 2 stone; garrison 4; troops on it fully dug in; captured with the tile. Not on a
+  city tile (a city has its own garrison).
+- **Decision: city garrison, walls and sieges.** A city's garrison is 4, +1 per 12 people of its civ's clans within 2
+  (at most +3), +2 with a wall; it regrows 1 a turn while nobody holds the tile. It defends when no own troops stand
+  there, each troop at 1.1 power (× 1.5 with a wall, × the terrain). Own troops in a city fight × 1.5 (× 2.25 with a
+  wall). A siege kills at most 2 of the garrison a turn, so taking a city takes a few turns and the defender is
+  warned. A city falls when an enemy holds its tile with the garrison at 0; it is renamed for its new owner, and its
+  clans stay with their civ. A civ left with no city is fallen and its clans become unaligned.
 - **Decision: hungry armies cannot attack**, and defend at half power.
-- **AI. Built:** raises with people, food and a reachable rival; marches as one body on the cheapest beatable rival city;
-  defends threatened cities; disbands starving armies at home.
+- **AI. Built:** raises with people, food and a reachable rival, but not in the first 20 turns after founding
+  (**decision: grace period**, `ARMY.aiGrace`; without it AI armies hit some players by turn 5); marches as one body on
+  the cheapest beatable rival city; defends threatened cities; builds up to 2 forts near home facing a rival city;
+  disbands starving armies at home.
+- **Warnings. Built:** the player is alerted when a rival raises an army within 15 of one of its cities, when enemy
+  troops come within 3 of a city, and every siege turn.
 
 ## Supply and logistics — built
 
@@ -206,7 +219,8 @@ Full rules in [military.md](mechanics/military.md#supply).
 - **Labour.** Every unit has 4 labour a turn; moving, building, resupplying, foraging and pillaging draw on it.
 - **Food store. Partial.** The captain carries the army's food (4 a troop); it eats 0.25 a troop a turn and 0.25 more per
   troop that fought. **Decision: attrition on the army total.** A hungry army loses 10% of all its troops a turn, spread
-  over its detachments. Healing when fed is not built.
+  over its detachments. **Healing: built.** A fed army that did not fight regains 1 troop a turn, up to the troops it was
+  raised or promoted with (`troopsMax`).
 - **Supply line. Built:** to the cheapest own city (with food in store) or cache within path cost 10, not through enemy
   territory; resupply costs 1 + cost/3 labour. The army panel shows the line.
 - **Forage and pillage. Built. Decision: `landOwner` decides** (fort, city territory, else the claiming clan's civ), not
@@ -215,7 +229,7 @@ Full rules in [military.md](mechanics/military.md#supply).
 - **Automation. Partial:** auto-supply per captain is built; auto-forage and a labour reserve are not (the AI forages).
 - **Porters and caches. Built.** Porters carry 12, eat 1 a turn while loaded, feed armies or stock caches on standing
   routes with a target level. **Decision: porters refuse enemy land** and turn back when their target turns hostile.
-  Caches spoil 30% a turn and change hands with the tile.
+  Caches spoil 30% a turn and change hands with the tile. A porter that turns back returns the same foods it loaded.
 - **Lines carry goods. Not built:** projects draw goods from the pooled store.
 - **Pack animals. Not built.**
 
@@ -251,10 +265,11 @@ starving clans value it 5 times as much as fed ones. Leaning decays 3% a turn; a
 No research pool; a discovery comes from doing the thing.
 
 - **Agriculture: built.** Every civ starts with it (founding needs a domesticated hearth).
-- **Pottery: built.** 15 turns digging clay. Spoilage × 0.7 for the store and every member clan; clay can be crafted into
-  pottery.
-- **Herding: partial.** 20 turns of hunting. Hunters bring 1.5× game and deplete herds half as fast; herds do not move
-  with their people.
+- **Pottery: built.** 20 turns of practice. A turn digging clay counts 1; a turn holding clay got any other way (trade)
+  counts 0.5, so a civ without a river can learn it too. Spoilage × 0.7 for the store and every member clan; clay can
+  be crafted into pottery. A civ keeps 4 clay back from market.
+- **Herding: partial.** 25 turns of practice. A turn hunting near a city counts 1; a turn in which member clans harvest
+  2+ game counts 0.5. Hunters bring 1.5× game and deplete herds half as fast; herds do not move with their people.
 - **Spread by contact: built.** +0.5 practice a turn per civ in trading contact that knows it.
 - **Weaving, stoneworking: not built.**
 
@@ -275,7 +290,9 @@ No research pool; a discovery comes from doing the thing.
 ### Making it readable — built
 
 1. **Show why things happen. Built.** Every rule that acts on an entity records a reason (`note`); the side panel shows a
-   clan's, market's, city's or unit's last 8. Events that concern the player are alerts (lines starting `!`).
+   clan's, market's, city's or unit's last 8. Events that concern the player are alerts (lines starting `!`), including
+   rival armies raised nearby, troops approaching a city and sieges. The in-game help and `docs/guide.html` say how to
+   defend.
 2. **Good and bad years. Built** (above).
 3. **Clans are the prize. Built** (above).
 4. **Pick your start. Built.** The founding panel compares the candidate civs.
@@ -292,7 +309,8 @@ conquest or prosperity win on a 44 × 28 map. It should answer one question: is 
 - Civ clans, cities, drafted labour, expansion by chosen daughter and city sites, clans joining by leaning
 - Markets with 5 foods, 3 materials (wood, stone, clay) and pottery; civ posting with reserves
 - Projects: granary, storehouse, wall
-- Captains, painted zones, skirmish, entrenchment, retreat, forts, garrisons, city capture
+- Captains, painted zones, skirmish, entrenchment, terrain defence, retreat, forts (AI too), garrisons, sieges, city
+  capture, healing
 - Supply lines, forage and pillage, auto-supply, porters, caches
 - Scouts, hidden cost, trails and bridges, opaque fog, map knowledge spread at markets
 - Discoveries: pottery and herding (agriculture from the start)
@@ -307,10 +325,10 @@ conquest or prosperity win on a 44 × 28 map. It should answer one question: is 
 ### Out (for later)
 
 - Shell-bead tokens, cloth, weaving, stoneworking and the rest of the discovery list
-- Workshop and shrine; goods carried along supply lines; pack animals; healing troops
+- Workshop and shrine; goods carried along supply lines; pack animals
 - Civ-to-civ treaties (truce, passage, shared market)
 - Attacking unaligned clans; clans changing sides when their city is captured
-- Terrain defence bonuses; per-unit labour reserves for automation; a cost for scouts
+- Per-unit labour reserves for automation; a cost for scouts
 - Rivers and sea as transport
 - Save/load beyond the seed-plus-action replay
 
@@ -357,4 +375,6 @@ to paint.
 - [ ] **Joining rule.** Are gifts and trade a lever the player can actually pull against AI civs?
 - [ ] **Performance with the UI.** The animated fast-forward clones state every turn and runs about twice as slow as
   headless.
-- [ ] **Captured cities.** Should a captured city's clans, or its market, change sides?
+- [ ] **Captured cities.** Should a captured city's clans, or its market, change sides? (Now: the city is renamed for
+  its new owner; its clans stay, and go unaligned only when their civ has no city left.)
+- [ ] **Early war.** Is a 20-turn grace before AI armies enough for a new player to raise a defence?

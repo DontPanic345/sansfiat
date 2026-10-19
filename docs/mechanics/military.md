@@ -32,8 +32,10 @@ its `stepCost`; a unit may enter a tile dearer than its labour only with full la
 
 - **Raising** (`raiseArmy {city}`): at most `ARMY.maxCaptains` 3 captains; the civ's clans must hold `size` + 5 = 15 people.
   `size` 10 people leave the largest clans (each keeps at least 1). **Decision:** the army is provisioned only from the
-  store, up to `provision` 4 food per troop; nothing is free.
-- **Captain** (`u.army = {troops, zone}`). `moveCaptain` one tile at stepCost labour. Undeployed (empty zone), all troops
+  store, up to `provision` 4 food per troop; nothing is free (each civ starts with `CIV.endowment` 30 grain). The army
+  panel has one "Raise army" row: a button per city, or only the selected city when one of yours is selected. A human
+  civ with a city within `raiseWarn` 15 of the raising city gets an alert.
+- **Captain** (`u.army = {troops, troopsMax, zone}`; `troopsMax` is the troops it was raised or promoted with). `moveCaptain` one tile at stepCost labour. Undeployed (empty zone), all troops
   ride with him and fight on his tile. A hungry army cannot step into a fight.
 - **Zone.** `paint` adds a tile next to the zone (the first paint must be next to the captain and adds his tile too, and
   deploys the army); `unpaint` removes one if the zone stays connected; removing the last tile undeploys. A deployed
@@ -48,23 +50,36 @@ its `stepCost`; a unit may enter a tile dearer than its labour only with full la
   gone) walks to the nearest own city and disbands there, or after 8 turns.
 - **Disband** (`disband`): within `CITY.territoryRadius` 2 of an own city, troops rejoin the nearest civ clan.
 - **Skirmish.** On each tile with fighting units of two or more civs (detachments, undeployed captains with troops), plus a
-  city's or fort's garrison when its owner has no troops there. Power = troops × (1 + 0.25 × entrenchment) ×
-  `hungryPower` 0.5 if hungry × `cityDefence` 1.5 in an own city (× `wallMult` 1.5 with a wall). Garrisons fight as fully
-  entrenched (× 1.75). Each side loses max(1, round(`dmg` 0.5 × enemy power)) troops, spread over its units; a garrison
-  loses round(0.5 × enemy power / 1.75). A side outnumbered `retreatRatio` 3 to 1 has a `retreatChance` 60% chance to slip
-  to a free neighbour toward its captain and lose nothing.
+  city's or fort's garrison when its owner has no troops there (on a city tile the city's garrison defends, even if a
+  fort stands there). Troop power = troops × (1 + 0.25 × entrenchment) × (1 + `TERRAIN[t].defence`: forest 0.25,
+  hills 0.5) if entrenched at least 1 × `hungryPower` 0.5 if hungry × (1 + `CITY.defence` 0.5) in an own city
+  (× `wallMult` 1.5 with a wall). A city garrison's power = garrison × `garrisonPower` 1.1 (× `wallMult` with a wall)
+  × terrain; a fort garrison's = garrison × 1.75 (fully entrenched) × terrain. Each side loses max(1, round(`dmg` 0.5 ×
+  enemy power)) troops, spread over its units; a garrison loses round(0.5 × enemy power / 1.75), and a city garrison at
+  most `siegeLoss` 2 a turn (a siege), with an alert to a human owner each siege turn. A side outnumbered
+  `retreatRatio` 3 to 1 has a `retreatChance` 60% chance to slip to a free neighbour toward its captain and lose nothing.
 - **Holding.** `tile.held` = the civ with the most fighting troops on the tile. `territoryOf` puts held first, then forts,
   then the nearest city within 2.
-- **Cities.** Each has `city.garrison` (`ARMY.garrison` 3), which regrows 1 a turn while nobody holds the tile. A city falls
-  when an enemy holds its tile and its garrison is 0: `transferCity`, garrison reset to 3. Its clans keep their civ.
-- **Forts** (`buildFort`): 2 labour, 2 wood, 2 stone, own troops on the tile. Garrison 3; own detachments on it are fully
-  entrenched; taken when its garrison falls (new owner, garrison 3).
+- **Cities.** Each has `city.garrison`, at most `garrisonMax` = `ARMY.garrison` 4 + 1 per `garrisonPer` 12 people of the
+  owner's clans within `CITY.territoryRadius` 2 (at most `garrisonPop` 3 more) + `wallGarrison` 2 with a wall. It regrows
+  1 a turn while nobody holds the tile. A city falls when an enemy holds its tile and its garrison is 0: `transferCity`,
+  garrison min(4, max); a fort on the tile changes hands with it. The civ module renames it for its new owner. Its clans
+  keep their civ (unaligned once that civ has no city).
+- **Warnings.** The human is alerted once when enemy fighting troops come within `warnRange` 3 of one of its cities
+  (`s.mods.army.near` remembers which cities are already warned), on every siege turn, and when a rival raises an army
+  nearby (above).
+- **Forts** (`buildFort`): 2 labour, 2 wood, 2 stone, own troops on the tile, not on a city tile. Garrison 4; own
+  detachments on it are fully entrenched; taken when its garrison falls (new owner, garrison 4).
 - **Fight cost.** Fighting records `foughtTurn`/`foughtTroops` on the captain; supply charges `fightEat` for it.
-- **AI.** Raises when its clans hold `aiRaisePop` 30 people, `aiRaiseGap` 20 turns after its last raising, with 10 food in
-  store or 20 wild food near the city, and a rival city within `aiReach` 40 path cost. It always marches undeployed;
+- **AI.** Raises when its clans hold `aiRaisePop` 30 people, `aiRaiseGap` 20 turns after its last raising and at least
+  `aiGrace` 20 turns into the main game, with 10 food in store or 20 wild food near the city, and a rival city within
+  `aiReach` 40 path cost. **Decision: grace period.** Without it, AI armies besieged a player's city 5–10 turns after
+  founding on some seeds. It always marches undeployed;
   defends a city with enemy troops within 2; else marches on the cheapest rival city it beats by `aiOdds` 1.2 (counting
   friends within 3), spending at most `aiMoveLabour` 2 labour a turn on walking; a starving army goes home and disbands.
-  It promotes only orphans with 3+ troops.
+  It promotes only orphans with 3+ troops. A captain builds a fort where he stands when it is within `aiFortHome` 4 of an
+  own city and `aiFortRival` 10 of a rival city, `aiFortGap` 4 from any fort, the civ has fewer than `aiForts` 2, and the
+  store holds the cost plus `aiFortSpare` 2 of each material.
 
 ## Supply
 
@@ -72,7 +87,8 @@ its `stepCost`; a unit may enter a tile dearer than its labour only with full la
   fights each army eats `eatPerTroop` 0.25 per troop + `fightEat` 0.25 per troop that fought. Short: food goes to 0, the
   army is hungry (cannot attack, defends at half) and loses `attrition` 10% of its whole troops (at least 1), spread over
   its detachments. **Decision:** attrition is on the army total, not per detachment, so a spread-out army does not starve
-  faster tile by tile.
+  faster tile by tile. **Healing:** a fed army that did not fight this turn regains `heal` 1 troop (on the captain, or
+  his smallest detachment) up to `u.army.troopsMax`.
 - **Supply line.** Source: the cheapest own city (while the store holds food) or own cache within `range` 10 path cost,
   through tiles that are not enemy territory (troop-held tiles count). Ties go to the city. `resupply` costs
   1 + ⌊cost / `costPerLabour` 3⌋ labour and fills the captain. `autoSupply` does it each turn in the `armies` phase.
@@ -84,13 +100,13 @@ its `stepCost`; a unit may enter a tile dearer than its labour only with full la
   ground. `loadPorter` in an own city; `unloadPorter` feeds own captains on the tile first, then drops a cache (not on
   enemy land or another civ's cache). `setPorterRoute {city, to, target}` is a standing order: load at the city while the
   cache is under `target` (default 24) or a captain waits there, walk, unload, walk back. `clearPorterRoute` ends it.
-  **Decision:** porters refuse routes into enemy land, and turn back (food returned to the store as grain) when the target
-  becomes enemy land without an own captain on it, an unload is refused, or the home city is lost.
+  **Decision:** porters refuse routes into enemy land, and turn back (food returned to the store) when the target
+  becomes enemy land without an own captain on it, an unload is refused, or the home city is lost. A porter remembers
+  the foods it loaded (`supply.mix`) and returns food to the store in the same mix.
 - **Caches** (`tile.cache = {owner, food}`): spoil `cacheSpoil` 30% a turn; vanish under 0.1 food unless a porter stands
   there; change owner when the tile's territory does.
 - **AI.** Every captain on auto-supply; forages or pillages below `aiForageBelow` 60% food; when no source is within
   `farFromHome` 8 and the store holds 12 food, routes a porter (building one per captain at most) to a cache site: the
   army's tile, or the last non-enemy tile on the way to it. Porters of vanished armies are released.
 - **Not built:** auto-forage for the player and a labour reserve for automation; goods (not food) moving along lines;
-  attacks on porters or caches other than by taking the tile; pack animals; healing (`SUPPLY.heal` reads a `troopsMax`
-  nothing sets).
+  attacks on porters or caches other than by taking the tile; pack animals.

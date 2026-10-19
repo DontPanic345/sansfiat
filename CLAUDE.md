@@ -62,8 +62,11 @@ Each module is `src/modules/<name>/`:
 - **`data.js`** — the module's tuning. Import only from `src/data.js` here.
 - **`ui.js`** exports (all optional) `z`, `drawLayer(ctx, s, view)`, `panel(s, selection, ui) -> HTML`,
   `onClick(s, hex, ui) -> consumed?`. `view` = `{size, at(hex) -> {x, y}, hexPath(ctx, center, size), selected, mode,
-  viewer, locals}`. `ui` = `{act(action) -> ok, local, selection}`. In panel HTML, any element with
-  `data-action='{"type":"...","civ":N,...}'` dispatches that JSON when clicked.
+  viewer, locals, local}` (`local` is this module's scratch). `ui` = `{act(action) -> ok, local, selection}`.
+  In panel HTML, any element with `data-action='{"type":"...","civ":N,...}'` dispatches that JSON when clicked,
+  and any element with `data-local='{"module":"army","set":{"mode":"move"},"toggle":"mode"}'` (or a list of
+  such objects) is a UI-only control that main.js handles: it writes each key of `set` into that module's
+  `local`, clears the `toggle` key instead when it already holds that value, and redraws. No action is sent.
 
 Imports: a module's `rules.js` imports `../../core.js`, `../../clans.js`, `../../data.js`, `../../hex.js`,
 `../../rng.js`, `../../market.js` and its own files. Never `../../rules.js` (cycle), and never another
@@ -83,7 +86,10 @@ module's rules: modules talk only through the documented state below. One except
    returns `{civ, seen(k), revealed(k)}` or null (pre-game, founding, watch mode); `viewValues(s, mode, fog)` filters
    debug views. Unseen tiles show terrain only.
 6. Fast-forward runs the pre-game to founding, or 10 turns (`FAST_TURNS`) in the main game; all-AI watch runs to a win.
-7. `window.game.ui` drives the UI without pixels: `select`/`click(hex)`, `escape`, `selection`, `locals`, `step(n)`,
+7. When the selected tile holds several of the human's units, main.js lists them under "Your units here"
+   (captains, scouts, porters; `UNIT_PICK` in main.js); picking one sets that module's `local` key and clears
+   the others, so only one unit is selected at a time.
+8. `window.game.ui` drives the UI without pixels: `select`/`click(hex)`, `escape`, `selection`, `locals`, `step(n)`,
    `fast`, `stop`, `running`, `alerts`, `log`, `setMode`.
 
 ## Phases
@@ -95,12 +101,12 @@ then core, then module `after` steps (modules in registry order). Module steps r
 | --- | --- | --- |
 | `regrow` | tiles regrow (skips `fallow` tiles, applies `yieldFactor`) | civ `before`: good/bad years |
 | `forage` | clans move, adjust land, decide to trade, harvest (less `clan.drafted`) | civ `before`: draft; civ: labour (projects, craft, hunt, farm, materials) |
-| `trade` | each market clears clan baskets plus `m.posts` | civ `before`: post (+ clans' materials); civ: collect, trade leaning; scout: knowledge share |
+| `trade` | each market clears clan baskets plus `m.posts` (limited by `m.wants`) | civ `before`: post (+ clans' materials); civ: collect, trade leaning; scout: knowledge share |
 | `settle` | clans eat, grow, starve, divide, split | civ: spoilage, levy, cap, site expiry, new cities |
 | `occupy` | held grain tames, abandoned grain goes feral | |
-| `markets` | unowned markets fade (`activity` < `gathering.minVolume`); markets form | civ: leaning decay, joining |
+| `markets` | unowned markets fade (`activity` < `gathering.minVolume`); markets form (main game: not within `MARKET.spacing` of one that faded this turn) | civ: leaning decay, joining |
 | `orders` | (main) AI civs' actions from each module's `ai` | scout: routes; supply: porters |
-| `armies` | — | army: spread, skirmish, hold, capture; supply: eat, auto-resupply, attrition, caches |
+| `armies` | — | army: spread, skirmish, hold, capture, warn; supply: eat, auto-resupply, attrition, caches |
 | `discoveries` | — | civ: discoveries, victory; scout: fog |
 
 After the phases core records stats, refills every unit's `labour` to `labourMax`, sweeps notes of
@@ -140,24 +146,30 @@ s.clans    {id: clan}   s.markets {id: market}   s.civs {id: civ}   s.cities {id
   Daughters inherit `owner` and `leaning`.
 - **market**: `owner` (civ id for a founding market; never fades), `temporary` (pre-game gathering), `prices`,
   `activity` (smoothed volume, fades the market), `volume, lastVolume, lastTrade, traders, lastTraders`, `history`,
-  `posts` (`{traderId: basket}`, written before `trade`), `received` (`{traderId: basket}` after it).
+  `posts` (`{traderId: basket}`, written before `trade`), `wants` (`{traderId: [good]}`, optional, written with
+  `posts`: the goods that trader takes in exchange; clans want only foods; transient, deleted after clearing),
+  `received` (`{traderId: basket}` after it).
 - **civ** (created by `foundCivs`): `id, name, color, isHuman, marketId, cityIds, store` (pooled goods by
   name; use `takeGoods`/`putGoods`), `seen` (`{"q,r": true}` fog; scout), `revealed` (`{"q,r": true}`
   hidden trail costs known; scout), `founded`.
 - **city** (civ module creates them): `id, owner, name, q, r, founded, founding` (capital), `buildings`
-  (`{granary, storehouse, wall}`), `project` (`{kind, labour}` | null), `garrison` (army, default `ARMY.garrison`).
-  Capture goes through `transferCity`.
+  (`{granary, storehouse, wall}`), `project` (`{kind, labour}` | null), `garrison` (army; regrows to
+  `garrisonMax`: `ARMY.garrison` + 1 per `garrisonPer` people of the owner's clans within `CITY.territoryRadius`,
+  at most `garrisonPop` more, + `wallGarrison` with a wall). Capture goes through `transferCity`; the civ module
+  then renames the city to the new owner's scheme ("Blue town 4").
 - **unit**: core fields `id, owner, type, q, r, labour, labourMax` (`spawnUnit`, `removeUnit`). Module fields
   live under the module's name. Types and their fields:
   - `scout`: `u.scout = {route: {from, to, walk?, pair?, walking?, cost?} | null, tried: [keys]}`.
-  - `captain`: `u.army = {troops, zone: [keys], foughtTurn?, foughtTroops?}` (army); `u.supply = {food, foodMax, auto}`
+  - `captain`: `u.army = {troops, troopsMax, zone: [keys], foughtTurn?, foughtTroops?}` (army; `troopsMax` is set
+    when raised or promoted, and supply heals a fed army that did not fight up to it); `u.supply = {food, foodMax, auto}`
     and `u.hungry` (supply).
   - `detachment`: `u.army = {captainId, troops, entr, cutSince?}` (army); `u.hungry` (supply).
-  - `porter`: `u.supply = {food, foodMax, route: {cityId, to, target, for?} | null, returning?}` (supply).
+  - `porter`: `u.supply = {food, foodMax, mix?, route: {cityId, to, target, for?} | null, returning?}` (supply;
+    `mix` = `{food: amount}` loaded, so food turned back goes to the store as the same foods).
 
   Cross-module reads: supply reads troops from `u.army.troops` and `foughtTroops`; army halves power and
-  forbids attacks when `u.hungry` / `u.supply.hungry` (own or captain's); army multiplies defenders by
-  `ARMY.wallMult` when `city.buildings.wall`; civ reads city ownership for victory.
+  forbids attacks when `u.hungry` / `u.supply.hungry` (own or captain's); supply heals up to `u.army.troopsMax`;
+  army reads `city.buildings.wall` (garrison and defence); civ reads city ownership for victory and renaming.
 
 Module globals:
 
@@ -167,8 +179,25 @@ Module globals:
   (`{civId: {practice, known}}`), `startTurn, startPop` (`{civId: people}`), `lost` (`{civId: turn}`),
   `cityOwners, overflow, winKind` ('conquest' | 'prosperity'), `winTurn`.
 - `s.mods.scout`: `roads` (`{civId: [pairKey]}` AI road routes done or given up).
-- `s.mods.army`: `fights, captures, raised, raisedTurn, peak`.
+- `s.mods.army`: `fights, captures, raised, raisedTurn, peak`, `startTurn` (main-game start, for `ARMY.aiGrace`),
+  `near` (`{cityId: true}` human cities with enemy troops within `ARMY.warnRange` last turn, so the approach alert
+  fires once per approach).
 - `s.mods.supply`: `starved, starvedBy`.
+
+## Tuning added after the module passes
+
+Read the comments in each `data.js`; the constants below are the ones the docs lean on.
+
+- `CITY.defence` 0.5 (`src/data.js`): defenders in their own city fight × 1.5 (× `ARMY.wallMult` with a wall).
+  Troops dug in (entrenched at least one turn) and garrisons also fight × (1 + `TERRAIN[t].defence`): forest 0.25,
+  hills 0.5. (This replaced `ARMY.cityDefence`.)
+- `ARMY`: `garrison` 4, `garrisonPer` 12, `garrisonPop` 3, `wallGarrison` 2 (garrison size); `garrisonPower` 1.1 (a
+  garrison troop's power); `siegeLoss` 2 (most garrison a siege kills a turn); `warnRange` 3 and `raiseWarn` 15
+  (human alerts); `aiFortHome` 4, `aiFortRival` 10, `aiFortGap` 4, `aiForts` 2, `aiFortSpare` 2 (AI forts);
+  `aiGrace` 20 (no AI army in the first 20 main-game turns).
+- `CIV`: `endowment` (`{grain: 30}` put in each store at `onStart`); `practice` pottery 20, herding 25;
+  `heldPractice` 0.5 (practice a turn from holding `potteryClay` 1 clay, or from member clans harvesting `herdGame`
+  2 game); `keepMat` (`{clay: 4}` kept back from market).
 
 ## Actions
 
@@ -210,8 +239,8 @@ landComponents, foundingSites`. (`removeMarket` is internal; markets disappear o
 
 ## Performance
 
-Headless pre-game to founding (`npm run bench`, 3 civs, WSL2): seed 1 about 1.03 s (172 turns),
-seed 2 about 0.54 s (186), seed 3 about 0.84 s (197). Dispatching `endTurn` per turn (the UI's
+Headless pre-game to founding (`npm run bench`, 3 civs, WSL2, noisy ±30%): seed 1 about 0.93 s (172 turns),
+seed 2 about 0.65 s (186), seed 3 about 1.1 s (197). Dispatching `endTurn` per turn (the UI's
 animated fast-forward) takes roughly twice as long because it clones the state every turn.
 
 ## Working on the code
@@ -236,4 +265,5 @@ animated fast-forward) takes roughly twice as long because it clones the state e
 Recorded in full in `docs/DESIGN.md` (look for **Decision**). The ones that shape code most: one pooled `civ.store`
 per civ; labour is drafted people (`clan.drafted`); founding sites share a landmass and need a domesticated hearth;
 prosperity = people now / people at founding; opaque fog with separate `seen` and `revealed`; good and bad years
-through the `yieldFactor` hook; hills cost 2.
+through the `yieldFactor` hook; hills cost 2; a founding endowment in each store; a 20-turn grace before AI armies;
+captured cities are renamed, their clans stay with their civ (and go unaligned when it has no city left).

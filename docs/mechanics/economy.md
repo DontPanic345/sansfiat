@@ -19,8 +19,8 @@ this file says how each mechanic works now. Phases are those of the turn pipelin
 - Regrowth (`regrow` phase): each food regrows `FOOD[f].regen` of its cap a turn; game breeds logistically
   (regen × stock × (1 − stock/cap)) plus `restock` 2% of cap wandering in. A `fallow` tile regrows nothing until its
   count runs out. Regrowth is scaled by the `yieldFactor` hook (good and bad years, main game only).
-- **Decision (built, not in the original design):** terrain `defence` and `CITY.defence` are declared in `data.js` but
-  unused. Combat uses entrenchment, `ARMY.cityDefence` and walls only.
+- Terrain `defence` (forest 0.25, hills 0.5) and `CITY.defence` 0.5 are used in combat: see
+  [military.md](military.md#armies).
 
 ## Clans
 
@@ -53,13 +53,16 @@ All clans, in the pre-game and the main game, run the hex-economy rules in `src/
 - **Clearing** (`src/market.js`, `clear`). Each trader values a basket at Σ√amount. Prices (exchange ratios, geometric
   mean 1) are found by up to 300 iterations of tâtonnement, then whichever side of each good is long is rationed so goods
   are conserved exactly. `cleared` is false when fewer than 2 traders or 2 goods were posted; the market then keeps its
-  last real ratios. Clans want only foods; a civ wants every good (`GOODS`: 5 foods, wood, stone, clay, pottery).
+  last real ratios. Clans want only foods. A civ that posts writes `m.wants[civId]`: every good (`GOODS`: 5 foods, wood,
+  stone, clay, pottery) it is not posting itself (all foods if it posts everything), so it never buys back its own
+  surplus. `m.posts` and `m.wants` are cleared after clearing.
 - **Going to market** (`forage` phase). A clan trades at the nearest market within `MARKET.reach` 3 path cost if its
   basket, less the trip (`tripCost` 5% of labour per unit of path cost), is worth more at last turn's ratios. Trails
   lower path cost, so they widen a market's catchment.
 - **Formation** (`markets` phase). A market forms on a settled tile held `formAfter` 20 turns, at least `spacing` 5 from
   every market, with `gathering.minClans` 4 clans in reach: in the pre-game the most populous such site (a temporary
-  gathering), in the main game the longest-held one. One a turn at most.
+  gathering), in the main game the longest-held one, and not within `spacing` of a market that fell quiet the same
+  turn. One a turn at most.
 - **Fading.** Every market keeps `activity` = 0.8 × activity + 0.2 × volume (`gathering.fade`). A market no civ owns
   (a gathering, or a neutral market in the main game) disperses when activity falls below `gathering.minVolume` 2.
   A civ's founding market never fades.
@@ -82,7 +85,8 @@ All clans, in the pre-game and the main game, run the hex-economy rules in `src/
   candidate's clans, people, domesticated tiles, terrain mix and distance to the nearest rival.
 - **Civ start** (civ `onStart`). A capital city rises on each founding market. Every clan within market reach of a founding
   market joins the nearest one; a civ that gets none takes the nearest unaligned clan. `startPop` records each civ's people.
-  Each civ also gets one scout (scout `onStart`). `PLAYERS` allows 2–4 civs (browser default 3).
+  Each civ's store starts with `CIV.endowment` (grain 30): its clans' stores are empty at founding, and without it the
+  first gifts, porters and army provisions are unaffordable. Each civ also gets one scout (scout `onStart`). `PLAYERS` allows 2–4 civs (browser default 3).
 
 ## Civs
 
@@ -119,7 +123,7 @@ All clans, in the pre-game and the main game, run the hex-economy rules in `src/
 | --- | --- | --- | --- |
 | granary | 10 | wood 4, clay 2 | Food spoilage × 0.3 in the store and in member clans within 3 |
 | storehouse | 12 | wood 6, stone 2 | Store cap +80 |
-| wall | 15 | stone 6, wood 2 | Defenders in the city × `ARMY.wallMult` 1.5 |
+| wall | 15 | stone 6, wood 2 | Defenders in the city × `ARMY.wallMult` 1.5; garrison + `ARMY.wallGarrison` 2 |
 
 AI civs start the first project they can afford.
 
@@ -129,7 +133,7 @@ AI civs start the first project they can afford.
   markets: its own, plus one other within `tradeRange` 12 (the one whose trading clans hold the most land yielding the
   materials it is short of, else the nearest). That market may be a rival's.
 - **Default reserve** (`keepOf`): food and crafts keep `CIV.keep` 8% and 5% of the cap per good; a material keeps what the
-  dearest unbuilt project needs. `setPosting {good, keep}` sets the player's own reserve (`keep: null` restores default).
+  dearest unbuilt project needs, and at least `keepMat` (clay 4, for pottery practice). `setPosting {good, keep}` sets the player's own reserve (`keep: null` restores default).
 - **Material supply. Decision:** clans trading where a civ posts bring `clanMat` 0.3 of wood / stone / clay (× year) for
   each forest / hills / river tile they hold, and sell it, since clans want only food. That is how a civ without hills
   gets stone. Materials a clan fails to sell are dropped after trade.
@@ -170,10 +174,12 @@ material bring. Droughts in a human civ's regions raise an alert.
 ### Discoveries
 
 - Agriculture: every civ starts with domesticated grain (founding needs a hearth).
-- **Pottery**: `practice.pottery` 15 turns in which the civ dug clay. Effect: store and clan spoilage × 0.7, and crafting
-  pottery (a trade good) from clay.
-- **Herding**: `practice.herding` 20 turns of hunting. Effect: hunters bring × `herdBonus` 1.5 game and deplete herds half
-  as fast.
+- **Pottery**: `practice.pottery` 20. A turn in which the civ's workers dug clay (a river among a city's work tiles) adds
+  1; otherwise a turn holding `potteryClay` 1+ clay from any source (trade too) adds `heldPractice` 0.5. Effect: store
+  and clan spoilage × 0.7, and crafting pottery (a trade good) from clay.
+- **Herding**: `practice.herding` 25. A turn in which a city's hunter worked adds 1; otherwise a turn in which member
+  clans harvested `herdGame` 2+ game adds 0.5. Effect: hunters bring × `herdBonus` 1.5 game and deplete herds half as
+  fast.
 - **Spread by contact:** each turn, +`spread` 0.5 practice per civ in trading contact that knows it (both post at, or have
   clans trading at, the same market).
 
@@ -183,5 +189,8 @@ material bring. Droughts in a human civ's regions raise an alert.
 - **Prosperity:** after `CIV.turnLimit` 150 main-game turns, the civ still holding a city with the highest people now /
   people at founding wins (ties: more people, then lower id). **Decision:** the design said "most people"; the richest
   hearth gets the most people at founding, so a head count rewards the start, not the play.
-- A civ with no cities is "fallen" (`s.mods.civ.lost`); its clans stay its own and can no longer join anyone.
-- **Decision:** capturing a city transfers the city, not its clans or its civ's founding market.
+- A civ with no cities is "fallen" (`s.mods.civ.lost`); its clans become unaligned (in the `markets` phase) and can be
+  won by anyone through leaning.
+- **Decision:** capturing a city transfers the city, not its clans or its civ's founding market. The city takes the new
+  owner's naming scheme (`watchCities`: "Red town 3" taken by Blue becomes "Blue town N", the first free number) and
+  notes its old name.
