@@ -97,7 +97,7 @@ Where the code and <code>docs/DESIGN.md</code> disagree, this guide follows the 
   <li><a href="#leaning">Leaning and joining</a></li>
   <li><a href="#scouting">Scouts, trails and fog</a></li>
   <li><a href="#supply">Supply</a></li>
-  <li><a href="#war">Armies and war</a></li>
+  <li><a href="#war">Armies and war</a> (<a href="#defend">how to defend</a>)</li>
   <li><a href="#discoveries">Discoveries and years</a></li>
   <li><a href="#victory">Victory</a></li>
 </ol>
@@ -192,7 +192,9 @@ Each candidate has:</p>
 <p>Click a market on the map to see its trade before you choose. <b>Watch (all AI)</b> gives every civ to the AI. In that mode,
 fast-forward runs until someone wins.</p>
 <p>When you choose, the main game begins. Each civ's capital is raised on its market. Every clan within reach of a civ's
-market joins the nearest such civ. Each civ gets one free scout.</p>
+market joins the nearest such civ. Each civ gets one free scout, and its store starts with
+<code>CIV.endowment</code> = 30 grain, since its clans have nothing stored yet. That is enough for a first gift, a porter
+or most of an army's provisions, but it spoils like any food (30% a turn), so use it early.</p>
 
 <!-- ============================================================ -->
 <h2 id="screen">5. The screen</h2>
@@ -222,7 +224,9 @@ market joins the nearest such civ. Each civ gets one free scout.</p>
 <h3>Clicking and keys</h3>
 <p>Clicking a tile selects it, and the panel shows what's there. The same click also goes to the unit controls, in this order:
 civ, supply, army, then scouts. The first one that uses the click keeps it. This is how you select a scout, captain or porter,
-or give it its next order. A white outline marks the selected tile.</p>
+or give it its next order. A white outline marks the selected tile. When the tile holds several of your units (a scout and a
+captain in the same city, say), the panel lists them under <b>Your units here</b>: click one to select it. Only one unit is
+selected at a time.</p>
 <div class="table-wrap"><table>
 <tr><th>Key</th><th>Does</th></tr>
 <tr><td><kbd>Space</kbd></td><td>Step one turn (in the main game, End turn)</td></tr>
@@ -252,8 +256,9 @@ wait for. Your orders take effect as soon as you click them. Harvests, trade, gr
 </ol>
 <p>At the end of each turn every unit's labour refills to its <code>labourMax</code>.</p>
 <p>The <b>log</b> lists what happened. Lines about you start with <code>!</code>, show in amber, and are also copied into
-<b>Alerts</b>: your city captured, a pillage on your land, a hungry army, a stuck scout, a lapsed site choice, a drought on your
-land, a finished project, a clan joining you. An action that fails adds a line starting <code>✗</code> with the reason. Disabled
+<b>Alerts</b>: a rival raising an army within <code>ARMY.raiseWarn</code> = 15 tiles of one of your cities, enemy troops coming
+within <code>ARMY.warnRange</code> = 3 of a city, each turn of a siege, your city captured, a pillage on your land, a hungry army,
+a stuck scout, a lapsed site choice, a drought on your land, a finished project, a clan joining you. An action that fails adds a line starting <code>✗</code> with the reason. Disabled
 buttons show the same reason in their tooltip, and the army and supply panels also print it next to the button.</p>
 <p><b>Fog.</b> When you lead a civ you only see what your units, cities and clans can see. Unseen land is nearly black with a
 faint hint of its terrain colour. Land you have seen before but can't see now is dimmed. Clicking an unseen tile shows only its
@@ -279,7 +284,7 @@ start a new game.</p>
 <tr><td><b>Send a scout</b></td><td>Click your scout (a flag), then a tile</td><td>Uses the scout's own labour: 4 a turn (<code>SCOUT.labourMax</code>).</td></tr>
 <tr><td><b>Route from a city</b></td><td>Select scout, click one of your cities, then the far end</td><td>Same. Click the city twice to send the scout to the city itself.</td></tr>
 <tr><td><b>Stop</b> a scout</td><td>Scouts panel, with the scout selected</td><td>Free</td></tr>
-<tr><td><b>Raise army</b></td><td>Army panel, one button per city</td><td><code>ARMY.size</code> = 10 people from your clans (largest first; each clan keeps at least 1); needs at least 15 people. Takes up to 4 food per troop from the store (<code>ARMY.provision</code>), so up to 40. At most <code>ARMY.maxCaptains</code> = 3.</td></tr>
+<tr><td><b>Raise army</b></td><td>Army panel, the <b>Raise army</b> row: a button per city (select one of your city tiles to see only that one)</td><td><code>ARMY.size</code> = 10 people from your clans (largest first; each clan keeps at least 1); needs at least 15 people. Takes up to 4 food per troop from the store (<code>ARMY.provision</code>), so up to 40. At most <code>ARMY.maxCaptains</code> = 3.</td></tr>
 <tr><td><b>Move</b></td><td>Select captain (click its shield), <b>Move</b>, then click a neighbouring tile</td><td>Labour equal to the tile's move cost (shown on the map). A captain has 4 labour a turn.</td></tr>
 <tr><td><b>Paint zone</b> / <b>Unpaint</b></td><td>Captain panel mode, then click tiles</td><td>Free. The zone must stay connected. The first paint must be next to the captain.</td></tr>
 <tr><td><b>Undeploy</b></td><td>Captain panel</td><td>Free. Detachments fold back into one body on the captain.</td></tr>
@@ -375,7 +380,7 @@ at least <code>CIV.cityTame</code> = 30% tamed.</p>
 is a path cost of <code>MARKET.reach</code> = 3, so trails extend it. A market no civ owns fades once its smoothed trade volume
 falls below <code>MARKET.gathering.minVolume</code> = 2 goods a turn. Each turn's volume counts 20% and the past 80%
 (<code>fade</code> = 0.8). Gatherings still active at founding become permanent markets, and new neutral markets keep forming
-in the main game.</p>
+in the main game (on the longest-held site, never within 5 of a market that fell quiet that same turn).</p>
 <p>A clan decides each turn whether a trip is worth it. The trip costs <code>MARKET.tripCost</code> = 5% of its labour per unit of
 path cost. The clan goes only if what it would get back at last turn's ratios beats what it would keep.</p>
 
@@ -385,7 +390,8 @@ as the sum over goods of &radic;amount. That makes a varied basket worth more th
 for exchange ratios at which the total wanted of each good matches the total posted (<code>clear</code> in
 <code>src/market.js</code>). If a good is wanted more than it is posted, its ratio rises, and if it is posted more than wanted, its
 ratio falls, until the two sides meet. If one side of a good is still long after that, it is <b>rationed</b>: everyone on
-the long side is scaled back in proportion, so no good is created or lost. Clans buy only food. Civs can buy anything.</p>
+the long side is scaled back in proportion, so no good is created or lost. Clans buy only food. Civs buy any good they are
+not posting themselves, so a civ never buys back its own surplus.</p>
 
 <div class="scroll"><svg class="diagram" viewBox="0 0 720 230" role="img" aria-labelledby="mkT mkD">
   <title id="mkT">Two clans trading</title>
@@ -475,7 +481,7 @@ member clan hands over <code>CIV.levy</code> = 50% of its leftover food every tu
 <tr><th>Project</th><th>Goods (paid at start)</th><th>Labour</th><th>Effect</th></tr>
 <tr><td>Granary</td><td>4 wood, 2 clay</td><td>10</td><td>Store food spoils ×0.3; member clans within 3 tiles spoil ×0.3</td></tr>
 <tr><td>Storehouse</td><td>6 wood, 2 stone</td><td>12</td><td>+80 store cap</td></tr>
-<tr><td>Wall</td><td>6 stone, 2 wood</td><td>15</td><td>Defenders in the city fight ×<code>ARMY.wallMult</code> = 1.5 (on top of the ×1.5 city bonus)</td></tr>
+<tr><td>Wall</td><td>6 stone, 2 wood</td><td>15</td><td>Defenders in the city fight ×<code>ARMY.wallMult</code> = 1.5 (on top of the ×1.5 city bonus); garrison +<code>ARMY.wallGarrison</code> = 2</td></tr>
 </table></div>
 
 <h3>New cities</h3>
@@ -492,7 +498,8 @@ that is at least 30% tamed. A civ can have at most <code>CIV.maxCities</code> = 
     territory or on another civ's clan's land.</li>
 </ul>
 <p>A city holds <b>territory</b> within <code>CITY.territoryRadius</code> = 2, shown by a dashed border in the civ's colour. Troops
-standing on a tile, and forts, override city territory.</p>
+standing on a tile, and forts, override city territory. A captured city is renamed for its new owner ("Red town 3" taken by
+Blue becomes "Blue town 4").</p>
 
 <!-- ============================================================ -->
 <h2 id="leaning">12. Leaning and joining</h2>
@@ -538,7 +545,7 @@ unrevealed tiles stay expensive. The other is the best route <i>possible</i> (bl
 two differ, the scout walks next to each unrevealed tile on the possible route and reveals it for
 <code>SCOUT.revealLabour</code> = 1 labour. Then it builds the trails and bridges that help the route, and walks to the end. A scout has 4
 labour a turn. It reports when the route is finished, or raises an alert if it gets stuck. The Scouts panel shows each scout's
-route with its known cost, best cost, and number of unrevealed tiles. Revealed tiles show a small white dot. If your scout stands on the same tile as one of your captains, clicking that tile selects the captain, so move one of them first. Revealed costs
+route with its known cost, best cost, and number of unrevealed tiles. Revealed tiles show a small white dot. If your scout shares a tile with another of your units, pick it from <b>Your units here</b> in the panel. Revealed costs
 sometimes pass between civs whose clans trade at the same market (<code>SCOUT.shareChance</code> = 5% per pair a turn).</p>
 <p><b>Fog.</b> Units see 2 tiles (<code>SCOUT.sight.unit</code>), cities 3, and member clans 1 plus their land. What you have seen
 stays on your map, dimmed. Rivals' cities, armies and caches show only where you can see them. The prosperity line lists only
@@ -548,7 +555,8 @@ rivals whose cities you have seen.</p>
 <h2 id="supply">14. Supply</h2>
 <p>An army carries its own food: up to <code>SUPPLY.carryPerTroop</code> = 4 per troop, so 40 for 10 troops. It eats
 <code>SUPPLY.eatPerTroop</code> = 0.25 per troop each turn, plus <code>SUPPLY.fightEat</code> = 0.25 for each troop that fought.
-A new army draws its provisions from the store, <i>if the store has any</i>.</p>
+A new army draws its provisions from the store, <i>if the store has any</i>. A fed army that did not fight this turn
+<b>heals</b> 1 troop (<code>SUPPLY.heal</code>), up to the troops it was raised with.</p>
 <ul>
   <li><b>Supply line.</b> The cheapest source within line cost <code>SUPPLY.range</code> = 10: one of your cities (if the store
     holds food) or one of your caches. A line passes only through friendly or neutral land. The selected captain's line is drawn
@@ -562,7 +570,8 @@ A new army draws its provisions from the store, <i>if the store has any</i>.</p>
     turn. An army that reaches zero is gone.</li>
   <li><b>Porters</b> (diamonds) cost 1 food. Each carries 12 (<code>SUPPLY.porterCarry</code>) and eats 1 a turn while loaded. Give
     a porter a route to an army or a cache site. It loads in the nearest city, walks out, hands food to your captain there, and
-    otherwise stocks a <b>cache</b> up to 24. It turns back if the target becomes enemy land.</li>
+    otherwise stocks a <b>cache</b> up to 24. It turns back if the target becomes enemy land, and puts the food it carried back
+    in the store.</li>
   <li><b>Caches</b> (a sack on the tile) lose <code>SUPPLY.cacheSpoil</code> = 30% a turn. A cache changes owner with its tile, so
     a cache in ground the enemy takes is theirs.</li>
 </ul>
@@ -615,26 +624,45 @@ his zone paints the tile he steps on. <b>Unpaint</b> removes tiles if the zone s
 
 <h3>Skirmish</h3>
 <p>Wherever troops of different civs share a tile, they fight in the armies phase. Each side's power is troops × (1 + 0.25 ×
-entrenchment) × ½ if hungry × the city bonus. Each side loses about <code>ARMY.dmg</code> = 0.5 × the enemy's power in
+entrenchment) × the ground × ½ if hungry × the city bonus. The ground counts only for troops dug in at least one turn: forest
+×1.25, hills ×1.5 (<code>TERRAIN.defence</code>). The city bonus is ×1.5 (<code>CITY.defence</code> = 0.5) for troops in their own
+city, ×2.25 with a wall. Each side loses about <code>ARMY.dmg</code> = 0.5 × the enemy's power in
 troops (at least 1). A side outpowered 3 to 1 (<code>ARMY.retreatRatio</code>) slips away to a free neighbouring tile 60% of the
 time (<code>ARMY.retreatChance</code>). A hungry army never steps into a fight.</p>
 
 <h3>Cities, forts and capture</h3>
 <ul>
-  <li>Every city has a <b>garrison</b> of <code>ARMY.garrison</code> = 3. When no friendly troops stand there, the garrison fights any
-    enemy troops on the city tile. It always fights fully entrenched (×1.75) and with the city bonus: ×<code>ARMY.cityDefence</code> =
-    1.5, or ×2.25 with a wall. It loses round(0.5 × attacker power ÷ 1.75) men a fight. It regains 1 a turn, up to 3, while no troops
-    stand on the tile.</li>
-  <li>Your own troops defending in your city fight at ×1.5 (×2.25 with a wall).</li>
-  <li>A city whose garrison is at 0 falls to the civ holding its tile. Its clans stay where they are, and its buildings come with
-    it.</li>
-  <li><b>Forts</b> (a square outline) have their own garrison of 3, fight entrenched without the city bonus, and change hands when
-    beaten. A fort makes its tile its owner's territory.</li>
+  <li>Every city has a <b>garrison</b>: <code>ARMY.garrison</code> = 4, plus 1 for every <code>ARMY.garrisonPer</code> = 12 people
+    of your clans within 2 tiles (at most <code>ARMY.garrisonPop</code> = 3 more), plus 2 with a wall. The Army panel shows each
+    city's garrison. When no friendly troops stand there, the garrison fights any enemy troops on the city tile, each man at
+    <code>ARMY.garrisonPower</code> = 1.1 power (×1.5 with a wall, × the ground).</li>
+  <li><b>Sieges.</b> A garrison loses round(0.5 × attacker power ÷ 1.75) men a fight, but never more than
+    <code>ARMY.siegeLoss</code> = 2 a turn, so even a big army needs a few turns to empty it. You get an alert every siege turn.
+    The garrison regains 1 a turn once nobody holds the tile.</li>
+  <li>Your own troops defending in your city fight at ×1.5 (×2.25 with a wall). While they stand there, they fight instead of the
+    garrison.</li>
+  <li>A city whose garrison is at 0 falls to the civ holding its tile and is renamed for its new owner. Its clans stay with
+    their civ, and its buildings come with it.</li>
+  <li><b>Forts</b> (a square outline) have their own garrison of 4, fight fully entrenched (×1.75) without the city bonus, and
+    change hands when beaten. A fort makes its tile its owner's territory. You can't build one on a city tile. AI captains
+    build up to 2 forts near home, facing a rival.</li>
 </ul>
-<div class="note"><b>Early danger.</b> A garrison of 3 facing a fresh 10-troop army loses round(0.5 × 10 ÷ 1.75) = 3 men, all
-of them, in the first fight. On seed 3 an AI army took a rival capital six turns after founding. If a rival is close, keep troops
-in your capital or raise your own army early. Don't raise one on the first turn, though: the store is still empty and the army
-starts with no food.</div>
+
+<h3 id="defend">How to defend</h3>
+<p>AI civs raise no army in the first <code>ARMY.aiGrace</code> = 20 turns after founding. After that, a neighbour with 30 people
+to spare usually comes for your weakest city. In the test seeds the first attack lands 25&ndash;40 turns in, and a player who
+never defends loses a city soon after.</p>
+<ol class="steps">
+  <li><b>Read the alerts.</b> "Blue raises an army ... N tiles from your town" is your warning; "troops near" means they are 3
+    tiles away; "besieged" means they are on the tile and the garrison is falling 2 a turn.</li>
+  <li><b>Raise an army</b> before they arrive, in the threatened city, and leave it there: troops in their own city fight at
+    ×1.5, and the garrison loses nothing while they stand there. Keep food in the store, or the army starts hungry.</li>
+  <li><b>Build a wall</b> in a city facing a rival: +2 garrison and ×1.5 for every defender. It needs 6 stone, so post food for
+    stone early if you have no hills.</li>
+  <li><b>Build forts</b> on hills or forest on the approach, with a captain standing there (2 wood, 2 stone). Dug-in troops on
+    hills fight ×1.5 on top of the fort.</li>
+  <li><b>Grow.</b> Every 12 people near a city adds a man to its garrison.</li>
+</ol>
 
 <h3>Cut-off detachments</h3>
 <p>A detachment that is no longer connected to its captain through the zone walks back toward him. After
@@ -645,10 +673,13 @@ share of the old army's food.</p>
 <!-- ============================================================ -->
 <h2 id="discoveries">16. Discoveries and years</h2>
 <ul>
-  <li><b>Pottery</b>: needs <code>CIV.practice.pottery</code> = 15 turns in which the civ dug clay (river tiles). It unlocks crafting
-    pottery from clay and cuts food spoilage ×0.7 for the store and every member clan.</li>
-  <li><b>Herding</b>: needs <code>CIV.practice.herding</code> = 20 turns in which the civ's hunters brought in game. Hunters then
-    bring ×1.5 and take half as much from the herd.</li>
+  <li><b>Pottery</b>: needs <code>CIV.practice.pottery</code> = 20 practice. A turn in which your workers dug clay (a river by
+    a city) counts 1; a turn holding at least 1 clay from anywhere else, such as trade, counts <code>CIV.heldPractice</code> = 0.5.
+    The civ keeps 4 clay back from market for this. Pottery unlocks crafting pottery from clay and cuts food spoilage ×0.7 for
+    the store and every member clan.</li>
+  <li><b>Herding</b>: needs <code>CIV.practice.herding</code> = 25 practice. A turn in which a city's hunter brought in game counts
+    1; a turn in which your clans harvested at least 2 game counts 0.5. Hunters then bring ×1.5 and take half as much from the
+    herd.</li>
   <li>Each civ in trading contact that already knows a discovery adds <code>CIV.spread</code> = 0.5 practice a turn. Two civs are in
     contact when they post at, or have clans trading at, the same market.</li>
 </ul>
@@ -667,7 +698,8 @@ You get an alert when a drought hits your land.</p>
     civ that grows, wins clans over and keeps them fed can beat a big one.</p></div>
 </div>
 <p>The civ panel shows the countdown and your score ("Prosperity in N turns"), plus the scores of rivals you've seen. A civ
-with no cities is <i>fallen</i>. Its clans live on, but it can't win prosperity.</p>
+with no cities is <i>fallen</i>. Its clans live on as unaligned clans that any civ can win over, and it can't win
+prosperity.</p>
 
 <footer>Sans Fiat proof of concept. Source of truth: <code>src/data.js</code> and <code>src/modules/*/data.js</code>; design: <code>docs/DESIGN.md</code>.</footer>
 </main>
