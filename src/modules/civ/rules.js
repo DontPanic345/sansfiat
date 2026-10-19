@@ -6,7 +6,7 @@
 //   posting: {civId: {good: keep}}  player reserves (absent: default policy),
 //   trade: {civId: {turn, posted, received}}  last turn at market,
 //   labour: {civId: {wanted, drafted, cities: {cityId: workers}}},  gifted: {clanId: {civId: {turn, amount}}},
-//   lost: {civId: turn}, cityOwners: {cityId: civId}, overflow: {civId: goods lost to the cap last turn} }
+//   lost: {civId: turn}, startPop: {civId: people at founding}, winTurn, cityOwners: {cityId: civId}, overflow: {civId: goods lost to the cap last turn} }
 // clan.drafted = people working for the civ this turn (foraging uses pop - drafted).
 // city.buildings = {granary, storehouse, wall}; city.project = {kind, labour} | null; city.founding.
 // s.winner = winning civ id once decided (s.mods.civ.winKind: 'conquest' | 'prosperity').
@@ -38,7 +38,7 @@ export function init(s) {
   s.mods.civ = {
     regions: [...new Set(Object.values(s.map.tiles).map(regionOf))].sort(),
     years: {}, siteChoice: {}, citySite: {}, disc: {}, startTurn: null, winKind: null,
-    posting: {}, trade: {}, labour: {}, gifted: {}, lost: {}, cityOwners: {}, overflow: {},
+    posting: {}, trade: {}, labour: {}, gifted: {}, lost: {}, cityOwners: {}, overflow: {}, startPop: {},
   };
 }
 
@@ -75,6 +75,7 @@ export function onStart(s) {
     const near = Object.values(s.clans).filter((c) => c.owner == null).sort((a, b) => distance(a, mk) - distance(b, mk))[0];
     if (near) near.owner = civ.id;
   }
+  m.startPop = Object.fromEntries(civs.map((c) => [c.id, popOf(s, c.id)]));
 }
 
 const MAT_TILE = { wood: (t) => t.terrain === 'forest', stone: (t) => t.terrain === 'hills', clay: (t) => !!t.river };
@@ -643,11 +644,22 @@ export function conquerer(s) {
   return owners.size === 1 && Object.keys(s.civs).length > 1 ? [...owners][0] : null;
 }
 
-// Prosperity: the civ with the most people among those still holding a city.
+// Prosperity score: the civ's people now over its people at founding. Founding hands the
+// richest hearth the most people, so counting heads alone hands it the win; growth (division,
+// clans joining, cities that keep people fed) is what the player can actually change.
+export function prosperity(s, civId) {
+  const pop = popOf(s, civId), start = s.mods.civ.startPop?.[civId] || 1;
+  return { pop, start, score: pop / start };
+}
+
+// Prosperity: the highest score among civs still holding a city; ties go to more people, then
+// the lower id.
 export function prosperityWinner(s) {
   const alive = Object.values(s.civs).filter((c) => civCities(s, c.id).length);
   const pool = alive.length ? alive : Object.values(s.civs);
-  return pool.reduce((b, c) => (popOf(s, c.id) > popOf(s, b.id) ? c : b)).id;
+  const rank = pool.map((c) => ({ id: c.id, ...prosperity(s, c.id) }))
+    .sort((a, b) => b.score - a.score || b.pop - a.pop || a.id - b.id);
+  return rank[0].id;
 }
 
 // Alerts for cities changing hands (army captures with transferCity), and civs left with none.

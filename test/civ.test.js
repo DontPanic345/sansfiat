@@ -110,6 +110,7 @@ test('granary and pottery cut spoilage of the civ store and of member clans near
   const run = (setup) => {
     const t = structuredClone(s);
     setup(t);
+    for (const c of civClans(t, civ.id)) c.fed = false;
     t.civs[civ.id].store = { grain: 10 };
     Object.assign(t.clans[clan.id], { store: { grain: 10 }, fed: false });
     step('civ upkeep')(t);
@@ -371,6 +372,17 @@ test('victory: conquest, prosperity, winTurn, lost civs and alerts', () => {
   vic(p);
   assert.ok(p.winner != null);
   assert.equal(p.mods.civ.winKind, 'prosperity');
+});
+
+test('prosperity rewards growth since founding, not the founding head start', () => {
+  const s = mainGame();
+  const [a, b] = Object.values(s.civs);
+  s.mods.civ.startPop = { [a.id]: 100, [b.id]: 10 };
+  const set = (civ, n) => { const cs = civClans(s, civ.id); for (const c of cs) c.pop = n / cs.length; };
+  set(a, 90); set(b, 15);
+  assert.equal(mod.prosperityWinner(s), b.id, 'the smaller civ that grew wins');
+  set(b, 9);
+  assert.equal(mod.prosperityWinner(s), a.id);
 });
 
 test('alerts only when the human civ is concerned', () => {
