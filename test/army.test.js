@@ -39,6 +39,7 @@ function world() {
   for (const c of Object.values(s.clans)) c.owner = null;
   const mk = (id, owner, h) => { s.cities[id] = { id, owner, name: 'C' + id, q: h.q, r: h.r, buildings: {}, project: null }; s.civs[owner].cityIds.push(id); };
   mk(9001, c1, chain[0]);
+  s.mods.army.startTurn = s.turn - ARMY.aiGrace; // past the AI's grace period
   s.events = [];
   return { s, c1, c2, chain, mk };
 }
@@ -360,4 +361,40 @@ test('the human is warned once when enemy troops come near a city, and told when
   cap(t, d2, ch[0], 10);
   step(t);
   assert.ok(alerts(t).some((e) => /C9001 is besieged: its garrison lost 2/.test(e)));
+});
+
+test('ai raises no army during the grace period after founding', () => {
+  const { s, c1, c2, chain, mk } = world();
+  mk(9003, c2, chain[6]);
+  const clan = Object.values(s.clans)[0]; clan.owner = c1; clan.pop = 40;
+  s.civs[c1].store = { grain: 40 };
+  s.mods.army.startTurn = s.turn - ARMY.aiGrace + 1;
+  assert.ok(!mod.ai(s, c1).some((a) => a.type === 'raiseArmy'), 'still in the grace period');
+  s.mods.army.startTurn = s.turn - ARMY.aiGrace;
+  assert.ok(mod.ai(s, c1).some((a) => a.type === 'raiseArmy'));
+});
+
+test('a rival raising an army near the human raises an alert', () => {
+  const { s, c1, c2, chain, mk } = world();
+  mk(9003, c2, chain[6]);
+  const clan = Object.values(s.clans)[0]; clan.owner = c2; clan.pop = 40;
+  assert.equal(run(s, 'raiseArmy', { civ: c2, city: 9003 }), null);
+  assert.ok(alerts(s).some((e) => /raises an army of 10 .*6 tiles from C9001/.test(e)), alerts(s).join('\n'));
+  s.events = [];
+  clan.owner = c1;
+  assert.equal(run(s, 'raiseArmy', { civ: c1, city: 9001 }), null);
+  assert.ok(!alerts(s).length, 'no alert for your own army');
+});
+
+test('ui: one Raise army row, with only the selected city when one of yours is selected', async () => {
+  const ui = await import('../src/modules/army/ui.js');
+  const { s, c1, chain, mk } = world();
+  mk(9002, c1, chain[4]);
+  const clan = Object.values(s.clans)[0]; clan.owner = c1; clan.pop = 40;
+  const html = ui.panel(s, null, { local: {} });
+  assert.equal((html.match(/Raise army/g) ?? []).length, 1);
+  assert.equal((html.match(/"type":"raiseArmy"/g) ?? []).length, 2, 'a button per city');
+  const one = ui.panel(s, { q: chain[4].q, r: chain[4].r }, { local: {} });
+  assert.equal((one.match(/"type":"raiseArmy"/g) ?? []).length, 1);
+  assert.match(one, /"city":9002/);
 });

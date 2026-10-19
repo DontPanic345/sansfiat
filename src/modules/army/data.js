@@ -13,12 +13,14 @@ export const ARMY = {
   // turn while no enemy holds the tile. Each garrison troop fights at garrisonPower (x wallMult
   // with a wall) and a siege kills at most siegeLoss of it a turn, so a city takes a few turns.
   warnRange: 3,         // the human is alerted when enemy troops come this close to a city
+  raiseWarn: 15,        // ...and when a rival raises an army this close to one of its cities
   garrisonPer: 12, garrisonPop: 3, wallGarrison: 2, garrisonPower: 1.1, siegeLoss: 2,
   // AI forts: a captain builds one on a tile near home (within aiFortHome of an own city) that
   // faces a rival city (within aiFortRival), no closer than aiFortGap to another fort, at most
   // aiForts per civ, when the store holds the cost plus aiFortSpare of each material.
   aiFortHome: 4, aiFortRival: 10, aiFortGap: 4, aiForts: 2, aiFortSpare: 2,
   // AI
+  aiGrace: 20,          // the AI raises no army in the first aiGrace turns of the main game
   aiRaisePop: 30,       // civ clans must hold this many people before the AI raises an army
   aiRaiseGap: 20,       // turns between AI raisings
   aiMoveLabour: 2,      // labour an AI captain spends walking per turn (the rest feeds it)

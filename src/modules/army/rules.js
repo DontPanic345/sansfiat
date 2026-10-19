@@ -13,7 +13,7 @@ import { ARMY } from './data.js';
 
 export const name = 'army';
 export function init(s) { s.mods.army = { fights: 0, captures: 0, raised: {}, raisedTurn: {}, peak: {} }; }
-export function onStart(s) {}
+export function onStart(s) { s.mods.army.startTurn = s.turn; }
 
 const parse = (k) => { const [q, r] = k.split(',').map(Number); return { q, r }; };
 export const captains = (s, civ) => Object.values(s.units).filter((u) => u.type === 'captain' && (civ == null || u.owner === civ));
@@ -123,6 +123,13 @@ export const actions = {
       m.raisedTurn[a.civ] = s.turn;
       note(s, cap.id, `raised at ${city.name ?? city.id} from the civ's clans with ${food.toFixed(1)} food`);
       event(s, `${civName(s, a.civ)} raises an army`);
+      // word reaches every human civ with a city within raiseWarn of the raising city
+      for (const c of Object.values(s.civs)) {
+        if (c.id === a.civ || !c.isHuman) continue;
+        const near = civCities(s, c.id).sort((x, y) => distance(x, city) - distance(y, city) || x.id - y.id)[0];
+        if (near && distance(near, city) <= ARMY.raiseWarn)
+          alert(s, c.id, `${civName(s, a.civ)} raises an army of ${troops} at ${city.name ?? 'a city'} (${city.q},${city.r}), ${distance(near, city)} tiles from ${near.name ?? 'your city'}`);
+      }
     },
     candidates: (s, civ) => civCities(s, civ).map((c) => ({ type: 'raiseArmy', civ, city: c.id })).slice(0, 1),
   },
@@ -553,8 +560,10 @@ export function ai(s, civId) {
     if (d.owner === civId && orphan(s, d) && d.army.troops >= 3 && n < ARMY.maxCaptains) { out.push({ type: 'promote', civ: civId, unit: d.id }); n++; }
   }
   // Raise only with people to spare, food to feed them (store or wild land), and a rival in reach.
+  // No AI army in the first aiGrace turns of the main game, so a new player can find its feet.
   const gap = s.turn - (m.raisedTurn?.[civId] ?? -Infinity);
-  if (mine.length && n < ARMY.maxCaptains && gap >= ARMY.aiRaiseGap && clanPop(s, civId) >= ARMY.aiRaisePop) {
+  const settled = s.turn - (m.startTurn ?? -Infinity) >= ARMY.aiGrace;
+  if (mine.length && settled && n < ARMY.maxCaptains && gap >= ARMY.aiRaiseGap && clanPop(s, civId) >= ARMY.aiRaisePop) {
     const site = mine.find((c) => (storeFood(s, civId) >= ARMY.size || wildFood(s, c, 2) >= ARMY.size * 2) && reachableRival(s, c, civId));
     if (site) out.push({ type: 'raiseArmy', civ: civId, city: site.id });
   }

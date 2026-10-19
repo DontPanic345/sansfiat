@@ -127,12 +127,21 @@ export function panel(s, selection, ui) {
   const civ = me.id;
   const mine = captains(s, civ);
   let h = `<h3>Army</h3><div>Captains ${mine.length}/${ARMY.maxCaptains}</div>`;
-  for (const c of civCities(s, civ)) {
-    const a = { type: 'raiseArmy', civ, city: c.id };
-    const food = Math.min(ARMY.size * ARMY.provision, storeFood(s, civ));
+  const cities = civCities(s, civ);
+  if (cities.length) h += `<div>Garrisons: ${cities.map((c) => {
     const gmax = garrisonMax(s, c);
-    h += `<div>${esc(c.name ?? c.id)}: garrison ${Math.round(c.garrison ?? gmax)}/${gmax}${c.buildings?.wall ? ' (walled)' : ''} `
-      + `${btn(a, `Raise army (${ARMY.size} people, ${food.toFixed(0)}/${ARMY.size * ARMY.provision} food)`, check(s, a))}</div>`;
+    return `${esc(c.name ?? c.id)} ${Math.round(c.garrison ?? gmax)}/${gmax}${c.buildings?.wall ? ' (walled)' : ''}`;
+  }).join(', ')}</div>`;
+  // One "Raise army" row: the selected city when one of yours is selected, else a button per city.
+  const here = selection && cities.find((c) => c.q === selection.q && c.r === selection.r);
+  const from = here ? [here] : cities;
+  if (from.length) {
+    const food = Math.min(ARMY.size * ARMY.provision, storeFood(s, civ));
+    const err = check(s, { type: 'raiseArmy', civ, city: from[0].id });
+    const plain = (a, label) => `<button data-action='${JSON.stringify(a)}'${err ? ' disabled' : ''}>${label}</button>`;
+    h += `<div>Raise army (${ARMY.size} people, ${food.toFixed(0)}/${ARMY.size * ARMY.provision} food) at: `
+      + from.map((c) => plain({ type: 'raiseArmy', civ, city: c.id }, esc(c.name ?? c.id))).join(' ')
+      + (err ? ` <small class="why">${esc(err)}</small>` : '') + '</div>';
   }
   // a rival city on the inspected tile: what taking it would cost
   const foeCity = selection && Object.values(s.cities).find((c) => c.q === selection.q && c.r === selection.r && c.owner !== civ);
