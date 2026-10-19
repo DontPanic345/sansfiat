@@ -4,7 +4,7 @@
 import { humanCiv, civCities, stepCost, tileAt, passable } from '../../core.js';
 import { FOODS } from '../../data.js';
 import { key, neighbors } from '../../hex.js';
-import { actions, captains, cutOff, orphan, hungry, garrisonMax } from './rules.js';
+import { actions, captains, cutOff, orphan, hungry, garrisonMax, defence } from './rules.js';
 import { ARMY } from './data.js';
 import { supplyLine, foodOf, eatRate, gatherError, actions as supplyActions } from '../supply/rules.js';
 import { SUPPLY } from '../supply/data.js';
@@ -38,6 +38,10 @@ export function drawLayer(ctx, s, view) {
       const [q, r] = k.split(',').map(Number);
       if (u.owner !== view.viewer && !vis({ q, r })) continue;
       view.hexPath(ctx, view.at({ q, r }), view.size * 0.9); ctx.fill();
+      // a bright inner rim so a zone reads even over its own territory
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = col(u.owner); ctx.lineWidth = 2; ctx.setLineDash([3, 2]);
+      view.hexPath(ctx, view.at({ q, r }), view.size * 0.72); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 0.25;
     }
   }
   ctx.globalAlpha = 1;
@@ -128,7 +132,15 @@ export function panel(s, selection, ui) {
     const food = Math.min(ARMY.size * ARMY.provision, storeFood(s, civ));
     const gmax = garrisonMax(s, c);
     h += `<div>${esc(c.name ?? c.id)}: garrison ${Math.round(c.garrison ?? gmax)}/${gmax}${c.buildings?.wall ? ' (walled)' : ''} `
-      + `${btn(a, `Raise army (${ARMY.size} people from clans, ${food.toFixed(0)} food from the store${food < ARMY.size * ARMY.provision ? `; it wants ${ARMY.size * ARMY.provision}` : ''})`, check(s, a))}</div>`;
+      + `${btn(a, `Raise army (${ARMY.size} people, ${food.toFixed(0)}/${ARMY.size * ARMY.provision} food)`, check(s, a))}</div>`;
+  }
+  // a rival city on the inspected tile: what taking it would cost
+  const foeCity = selection && Object.values(s.cities).find((c) => c.q === selection.q && c.r === selection.r && c.owner !== civ);
+  if (foeCity && visibleTo(s, civ)(foeCity)) {
+    const p = defence(s, foeCity), g = Math.round(foeCity.garrison ?? garrisonMax(s, foeCity));
+    h += `<div><b>${esc(foeCity.name ?? foeCity.id)}</b> (${esc(s.civs[foeCity.owner]?.name ?? '')}): garrison ${g}${foeCity.buildings?.wall ? ', walled' : ''}, `
+      + `defends at ${p.toFixed(1)} power. An army standing on it loses about ${Math.max(1, Math.round(ARMY.dmg * p))} troops a turn; `
+      + `the garrison loses at most ${ARMY.siegeLoss} a turn and regrows when the siege lifts.</div>`;
   }
   const sel = selected(s, ui.local);
   if (sel) h += captainPanel(s, sel, ui.local);

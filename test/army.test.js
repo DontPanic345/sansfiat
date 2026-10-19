@@ -347,3 +347,17 @@ test('raised and promoted armies know their full strength (troopsMax) so supply 
   assert.equal(u.army.troopsMax, ARMY.size);
   void chain;
 });
+
+test('the human is warned once when enemy troops come near a city, and told when it is besieged', () => {
+  const { s, c2, chain } = world();
+  cap(s, c2, chain[2], 10);
+  step(s);
+  assert.equal(alerts(s).filter((e) => /troops \(10\) near C9001/.test(e)).length, 1);
+  s.events = [];
+  step(s);
+  assert.ok(!alerts(s).some((e) => /near C9001/.test(e)), 'only once while they stay');
+  const { s: t, c2: d2, chain: ch } = world();
+  cap(t, d2, ch[0], 10);
+  step(t);
+  assert.ok(alerts(t).some((e) => /C9001 is besieged: its garrison lost 2/.test(e)));
+});

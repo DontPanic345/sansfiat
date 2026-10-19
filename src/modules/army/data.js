@@ -1,7 +1,7 @@
 // Tuning for the army module (ported from the paint-army prototype).
 export const ARMY = {
   maxEntr: 3, entrBonus: 0.25, dmg: 0.5, retreatRatio: 3, retreatChance: 0.6,
-  size: 10, garrison: 3, wallMult: 1.5, maxCaptains: 3,
+  size: 10, garrison: 4, wallMult: 1.5, maxCaptains: 3,
   // Defenders in their own city fight at x(1 + CITY.defence) (x wallMult with a wall). Troops dug
   // in (entrenched at least one turn) and garrisons also get x(1 + TERRAIN[terrain].defence).
   hungryPower: 0.5,     // a hungry army defends at this share of its power (and cannot attack)
@@ -12,7 +12,8 @@ export const ARMY = {
   // city's territory (at most garrisonPop more), plus wallGarrison with a wall. It regrows one a
   // turn while no enemy holds the tile. Each garrison troop fights at garrisonPower (x wallMult
   // with a wall) and a siege kills at most siegeLoss of it a turn, so a city takes a few turns.
-  garrisonPer: 15, garrisonPop: 3, wallGarrison: 2, garrisonPower: 1.1, siegeLoss: 2,
+  warnRange: 3,         // the human is alerted when enemy troops come this close to a city
+  garrisonPer: 12, garrisonPop: 3, wallGarrison: 2, garrisonPower: 1.1, siegeLoss: 2,
   // AI forts: a captain builds one on a tile near home (within aiFortHome of an own city) that
   // faces a rival city (within aiFortRival), no closer than aiFortGap to another fort, at most
   // aiForts per civ, when the store holds the cost plus aiFortSpare of each material.

@@ -393,7 +393,10 @@ function skirmish(s) {
       if (o === fortSide) {
         const x = Math.min(gar.garrison, Math.round(ARMY.dmg * foe / 1.75), isFort ? Infinity : ARMY.siegeLoss);
         gar.garrison -= x; lost[o] = x;
-        if (!isFort) note(s, city.id, `besieged: the garrison lost ${x}, ${gar.garrison} left`);
+        if (!isFort) {
+          note(s, city.id, `besieged: the garrison lost ${x}, ${gar.garrison} left`);
+          alert(s, o, `${city.name ?? 'Your city'} is besieged: its garrison lost ${x}, ${gar.garrison} left`);
+        }
         continue;
       }
       if (foe / Math.max(1e-9, pw[o]) >= ARMY.retreatRatio && rand(s) < ARMY.retreatChance) {
@@ -474,6 +477,20 @@ function capture(s) {
   }
 }
 
+// Warns the human once when enemy troops come within ARMY.warnRange of one of its cities.
+function warn(s) {
+  const m = s.mods.army;
+  const near = {};
+  for (const city of Object.values(s.cities)) {
+    if (!s.civs[city.owner]?.isHuman) continue;
+    const foe = Object.values(s.units).find((u) => u.owner !== city.owner && fighting(u) && distance(u, city) <= ARMY.warnRange);
+    if (!foe) continue;
+    near[city.id] = true;
+    if (!m.near?.[city.id]) alert(s, city.owner, `${civName(s, foe.owner)} troops (${Math.round(foe.army.troops)}) near ${city.name ?? 'your city'} at ${foe.q},${foe.r}`);
+  }
+  m.near = near;
+}
+
 function peaks(s) {
   const m = s.mods.army;
   m.peak ??= {};
@@ -481,14 +498,14 @@ function peaks(s) {
 }
 
 export const turnSteps = [
-  { phase: 'armies', name: 'army spread, skirmish, hold, capture', run(s) { spread(s); skirmish(s); hold(s); capture(s); peaks(s); } },
+  { phase: 'armies', name: 'army spread, skirmish, hold, capture', run(s) { spread(s); skirmish(s); hold(s); capture(s); warn(s); peaks(s); } },
 ];
 export const hooks = {};
 
 // ---- AI --------------------------------------------------------------------------------------
 
 // Defence of a city as an attacker would face it: garrison (if no troops) or troops on the tile.
-function defence(s, city) {
+export function defence(s, city) {
   const t = tileAt(s, city);
   const troops = unitsAt(s, city).filter((u) => u.owner === city.owner && fighting(u));
   if (troops.length) return troops.reduce((a, u) => a + power(s, u, t), 0);

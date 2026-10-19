@@ -163,7 +163,7 @@ function discHtml(s, civ) {
   if (!d) return '';
   return `<div class="sub">Discoveries: ${Object.keys(CIV.practice).map((g) => d.known[g] ? `<b>${g}</b>`
     : `${g} ${fmt(Math.min(d.practice[g], CIV.practice[g]))}/${CIV.practice[g]}`).join(' · ')}` +
-    ` (pottery: dig clay by a river; herding: hunt game near a city; trade partners who know it help)</div>`;
+    ` (pottery: dig clay by a river, or hold clay got by trade at half pace; herding: hunt game near a city, or member clans eating game at half pace; trade partners who know it help)</div>`;
 }
 
 function yearsHtml(s, civ) {
@@ -236,6 +236,7 @@ export function panel(s, selection) {
   if (!civ || s.phase !== 'main' || !s.mods.civ?.disc[civ.id]) return '';
   const clans = civClans(s, civ.id);
   const cities = civCities(s, civ.id);
+  if (!cities.length) return `<h3 style="margin:0">${civ.name}</h3><div>${civ.name} has no cities left: its clans have gone their own way.</div>`;
   const sel = selectionHtml(s, civ, selection);
   return `<h3 style="margin:0">${civ.name}</h3>` +
     `<div>${cities.length} cit${cities.length === 1 ? 'y' : 'ies'} · ${clans.length} member clans · ` +

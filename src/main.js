@@ -54,7 +54,7 @@ function act(action) {
     addLog([`✗ ${action.type}: not your civ`]);
     return false;
   }
-  if (action.type === 'endTurn' && gameOver()) return false;
+  if (gameOver() && action.type !== 'chooseCiv') return false; // the game is over: nothing more to do
   const { state: next, error } = rules.dispatch(state, action);
   if (error) {
     addLog([`✗ ${action.type}: ${error}`]);
@@ -335,7 +335,7 @@ function statusHtml() {
     const kind = state.mods.civ?.winKind ?? 'victory';
     const mine = me && me.id === w?.id;
     html += `<div class="banner ${me ? (mine ? 'win' : 'lose') : 'win'}">${swatch(w?.color ?? '#fff')}` +
-      `${w?.name ?? 'Someone'} wins by ${kind} on turn ${winTurn ?? state.turn - 1}${mine ? ' — you win!' : ''}</div>`;
+      `${w?.name ?? 'Someone'} wins by ${kind} on turn ${winTurn ?? state.turn - 1}${mine ? ' — you win!' : me ? ` — ${me.name} (you) loses` : ''}</div>`;
   } else if (me && state.mods.civ?.lost?.[me.id] != null) {
     html += `<div class="banner lose">${me.name} has fallen (turn ${state.mods.civ.lost[me.id]}). ` +
       `You can keep ending turns to watch, or start a new game.</div>`;
@@ -437,6 +437,7 @@ function renderPanel() {
   document.getElementById('selection').innerHTML = selectionHtml(fog);
   document.getElementById('modules').innerHTML = MODULE_UIS
     .map((ui) => ui.panel?.(state, sel, uiFor(ui.name)) ?? '').filter(Boolean).join('<hr>');
+  if (over) for (const b of document.querySelectorAll('#modules button')) { b.disabled = true; b.title = 'the game is over'; }
   document.getElementById('alerts').innerHTML = alerts.length
     ? `<div class="sub">Alerts</div>${alerts.map((l) => `<div class="alert">${esc(l)}</div>`).join('')}` : '';
   document.getElementById('mineRow').hidden = !humanCiv(state);
