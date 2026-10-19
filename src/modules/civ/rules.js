@@ -168,11 +168,7 @@ function draft(s) {
     const clans = civClans(s, civ.id);
     const can = clans.reduce((a, c) => a + (c.starving ? 0 : c.pop * CIV.draftMax), 0);
     const k = can > 0 ? Math.min(1, wanted / can) : 0;
-    for (const c of clans) {
-      const was = c.drafted ?? 0;
-      c.drafted = c.starving ? 0 : c.pop * CIV.draftMax * k;
-      if (c.starving && was > 0) note(s, c.id, `starving: ${civ.name} drafts no workers from it`);
-    }
+    for (const c of clans) c.drafted = c.starving ? 0 : c.pop * CIV.draftMax * k;
     m.labour[civ.id] = { wanted, drafted: can * k, needs };
   }
 }
