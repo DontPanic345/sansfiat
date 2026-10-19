@@ -1,4 +1,4 @@
-import { CLAN, MAP } from './data.js';
+import { CLAN, MAP, PLAYERS } from './data.js';
 import { key, neighbors } from './hex.js';
 import { generateMap, isLand } from './mapgen.js';
 import { pick } from './rng.js';
@@ -6,8 +6,9 @@ import { spawnClan } from './clans.js';
 import { dispatch, initModules, runTurn } from './rules.js';
 
 // The shared state shape is documented in CLAUDE.md ("State shape").
-// players: how many civs the pre-game founds (one human, the rest AI).
+// players: how many civs the pre-game founds (one human, the rest AI), clamped to PLAYERS.
 export function newGame({ seed = 1, players = 2, width = MAP.width, height = MAP.height } = {}) {
+  players = Math.max(PLAYERS.min, Math.min(PLAYERS.max, Math.round(Number(players)) || PLAYERS.min));
   const s = {
     config: { seed, players, width, height },
     rng: seed >>> 0,

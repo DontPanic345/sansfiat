@@ -1,7 +1,7 @@
 // Clan rules: the hex-economy pre-game, which keeps running for every clan in the main game.
 // Turn steps here are wired into the phase pipeline by rules.js. Modules may import the
 // exported helpers (spawnClan, siteOptions, marketReach, ...) but should not edit this file.
-import { CIVS, CLAN, FOOD, FOODS, MARKET, NAME_SYLLABLES, PREGAME, TENDING, TERRAIN } from './data.js';
+import { CIVS, CLAN, FOOD, FOODS, FOUNDING, MARKET, NAME_SYLLABLES, PREGAME, TENDING, TERRAIN } from './data.js';
 import { distance, key, neighbors } from './hex.js';
 import { clear, demand, utility } from './market.js';
 import { rand } from './rng.js';
@@ -11,10 +11,14 @@ export const footprint = (s, h) => [h, ...neighbors(h)].map((n) => tileAt(s, n))
 const pct = (x) => `${Math.round(x * 100)}%`;
 const fmt = (x) => (x >= 10 ? x.toFixed(0) : x.toFixed(1));
 
-// A food counts in full up to dietShare of need, and at excessValue beyond that.
+// A food counts in full up to dietShare of need, and at excessValue beyond that. Only foods
+// feed: materials and crafts in the basket count for nothing.
 export function nutrition(basket, need) {
   const k = CLAN.dietShare * need;
-  return Object.values(basket).reduce((n, v) => n + Math.min(v, k) + CLAN.excessValue * Math.max(0, v - k), 0);
+  return FOODS.reduce((n, f) => {
+    const v = basket[f] ?? 0;
+    return n + Math.min(v, k) + CLAN.excessValue * Math.max(0, v - k);
+  }, 0);
 }
 
 // Path cost over land from the market, out to MARKET.reach. Trails count, so a trail widens
@@ -32,11 +36,26 @@ export function nearestMarket(rs, h) {
   return best;
 }
 
+// A tile key followed by its neighbours' keys (whether or not on the map), cached: range()
+// runs thousands of times a turn.
+const AROUND = new Map();
+function around(k) {
+  let ks = AROUND.get(k);
+  if (!ks) {
+    const [q, r] = k.split(',').map(Number);
+    AROUND.set(k, ks = [k, ...neighbors({ q, r }).map(key)]);
+  }
+  return ks;
+}
+
 // The tiles a clan holding `land` forages: the land and every tile next to it nobody else holds.
 export function range(s, land, id) {
   const out = new Map();
   for (const k of land)
-    for (const t of footprint(s, s.map.tiles[k])) if (t.claim == null || t.claim === id) out.set(key(t), t);
+    for (const n of around(k)) {
+      const t = s.map.tiles[n];
+      if (t && (t.claim == null || t.claim === id)) out.set(n, t);
+    }
   return [...out.values()];
 }
 
@@ -141,12 +160,16 @@ function worthTrading(basket, trip, prices) {
   return utility(demand(kept, p, goods)) > utility(basket);
 }
 
+// Only foods are eaten. Anything else in the basket (a clan should not hold materials, but a
+// module might hand it some) is kept in store as it is, without spoiling.
 function eat(clan) {
   const need = clan.pop;
   const k = CLAN.dietShare * need;
   const left = {};
+  const other = {};
   let got = 0;
   for (const [f, v] of Object.entries(clan.basket)) {
+    if (!FOOD[f]) { if (v > 0.01) other[f] = v; continue; }
     got += Math.min(v, k);
     left[f] = Math.max(0, v - k);
   }
@@ -156,6 +179,7 @@ function eat(clan) {
   const keep = extra ? 1 - eaten / extra : 0;
   clan.store = {};
   for (const [f, v] of Object.entries(left)) if (v * keep > 0.01) clan.store[f] = v * keep * (1 - CLAN.spoilage);
+  Object.assign(clan.store, other);
   clan.fedRatio = got / need;
   clan.fed = clan.fedRatio >= 0.999;
   clan.starving = clan.fedRatio < CLAN.stableAt;
@@ -348,6 +372,11 @@ function stopWalking(s, clan) {
   Object.assign(clan, { route: [], dest: null, blocked: 0 });
 }
 
+// Share of a clan's people working its land. clan.drafted (people, 0..pop) is labour a civ
+// has taken for its projects this turn; the civ module sets it before the forage phase. The
+// drafted still eat (eat() uses the whole pop).
+const workShare = (clan) => 1 - Math.min(clan.pop, Math.max(0, clan.drafted ?? 0)) / clan.pop;
+
 export function forage(s, rs) {
   const occupied = new Set(Object.values(s.clans).map(key));
   for (const clan of shuffled(s, Object.values(s.clans))) {
@@ -379,7 +408,7 @@ export function forage(s, rs) {
       : near ? `stops trading at ${key(near.market)}: the trip (${pct(trip)} of labour) costs more than trade gains`
       : 'no market in reach');
     clan.trip = go ? trip : 0;
-    clan.harvest = harvest(s, clan, 1 - clan.trip);
+    clan.harvest = harvest(s, clan, (1 - clan.trip) * workShare(clan));
     clan.basket = add(clan.store, clan.harvest);
     clan.store = {};
   }
@@ -395,13 +424,14 @@ export function trade(s) {
     const baskets = Object.fromEntries(traders.map((c) => [c.id, c.basket]));
     Object.assign(baskets, posts);
     const before = m.prices;
-    const res = clear(baskets, m.prices);
+    const res = clear(baskets, m.prices, { wants: Object.fromEntries(traders.map((c) => [c.id, FOODS])) });
     for (const c of traders) c.basket = res.after[c.id];
     m.received = Object.fromEntries(Object.keys(posts).map((id) => [id, res.after[id]]));
     m.posts = {};
-    const moved = Object.keys(res.prices).filter((g) => before[g])
+    const moved = Object.keys(res.cleared ? res.prices : {}).filter((g) => before[g])
       .map((g) => ({ g, d: Math.log(res.prices[g] / before[g]) })).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
-    Object.assign(m.prices, res.prices);
+    // Without a real clearing (fewer than 2 traders or goods) the last real ratios stand.
+    if (res.cleared) Object.assign(m.prices, res.prices);
     if (Object.keys(baskets).length >= 2)
       note(s, m.id, `${Object.keys(baskets).length} traders swapped ${fmt(total(res.volume))} goods` +
         (moved && Math.abs(moved.d) > 0.02 ? `; ${moved.g} ${moved.d > 0 ? 'rose' : 'fell'} ${pct(Math.abs(Math.exp(moved.d) - 1))}` : ''));
@@ -411,7 +441,7 @@ export function trade(s) {
     m.lastTraders = [...traders.map((c) => c.name), ...Object.keys(posts).map((id) => s.civs[id]?.name ?? `trader ${id}`)];
     m.volume += m.lastVolume;
     m.activity = MARKET.gathering.fade * m.activity + (1 - MARKET.gathering.fade) * m.lastVolume;
-    m.history.push({ turn: s.turn, prices: { ...res.prices }, volume: m.lastVolume });
+    m.history.push({ turn: s.turn, prices: { ...m.prices }, volume: m.lastVolume });
     if (m.history.length > MARKET.history) m.history.shift();
   }
 }
@@ -467,8 +497,8 @@ function split(s, clan, rs, hooks) {
 // Why a clan went hungry: too little food, or too little variety (one food counts in full
 // only up to CLAN.dietShare of need).
 function hungerReason(clan) {
-  const got = total(clan.basket);
-  const foods = Object.entries(clan.basket).filter(([, v]) => v > 0.05).sort((a, b) => b[1] - a[1]);
+  const got = FOODS.reduce((a, f) => a + (clan.basket[f] ?? 0), 0);
+  const foods = Object.entries(clan.basket).filter(([f, v]) => FOOD[f] && v > 0.05).sort((a, b) => b[1] - a[1]);
   const top = foods[0];
   if (got < clan.pop) return `had ${fmt(got)} food for ${fmt(clan.pop)} people`;
   if (top && top[1] > CLAN.dietShare * clan.pop * 1.5)
@@ -527,6 +557,12 @@ export function foundMarket(s, h) {
   return s.markets[id];
 }
 
+function removeMarket(s, m, why) {
+  for (const c of Object.values(s.clans)) if (c.market === m.id) c.market = null;
+  delete s.markets[m.id];
+  event(s, `${why} at ${key(m)}`);
+}
+
 // Clans living within market reach of h, and their people.
 export function catchment(s, h) {
   const reach = marketReach(s, h);
@@ -537,22 +573,19 @@ export function catchment(s, h) {
 const settledSites = (s) => Object.values(s.clans).filter((c) => !c.route.length).map((c) => tileAt(s, c))
   .filter((t) => t.occ >= MARKET.formAfter && farFromMarkets(s, t));
 
-// In the pre-game a gathering forms where the most people live within reach, and disperses once
-// trade there dies down. In the game a market forms on the longest-held site far from the rest.
+// A market forms where at least gathering.minClans clans live within reach: in the pre-game where
+// the most people live, in the main game on the longest-held such site. Any market no civ owns
+// (a pre-game gathering, or a neutral market in the main game) fades once its traded volume,
+// smoothed with weight gathering.fade on the past, falls below gathering.minVolume.
 export function formMarkets(s) {
-  if (s.phase === 'pregame') {
-    for (const m of Object.values(s.markets))
-      if (m.temporary && m.activity < MARKET.gathering.minVolume) {
-        for (const c of Object.values(s.clans)) if (c.market === m.id) c.market = null;
-        delete s.markets[m.id];
-        event(s, `the gathering at ${key(m)} disperses`);
-      }
-    const site = settledSites(s).map((t) => ({ t, ...catchment(s, t) }))
-      .filter((x) => x.clans >= MARKET.gathering.minClans).sort((a, b) => b.pop - a.pop)[0];
-    if (site) foundMarket(s, site.t);
-    return;
-  }
-  const site = settledSites(s).sort((a, b) => b.occ - a.occ)[0];
+  for (const m of Object.values(s.markets))
+    if (m.owner == null && m.activity < MARKET.gathering.minVolume)
+      removeMarket(s, m, m.temporary ? 'the gathering disperses' : 'the market falls quiet');
+  const sites = settledSites(s);
+  const site = s.phase === 'pregame'
+    ? sites.map((t) => ({ t, ...catchment(s, t) }))
+      .filter((x) => x.clans >= MARKET.gathering.minClans).sort((a, b) => b.pop - a.pop)[0]?.t
+    : sites.sort((a, b) => b.occ - a.occ).find((t) => catchment(s, t).clans >= MARKET.gathering.minClans);
   if (site) foundMarket(s, site);
 }
 
@@ -565,22 +598,114 @@ function spread(tiles, spacing) {
 
 export const hearths = (s) => spread(Object.values(s.map.tiles).filter((t) => t.tame === 1), TENDING.hearthSpacing);
 
-// Ends the pre-game. Each civ takes a hearth: the most tamed grain first, then the
-// longest-held land. Its market is a gathering already near it, or a new one on it. Gatherings
-// still going become permanent, and the busiest settled sites left get markets of their own.
+// Land that is passable, or would be once a trail or bridge is built (a mountain with a span
+// has a trailCost; forest and hills are passable already). Returns {comp: Map(tile key ->
+// component id), sizes: [tiles per component]}.
+export function landComponents(s) {
+  const comp = new Map();
+  const sizes = [];
+  const open = (t) => t && (passable(s, t) || t.trailCost != null);
+  for (const t of Object.values(s.map.tiles)) {
+    if (comp.has(key(t)) || !open(t)) continue;
+    const id = sizes.length;
+    const stack = [t];
+    comp.set(key(t), id);
+    let n = 0;
+    while (stack.length) {
+      const h = stack.pop();
+      n++;
+      for (const x of neighbors(h)) {
+        const nt = tileAt(s, x);
+        if (open(nt) && !comp.has(key(nt))) { comp.set(key(nt), id); stack.push(nt); }
+      }
+    }
+    sizes.push(n);
+  }
+  return { comp, sizes };
+}
+
+// A market a civ could be founded on: busy enough to call thriving.
+const thriving = (m) => m.owner == null && m.traders >= FOUNDING.minTraders && m.activity >= FOUNDING.minActivity;
+
+// Greedily adds sites from `cands` ([{market|null, tiles: [hearth candidates]}]) to `picked`
+// until it holds `want`: markets FOUNDING.spacing apart, hearths TENDING.hearthSpacing apart.
+// A candidate without a market will get a new one on its hearth.
+function addSites(picked, cands, want) {
+  for (const c of cands) {
+    if (picked.length >= want) return;
+    if (c.market && picked.some((p) => p.market?.id === c.market.id)) continue;
+    const hearth = c.tiles.find((h) => picked.every((p) => distance(p.hearth, h) >= TENDING.hearthSpacing));
+    if (!hearth) continue;
+    const at = c.market ?? hearth;
+    if (picked.some((p) => distance(p.market ?? p.hearth, at) < FOUNDING.spacing)) continue;
+    picked.push({ market: c.market ?? null, hearth });
+  }
+}
+
+const byTame = (a, b) => (b.tame ?? 0) - (a.tame ?? 0) || b.occTotal - a.occTotal || a.q - b.q || a.r - b.r;
+
+// The founding sites: one per player, each a thriving market with a hearth (fully domesticated
+// grain) in its reach, markets FOUNDING.spacing apart and hearths TENDING.hearthSpacing apart,
+// all on one landmass (counting land a trail or bridge would open) so every civ can reach every
+// other. Returns [{market, hearth}] for the landmass that holds the most. With `fallback` (the
+// pre-game ran out) it tops that landmass up with the best-tended held tiles, on a market that
+// reaches them or a new one (market: null), then any fertile tile there, and if it still falls
+// short takes other landmasses.
+export function foundingSites(s, { fallback = false } = {}) {
+  const want = s.config.players;
+  const tame = Object.values(s.map.tiles).filter((t) => t.tame === 1);
+  if (!fallback && tame.length < want) return [];
+  const markets = Object.values(s.markets).filter(thriving).map((m) => {
+    const close = tame.filter((t) => distance(t, m) <= MARKET.reach); // a step costs at least 1
+    const reach = close.length ? marketReach(s, m) : null;
+    const tiles = close.filter((t) => reach.has(key(t))).sort(byTame);
+    return { market: m, tiles, score: m.activity + m.traders };
+  }).filter((c) => c.tiles.length).sort((a, b) => b.score - a.score || a.market.id - b.market.id);
+  if (!fallback && markets.length < want) return [];
+  const { comp, sizes } = landComponents(s);
+  for (const c of markets) c.comp = comp.get(key(c.market));
+  const groups = sizes.map((size, id) => {
+    const picked = [];
+    addSites(picked, markets.filter((c) => c.comp === id), want);
+    return { id, size, picked };
+  }).sort((a, b) => b.picked.length - a.picked.length || b.size - a.size);
+  if (!fallback || !groups.length) return groups[0]?.picked ?? [];
+
+  const free = Object.values(s.markets).filter((m) => m.owner == null).map((m) => ({ m, reach: marketReach(s, m) }));
+  const held = Object.values(s.map.tiles).filter((t) => t.claim != null).sort(byTame).map((t) => {
+    const near = free.filter((x) => x.reach.has(key(t))).sort((a, b) => a.reach.get(key(t)) - b.reach.get(key(t)))[0];
+    return { market: near?.m ?? null, tiles: [t], comp: comp.get(key(t)) };
+  });
+  // Last resort: any fertile land, richest first.
+  const open = Object.values(s.map.tiles).filter((t) => passable(s, t) && total(t.cap) > 0)
+    .sort((a, b) => total(b.cap) - total(a.cap) || a.q - b.q || a.r - b.r)
+    .map((t) => ({ market: null, tiles: [t], comp: comp.get(key(t)) }));
+  const picked = groups[0].picked;
+  for (const g of groups) {
+    if (g !== groups[0]) addSites(picked, markets.filter((c) => c.comp === g.id), want);
+    addSites(picked, held.filter((c) => c.comp === g.id), want);
+    if (g === groups[0]) addSites(picked, open.filter((c) => c.comp === g.id), want);
+  }
+  return picked;
+}
+
+// Ends the pre-game. Each civ takes a founding site (foundingSites): its market, with a hearth in
+// reach. Gatherings still going become permanent markets, and settled sites far from any market
+// with gathering.minClans clans in reach get markets of their own.
 // Creates s.civs (all AI until the player picks one with chooseCiv) and moves to phase 'choose'.
 // What a civ *is* beyond this record (its clans, first city, store) is set up by the civ
 // module's onStart once the main game begins.
 export function foundCivs(s) {
   const n = hearths(s).length;
+  const sites = foundingSites(s, { fallback: true });
   s.phase = 'choose';
-  const sites = spread(Object.values(s.map.tiles).filter((t) => t.claim != null)
-    .sort((a, b) => (b.tame ?? 0) - (a.tame ?? 0) || b.occTotal - a.occTotal), TENDING.hearthSpacing);
-  for (const h of sites) {
-    if (Object.keys(s.civs).length >= s.config.players) break;
-    const near = Object.values(s.markets).filter((m) => distance(m, h) < MARKET.spacing);
-    if (near.some((m) => m.owner != null)) continue;
-    const m = near.sort((a, b) => distance(a, h) - distance(b, h))[0] ?? foundMarket(s, h);
+  for (const { market, hearth } of sites) {
+    let m = market;
+    if (!m) {
+      for (const x of Object.values(s.markets))
+        if (x.owner == null && distance(x, hearth) < MARKET.spacing) removeMarket(s, x, 'the gathering moves on');
+      m = foundMarket(s, hearth);
+    }
     const look = CIVS[Object.keys(s.civs).length % CIVS.length];
     const id = newId(s);
     s.civs[id] = {
@@ -588,14 +713,17 @@ export function foundCivs(s) {
       seen: {}, revealed: {}, founded: s.turn,
     };
     m.owner = id;
-    note(s, id, `founded at the market ${key(m)}, near grain domesticated at ${key(h)}`);
+    const grain = hearth.tame === 1 ? 'grain domesticated' : hearth.tame > 0 ? `grain ${pct(hearth.tame)} tamed` : 'land held';
+    note(s, id, `founded at the market ${key(m)}, near ${grain} at ${key(hearth)}`);
   }
   for (const m of Object.values(s.markets)) m.temporary = false;
-  const rest = settledSites(s).map((t) => ({ t, ...catchment(s, t) })).sort((a, b) => b.pop - a.pop);
+  const rest = settledSites(s).map((t) => ({ t, ...catchment(s, t) }))
+    .filter((x) => x.clans >= MARKET.gathering.minClans).sort((a, b) => b.pop - a.pop);
   for (const { t } of rest) if (farFromMarkets(s, t)) foundMarket(s, t);
   event(s, `${n ? `grain is farmed at ${n} hearth${n > 1 ? 's' : ''}` : 'the pre-game runs out'}; ` +
     `${Object.keys(s.civs).length} civs and ${Object.keys(s.markets).length} markets; choose a civ to lead`);
 }
 
+// The pre-game ends once there is a founding site per player (see foundingSites), or at maxTurns.
 export const pregameOver = (s) => s.turn >= PREGAME.maxTurns
-  || (s.turn >= PREGAME.minTurns && hearths(s).length >= s.config.players);
+  || (s.turn >= PREGAME.minTurns && foundingSites(s).length >= s.config.players);
