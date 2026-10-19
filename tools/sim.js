@@ -40,6 +40,7 @@ const endTurn = () => {
 };
 while (s.turn <= Number(opt.turns) && s.phase === 'pregame') endTurn();
 const pregameMs = performance.now() - t0;
+const pregameTurns = s.turn - 1;
 if (s.phase === 'choose') {
   s = dispatch(s, { type: 'chooseCiv', civ: null }).state;
   for (let i = 0; i < Number(opt.main) && s.winner == null; i++) endTurn();
@@ -59,7 +60,7 @@ if (opt.json) {
 } else {
   console.log(line(s));
   console.log(s.phase === 'pregame' ? 'still in the pre-game'
-    : `pre-game ended on turn ${s.stats.pop.length - Number(opt.main)} (${pregameMs.toFixed(0)} ms); ` +
+    : `pre-game ended on turn ${pregameTurns} (${pregameMs.toFixed(0)} ms); ` +
       `${Object.keys(s.civs).length} civs, all AI; now turn ${s.turn - 1}, phase ${s.phase}`);
   for (const m of Object.values(s.markets)) {
     const owner = m.owner == null ? 'neutral' : s.civs[m.owner].name;

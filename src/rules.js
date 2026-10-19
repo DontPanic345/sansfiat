@@ -95,7 +95,7 @@ function endOfTurn(s) {
 
 const CORE_ACTIONS = {
   endTurn: {
-    validate: (s) => (s.phase === 'choose' ? 'choose a civ to lead first' : null),
+    validate: (s) => (s.phase === 'choose' ? 'choose a civ to lead first' : s.winner != null ? 'game over' : null),
     apply: (s) => runTurn(s),
     candidates: () => [{ type: 'endTurn' }],
   },
