@@ -6,7 +6,7 @@ export const SUPPLY = {
   eatPerTroop: 0.25, // food eaten per troop per turn
   fightEat: 0.25, // extra food per troop that fought this turn
   attrition: 0.1, // share of the army's troops lost per hungry turn (min 1), spread over its detachments
-  heal: 1, // troops regained per fed turn, up to troopsMax if known
+  heal: 1, // troops regained per fed turn without fighting, up to troopsMax (army sets it when raising/promoting)
   forageLabour: 2,
   pillageLabour: 1,
   gather: 4, // food taken from a tile

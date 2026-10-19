@@ -206,3 +206,16 @@ test('ai: auto-supply on, forage when low, and a porter for a far army', () => {
   assert.ok(r && r.to.q === c.q && r.for === c.id);
   assert.equal(act(s, r), null);
 });
+
+test('a porter brings food home as the foods it loaded', () => {
+  const s = world();
+  s.civs[1].store = { fish: 6, fruit: 6 };
+  const p = spawnUnit(s, { owner: 1, type: 'porter', q: 0, r: 0, supply: { food: 0, foodMax: 12 } });
+  assert.equal(act(s, { type: 'loadPorter', civ: 1, unit: p.id }), null);
+  assert.deepEqual(p.supply.mix, { fruit: 6, fish: 6 });
+  p.supply.returning = 100;
+  step('orders').run(s);
+  assert.equal(s.civs[1].store.grain, undefined, 'no grain from nowhere');
+  assert.ok(Math.abs(s.civs[1].store.fish - 6) < 1e-9 && Math.abs(s.civs[1].store.fruit - 6) < 1e-9);
+  assert.equal(p.supply.food, 0);
+});

@@ -176,3 +176,15 @@ test('territory comes from troops, forts, then city radius; cities transfer; sto
   assert.equal(takeGoods(s, a.id, 'grain', 5), 3);
   assert.deepEqual(a.store, { wood: 1 });
 });
+
+test('territoryOf breaks a tie between equally near cities by the lower city id', async () => {
+  const { territoryOf } = await import('../src/core.js');
+  const { newGame } = await import('../src/game.js');
+  const s = newGame({ seed: 1, players: 2 });
+  const t = Object.values(s.map.tiles)[200];
+  for (const x of Object.values(s.map.tiles)) { x.held = null; x.fort = null; }
+  s.civs = { 1: { id: 1 }, 2: { id: 2 } };
+  // both cities are one step away: the lower city id wins, as in supply's landOwner
+  s.cities = { 50: { id: 50, owner: 2, q: t.q + 1, r: t.r }, 7: { id: 7, owner: 1, q: t.q - 1, r: t.r } };
+  assert.equal(territoryOf(s, t), 1);
+});

@@ -415,8 +415,9 @@ export function forage(s, rs) {
 }
 
 // Clans trading at a market post their baskets. Any other trader (a civ's store) posts by
-// writing m.posts[traderId] = basket before this step; it gets m.received[traderId] = basket
-// after it, and m.posts is cleared. Goods are conserved across all of them.
+// writing m.posts[traderId] = basket before this step, and may write m.wants[traderId] = [good]
+// (the goods it will take in exchange; default every good); it gets m.received[traderId] =
+// basket after it, and m.posts and m.wants are cleared. Goods are conserved across all of them.
 export function trade(s) {
   for (const m of Object.values(s.markets)) {
     const traders = Object.values(s.clans).filter((c) => c.market === m.id);
@@ -424,10 +425,13 @@ export function trade(s) {
     const baskets = Object.fromEntries(traders.map((c) => [c.id, c.basket]));
     Object.assign(baskets, posts);
     const before = m.prices;
-    const res = clear(baskets, m.prices, { wants: Object.fromEntries(traders.map((c) => [c.id, FOODS])) });
+    // Clans want only foods; another poster may limit what it buys with m.wants[traderId].
+    const wants = { ...Object.fromEntries(traders.map((c) => [c.id, FOODS])), ...(m.wants ?? {}) };
+    const res = clear(baskets, m.prices, { wants });
     for (const c of traders) c.basket = res.after[c.id];
     m.received = Object.fromEntries(Object.keys(posts).map((id) => [id, res.after[id]]));
     m.posts = {};
+    delete m.wants;
     const moved = Object.keys(res.cleared ? res.prices : {}).filter((g) => before[g])
       .map((g) => ({ g, d: Math.log(res.prices[g] / before[g]) })).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
     // Without a real clearing (fewer than 2 traders or goods) the last real ratios stand.
@@ -577,11 +581,15 @@ const settledSites = (s) => Object.values(s.clans).filter((c) => !c.route.length
 // the most people live, in the main game on the longest-held such site. Any market no civ owns
 // (a pre-game gathering, or a neutral market in the main game) fades once its traded volume,
 // smoothed with weight gathering.fade on the past, falls below gathering.minVolume.
+// In the main game a market that fell quiet does not re-form on (or next to) its site the same turn.
 export function formMarkets(s) {
+  const faded = [];
   for (const m of Object.values(s.markets))
-    if (m.owner == null && m.activity < MARKET.gathering.minVolume)
+    if (m.owner == null && m.activity < MARKET.gathering.minVolume) {
       removeMarket(s, m, m.temporary ? 'the gathering disperses' : 'the market falls quiet');
-  const sites = settledSites(s);
+      faded.push(m);
+    }
+  const sites = settledSites(s).filter((t) => s.phase !== 'main' || faded.every((m) => distance(m, t) >= MARKET.spacing));
   const site = s.phase === 'pregame'
     ? sites.map((t) => ({ t, ...catchment(s, t) }))
       .filter((x) => x.clans >= MARKET.gathering.minClans).sort((a, b) => b.pop - a.pop)[0]?.t

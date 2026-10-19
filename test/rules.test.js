@@ -284,3 +284,19 @@ test('drafted people do not forage but still eat', () => {
   settle(freeFed, reaches(freeFed));
   assert.ok(fed(all) < fed(freeFed));
 });
+
+test('main game: a neutral market that falls quiet does not re-form on its site the same turn', async () => {
+  const { formMarkets, catchment } = await import('../src/clans.js');
+  const s = dispatch(runPregame(newGame({ seed: 1, players: 2 })), { type: 'chooseCiv', civ: null }).state;
+  for (const m of Object.values(s.markets)) if (m.owner == null) delete s.markets[m.id];
+  // a neutral market on a settled site that would otherwise get a market, then it falls quiet
+  const site = Object.values(s.clans).filter((c) => !c.route.length).map((c) => s.map.tiles[key(c)])
+    .find((t) => catchment(s, t).clans >= MARKET.gathering.minClans && Object.values(s.markets).every((m) => distance(m, t) >= MARKET.spacing));
+  assert.ok(site, 'a site that would form a market');
+  const id = 99999;
+  s.markets[id] = { id, q: site.q, r: site.r, owner: null, temporary: false, activity: 0, prices: {}, history: [], posts: {}, received: {}, traders: 0, volume: 0 };
+  site.occ = 1e6; // the longest-held site: the one the main game would pick
+  formMarkets(s);
+  assert.ok(!s.markets[id], 'the quiet market is gone');
+  assert.ok(Object.values(s.markets).every((m) => m.owner != null || distance(m, site) >= MARKET.spacing), 're-formed beside its old site');
+});
