@@ -1,23 +1,56 @@
 // The army module: captains, zones, detachments, skirmish, entrenchment, forts, capture.
-// Captain: unit type 'captain', u.army = {troops, zone:[keys], movedTurn}. Deployed (zone non-empty)
-// => troops live in detachments (units type 'detachment', u.army = {captainId, troops, entr}).
-// Undeployed => no detachments, all troops ride on the captain. Hungry: u.hungry or u.supply.hungry.
+// Captain: unit type 'captain', u.army = {troops, zone:[keys], foughtTurn?, foughtTroops?}. Deployed
+// (zone non-empty) => troops live in detachments (units type 'detachment', u.army = {captainId, troops,
+// entr, cutSince?}). Undeployed => no detachments, all troops ride on the captain.
+// Hungry: u.hungry or u.supply.hungry (supply owns it). A hungry army cannot attack; it defends at
+// ARMY.hungryPower. Moving costs labour by terrain (stepCost). Fighting costs food: the army records
+// foughtTurn/foughtTroops on the captain and supply charges for it.
+import { CITY, FOODS } from '../../data.js';
 import { note, event, tileAt, passable, stepCost, pathCost, cityAt, unitsAt, civCities, civClans, takeGoods, transferCity, spawnUnit, removeUnit } from '../../core.js';
 import { key, neighbors, distance } from '../../hex.js';
 import { rand } from '../../rng.js';
 import { ARMY } from './data.js';
 
 export const name = 'army';
-export function init(s) { s.mods.army = {}; }
+export function init(s) { s.mods.army = { fights: 0, captures: 0, raised: {}, raisedTurn: {}, peak: {} }; }
 export function onStart(s) {}
 
 const parse = (k) => { const [q, r] = k.split(',').map(Number); return { q, r }; };
-const captains = (s, civ) => Object.values(s.units).filter((u) => u.type === 'captain' && (civ == null || u.owner === civ));
-const dets = (s, cid) => Object.values(s.units).filter((u) => u.type === 'detachment' && u.army.captainId === cid);
-const hungry = (u, s) => !!(u.hungry || u.supply?.hungry || (s && u.army?.captainId != null && (s.units[u.army.captainId]?.hungry || s.units[u.army.captainId]?.supply?.hungry)));
+export const captains = (s, civ) => Object.values(s.units).filter((u) => u.type === 'captain' && (civ == null || u.owner === civ));
+export const dets = (s, cid) => Object.values(s.units).filter((u) => u.type === 'detachment' && u.army.captainId === cid);
+const capOf = (s, u) => (u.type === 'captain' ? u : s.units[u.army?.captainId]);
+export const hungry = (u, s) => {
+  const c = s ? capOf(s, u) : null;
+  return !!(u.hungry || u.supply?.hungry || c?.hungry || c?.supply?.hungry);
+};
+// Units that fight on their tile: detachments, and undeployed captains with troops.
+export const fighting = (u) => u.type === 'detachment' || (u.type === 'captain' && !u.army.zone.length && u.army.troops > 0);
+const uid = (a) => a.unit ?? a.unitId;
+const cid = (a) => a.city ?? a.cityId;
+const civName = (s, c) => s.civs[c]?.name ?? `civ ${c}`;
+const alert = (s, civ, text) => { if (s.civs[civ]?.isHuman) event(s, `! ${text}`); };
+const storeFood = (s, civ) => FOODS.reduce((a, f) => a + (s.civs[civ]?.store[f] ?? 0), 0);
+function takeFood(s, civ, n) {
+  let got = 0;
+  for (const f of FOODS) {
+    const t = Math.min(n - got, s.civs[civ].store[f] ?? 0);
+    if (t > 0) { takeGoods(s, civ, f, t); got += t; }
+  }
+  return got;
+}
+
+// Entering h would attack: an enemy fort, an enemy city (its garrison), or enemy troops.
+export function hostile(s, h, owner) {
+  const t = tileAt(s, h);
+  if (!t) return false;
+  if (t.fort && t.fort.owner !== owner) return true;
+  const c = cityAt(s, h);
+  if (c && c.owner != null && c.owner !== owner) return true;
+  return unitsAt(s, h).some((u) => u.owner !== owner && fighting(u));
+}
 
 // Tiles reachable from the captain's tile through zone tiles.
-function linked(s, cap) {
+export function linked(s, cap) {
   const zone = new Set(cap.army.zone);
   const seen = new Set([key(cap)]);
   const queue = [{ q: cap.q, r: cap.r }];
@@ -47,34 +80,49 @@ function deploy(s, cap) {
 function undeploy(s, cap) {
   const ds = dets(s, cap.id);
   if (ds.length) cap.army.troops = ds.reduce((a, d) => a + d.army.troops, 0);
-  for (const d of dets(s, cap.id)) removeUnit(s, d.id);
+  for (const d of ds) removeUnit(s, d.id);
   cap.army.zone = [];
 }
-const ownCaptain = (s, a) => { const u = s.units[a.unit]; return u && u.type === 'captain' && u.owner === a.civ ? u : null; };
+const ownCaptain = (s, a) => { const u = s.units[uid(a)]; return u && u.type === 'captain' && u.owner === a.civ ? u : null; };
+export const orphan = (s, d) => d.type === 'detachment' && s.units[d.army.captainId]?.type !== 'captain';
+// Cut off: its captain is gone, or its tile is no longer linked to him through the zone.
+export const cutOff = (s, d) => orphan(s, d) || !linked(s, s.units[d.army.captainId]).has(key(d));
 
 function clanPop(s, civ) { return civClans(s, civ).reduce((t, c) => t + c.pop, 0); }
+const nearestCity = (s, civ, h) => civCities(s, civ).sort((a, b) => distance(a, h) - distance(b, h) || a.id - b.id)[0] ?? null;
+
+// Troops go home: they rejoin the nearest clan of their civ (lost if it has none).
+function returnToClans(s, owner, at, n, why) {
+  const clan = civClans(s, owner).sort((a, b) => distance(a, at) - distance(b, at) || a.id - b.id)[0];
+  if (clan && n > 0) { clan.pop += n; note(s, clan.id, `${n} troops came home (${why})`); }
+}
 
 export const actions = {
   raiseArmy: {
     validate(s, a) {
-      const city = s.cities[a.city];
+      const city = s.cities[cid(a)];
       if (!city || city.owner !== a.civ) return 'not your city';
-      if (captains(s, a.civ).length >= ARMY.maxCaptains) return 'too many captains';
+      if (captains(s, a.civ).length >= ARMY.maxCaptains) return `at most ${ARMY.maxCaptains} captains`;
       if (clanPop(s, a.civ) < ARMY.size + 5) return 'not enough people to raise';
       return null;
     },
     apply(s, a) {
-      const city = s.cities[a.city];
+      const city = s.cities[cid(a)];
       let need = ARMY.size;
-      for (const c of civClans(s, a.civ).sort((x, y) => y.pop - x.pop)) {
-        const take = Math.min(need, Math.max(0, c.pop - 1));
+      for (const c of civClans(s, a.civ).sort((x, y) => y.pop - x.pop || x.id - y.id)) {
+        const take = Math.min(need, Math.max(0, Math.floor(c.pop - 1)));
         c.pop -= take; need -= take;
-        if (take) note(s, c.id, `${take} people raised as troops for civ ${a.civ}`);
+        if (take) note(s, c.id, `${take} people raised as troops for ${civName(s, a.civ)}`);
         if (!need) break;
       }
-      const cap = spawnUnit(s, { owner: a.civ, type: 'captain', q: city.q, r: city.r, army: { troops: ARMY.size - need, zone: [], movedTurn: -1 } });
-      note(s, cap.id, `raised at ${city.name ?? city.id} from the civ's clans`);
-      event(s, `${s.civs[a.civ].name} raises an army`);
+      const troops = ARMY.size - need;
+      const food = takeFood(s, a.civ, troops * ARMY.provision); // provisions only from what the store holds
+      const cap = spawnUnit(s, { owner: a.civ, type: 'captain', q: city.q, r: city.r, army: { troops, zone: [] }, supply: { food, foodMax: Math.max(food, 1), auto: false } });
+      const m = s.mods.army;
+      m.raised[a.civ] = (m.raised[a.civ] ?? 0) + 1;
+      m.raisedTurn[a.civ] = s.turn;
+      note(s, cap.id, `raised at ${city.name ?? city.id} from the civ's clans with ${food.toFixed(1)} food`);
+      event(s, `${civName(s, a.civ)} raises an army`);
     },
     candidates: (s, civ) => civCities(s, civ).map((c) => ({ type: 'raiseArmy', civ, city: c.id })).slice(0, 1),
   },
@@ -82,15 +130,19 @@ export const actions = {
     validate(s, a) {
       const u = ownCaptain(s, a);
       if (!u) return 'not your captain';
-      if (u.army.movedTurn === s.turn) return 'already moved';
       if (distance(u, a) !== 1) return 'one tile at a time';
-      if (!tileAt(s, a) || !passable(s, a) || stepCost(s, tileAt(s, a)) === Infinity) return 'impassable';
+      if (!tileAt(s, a) || !passable(s, a)) return 'impassable';
+      const c = stepCost(s, a);
+      if (c === Infinity) return 'impassable';
+      if (u.labour <= 0 || (u.labour < c && u.labour < u.labourMax)) return `needs ${c} labour (has ${u.labour})`;
+      if (fighting(u) && hostile(s, a, u.owner) && hungry(u, s)) return 'a hungry army cannot attack';
       return null;
     },
     apply(s, a) {
-      const u = s.units[a.unit];
+      const u = s.units[uid(a)];
       const from = key(u);
-      u.q = a.q; u.r = a.r; u.army.movedTurn = s.turn;
+      u.labour = Math.max(0, u.labour - stepCost(s, a));
+      u.q = a.q; u.r = a.r;
       const k = key(a), z = u.army.zone;
       if (z.length && !z.includes(k) && z.includes(from)) z.push(k); // stepping out paints
     },
@@ -107,7 +159,7 @@ export const actions = {
       return null;
     },
     apply(s, a) {
-      const u = s.units[a.unit];
+      const u = s.units[uid(a)];
       if (!u.army.zone.length) { u.army.zone.push(key(u)); if (key(u) !== key(a)) u.army.zone.push(key(a)); deploy(s, u); }
       else u.army.zone.push(key(a));
     },
@@ -123,40 +175,64 @@ export const actions = {
       return null;
     },
     apply(s, a) {
-      const u = s.units[a.unit];
+      const u = s.units[uid(a)];
       u.army.zone = u.army.zone.filter((x) => x !== key(a));
       if (!u.army.zone.length) undeploy(s, u);
     },
     candidates: () => [],
   },
   undeploy: {
-    validate: (s, a) => (ownCaptain(s, a) ? null : 'not your captain'),
-    apply(s, a) { undeploy(s, s.units[a.unit]); },
+    validate: (s, a) => { const u = ownCaptain(s, a); return !u ? 'not your captain' : u.army.zone.length ? null : 'not deployed'; },
+    apply(s, a) { undeploy(s, s.units[uid(a)]); },
+    candidates: () => [],
+  },
+  // Send the army home: its troops rejoin the civ's clans. Only near one of the civ's cities.
+  disband: {
+    validate(s, a) {
+      const u = ownCaptain(s, a);
+      if (!u) return 'not your captain';
+      const c = nearestCity(s, a.civ, u);
+      if (!c || distance(c, u) > CITY.territoryRadius) return `must be within ${CITY.territoryRadius} of your city`;
+      return null;
+    },
+    apply(s, a) {
+      const u = s.units[uid(a)];
+      undeploy(s, u);
+      returnToClans(s, u.owner, u, u.army.troops, 'army disbanded');
+      removeUnit(s, u.id);
+      event(s, `${civName(s, a.civ)} disbands an army`);
+    },
     candidates: () => [],
   },
   promote: {
     validate(s, a) {
-      const d = s.units[a.unit];
+      const d = s.units[uid(a)];
       if (!d || d.type !== 'detachment' || d.owner !== a.civ) return 'not your detachment';
-      const cap = s.units[d.army.captainId];
-      if (cap && linked(s, cap).has(key(d))) return 'still linked to its captain';
+      if (!cutOff(s, d)) return 'still linked to its captain';
+      if (captains(s, a.civ).length >= ARMY.maxCaptains) return `at most ${ARMY.maxCaptains} captains; it walks back or disbands`;
       return null;
     },
     apply(s, a) {
-      const d = s.units[a.unit], old = s.units[d.army.captainId];
+      const d = s.units[uid(a)], old = orphan(s, d) ? null : s.units[d.army.captainId];
       const set = new Set(old ? old.army.zone : [key(d)]), comp = new Set([key(d)]), queue = [{ q: d.q, r: d.r }];
       while (queue.length) for (const n of neighbors(queue.pop())) {
         const k = key(n);
         if (set.has(k) && !comp.has(k)) { comp.add(k); queue.push(n); }
       }
-      const cap = spawnUnit(s, { owner: d.owner, type: 'captain', q: d.q, r: d.r, army: { troops: d.army.troops, zone: [...comp], movedTurn: -1 } });
+      const before = old ? old.army.troops : 0;
+      const cap = spawnUnit(s, { owner: d.owner, type: 'captain', q: d.q, r: d.r, army: { troops: d.army.troops, zone: [...comp] } });
       if (old) {
         old.army.zone = old.army.zone.filter((k) => !comp.has(k));
         for (const o of dets(s, old.id)) if (o !== d && comp.has(key(o))) { o.army.captainId = cap.id; cap.army.troops += o.army.troops; }
       }
       d.army.captainId = cap.id;
-      if (old) syncTroops(s, old);
-      note(s, cap.id, 'promoted from a cut-off detachment, for free');
+      for (const x of dets(s, cap.id)) delete x.army.cutSince;
+      // the new army takes its share of the old army's food; an orphan has none
+      const share = old?.supply ? old.supply.food * Math.min(1, cap.army.troops / Math.max(1, before)) : 0;
+      if (old?.supply) old.supply.food -= share;
+      cap.supply = { food: share, foodMax: Math.max(1, share), auto: old?.supply?.auto ?? false };
+      if (old) { syncTroops(s, old); if (!old.army.zone.length) undeploy(s, old); }
+      note(s, cap.id, `promoted from a cut-off detachment with ${share.toFixed(1)} food`);
     },
     candidates: () => [],
   },
@@ -166,14 +242,14 @@ export const actions = {
       if (!u) return 'not your captain';
       const t = tileAt(s, u);
       if (t.fort) return 'already a fort';
-      if (!unitsAt(s, u).some((x) => x.owner === a.civ && (x.type === 'detachment' || x.army?.troops))) return 'needs troops on the tile';
-      if (u.labour < ARMY.fort.labour) return 'not enough labour';
+      if (!unitsAt(s, u).some((x) => x.owner === a.civ && fighting(x))) return 'needs troops on the tile';
+      if (u.labour < ARMY.fort.labour) return `needs ${ARMY.fort.labour} labour`;
       const st = s.civs[a.civ].store;
-      if ((st.wood ?? 0) < ARMY.fort.wood || (st.stone ?? 0) < ARMY.fort.stone) return 'needs wood and stone';
+      if ((st.wood ?? 0) < ARMY.fort.wood || (st.stone ?? 0) < ARMY.fort.stone) return `needs ${ARMY.fort.wood} wood and ${ARMY.fort.stone} stone`;
       return null;
     },
     apply(s, a) {
-      const u = s.units[a.unit];
+      const u = s.units[uid(a)];
       u.labour -= ARMY.fort.labour;
       takeGoods(s, a.civ, 'wood', ARMY.fort.wood); takeGoods(s, a.civ, 'stone', ARMY.fort.stone);
       tileAt(s, u).fort = { owner: a.civ, garrison: ARMY.garrison };
@@ -194,15 +270,24 @@ function needy(z, m, target, from, reach) {
   }
   return best;
 }
+// One tile toward goal. In the zone (or anywhere when cut off); a hungry army never steps into a fight.
 function step(s, d, goal, reach, cut = false) {
   if (!goal) return;
+  const avoid = hungry(d, s);
   let best = null;
   for (const n of neighbors(d)) {
     if (!tileAt(s, n) || !passable(s, n) || (!cut && !reach.has(key(n)))) continue;
+    if (avoid && hostile(s, n, d.owner)) continue;
     const dist = distance(n, goal);
     if (dist < distance(d, goal) && (!best || dist < best.dist)) best = { ...n, dist };
   }
   if (best) { d.q = best.q; d.r = best.r; d.army.entr = 0; }
+}
+
+function disbandDet(s, d, why) {
+  returnToClans(s, d.owner, d, d.army.troops, why);
+  alert(s, d.owner, `${d.army.troops} cut-off troops gave up and went home`);
+  removeUnit(s, d.id);
 }
 
 function spread(s) {
@@ -216,8 +301,12 @@ function spread(s) {
     for (const d of dets(s, cap.id)) {
       const k = key(d), cut = !reach.has(k);
       let goal;
-      if (cut) goal = cap; // walk home
-      else {
+      if (cut) { // walk home; give up after a while
+        d.army.cutSince ??= s.turn;
+        if (s.turn - d.army.cutSince >= ARMY.cutTurns) { disbandDet(s, d, 'cut off too long'); continue; }
+        goal = cap;
+      } else {
+        delete d.army.cutSince;
         const m = per();
         if (z.includes(k) && d.army.troops > cap_) { // overfull: split the excess off
           const out = d.army.troops - cap_;
@@ -239,67 +328,93 @@ function spread(s) {
     }
     syncTroops(s, cap);
   }
+  // Orphans (their captain is gone) walk to the nearest own city and go home, or give up.
+  for (const d of Object.values(s.units)) {
+    if (!orphan(s, d)) continue;
+    d.army.cutSince ??= s.turn;
+    const home = nearestCity(s, d.owner, d);
+    if (!home || distance(home, d) === 0 || s.turn - d.army.cutSince >= ARMY.cutTurns) { disbandDet(s, d, 'its captain fell'); continue; }
+    step(s, d, home, null, true);
+  }
 }
 
-const power = (s, d, tile) => {
-  const city = cityAt(s, tile);
-  return d.army.troops * (1 + ARMY.entrBonus * (d.army.entr ?? 0)) * (hungry(d, s) ? 0.5 : 1) * (city && city.owner === d.owner ? 1.5 * (city.buildings?.wall ? ARMY.wallMult : 1) : 1);
-};
+const cityMult = (city, owner) => (city && city.owner === owner ? ARMY.cityDefence * (city.buildings?.wall ? ARMY.wallMult : 1) : 1);
+const power = (s, d, tile) => d.army.troops * (1 + ARMY.entrBonus * (d.army.entr ?? 0)) * (hungry(d, s) ? ARMY.hungryPower : 1) * cityMult(cityAt(s, tile), d.owner);
+const garrisonPower = (gar, city, owner, fort) => gar.garrison * (1 + ARMY.entrBonus * ARMY.maxEntr) * (fort ? 1 : cityMult(city, owner));
 
 function skirmish(s) {
+  const m = s.mods.army;
   const tiles = {};
-  for (const d of Object.values(s.units)) {
-    if (d.type === 'detachment' || (d.type === 'captain' && !d.army.zone.length && d.army.troops)) (tiles[key(d)] ??= []).push(d);
-  }
+  for (const d of Object.values(s.units)) if (fighting(d)) (tiles[key(d)] ??= []).push(d);
+  const report = {}; // civ -> {tiles, lost, dealt}
   for (const [k, us] of Object.entries(tiles)) {
     const t = s.map.tiles[k];
     const sides = {};
     for (const u of us) (sides[u.owner] ??= []).push(u);
     const owners = Object.keys(sides).map(Number);
-    // a fort fights with its garrison for its owner if no own troops stand there
+    // a fort or city fights with its garrison for its owner if no own troops stand there
     const city = cityAt(s, t);
     const gOwner = t.fort ? t.fort.owner : city?.owner ?? null;
     const gar = t.fort ?? (city && city.owner != null ? city : null);
     if (gar && gar.garrison === undefined) gar.garrison = ARMY.garrison;
-    const fortSide = gar && !sides[gOwner] && owners.length ? gOwner : null;
+    const fortSide = gar && gar.garrison > 0 && !sides[gOwner] && owners.length && owners.some((o) => o !== gOwner) ? gOwner : null;
     if (fortSide != null) owners.push(fortSide);
     if (owners.length < 2) continue;
-    s.mods.army.fights = (s.mods.army.fights ?? 0) + 1;
+    m.fights = (m.fights ?? 0) + 1;
     const pw = {}, tr = {};
     for (const o of owners) {
-      if (o === fortSide) { pw[o] = gar.garrison * (1 + ARMY.entrBonus * ARMY.maxEntr) * (city && city.owner === o && !t.fort ? 1.5 * (city.buildings?.wall ? ARMY.wallMult : 1) : 1); tr[o] = gar.garrison; continue; }
+      if (o === fortSide) { pw[o] = garrisonPower(gar, city, o, !!t.fort); tr[o] = gar.garrison; continue; }
       pw[o] = sides[o].reduce((a, u) => a + power(s, u, t), 0);
       tr[o] = sides[o].reduce((a, u) => a + u.army.troops, 0);
+      for (const u of sides[o]) { // fighting costs food: supply charges the captain
+        const c = capOf(s, u);
+        if (!c) continue;
+        if (c.army.foughtTurn !== s.turn) { c.army.foughtTurn = s.turn; c.army.foughtTroops = 0; }
+        c.army.foughtTroops += u.army.troops;
+      }
     }
+    const lost = {};
     for (const o of owners) {
       const foe = owners.filter((x) => x !== o).reduce((a, x) => a + pw[x], 0);
-      if (o === fortSide) { gar.garrison = Math.max(0, gar.garrison - Math.round(ARMY.dmg * foe / 1.75)); continue; }
+      if (o === fortSide) { const x = Math.min(gar.garrison, Math.round(ARMY.dmg * foe / 1.75)); gar.garrison -= x; lost[o] = x; continue; }
       if (foe / Math.max(1e-9, pw[o]) >= ARMY.retreatRatio && rand(s) < ARMY.retreatChance) {
         for (const u of sides[o]) {
           note(s, u.id, 'outnumbered, slipped away');
-          const home = s.units[u.army.captainId] ?? u;
+          const home = capOf(s, u) ?? u;
           const n = neighbors(u).filter((h) => tileAt(s, h) && passable(s, h) && !tiles[key(h)]).sort((a, b) => distance(a, home) - distance(b, home))[0];
           if (n) { u.q = n.q; u.r = n.r; u.army.entr = 0; }
         }
+        lost[o] = 0;
         continue;
       }
       const loss = Math.max(1, Math.round(ARMY.dmg * foe));
-      for (const u of sides[o]) u.army.troops -= Math.min(u.army.troops, Math.ceil(loss * u.army.troops / tr[o]));
+      lost[o] = 0;
+      for (const u of sides[o]) { const x = Math.min(u.army.troops, Math.ceil(loss * u.army.troops / tr[o])); u.army.troops -= x; lost[o] += x; }
+    }
+    for (const o of owners) {
+      if (!s.civs[o]?.isHuman) continue;
+      const r = (report[o] ??= { tiles: 0, lost: 0, dealt: 0 });
+      r.tiles++; r.lost += lost[o];
+      for (const x of owners) if (x !== o) r.dealt += lost[x];
     }
     if (fortSide != null && gar.garrison <= 0) {
       const winner = owners.find((o) => o !== fortSide && sides[o].some((u) => u.army.troops > 0));
-      if (winner != null && t.fort) { t.fort = { owner: winner, garrison: ARMY.garrison }; event(s, 'a fort falls'); }
-      else if (winner == null) gar.garrison = 1;
+      if (winner != null && t.fort) {
+        t.fort = { owner: winner, garrison: ARMY.garrison };
+        event(s, `${civName(s, winner)} takes a fort from ${civName(s, fortSide)}`);
+        alert(s, winner, `You take a fort at ${k}`); alert(s, fortSide, `${civName(s, winner)} takes your fort at ${k}`);
+      } else if (winner == null) gar.garrison = 1;
       // a city with garrison 0 and a winner on the tile falls in capture()
     }
   }
+  for (const [o, r] of Object.entries(report)) alert(s, Number(o), `Your troops fight on ${r.tiles} tile${r.tiles > 1 ? 's' : ''}: lost ${r.lost}, enemy lost ${r.dealt}`);
   for (const u of Object.values(s.units)) { // clear the fallen
     if (u.type === 'detachment' && u.army.troops <= 0) removeUnit(s, u.id);
-    else if (u.type === 'captain' && !u.army.zone.length && u.army.troops <= 0) removeUnit(s, u.id);
+    else if (u.type === 'captain' && !u.army.zone.length && u.army.troops <= 0) { alert(s, u.owner, `Your army ${u.id} is destroyed`); removeUnit(s, u.id); }
   }
   for (const cap of captains(s)) {
     syncTroops(s, cap);
-    if (cap.army.zone.length && cap.army.troops <= 0) removeUnit(s, cap.id);
+    if (cap.army.zone.length && cap.army.troops <= 0) { alert(s, cap.owner, `Your army ${cap.id} is destroyed`); removeUnit(s, cap.id); }
   }
 }
 
@@ -307,12 +422,11 @@ function hold(s) {
   for (const t of Object.values(s.map.tiles)) t.held = null;
   const best = {};
   for (const u of Object.values(s.units)) {
-    const on = u.type === 'detachment' || (u.type === 'captain' && !u.army.zone.length);
-    if (!on || !(u.army.troops > 0)) continue;
+    if (!fighting(u) || !(u.army.troops > 0)) continue;
     const by = (best[key(u)] ??= {});
     by[u.owner] = (by[u.owner] ?? 0) + u.army.troops;
   }
-  for (const [k, by] of Object.entries(best)) s.map.tiles[k].held = Number(Object.entries(by).sort((a, b) => b[1] - a[1])[0][0]);
+  for (const [k, by] of Object.entries(best)) s.map.tiles[k].held = Number(Object.entries(by).sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0]);
   // troops standing on their own fort are fully dug in
   for (const d of Object.values(s.units)) if (d.type === 'detachment' && tileAt(s, d)?.fort?.owner === d.owner) d.army.entr = ARMY.maxEntr;
 }
@@ -323,42 +437,98 @@ function capture(s) {
     if (city.garrison === undefined) city.garrison = ARMY.garrison;
     if (t.held == null || t.held === city.owner) { if (city.garrison < ARMY.garrison && !t.held) city.garrison++; continue; }
     if (city.garrison <= 0 && s.civs[t.held]) {
+      const from = city.owner, nm = city.name ?? `city ${city.id}`;
       s.mods.army.captures = (s.mods.army.captures ?? 0) + 1;
       transferCity(s, city.id, t.held);
       city.garrison = ARMY.garrison;
-      note(s, city.id, `captured by civ ${t.held}; its clans stay`);
-      event(s, `${s.civs[t.held].name} takes ${city.name ?? 'a city'}`);
+      note(s, city.id, `captured by ${civName(s, t.held)}; its clans stay`);
+      event(s, `${civName(s, t.held)} takes ${nm} from ${civName(s, from)}`);
+      alert(s, t.held, `You take ${nm} from ${civName(s, from)}`);
+      alert(s, from, `${civName(s, t.held)} takes your ${nm}`);
     }
   }
 }
 
+function peaks(s) {
+  const m = s.mods.army;
+  m.peak ??= {};
+  for (const c of Object.keys(s.civs)) m.peak[c] = Math.max(m.peak[c] ?? 0, captains(s, Number(c)).length);
+}
+
 export const turnSteps = [
-  { phase: 'armies', name: 'army spread, skirmish, hold, capture', run(s) { spread(s); skirmish(s); hold(s); capture(s); } },
+  { phase: 'armies', name: 'army spread, skirmish, hold, capture', run(s) { spread(s); skirmish(s); hold(s); capture(s); peaks(s); } },
 ];
 export const hooks = {};
 
 // ---- AI --------------------------------------------------------------------------------------
 
+// Defence of a city as an attacker would face it: garrison (if no troops) or troops on the tile.
+function defence(s, city) {
+  const t = tileAt(s, city);
+  const troops = unitsAt(s, city).filter((u) => u.owner === city.owner && fighting(u));
+  if (troops.length) return troops.reduce((a, u) => a + power(s, u, t), 0);
+  return garrisonPower({ garrison: city.garrison ?? ARMY.garrison }, city, city.owner, false);
+}
+const wildFood = (s, at, r) => Object.values(s.map.tiles)
+  .filter((t) => distance(t, at) <= r && !(t.fallow > 0))
+  .reduce((a, t) => a + FOODS.reduce((b, f) => b + (t.stock?.[f] ?? 0), 0), 0);
+
+// The cheapest rival city this army (with friends nearby) can beat, or null.
+function target(s, cap, civId, friends) {
+  const strength = friends.filter((c) => distance(c, cap) <= 3 && fighting(c)).reduce((a, c) => a + c.army.troops, 0);
+  let best = null;
+  for (const c of Object.values(s.cities)) {
+    if (c.owner == null || c.owner === civId) continue;
+    if (strength < defence(s, c) * ARMY.aiOdds) continue;
+    const p = pathCost(s, cap, c, { maxCost: ARMY.aiReach });
+    if (p && (!best || p.cost < best.cost)) best = { city: c, cost: p.cost, path: p.path };
+  }
+  return best;
+}
+const reachableRival = (s, from, civId) => Object.values(s.cities).some((c) => c.owner != null && c.owner !== civId && pathCost(s, from, c, { maxCost: ARMY.aiReach }));
+
 export function ai(s, civId) {
   const out = [];
+  const m = s.mods.army;
   const caps = captains(s, civId);
   const mine = civCities(s, civId);
-  if (mine.length && caps.length < ARMY.maxCaptains && clanPop(s, civId) >= ARMY.size + 5) out.push({ type: 'raiseArmy', civ: civId, city: mine[0].id });
-  const rivals = Object.values(s.cities).filter((c) => c.owner !== civId);
+  let n = caps.length;
+  for (const d of Object.values(s.units)) {
+    if (d.owner === civId && orphan(s, d) && d.army.troops >= 3 && n < ARMY.maxCaptains) { out.push({ type: 'promote', civ: civId, unit: d.id }); n++; }
+  }
+  // Raise only with people to spare, food to feed them (store or wild land), and a rival in reach.
+  const gap = s.turn - (m.raisedTurn?.[civId] ?? -Infinity);
+  if (mine.length && n < ARMY.maxCaptains && gap >= ARMY.aiRaiseGap && clanPop(s, civId) >= ARMY.aiRaisePop) {
+    const site = mine.find((c) => (storeFood(s, civId) >= ARMY.size || wildFood(s, c, 2) >= ARMY.size * 2) && reachableRival(s, c, civId));
+    if (site) out.push({ type: 'raiseArmy', civ: civId, city: site.id });
+  }
   for (const cap of caps) {
-    const threatened = mine.find((c) => Object.values(s.units).some((u) => u.owner !== civId && (u.type === 'detachment' || u.type === 'captain') && distance(u, c) <= 2));
-    const goalC = threatened ?? [...rivals].sort((a, b) => distance(cap, a) - distance(cap, b))[0];
-    for (const d of dets(s, cap.id)) if (d.army.troops >= 3 && !linked(s, cap).has(key(d))) { out.push({ type: 'promote', civ: civId, unit: d.id }); break; }
-    if (!goalC) continue;
-    if (!cap.army.zone.length && cap.army.troops) out.push({ type: 'paint', civ: civId, unit: cap.id, q: cap.q, r: cap.r });
-    else if (cap.army.zone.length > 6) {
-      const far = [...cap.army.zone].sort((a, b) => distance(parse(b), cap) - distance(parse(a), cap))[0];
-      if (zoneConnected(cap.army.zone.filter((k) => k !== far))) out.push({ type: 'unpaint', civ: civId, unit: cap.id, ...parse(far) });
+    if (cap.army.zone.length) out.push({ type: 'undeploy', civ: civId, unit: cap.id }); // AI marches as one body
+    const food = cap.supply?.food ?? 0;
+    const starving = hungry(cap, s) && food <= 0;
+    const threatened = mine.find((c) => Object.values(s.units).some((u) => u.owner !== civId && fighting(u) && distance(u, c) <= 2));
+    let goal = null;
+    if (starving) {
+      const home = nearestCity(s, civId, cap);
+      if (home && distance(home, cap) <= CITY.territoryRadius) { out.push({ type: 'disband', civ: civId, unit: cap.id }); continue; }
+      goal = home;
+    } else if (threatened) goal = threatened;
+    else {
+      const t = target(s, cap, civId, caps);
+      goal = t ? t.city : (cityAt(s, cap)?.owner === civId ? null : nearestCity(s, civId, cap));
     }
-    if (cap.army.movedTurn === s.turn || distance(cap, goalC) === 0) continue;
-    const pc = pathCost(s, cap, goalC, { maxCost: 200 });
-    const n = pc?.path?.length ? pc.path.find((h) => key(h) !== key(cap)) : null;
-    if (n) out.push({ type: 'moveCaptain', civ: civId, unit: cap.id, q: n.q, r: n.r });
+    if (!goal || key(goal) === key(cap)) continue;
+    const pc = pathCost(s, cap, goal, { maxCost: ARMY.aiReach * 2 });
+    if (!pc) continue;
+    let spent = 0;
+    for (const h of pc.path.slice(1)) {
+      const c = stepCost(s, h);
+      if (spent > 0 && spent + c > ARMY.aiMoveLabour) break;
+      if (hungry(cap, s) && hostile(s, h, civId)) break;
+      out.push({ type: 'moveCaptain', civ: civId, unit: cap.id, q: h.q, r: h.r });
+      spent += c;
+      if (hostile(s, h, civId) || spent >= ARMY.aiMoveLabour) break;
+    }
   }
   return out;
 }
