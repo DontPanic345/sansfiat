@@ -49,7 +49,11 @@ export const CIV = {
   giftLean: 0.25, giftMax: 10, giftHunger: { starving: 2, hungry: 1, fed: 0.4 },
   aiGiftRange: 6, aiGift: 5,
   // Discoveries: practice turns to learn; spread adds practice a turn per trading contact who knows it.
-  practice: { pottery: 15, herding: 20 }, spread: 0.5,
+  // Digging clay (a river in the city's work tiles) or hunting near a city is a full turn of
+  // practice; holding potteryClay clay from any source (trade too), or member clans harvesting
+  // herdGame game a turn, is heldPractice. The civ keeps keepMat of a material back from market.
+  practice: { pottery: 20, herding: 25 }, spread: 0.5,
+  heldPractice: 0.5, potteryClay: 1, herdGame: 2, keepMat: { clay: 4 },
   herdBonus: 1.5,
   turnLimit: 150,        // main-game turns until prosperity decides
 };

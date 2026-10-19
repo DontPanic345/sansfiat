@@ -54,7 +54,7 @@ function act(action) {
     addLog([`✗ ${action.type}: not your civ`]);
     return false;
   }
-  if (action.type === 'endTurn' && gameOver()) return false;
+  if (gameOver() && action.type !== 'chooseCiv') return false; // the game is over: nothing more to do
   const { state: next, error } = rules.dispatch(state, action);
   if (error) {
     addLog([`✗ ${action.type}: ${error}`]);
@@ -117,7 +117,16 @@ const canStep = () => state.phase !== 'choose' && !gameOver();
 function select(h) {
   if (!h || !tileAt(state, h)) { sel = null; update(); return; }
   sel = { q: h.q, r: h.r };
+  const picked = () => Object.values(UNIT_PICK).map(([m, k]) => locals[m]?.[k] ?? null);
+  const before = picked();
   for (const ui of MODULE_UIS) if (ui.onClick?.(state, sel, uiFor(ui.name))) break;
+  // One selected unit at a time: a module that just selected a unit clears the others' picks.
+  const after = picked();
+  const fresh = Object.values(UNIT_PICK).findIndex((_, i) => after[i] != null && after[i] !== before[i]);
+  if (fresh >= 0) {
+    const keep = Object.values(UNIT_PICK)[fresh][0];
+    applyLocal(locals, UNIT_CLEAR.filter((c) => c.module !== keep));
+  }
   update();
 }
 
@@ -132,8 +141,49 @@ document.getElementById('step').onclick = () => { stop(); step(); };
 document.getElementById('play').onclick = () => (timer ? (stop(), update()) : run('play'));
 document.getElementById('fast').onclick = () => run('fast');
 document.getElementById('skip').onclick = () => skipPregame();
+// UI-only panel controls: data-local='{"module":"army","set":{"mode":"move"},"toggle":"mode"}'
+// writes each key of `set` into that module's ui.local; with `toggle`, clicking again when that
+// key already holds the value clears it (null) instead. Then the map and panels redraw. The
+// value may also be a list of such objects, applied in order (to touch several modules).
+function applyLocal(locals, spec) {
+  for (const { module, set = {}, toggle } of [].concat(spec)) {
+    const l = locals[module];
+    if (!l) continue;
+    const off = toggle != null && l[toggle] === set[toggle];
+    for (const [k, v] of Object.entries(set)) l[k] = v;
+    if (off) l[toggle] = null;
+  }
+}
+
+// Which module selects which of the human's unit types, by which ui.local key (contract 3), and
+// the scratch to clear so only one unit is selected at a time from the "Your units here" list.
+const UNIT_PICK = { captain: ['army', 'captain'], scout: ['scout', 'unit'], porter: ['supply', 'porter'] };
+const UNIT_CLEAR = [
+  { module: 'army', set: { captain: null, mode: null } },
+  { module: 'scout', set: { unit: null, from: null } },
+  { module: 'supply', set: { porter: null, mode: null } },
+];
+function unitsHereHtml(me) {
+  const here = Object.values(state.units).filter((u) => u.owner === me.id && UNIT_PICK[u.type] && u.q === sel.q && u.r === sel.r);
+  if (!here.length) return '';
+  const btns = here.map((u) => {
+    const [module, k] = UNIT_PICK[u.type];
+    const on = locals[module]?.[k] === u.id;
+    const spec = [...UNIT_CLEAR, { module, set: { [k]: u.id } }];
+    const what = u.type === 'captain' ? `Captain ${u.id} (${Math.round(u.army?.troops ?? 0)} troops)` : `${u.type[0].toUpperCase()}${u.type.slice(1)} ${u.id}`;
+    return `<button data-local='${JSON.stringify(spec)}'${on ? ' class="on"' : ''}>${on ? `<b>${what} ✓</b>` : what}</button>`;
+  });
+  return `<div class="sub">Your units here (click to select)</div><div class="row">${btns.join(' ')}</div>`;
+}
 // Any element with data-action='{json}' (module panels, the founding choice) dispatches it.
 document.querySelector('aside').addEventListener('click', (e) => {
+  const loc = e.target.closest('[data-local]');
+  if (loc && !loc.disabled) {
+    e.preventDefault();
+    applyLocal(locals, JSON.parse(loc.dataset.local));
+    update();
+    return;
+  }
   const el = e.target.closest('[data-action]');
   if (!el || el.disabled) return;
   e.preventDefault();
@@ -285,7 +335,7 @@ function statusHtml() {
     const kind = state.mods.civ?.winKind ?? 'victory';
     const mine = me && me.id === w?.id;
     html += `<div class="banner ${me ? (mine ? 'win' : 'lose') : 'win'}">${swatch(w?.color ?? '#fff')}` +
-      `${w?.name ?? 'Someone'} wins by ${kind} on turn ${winTurn ?? state.turn - 1}${mine ? ' — you win!' : ''}</div>`;
+      `${w?.name ?? 'Someone'} wins by ${kind} on turn ${winTurn ?? state.turn - 1}${mine ? ' — you win!' : me ? ` — ${me.name} (you) loses` : ''}</div>`;
   } else if (me && state.mods.civ?.lost?.[me.id] != null) {
     html += `<div class="banner lose">${me.name} has fallen (turn ${state.mods.civ.lost[me.id]}). ` +
       `You can keep ending turns to watch, or start a new game.</div>`;
@@ -328,7 +378,8 @@ function selectionHtml(fog) {
   const clan = clanAt(state, sel) ?? holder(state, sel);
   let market = marketAt(state, sel) ?? (clan && state.markets[clan.market]);
   if (market && fog && !fog.seen(key(market))) market = null;
-  let html = head +
+  const me = humanCiv(state);
+  let html = head + (me && state.phase === 'main' ? unitsHereHtml(me) : '') +
     `Fertility ×${t.fertility}<br>` +
     `Held ${t.occTotal} turns (${t.occ} in a row)<br>` +
     (t.wildGrain != null ? `Grain ${t.tame === 1 ? 'domesticated' : `${Math.round(t.tame * 100)}% tamed`}<br>` : '') +
@@ -386,6 +437,7 @@ function renderPanel() {
   document.getElementById('selection').innerHTML = selectionHtml(fog);
   document.getElementById('modules').innerHTML = MODULE_UIS
     .map((ui) => ui.panel?.(state, sel, uiFor(ui.name)) ?? '').filter(Boolean).join('<hr>');
+  if (over) for (const b of document.querySelectorAll('#modules button')) { b.disabled = true; b.title = 'the game is over'; }
   document.getElementById('alerts').innerHTML = alerts.length
     ? `<div class="sub">Alerts</div>${alerts.map((l) => `<div class="alert">${esc(l)}</div>`).join('')}` : '';
   document.getElementById('mineRow').hidden = !humanCiv(state);

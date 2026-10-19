@@ -36,14 +36,31 @@ export const foodOf = (u) => {
 };
 
 export const foodIn = (s, civId) => FOODS.reduce((a, f) => a + (s.civs[civId].store[f] ?? 0), 0);
-function takeFood(s, civId, n) {
+function takeFood(s, civId, n, into = null) {
   const store = s.civs[civId].store;
   let got = 0;
   for (const f of FOODS) {
     const t = Math.min(n - got, store[f] ?? 0);
-    if (t > 0) { store[f] -= t; got += t; if (store[f] <= 1e-9) delete store[f]; }
+    if (t > 0) { store[f] -= t; got += t; if (into) into[f] = (into[f] ?? 0) + t; if (store[f] <= 1e-9) delete store[f]; }
   }
   return got;
+}
+// A porter loads food from the store and remembers the mix (p.supply.mix: {food: amount loaded}),
+// so food it brings home goes back as the same foods.
+function loadPorter(s, p, n) {
+  p.supply.mix ??= {};
+  const got = takeFood(s, p.owner, n, p.supply.mix);
+  p.supply.food += got;
+  return got;
+}
+// Food a porter brings home, back into the store in the proportions it was loaded.
+function returnLoad(s, p) {
+  const mix = p.supply.mix ?? {};
+  const sum = Object.values(mix).reduce((a, v) => a + v, 0);
+  if (p.supply.food > 0)
+    putGoods(s, p.owner, sum > 0 ? Object.fromEntries(Object.entries(mix).map(([f, v]) => [f, p.supply.food * v / sum])) : { grain: p.supply.food });
+  p.supply.food = 0;
+  delete p.supply.mix;
 }
 
 // Whose land a tile is underneath any troops standing on it: a fort, else the nearest city's
@@ -207,7 +224,7 @@ export const actions = {
       if (u.supply.food >= u.supply.foodMax) return 'already full';
       return foodIn(s, a.civ) > 0 ? null : 'no food in your store';
     },
-    apply(s, a) { const u = s.units[uid(a)]; u.supply.food += takeFood(s, a.civ, u.supply.foodMax - u.supply.food); },
+    apply(s, a) { const u = s.units[uid(a)]; loadPorter(s, u, u.supply.foodMax - u.supply.food); },
     candidates: () => [],
   },
   unloadPorter: {
@@ -305,7 +322,7 @@ function runPorter(s, p) {
     if (!city || city.owner !== p.owner) { turnBack(s, p, 'its home city was lost'); return; }
     const hasCaptain = unitsAt(s, route.to).some((u) => isCaptain(u) && u.owner === p.owner);
     if (at(city) && p.supply.food < p.supply.foodMax && ((tileAt(s, route.to).cache?.food ?? 0) < route.target || hasCaptain)) {
-      p.supply.food += takeFood(s, p.owner, p.supply.foodMax - p.supply.food);
+      loadPorter(s, p, p.supply.foodMax - p.supply.food);
     }
     if (p.supply.food > 0 && !at(route.to)) {
       if (enemyOf(territoryOf(s, route.to), p.owner) && !hasCaptain) { turnBack(s, p, `${key(route.to)} is now enemy land`); }
@@ -319,7 +336,7 @@ function runPorter(s, p) {
   } else if (p.supply.returning != null) {
     const city = s.cities[p.supply.returning];
     if (!city || city.owner !== p.owner) p.supply.returning = nearestCity(s, p)?.id ?? null;
-    else if (at(city)) { if (p.supply.food > 0) putGoods(s, p.owner, { grain: p.supply.food }); p.supply.food = 0; delete p.supply.returning; }
+    else if (at(city)) { returnLoad(s, p); delete p.supply.returning; }
     else walk(s, p, city);
   }
   if (p.supply.food > 0) p.supply.food = Math.max(0, p.supply.food - SUPPLY.porterEat);
@@ -354,7 +371,12 @@ function armiesStep(s) {
       u.hungry = false;
       for (const d of kids) d.hungry = false;
       const max = u.army?.troopsMax ?? u.troopsMax;
-      if (max !== undefined && n < max) setTroops(u, Math.min(max, n + SUPPLY.heal));
+      if (max !== undefined && n < max && !fought) { // heal when resting: the captain, or (deployed) his smallest detachment
+        const add = Math.min(max, n + SUPPLY.heal) - n;
+        const d = [...kids].sort((a, b) => troopsOf(a) - troopsOf(b) || a.id - b.id)[0];
+        if (d) setTroops(d, troopsOf(d) + add);
+        setTroops(u, n + add);
+      }
     } else {
       const was = u.hungry;
       u.supply.food = 0;

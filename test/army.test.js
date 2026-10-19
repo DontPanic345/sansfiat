@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as mod from '../src/modules/army/rules.js';
+const { garrisonMax } = mod;
 import { ARMY } from '../src/modules/army/data.js';
 import { newGame, runPregame } from '../src/game.js';
 import { dispatch } from '../src/rules.js';
@@ -212,11 +213,15 @@ test('the AI never cuts off or promotes its own linked detachments', () => {
 
 test('buildFort costs labour, wood and stone, holds its tile and fights with its garrison', () => {
   const { s, c1, c2, chain } = world();
-  const c = cap(s, c1, chain[0]);
+  const home = cap(s, c1, chain[0]);
+  s.civs[c1].store.wood = 5; s.civs[c1].store.stone = 5;
+  assert.match(run(s, 'buildFort', { civ: c1, unit: home.id }), /city has its own garrison/, 'no fort on a city tile');
+  s.civs[c1].store = {};
+  const c = cap(s, c1, chain[1]);
   assert.ok(run(s, 'buildFort', { civ: c1, unit: c.id }), 'needs resources');
   s.civs[c1].store.wood = 5; s.civs[c1].store.stone = 5;
   assert.equal(run(s, 'buildFort', { civ: c1, unit: c.id }), null);
-  assert.equal(tileAt(s, chain[0]).fort.owner, c1);
+  assert.equal(tileAt(s, chain[1]).fort.owner, c1);
   assert.equal(s.civs[c1].store.wood, 3);
   tileAt(s, chain[4]).fort = { owner: c1, garrison: 3 };
   cap(s, c2, chain[4], 10);
@@ -226,26 +231,33 @@ test('buildFort costs labour, wood and stone, holds its tile and fights with its
   assert.ok(alerts(s).some((e) => /takes your fort/.test(e)));
 });
 
-test('city capture: the garrison must be beaten, a wall multiplies it, transferCity moves the city', () => {
+test('city capture: a siege wears the garrison down a few a turn; a wall and people make it bigger', () => {
   const { s, c1, c2, chain, mk } = world();
   mk(9002, c2, chain[3]);
+  const g = garrisonMax(s, s.cities[9002]);
+  assert.ok(g >= ARMY.garrison);
   const a = cap(s, c1, chain[3], 10);
   step(s);
-  // garrison 3 x 1.75 (dug in) x 1.5 (city) = 7.875 power: the attacker loses round(3.9) = 4
-  assert.equal(a.army.troops, 6);
-  assert.equal(s.cities[9002].owner, c1, 'garrison 3 - round(10*0.5/1.75)=3 -> 0, tile held: taken');
+  // the garrison loses at most siegeLoss a turn; each garrison troop hits at garrisonPower
+  assert.equal(s.cities[9002].owner, c2, 'one turn is not enough');
+  assert.equal(s.cities[9002].garrison, g - ARMY.siegeLoss);
+  assert.equal(a.army.troops, 10 - Math.round(ARMY.dmg * g * ARMY.garrisonPower));
+  for (let i = 0; i < 4 && s.cities[9002].owner === c2; i++) step(s);
+  assert.equal(s.cities[9002].owner, c1, 'the siege takes the city in a few turns');
+  assert.ok(a.army.troops > 0, 'and the army survives it');
   assert.ok(s.civs[c1].cityIds.includes(9002) && !s.civs[c2].cityIds.includes(9002));
-  assert.equal(s.cities[9002].garrison, ARMY.garrison, 'new owner garrisons it');
+  assert.equal(s.cities[9002].garrison, Math.min(ARMY.garrison, garrisonMax(s, s.cities[9002])), 'new owner garrisons it');
   assert.ok(alerts(s).some((e) => /You take C9002/.test(e)));
   assert.equal(s.mods.army.captures, 1);
 
   const w = world();
   w.mk(9002, w.c2, w.chain[3]);
   w.s.cities[9002].buildings.wall = true;
+  const gw = garrisonMax(w.s, w.s.cities[9002]);
+  assert.equal(gw, g + ARMY.wallGarrison);
   const b = cap(w.s, w.c1, w.chain[3], 10);
   step(w.s);
-  // with a wall: 7.875 x 1.5 = 11.8 power: the attacker loses round(5.9) = 6
-  assert.equal(b.army.troops, 4);
+  assert.equal(b.army.troops, 10 - Math.round(ARMY.dmg * gw * ARMY.garrisonPower * ARMY.wallMult));
 
   const v = world();
   v.mk(9002, v.c2, v.chain[3]);
@@ -254,6 +266,16 @@ test('city capture: the garrison must be beaten, a wall multiplies it, transferC
   assert.equal(v.s.cities[9002].owner, v.c2, 'a small army does not beat the garrison');
   assert.ok(v.s.cities[9002].garrison > 0);
   assert.ok(weak.army.troops < 4 || !v.s.units[weak.id]);
+});
+
+test('garrison grows with the people around the city', () => {
+  const { s, c2, chain, mk } = world();
+  mk(9002, c2, chain[3]);
+  const city = s.cities[9002];
+  const before = garrisonMax(s, city);
+  const clan = Object.values(s.clans).find((c) => c.owner === c2) ?? Object.values(s.clans)[0];
+  clan.owner = c2; clan.q = city.q; clan.r = city.r; clan.pop += ARMY.garrisonPer * 5;
+  assert.equal(garrisonMax(s, city), Math.max(before, ARMY.garrison + ARMY.garrisonPop));
 });
 
 test('losing a city alerts the human', () => {
@@ -304,4 +326,38 @@ test('ai disbands a starving army at home instead of letting it die', () => {
   const { s, c1, chain } = world();
   const c = cap(s, c1, chain[0], 10, { hungry: true, supply: { food: 0, foodMax: 40, auto: true } });
   assert.ok(mod.ai(s, c1).some((a) => a.type === 'disband' && a.unit === c.id));
+});
+
+test('a fort on a city tile does not stop capture: the city garrison defends and the fort changes hands', () => {
+  const { s, c1, c2, chain, mk } = world();
+  mk(9002, c2, chain[3]);
+  tileAt(s, chain[3]).fort = { owner: c2, garrison: 3 }; // e.g. from an older save
+  const a = cap(s, c1, chain[3], 10);
+  for (let i = 0; i < 5 && s.cities[9002].owner === c2; i++) step(s);
+  assert.equal(s.cities[9002].owner, c1);
+  assert.equal(tileAt(s, chain[3]).fort.owner, c1);
+  assert.ok(a.army.troops > 0);
+});
+
+test('raised and promoted armies know their full strength (troopsMax) so supply can heal them', () => {
+  const { s, c1, chain } = world();
+  for (const c of Object.values(s.clans).slice(0, 3)) { c.owner = c1; c.pop = 20; }
+  assert.equal(run(s, 'raiseArmy', { civ: c1, city: 9001 }), null);
+  const u = mod.captains(s, c1)[0];
+  assert.equal(u.army.troopsMax, ARMY.size);
+  void chain;
+});
+
+test('the human is warned once when enemy troops come near a city, and told when it is besieged', () => {
+  const { s, c2, chain } = world();
+  cap(s, c2, chain[2], 10);
+  step(s);
+  assert.equal(alerts(s).filter((e) => /troops \(10\) near C9001/.test(e)).length, 1);
+  s.events = [];
+  step(s);
+  assert.ok(!alerts(s).some((e) => /near C9001/.test(e)), 'only once while they stay');
+  const { s: t, c2: d2, chain: ch } = world();
+  cap(t, d2, ch[0], 10);
+  step(t);
+  assert.ok(alerts(t).some((e) => /C9001 is besieged: its garrison lost 2/.test(e)));
 });

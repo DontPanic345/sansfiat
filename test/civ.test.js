@@ -431,3 +431,52 @@ test('ui: panel shows store, labour, gifts with gain, and site buttons; drawLaye
   ui.drawLayer(ctx, s, { size: 10, viewer: civ.id, at: (h) => ({ x: h.q * 10, y: h.r * 10 }), hexPath: () => {} });
   assert.ok(calls.includes('fillText'));
 });
+
+test('market: a civ takes only goods it is not posting, so it never buys back its own surplus', () => {
+  const s = mainGame();
+  const [a] = Object.values(s.civs);
+  const m = s.markets[a.marketId];
+  const clan = Object.values(s.clans).find((c) => c.land.length);
+  Object.assign(clan, { market: m.id, starving: false, basket: { grain: 5, fish: 3 } });
+  a.store = { fish: 30, wood: 40 };
+  step('civ post')(s);
+  assert.deepEqual(m.wants[a.id], mod.wantsOf(s.mods.civ.trade[a.id].posted));
+  assert.ok(!m.wants[a.id].includes('wood') && !m.wants[a.id].includes('fish'));
+  trade(s);
+  assert.equal(m.wants, undefined, 'wants are cleared with the posts');
+  const got = m.received[a.id];
+  const posted = s.mods.civ.trade[a.id].posted;
+  assert.ok((got.wood ?? 0) <= posted.wood + 1e-9 && (got.fish ?? 0) <= posted.fish + 1e-9, 'no rebuying');
+  assert.deepEqual(mod.wantsOf(Object.fromEntries(['game', 'grain', 'fruit', 'fish', 'shellfish', 'wood', 'stone', 'clay', 'pottery'].map((g) => [g, 1]))),
+    ['game', 'grain', 'fruit', 'fish', 'shellfish'], 'posting everything still takes food');
+});
+
+test('practice: clay from trade and clans living off game count, at heldPractice a turn', () => {
+  const s = mainGame();
+  const [a] = Object.values(s.civs);
+  const d = s.mods.civ.disc[a.id];
+  d.practice = { pottery: 0, herding: 0 };
+  for (const c of civCities(s, a.id)) c.project = null;
+  // no river and no game near the city: only held clay and clans' game count
+  for (const t of Object.values(s.map.tiles)) { t.river = false; if (t.stock) t.stock.game = 0; }
+  a.store = { clay: CIV.potteryClay + 5 };
+  for (const c of civClans(s, a.id)) c.harvest = { game: CIV.herdGame };
+  step('civ draft')(s);
+  step('civ labour')(s);
+  assert.equal(d.practice.pottery, CIV.heldPractice);
+  assert.equal(d.practice.herding, CIV.heldPractice);
+  assert.ok(mod.keepOf(s, a.id, 'clay') >= CIV.keepMat.clay, 'a civ keeps some clay to work');
+});
+
+test('clans of a civ with no cities left become unaligned and can join another', () => {
+  const s = mainGame();
+  const [a, b] = Object.values(s.civs);
+  for (const id of [...a.cityIds]) transferCity(s, id, b.id);
+  const clan = civClans(s, a.id)[0];
+  step('civ join')(s);
+  assert.equal(clan.owner, null);
+  assert.equal(civClans(s, a.id).length, 0);
+  clan.leaning = { [b.id]: CIV.joinAt + 0.5 };
+  step('civ join')(s);
+  assert.equal(clan.owner, b.id);
+});

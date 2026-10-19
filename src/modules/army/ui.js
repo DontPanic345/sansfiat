@@ -2,27 +2,19 @@
 // which the supply module computes), raising armies, promoting cut-off detachments.
 // Selection lives in ui.local: {captain, mode}; mode is 'move' | 'paint' | 'unpaint' | null.
 import { humanCiv, civCities, stepCost, tileAt, passable } from '../../core.js';
+import { FOODS } from '../../data.js';
 import { key, neighbors } from '../../hex.js';
-import { actions, captains, cutOff, orphan, hungry } from './rules.js';
+import { actions, captains, cutOff, orphan, hungry, garrisonMax, defence } from './rules.js';
 import { ARMY } from './data.js';
 import { supplyLine, foodOf, eatRate, gatherError, actions as supplyActions } from '../supply/rules.js';
 import { SUPPLY } from '../supply/data.js';
 
 export const z = 20;
 
-// Mode buttons are UI-only (no game action): a document listener flips local.mode, then a resize
-// event makes main.js redraw the map and panels.
-let lastLocal = null;
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', (e) => {
-    const el = e.target.closest?.('[data-army-mode]');
-    if (!el || !lastLocal) return;
-    const m = el.dataset.armyMode;
-    lastLocal.mode = lastLocal.mode === m ? null : m;
-    dispatchEvent(new Event('resize'));
-  });
-}
+// Mode buttons are UI-only (no game action): main.js handles data-local and redraws.
+const modeAttr = (m) => `data-local='${JSON.stringify({ module: 'army', set: { mode: m }, toggle: 'mode' })}'`;
 
+const storeFood = (s, civ) => FOODS.reduce((a, f) => a + (s.civs[civ]?.store[f] ?? 0), 0);
 const esc = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const btn = (a, label, err) => `<button data-action='${JSON.stringify(a)}'${err ? ` disabled title="${esc(err)}"` : ''}>${label}</button>`
   + (err ? ` <small class="why">${esc(err)}</small>` : '');
@@ -46,6 +38,10 @@ export function drawLayer(ctx, s, view) {
       const [q, r] = k.split(',').map(Number);
       if (u.owner !== view.viewer && !vis({ q, r })) continue;
       view.hexPath(ctx, view.at({ q, r }), view.size * 0.9); ctx.fill();
+      // a bright inner rim so a zone reads even over its own territory
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = col(u.owner); ctx.lineWidth = 2; ctx.setLineDash([3, 2]);
+      view.hexPath(ctx, view.at({ q, r }), view.size * 0.72); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 0.25;
     }
   }
   ctx.globalAlpha = 1;
@@ -98,7 +94,7 @@ export function drawLayer(ctx, s, view) {
   ctx.restore();
 }
 
-function captainPanel(s, u) {
+function captainPanel(s, u, local) {
   const civ = u.owner, unit = u.id, f = foodOf(u), rate = eatRate(u);
   const line = supplyLine(s, u);
   const deployed = u.army.zone.length > 0;
@@ -108,9 +104,9 @@ function captainPanel(s, u) {
     + `+${SUPPLY.fightEat}/troop that fights; ${rate > 0 ? Math.floor(f.food / rate) : '∞'} turns left`
     + `${hungry(u, s) ? ' — <b style="color:#f55">HUNGRY: cannot attack, defends at half, loses troops</b>' : ''}</div>`;
   h += `<div>${line ? `Supply line: ${line.src.kind} at ${line.src.at.q},${line.src.at.r}, cost ${line.src.cost}, resupply takes ${line.src.labour} labour` : 'No supply line (no food in reach within line cost ' + SUPPLY.range + ')'}</div>`;
-  const mode = (m, label) => `<button data-army-mode="${m}"${'' /* toggles */}>${lastLocal?.mode === m ? '<b>' + label + '</b>' : label}</button>`;
+  const mode = (m, label) => `<button ${modeAttr(m)}${local.mode === m ? ' class="on"' : ''}>${local.mode === m ? '<b>' + label + ' ✓</b>' : label}</button>`;
   h += `<div>Mode: ${mode('move', 'Move')} ${mode('paint', 'Paint zone')} ${mode('unpaint', 'Unpaint')}</div>`;
-  const hint = { move: 'Click an adjacent tile to move there (labour cost shown on the map).', paint: 'Click tiles next to the zone (or next to the captain) to paint them.', unpaint: 'Click painted tiles to unpaint them.' }[lastLocal?.mode];
+  const hint = { move: 'Click an adjacent tile to move there (labour cost shown on the map).', paint: 'Click tiles next to the zone (or next to the captain) to paint them.', unpaint: 'Click painted tiles to unpaint them.' }[local.mode];
   h += `<div><i>${hint ? hint + ' Esc to cancel.' : 'Pick a mode, then click the map.'}</i></div>`;
   const a = (type, extra = {}) => ({ type, civ, unit, ...extra });
   h += '<div>'
@@ -128,16 +124,26 @@ function captainPanel(s, u) {
 export function panel(s, selection, ui) {
   const me = humanCiv(s);
   if (!me || s.phase !== 'main') return '';
-  lastLocal = ui.local;
   const civ = me.id;
   const mine = captains(s, civ);
   let h = `<h3>Army</h3><div>Captains ${mine.length}/${ARMY.maxCaptains}</div>`;
   for (const c of civCities(s, civ)) {
     const a = { type: 'raiseArmy', civ, city: c.id };
-    h += `<div>${btn(a, `Raise army at ${esc(c.name ?? c.id)} (${ARMY.size} people from clans, up to ${ARMY.size * ARMY.provision} food from the store)`, check(s, a))}</div>`;
+    const food = Math.min(ARMY.size * ARMY.provision, storeFood(s, civ));
+    const gmax = garrisonMax(s, c);
+    h += `<div>${esc(c.name ?? c.id)}: garrison ${Math.round(c.garrison ?? gmax)}/${gmax}${c.buildings?.wall ? ' (walled)' : ''} `
+      + `${btn(a, `Raise army (${ARMY.size} people, ${food.toFixed(0)}/${ARMY.size * ARMY.provision} food)`, check(s, a))}</div>`;
+  }
+  // a rival city on the inspected tile: what taking it would cost
+  const foeCity = selection && Object.values(s.cities).find((c) => c.q === selection.q && c.r === selection.r && c.owner !== civ);
+  if (foeCity && visibleTo(s, civ)(foeCity)) {
+    const p = defence(s, foeCity), g = Math.round(foeCity.garrison ?? garrisonMax(s, foeCity));
+    h += `<div><b>${esc(foeCity.name ?? foeCity.id)}</b> (${esc(s.civs[foeCity.owner]?.name ?? '')}): garrison ${g}${foeCity.buildings?.wall ? ', walled' : ''}, `
+      + `defends at ${p.toFixed(1)} power. An army standing on it loses about ${Math.max(1, Math.round(ARMY.dmg * p))} troops a turn; `
+      + `the garrison loses at most ${ARMY.siegeLoss} a turn and regrows when the siege lifts.</div>`;
   }
   const sel = selected(s, ui.local);
-  if (sel) h += captainPanel(s, sel);
+  if (sel) h += captainPanel(s, sel, ui.local);
   else if (mine.length) h += `<div>${mine.map((u) => `Captain ${u.id} at ${u.q},${u.r}: ${u.army.troops} troops${hungry(u, s) ? ' (hungry)' : ''}`).join('<br>')}</div><div><i>Click one of your captains on the map to select him.</i></div>`;
   const cut = Object.values(s.units).filter((d) => d.type === 'detachment' && d.owner === civ && (orphan(s, d) || (!sel || d.army.captainId === sel.id) && cutOff(s, d)));
   for (const d of cut) {

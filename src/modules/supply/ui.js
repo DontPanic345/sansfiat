@@ -7,17 +7,8 @@ import { SUPPLY } from './data.js';
 
 export const z = 15; // before army, so a porter in route mode gets the click on a captain's tile
 
-let lastLocal = null;
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', (e) => {
-    const el = e.target.closest?.('[data-supply-ui]');
-    if (!el || !lastLocal) return;
-    const [what, v] = el.dataset.supplyUi.split(':');
-    if (what === 'porter') { lastLocal.porter = lastLocal.porter === Number(v) ? null : Number(v); lastLocal.mode = null; }
-    if (what === 'route') lastLocal.mode = lastLocal.mode === 'route' ? null : 'route';
-    dispatchEvent(new Event('resize'));
-  });
-}
+// UI-only buttons (select a porter, route mode) use main.js's data-local.
+const localAttr = (set, toggle) => `data-local='${JSON.stringify({ module: 'supply', set, toggle })}'`;
 
 const esc = (t) => String(t).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const btn = (a, label, err) => `<button data-action='${JSON.stringify(a)}'${err ? ` disabled title="${esc(err)}"` : ''}>${label}</button>`
@@ -66,7 +57,6 @@ export function drawLayer(ctx, s, view) {
 export function panel(s, selection, ui) {
   const me = humanCiv(s);
   if (!me || s.phase !== 'main') return '';
-  lastLocal = ui.local;
   const civ = me.id;
   let h = `<h3>Supply</h3><div>Food in the store: ${foodIn(s, civ).toFixed(1)}</div>`;
   for (const c of civCities(s, civ)) {
@@ -78,14 +68,14 @@ export function panel(s, selection, ui) {
   for (const p of ps) {
     const rt = p.supply.route;
     const where = rt ? `route ${s.cities[rt.cityId]?.name ?? rt.cityId} → ${rt.to.q},${rt.to.r} (keep ${rt.target})` : p.supply.returning != null ? 'returning home' : 'idle';
-    h += `<div><button data-supply-ui="porter:${p.id}">${p.id === sel?.id ? '<b>Porter ' + p.id + '</b>' : 'Porter ' + p.id}</button> at ${p.q},${p.r}, food ${p.supply.food.toFixed(1)}/${p.supply.foodMax}, ${where}</div>`;
+    h += `<div><button ${localAttr({ porter: p.id, mode: null }, 'porter')}>${p.id === sel?.id ? '<b>Porter ' + p.id + '</b>' : 'Porter ' + p.id}</button> at ${p.q},${p.r}, food ${p.supply.food.toFixed(1)}/${p.supply.foodMax}, ${where}</div>`;
   }
   if (sel) {
     const a = (type, extra = {}) => ({ type, civ, unit: sel.id, ...extra });
     h += '<div>'
       + btn(a('loadPorter'), 'Load (in your city)', check(s, a('loadPorter'))) + ' '
       + btn(a('unloadPorter'), 'Unload here', check(s, a('unloadPorter'))) + ' '
-      + `<button data-supply-ui="route">${ui.local.mode === 'route' ? '<b>Set route…</b>' : 'Set route'}</button> `
+      + `<button ${localAttr({ mode: 'route' }, 'mode')}>${ui.local.mode === 'route' ? '<b>Set route…</b>' : 'Set route'}</button> `
       + btn(a('clearPorterRoute'), 'Clear route', sel.supply.route ? null : 'no route')
       + '</div>';
     h += `<div><i>${ui.local.mode === 'route' ? 'Click a tile (an army or a cache site) to send porter ' + sel.id + ' there from the nearest city. Esc to cancel.' : 'Set route, then click a target tile.'}</i></div>`;

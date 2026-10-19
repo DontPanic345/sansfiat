@@ -96,7 +96,7 @@ export function keepOf(s, civId, good) {
   if (own != null) return own;
   if (kindOf(good) !== 'material') return CIV.keep[kindOf(good)] * capOf(s, civId);
   return civCities(s, civId).reduce((a, c) => Math.max(a, ...Object.entries(CIV.projects)
-    .filter(([p]) => !c.buildings?.[p]).map(([, p]) => p.goods[good] ?? 0)), 0);
+    .filter(([p]) => !c.buildings?.[p]).map(([, p]) => p.goods[good] ?? 0)), CIV.keepMat[good] ?? 0);
 }
 
 // The markets a civ posts at: its own, plus one other within tradeRange of it: the one whose
@@ -238,8 +238,13 @@ function work(s) {
         if (g === 'clay') dug = true;
       }
     }
+    // Practice: digging clay or hunting counts in full; working clay got by trade, or member
+    // clans living off game, counts at heldPractice a turn, so every civ can learn both.
+    const P = CIV.heldPractice;
     if (hunted) d.practice.herding += 1;
+    else if (civClans(s, civ.id).reduce((a, c) => a + (c.harvest?.game ?? 0), 0) >= CIV.herdGame) d.practice.herding += P;
     if (dug) d.practice.pottery += 1;
+    else if ((civ.store.clay ?? 0) >= CIV.potteryClay) d.practice.pottery += P;
   }
 }
 
@@ -431,6 +436,13 @@ function weather(s) {
 
 const MATERIAL_OF = Object.entries(MAT_TILE);
 
+// What a civ posting `out` will take at market: every good it is not posting (if it posts some
+// of everything, foods, so food it can always use stays tradeable).
+export function wantsOf(out) {
+  const w = GOODS.filter((g) => !(out[g] > 0.05));
+  return w.length ? w : FOODS;
+}
+
 // Each civ posts what it holds above its reserve at its own market. Clans trading where a civ
 // posts bring a little of the wood, stone and clay their land yields, so a civ without hills
 // can still get stone by posting food. Baskets are noted for trade leaning.
@@ -449,9 +461,12 @@ function post(s) {
     if (total(out) <= 0) continue;
     for (const [g, v] of Object.entries(out)) takeGoods(s, civ.id, g, v);
     m.trade[civ.id].posted = out;
+    // The civ takes in exchange only goods it is not posting, so it never buys back its own surplus.
+    const wants = wantsOf(out);
     for (const mk of mks) {
       const part = Object.fromEntries(Object.entries(out).map(([g, v]) => [g, v / mks.length]));
       mk.posts[civ.id] = part;
+      (mk.wants ??= {})[civ.id] = wants;
       m.trade[civ.id].at[mk.id] = { posted: part, received: {} };
     }
   }
@@ -595,6 +610,12 @@ function found(s, civ) {
 
 function join(s) {
   for (const c of Object.values(s.clans)) {
+    // a civ with no cities left cannot hold its clans: they go back to living on their own
+    if (c.owner != null && !civCities(s, c.owner).length) {
+      const was = s.civs[c.owner]?.name ?? 'its civ';
+      c.owner = null; c.drafted = 0;
+      note(s, c.id, `unaligned again: ${was} has no cities left`);
+    }
     if (c.owner != null) continue;
     for (const id of Object.keys(c.leaning)) {
       if (!s.civs[id]) { delete c.leaning[id]; continue; }

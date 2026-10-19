@@ -188,7 +188,7 @@ export function civOf(s, x) {
 
 // Who holds a tile in the main game: troops standing on it (tile.held, kept by the army
 // module), else a fort's owner, else the civ whose city is within CITY.territoryRadius
-// (nearest city wins). null is neutral. Supply lines and forage/pillage use this.
+// (nearest city wins; on a tie, the lower city id). null is neutral. Supply lines and forage/pillage use this.
 export function territoryOf(s, h) {
   const t = tileAt(s, h);
   if (!t) return null;
@@ -197,7 +197,7 @@ export function territoryOf(s, h) {
   let best = null;
   for (const c of Object.values(s.cities)) {
     const d = distance(c, h);
-    if (d <= CITY.territoryRadius && (!best || d < best.d)) best = { d, owner: c.owner };
+    if (d <= CITY.territoryRadius && (!best || d < best.d || (d === best.d && c.id < best.id))) best = { d, id: c.id, owner: c.owner };
   }
   return best ? best.owner : null;
 }
