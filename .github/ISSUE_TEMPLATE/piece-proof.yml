@@ -1,0 +1,41 @@
+name: Piece – proof
+description: Answer one question about a mechanic on its own branch. The PR isn't merged; the branch is the proof.
+title: "Proof: "
+labels: ["kind:piece", "type:proof"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: The one question this proof answers, such as "does it work" or "is it worth having".
+    validations:
+      required: true
+  - type: input
+    id: design
+    attributes:
+      label: Design file
+      description: The file in docs/design/ this builds.
+      placeholder: docs/design/
+    validations:
+      required: true
+  - type: textarea
+    id: in-scope
+    attributes:
+      label: In scope
+      description: What this piece builds. Anything not listed here is out of scope.
+      value: "- "
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What this piece must not touch, even if it seems related.
+      value: "- "
+    validations:
+      required: true
+  - type: textarea
+    id: depends
+    attributes:
+      label: Depends on
+      description: Pieces or merges that must land first, as issue links. Leave blank if none.

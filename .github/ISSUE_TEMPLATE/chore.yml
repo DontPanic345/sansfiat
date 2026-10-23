@@ -1,0 +1,14 @@
+name: Chore
+description: Repo or Relay upkeep.
+labels: ["kind:chore"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why

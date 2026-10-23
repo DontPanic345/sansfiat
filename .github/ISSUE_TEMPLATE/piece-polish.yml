@@ -1,0 +1,41 @@
+name: Piece – polish
+description: Improve something already merged (readability, UI, tuning or performance) without adding rules.
+title: "Polish: "
+labels: ["kind:piece", "type:polish"]
+body:
+  - type: input
+    id: design
+    attributes:
+      label: Design file
+      description: The file in docs/design/ for the part being polished.
+      placeholder: docs/design/
+    validations:
+      required: true
+  - type: textarea
+    id: in-scope
+    attributes:
+      label: In scope
+      description: What this piece changes. Anything not listed here is out of scope.
+      value: "- "
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What this piece must not touch, even if it seems related.
+      value: "- "
+    validations:
+      required: true
+  - type: textarea
+    id: measure
+    attributes:
+      label: How to tell it's better
+      description: The metric, scenario or screenshot to compare before and after.
+    validations:
+      required: true
+  - type: textarea
+    id: depends
+    attributes:
+      label: Depends on
+      description: Pieces or merges that must land first, as issue links. Leave blank if none.

@@ -1,0 +1,26 @@
+name: Bug
+description: Something broken in the game.
+labels: ["kind:bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to see it
+      description: The seed, the turn, and what you did. A seed replays exactly, so it's the most useful thing here.
+  - type: input
+    id: build
+    attributes:
+      label: Build
+      description: The commit or Pages link you were playing.
