@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paint Army - 4X Prototype</title>
+<style>
+  :root { --bg:#12161c; --panel:#1a2029; --ink:#e6edf3; --dim:#8b98a8; --blue:#4aa3ff; --red:#ff5a5a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.4 system-ui,sans-serif; display:flex; gap:12px; padding:12px; flex-wrap:wrap; align-items:flex-start; }
+  canvas { background:#0b0e12; border:1px solid #2a3340; border-radius:6px; width:880px; max-width:100%; height:auto; aspect-ratio:880/616; cursor:pointer; display:block; }
+  #side { width:310px; display:flex; flex-direction:column; gap:10px; }
+  .card { background:var(--panel); border:1px solid #2a3340; border-radius:6px; padding:10px; }
+  h1 { font-size:16px; margin:0 0 4px; } h2 { font-size:13px; margin:0 0 6px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
+  button { background:#232c38; color:var(--ink); border:1px solid #38465a; border-radius:4px; padding:6px 10px; cursor:pointer; font:inherit; }
+  button:hover:not(:disabled) { background:#2d3a4a; } button:disabled { opacity:.4; cursor:default; }
+  button.on { outline:2px solid #ffd166; }
+  #btns { display:flex; gap:6px; flex-wrap:wrap; }
+  #end { background:#1f6f43; border-color:#2e9b60; width:100%; margin-top:6px; }
+  #info { height:96px; overflow:hidden; } #tile { height:62px; overflow:hidden; }
+  #log { height:190px; overflow:auto; font-size:12px; color:var(--dim); }
+  #log div { margin-bottom:2px; } #log .b { color:var(--blue); } #log .r { color:var(--red); } #log .s { color:#ffd166; }
+  .dim { color:var(--dim); } .small { font-size:12px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="side">
+  <div class="card">
+    <h1>Paint Army</h1>
+    <div class="small dim">Turn <b id="turn">1</b>. Select a captain (&#9733;), <b>Paint</b> tiles to add them to his zone (an unbroken chain from his own tile, diagonals ok); <b>Unpaint</b> removes them. At end of turn the whole army spreads evenly over the zone, one tile per turn. Painting <b>deploys</b> a captain; <b>Undeploy</b> (D) clears the zone, and the army then simply follows him wherever he marches. <b>Merge</b> folds troops on his tile into him. His troops split evenly across the chain and creep out one tile per turn. A tile is only yours while a unit stands on it (or it is near your city). Idle troops entrench (up to +75% defence). Click an adjacent enemy to charge. Capture the enemy city to win.</div>
+  </div>
+  <div class="card">
+    <h2>Map</h2>
+    <select id="map" style="width:100%;background:#232c38;color:var(--ink);border:1px solid #38465a;border-radius:4px;padding:6px"></select>
+  </div>
+  <div class="card">
+    <h2>Selection</h2>
+    <div id="info" class="small dim">Nothing selected.</div>
+    <div id="btns" style="margin-top:8px">
+      <button id="bPaint">Paint (P)</button>
+      <button id="bUnp">Unpaint (U)</button>
+      <button id="bMrg">Merge (M)</button>
+      <button id="bClr">Undeploy (D)</button>
+    </div>
+    <button id="end">End turn (Enter)</button>
+  </div>
+  <div class="card"><h2>Tile</h2><div id="tile" class="small dim">Hover a tile.</div></div>
+  <div class="card"><h2>Log</h2><div id="log"></div></div>
+</div>
+<script>
+const W = 20, H = 14, T = 44;
+const COL = ['#4aa3ff', '#ff5a5a'];
+const NAME = ['You', 'Enemy'];
+const CAP_MOVE = 1;
+const MAX_ENTR = 3, ENTR_BONUS = .25;
+const DMG = .5;                 // fraction of power inflicted per skirmish round
+const RETREAT_RATIO = 3, RETREAT_CHANCE = .6;
+const SPAWN_EVERY = 5, MAX_CAPS = 3, ARMY = 10, GARRISON = 3;
+
+const cv = document.getElementById('c');
+cv.width = W * T; cv.height = H * T;
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+
+// ---------- state ----------
+// ent kinds: 'cap' (captain + n troops with him), 'det' (detachment holding/creeping to tx,ty), 'gar' (city garrison)
+const G = { turn: 1, ents: [], cities: [], terrain: [], own: [], sel: null, mode: null, hover: null, over: null, nextId: 1, ownTurns: [0, 0], reach: new Map() };
+
+// ---------- helpers ----------
+const inb = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+const pass = (x, y) => inb(x, y) && G.terrain[y][x] === 0;
+const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+const key = (x, y) => x + ',' + y;
+const unkey = k => k.split(',').map(Number);
+const entsAt = (x, y) => G.ents.filter(e => e.x === x && e.y === y);
+const foesAt = (o, x, y) => G.ents.filter(e => e.owner !== o && e.x === x && e.y === y);
+const cityAt = (x, y) => G.cities.find(c => c.x === x && c.y === y);
+const power = e => e.n + (e.kind === 'cap' ? 1 : 0);
+const mult = e => 1 + ENTR_BONUS * e.entr;
+const capOf = d => G.ents.find(e => e.id === d.capId);
+const caps = o => G.ents.filter(e => e.owner === o && e.kind === 'cap');
+const dets = o => G.ents.filter(e => e.owner === o && e.kind === 'det');
+const roll = x => Math.floor(x) + (Math.random() < x % 1 ? 1 : 0);
+const nb = (x, y) => {
+  const r = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && pass(x + dx, y + dy)) r.push([x + dx, y + dy]);
+  return r;
+};
+
+function log(msg, cls = '') {
+  const d = document.createElement('div'); d.className = cls; d.textContent = `T${G.turn}: ${msg}`;
+  const el = $('log'); el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+const lc = o => o ? 'r' : 'b';
+
+// ---------- map ----------
+const MAPS = [
+  { name: 'Four Channels', half: [
+    '....^.^^^^', '..........', '....^.^^^^', '......^^^^', '...^......', '.......~~~', '......~~~~',
+    '......~~~~', '.......~~~', '..........', '......^^^^', '....^.^^^^', '..........', '....^.^^^^'] },
+  { name: 'Faultline', half: [
+    '......^^^^', '..........', '......^^^^', '.......^^^', '......^^^^', '..........', '..........',
+    '..........', '..........', '......^^^^', '.......^^^', '......^^^^', '..........', '......^^^^'] },
+  { name: 'Great Lake', half: [
+    '..........', '.......^..', '..........', '.....~~~~~', '....~~~~~~', '....~~~~~~', '....~~~~~~',
+    '....~~~~~~', '....~~~~~~', '....~~~~~~', '.....~~~~~', '..........', '.......^..', '..........'] },
+  { name: 'Central Ridge', half: [
+    '..........', '...~~.....', '...~~.....', '..........', '.........^', '........^^', '.........^',
+    '........^^', '.........^', '..........', '...~~.....', '...~~.....', '..........', '......^...'] },
+];
+let mapIdx = 0;
+function genMap() {
+  G.terrain = MAPS[mapIdx].half.map(r => { const l = [...r].map(ch => ch === '^' ? 2 : ch === '~' ? 1 : 0); return [...l, ...[...l].reverse()]; });
+  G.cities = [{ owner: 0, x: 2, y: 6 }, { owner: 1, x: W - 3, y: 6 }];
+  calcOwn();
+}
+function calcOwn() {
+  G.own = Array.from({ length: H }, () => Array(W).fill(-1));
+  for (const c of G.cities) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
+    if (pass(c.x + dx, c.y + dy)) G.own[c.y + dy][c.x + dx] = c.owner;
+  for (const e of G.ents) G.own[e.y][e.x] = e.owner;
+}
+function addEnt(owner, kind, x, y, n, extra = {}) {
+  const e = { id: G.nextId++, owner, kind, x, y, n, mp: kind === 'cap' ? CAP_MOVE : 0, attacked: false, entr: 0, capId: null, tx: x, ty: y, ...(kind === 'cap' ? { zone: new Set(), sig: '' } : {}), ...extra };
+  G.ents.push(e); return e;
+}
+const removeEnt = e => { G.ents = G.ents.filter(x => x !== e); if (G.sel === e) G.sel = null; };
+
+// ---------- pathing ----------
+function stepToward(e, tx, ty) {
+  const par = new Map([[key(e.x, e.y), null]]), q = [[e.x, e.y]];
+  while (q.length) {
+    const [x, y] = q.shift(); if (x === tx && y === ty) break;
+    for (const [nx, ny] of nb(x, y)) { const k = key(nx, ny); if (!par.has(k)) { par.set(k, [x, y]); q.push([nx, ny]); } }
+  }
+  let p = par.get(key(tx, ty)); if (!p) return null;
+  let c = [tx, ty];
+  while (!(p[0] === e.x && p[1] === e.y)) { c = p; p = par.get(key(c[0], c[1])); }
+  return c;
+}
+function reachCap(c) {
+  const out = new Map(); if (c.mp <= 0) return out;
+  const q = [[c.x, c.y, 0]], seen = new Set([key(c.x, c.y)]);
+  while (q.length) {
+    const [x, y, d] = q.shift(); if (d >= c.mp) continue;
+    for (const [nx, ny] of nb(x, y)) {
+      const k = key(nx, ny); if (seen.has(k) || foesAt(c.owner, nx, ny).length) continue;
+      seen.add(k); out.set(k, d + 1); q.push([nx, ny, d + 1]);
+    }
+  }
+  return out;
+}
+
+// ---------- combat ----------
+function applyDamage(list, dmg) {
+  for (const e of [...list].sort((a, b) => (a.kind === 'cap') - (b.kind === 'cap'))) {
+    if (dmg <= 0) break;
+    const t = Math.min(e.n, dmg); e.n -= t; dmg -= t;
+    if (e.kind === 'cap') { if (e.n === 0 && dmg > 0) { dmg--; log(`${NAME[e.owner]} captain falls!`, lc(e.owner)); removeEnt(e); } }
+    else if (e.n <= 0) removeEnt(e);
+  }
+}
+function occupy(a, x, y) {
+  a.x = x; a.y = y; a.entr = 0;
+  const c = cityAt(x, y);
+  if (c && c.owner !== a.owner) win(a.owner, 'captured the enemy city');
+}
+function assault(a, x, y) {
+  const foes = foesAt(a.owner, x, y); if (!foes.length) return false;
+  const A = power(a), nd = foes.reduce((s, f) => s + power(f), 0);
+  const dm = foes.reduce((s, f) => s + power(f) * mult(f), 0) / nd;
+  a.mp = 0; a.attacked = true; a.entr = 0;
+  const f0 = foes[0];
+  if (foes.length === 1 && f0.kind !== 'gar' && A >= RETREAT_RATIO * nd && Math.random() < RETREAT_CHANCE) {
+    const spot = nb(x, y).filter(([sx, sy]) => !(sx === a.x && sy === a.y) && !entsAt(sx, sy).some(e => e.owner === a.owner))
+      .sort((p, q) => Math.hypot(q[0] - a.x, q[1] - a.y) - Math.hypot(p[0] - a.x, p[1] - a.y))[0];
+    if (spot) {
+      f0.x = spot[0]; f0.y = spot[1]; f0.entr = 0;
+      if (f0.kind === 'det') { f0.tx = spot[0]; f0.ty = spot[1]; }
+      log(`${NAME[f0.owner]} ${f0.kind === 'cap' ? 'captain' : 'detachment'} (${power(f0)}) retreats before ${A} charging.`, 's');
+      occupy(a, x, y); return true;
+    }
+  }
+  const dDef = roll(A * DMG / dm), dAtt = roll(nd * DMG);
+  log(`Skirmish: ${NAME[a.owner]} ${A} vs ${NAME[foes[0].owner]} ${nd} (x${dm.toFixed(2)} dug in): -${dDef} / -${dAtt}.`, lc(a.owner));
+  applyDamage(foes, dDef); applyDamage([a], dAtt);
+  if (G.ents.includes(a) && !foesAt(a.owner, x, y).length) occupy(a, x, y);
+  return true;
+}
+
+// ---------- orders ----------
+const planSplit = (n, k) => Array.from({ length: k }, (_, i) => Math.floor(n / k) + (i < n % k ? 1 : 0));
+const force = c => c.n + dets(c.owner).filter(d => d.capId === c.id).reduce((t, d) => t + d.n, 0);
+const zoneOrder = c => [...c.zone].map(unkey).sort((a, b) => cheb(c, { x: a[0], y: a[1] }) - cheb(c, { x: b[0], y: b[1] }));
+function canPaint(c, x, y) {
+  if (!pass(x, y) || (x === c.x && y === c.y) || c.zone.has(key(x, y)) || c.zone.size + 1 >= force(c)) return false;
+  const city = cityAt(x, y); if (city && city.owner === c.owner) return false;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
+    if ((dx || dy) && ((x + dx === c.x && y + dy === c.y) || c.zone.has(key(x + dx, y + dy)))) return true;
+  return false;
+}
+function pruneZone(c) {
+  const ok = new Set(), q = [[c.x, c.y]];
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const k = key(x + dx, y + dy); if (c.zone.has(k) && !ok.has(k)) { ok.add(k); q.push([x + dx, y + dy]); }
+    }
+  }
+  for (const k of [...c.zone]) if (!ok.has(k)) c.zone.delete(k);
+}
+function paintAt(c, x, y) { if (canPaint(c, x, y)) c.zone.add(key(x, y)); }
+function eraseAt(c, x, y) { if (c.zone.delete(key(x, y))) pruneZone(c); }
+function redeploy(c) {
+  const total = force(c); if (!total) return;
+  c.zone.delete(key(c.x, c.y)); pruneZone(c);
+  const order = zoneOrder(c);
+  order.slice(total - 1).forEach(([x, y]) => c.zone.delete(key(x, y)));
+  const sig = [c.x, c.y, total, ...[...c.zone].sort()].join('|');
+  if (sig === c.sig) return;
+  c.sig = sig;
+  const tiles = [[c.x, c.y], ...zoneOrder(c)], split = planSplit(total, tiles.length);
+  const mine = dets(c.owner).filter(d => d.capId === c.id);
+  const pieces = mine.map(d => ({ x: d.x, y: d.y, n: d.n, entr: d.entr }));
+  if (c.n) pieces.push({ x: c.x, y: c.y, n: c.n, entr: 0 });
+  mine.forEach(removeEnt); c.n = 0;
+  const want = tiles.map(([x, y], i) => ({ x, y, left: split[i], home: i === 0 }));
+  const give = (w, p) => {
+    const t = Math.min(p.n, w.left); if (t <= 0) return;
+    p.n -= t; w.left -= t;
+    if (w.home && p.x === w.x && p.y === w.y) c.n += t;
+    else addEnt(c.owner, 'det', p.x, p.y, t, { capId: c.id, tx: w.x, ty: w.y, entr: p.x === w.x && p.y === w.y ? p.entr : 0 });
+  };
+  for (const w of want) for (const p of pieces) if (p.x === w.x && p.y === w.y) give(w, p);
+  for (const w of want) for (const p of [...pieces].sort((a, b) => cheb(a, w) - cheb(b, w))) give(w, p);
+}
+const redeployAll = o => caps(o).forEach(redeploy);
+function merge(c) {
+  const here = entsAt(c.x, c.y).filter(e => e !== c && e.owner === c.owner && e.kind !== 'gar');
+  if (!here.length) return 0;
+  for (const e of here) {
+    c.n += e.n;
+    if (e.kind === 'cap') for (const d of dets(c.owner)) if (d.capId === e.id) d.capId = c.id;
+    removeEnt(e);
+  }
+  log(`${NAME[c.owner]} merges ${here.length} unit${here.length > 1 ? 's' : ''} into his captain (${c.n} with him).`, lc(c.owner));
+  return here.length;
+}
+function balance(o) {
+  const ds = dets(o).filter(d => d.x === d.tx && d.y === d.ty);
+  for (const d of ds) if (G.ents.includes(d)) for (const e of ds)
+    if (e !== d && G.ents.includes(e) && e.capId === d.capId && e.x === d.x && e.y === d.y) { d.n += e.n; d.entr = Math.min(d.entr, e.entr); removeEnt(e); }
+  const live = ds.filter(d => G.ents.includes(d));
+  let moved = 0, go = true;
+  while (go) {
+    go = false;
+    for (const a of live) for (const b of live)
+      if (a !== b && a.capId === b.capId && cheb(a, b) === 1 && a.n - b.n >= 2) { a.n--; b.n++; moved++; go = true; }
+  }
+  if (moved) log(`${NAME[o]} troops redistribute evenly.`, lc(o));
+}
+function tidy() {
+  for (const d of [...dets(0), ...dets(1)]) if (!capOf(d)) {
+    Object.assign(d, { kind: 'cap', mp: CAP_MOVE, attacked: false, capId: null, zone: new Set(), sig: '' });
+    log(`${NAME[d.owner]} detachment (${d.n}) is cut off and gains a captain.`, lc(d.owner));
+  }
+  balance(0); balance(1);
+}
+function moveCap(c, x, y) {
+  const d = reachCap(c).get(key(x, y)); if (!d) return false;
+  const from = key(c.x, c.y);
+  c.mp -= d; c.x = x; c.y = y;
+  c.zone.delete(key(x, y)); if (c.zone.size) { c.zone.add(from); pruneZone(c); }
+  const city = cityAt(x, y); if (city && city.owner !== c.owner) win(c.owner, 'captured the enemy city');
+  return true;
+}
+
+// ---------- turn flow ----------
+function advance(o) {
+  for (const e of dets(o)) {
+    if (!G.ents.includes(e) || G.over) continue;
+    if (e.x === e.tx && e.y === e.ty) { e.entr = Math.min(MAX_ENTR, e.entr + 1); continue; }
+    const s = stepToward(e, e.tx, e.ty); if (!s) continue;
+    if (foesAt(o, s[0], s[1]).length) assault(e, s[0], s[1]); else occupy(e, s[0], s[1]);
+    const c = capOf(e);
+    if (G.ents.includes(e) && c && e.x === c.x && e.y === c.y && e.tx === c.x && e.ty === c.y) { c.n += e.n; removeEnt(e); }
+  }
+}
+function refresh() {
+  for (const e of G.ents) if (e.kind === 'cap') { e.mp = CAP_MOVE; e.attacked = false; }
+}
+function spawn(o) {
+  if (G.ownTurns[o] % SPAWN_EVERY || caps(o).length >= MAX_CAPS) return;
+  const c = G.cities[o];
+  for (const [x, y] of nb(c.x, c.y)) if (!entsAt(x, y).length) { addEnt(o, 'cap', x, y, ARMY / 2); log(`${NAME[o]} city raises a new captain.`, lc(o)); return; }
+}
+function win(o, why) { if (G.over !== null) return; G.over = o; log(`${NAME[o]} win: ${why}!`, 's'); }
+
+function aiPlay() {
+  const goal = G.cities[0];
+  for (const c of caps(1)) {
+    if (G.over !== null) return;
+    if (!G.ents.includes(c)) continue;
+    const adj = nb(c.x, c.y).map(([x, y]) => [x, y, foesAt(1, x, y)]).filter(f => f[2].length)
+      .sort((a, b) => a[2].reduce((s, f) => s + power(f), 0) - b[2].reduce((s, f) => s + power(f), 0))[0];
+    if (adj && power(c) >= 1.5 * adj[2].reduce((s, f) => s + power(f), 0)) { assault(c, adj[0], adj[1]); continue; }
+    merge(c);
+    while (force(c) >= 2 && c.zone.size < Math.min(4, force(c) - 1)) {
+      let best = null, bs = Infinity;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (!canPaint(c, x, y)) continue;
+        const sc = Math.hypot(x - goal.x, y - goal.y) + Math.random() * 1.5;
+        if (sc < bs) { bs = sc; best = [x, y]; }
+      }
+      if (!best) break; paintAt(c, best[0], best[1]);
+    }
+    const mine = dets(1);
+    let best = null, bd = Math.hypot(c.x - goal.x, c.y - goal.y);
+    for (const k of reachCap(c).keys()) {
+      const [x, y] = unkey(k), d = Math.hypot(x - goal.x, y - goal.y);
+      if (mine.length && Math.min(...mine.map(m => cheb(m, { x, y }))) > 3) continue;
+      if (d < bd) { bd = d; best = [x, y]; }
+    }
+    if (best) moveCap(c, best[0], best[1]);
+    const cd = Math.hypot(c.x - goal.x, c.y - goal.y);
+    for (const [x, y] of zoneOrder(c)) if (Math.hypot(x - goal.x, y - goal.y) > cd + 2) c.zone.delete(key(x, y));
+    pruneZone(c);
+  }
+}
+function endTurn() {
+  if (G.over !== null) return;
+  G.mode = null;
+  redeployAll(0);
+  advance(0);
+  tidy();
+  if (G.over === null) { aiPlay(); }
+  redeployAll(1);
+  if (G.over === null) advance(1);
+  tidy();
+  if (G.over === null) {
+    G.turn++;
+    for (const o of [0, 1]) { G.ownTurns[o]++; spawn(o); }
+    refresh();
+  }
+  syncReach(); ui();
+}
+
+// ---------- input ----------
+const tileFrom = e => { const r = cv.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) * W / r.width), Math.floor((e.clientY - r.top) * H / r.height)]; };
+const selCap = () => G.sel && G.sel.kind === 'cap' && G.sel.owner === 0 && G.ents.includes(G.sel) ? G.sel : null;
+const syncReach = () => { const c = selCap(); G.reach = c && G.mode === null ? reachCap(c) : new Map(); };
+let drag = null;
+
+cv.addEventListener('mousedown', e => {
+  const c = selCap(); if (G.over !== null || !c || (G.mode !== 'paint' && G.mode !== 'erase')) return;
+  const [x, y] = tileFrom(e); drag = G.mode;
+  (drag === 'paint' ? paintAt : eraseAt)(c, x, y); ui();
+});
+cv.addEventListener('mousemove', e => {
+  const [x, y] = tileFrom(e); G.hover = inb(x, y) ? [x, y] : null;
+  const c = selCap();
+  if (drag && c) (drag === 'paint' ? paintAt : eraseAt)(c, x, y);
+  ui();
+});
+addEventListener('mouseup', () => { drag = null; });
+cv.addEventListener('click', e => {
+  if (G.over !== null || G.mode === 'erase') return;
+  const [x, y] = tileFrom(e), here = entsAt(x, y), c = selCap();
+  const mineCap = here.find(h => h.owner === 0 && h.kind === 'cap'), mineDet = here.find(h => h.owner === 0 && h.kind === 'det');
+  if (G.mode === 'paint') { if (mineCap) G.sel = mineCap; }
+  else if (mineCap) G.sel = mineCap;
+  else if (c && G.reach.has(key(x, y))) moveCap(c, x, y);
+  else if (mineDet) { const sel = capOf(mineDet); if (sel) G.sel = sel; }
+  else if (c && foesAt(0, x, y).length && cheb(c, { x, y }) === 1 && !c.attacked && c.mp > 0) { assault(c, x, y); tidy(); }
+  syncReach(); ui();
+});
+$('bPaint').onclick = () => { G.mode = G.mode === 'paint' ? null : 'paint'; syncReach(); ui(); };
+$('bUnp').onclick = () => { G.mode = G.mode === 'erase' ? null : 'erase'; syncReach(); ui(); };
+$('bMrg').onclick = () => { const c = selCap(); if (c) { merge(c); syncReach(); ui(); } };
+$('bClr').onclick = () => { const c = selCap(); if (!c) return; if (c.zone.size) c.zone.clear(); else G.mode = 'paint'; syncReach(); ui(); };
+$('end').onclick = endTurn;
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'p') $('bPaint').click(); else if (k === 'u') $('bUnp').click();
+  else if (k === 'm') $('bMrg').click(); else if (k === 'd') $('bClr').click();
+  else if (k === 'enter') endTurn();
+});
+
+function ui() {
+  calcOwn();
+  $('turn').textContent = G.turn;
+  const c = selCap();
+  let html = 'Nothing selected.';
+  if (c) {
+    const out = dets(0).filter(d => d.capId === c.id), outN = out.reduce((s, d) => s + d.n, 0);
+    html = `<b style="color:${COL[0]}">Captain</b> &nbsp; With him: <b>${c.n}</b> &nbsp; Move <b style="color:${c.mp > 0 ? '#7cfc7c' : '#8b98a8'}">${c.mp}/${CAP_MOVE} ${c.mp > 0 ? 'ready' : 'spent'}</b><br>Out: ${out.length} detachment${out.length === 1 ? '' : 's'} (${outN} troops)`;
+    const f = force(c), k = c.zone.size + 1;
+    html += c.zone.size ? `<br><b>Deployed</b> (${k} tiles incl. his), ${f} troops &rarr; ${planSplit(f, Math.min(f, k)).join('/')}` : `<br><b>Undeployed</b> &ndash; army with captain (${f} troops)`;
+    if (G.mode === 'paint') html += `<br><span style="color:#ffd166">Click or drag to add tiles next to the zone.</span>`;
+    else if (G.mode === 'erase') html += `<br><span style="color:#ffd166">Click or drag zone tiles to remove them.</span>`;
+    else html += `<br><span class="dim">Click a tile to move (onto your own troops too), an adjacent enemy to charge.</span>`;
+  }
+  $('info').innerHTML = html;
+  $('bPaint').disabled = !c || G.over !== null;
+  $('bUnp').disabled = !c || G.over !== null;
+  $('bMrg').disabled = !c || !entsAt(c.x, c.y).some(e => e !== c && e.owner === 0 && e.kind !== 'gar');
+  $('bUnp').classList.toggle('on', G.mode === 'erase');
+  $('bClr').disabled = !c || G.over !== null;
+  $('bClr').textContent = c && c.zone.size ? 'Undeploy (D)' : 'Deploy (D)';
+  $('bPaint').classList.toggle('on', G.mode === 'paint');
+  $('end').disabled = G.over !== null; $('end').textContent = G.over !== null ? `${NAME[G.over]} won` : 'End turn (Enter)';
+  let t = 'Hover a tile.';
+  if (G.hover) {
+    const [x, y] = G.hover, o = G.own[y][x], es = entsAt(x, y);
+    t = `(${x},${y}) ${G.terrain[y][x] === 1 ? 'water' : G.terrain[y][x] === 2 ? 'mountain' : 'land'} &mdash; ${o < 0 ? 'neutral' : `<span style="color:${COL[o]}">${NAME[o]}</span>`}`;
+    for (const e of es) t += `<br><span style="color:${COL[e.owner]}">${{ cap: 'Captain', det: 'Detachment', gar: 'Garrison' }[e.kind]}</span> ${e.n}${e.kind === 'cap' ? ' (+him)' : ''}` +
+      (e.kind !== 'cap' ? ` &nbsp; dug in ${e.entr}/${MAX_ENTR} (x${mult(e).toFixed(2)})` : ` &nbsp; move ${e.mp}/${CAP_MOVE}`) +
+      (e.kind === 'det' && !(e.x === e.tx && e.y === e.ty) ? ` &rarr; (${e.tx},${e.ty})` : '');
+  }
+  $('tile').innerHTML = t;
+  draw();
+}
+
+// ---------- render ----------
+function draw() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const c = selCap();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const t = G.terrain[y][x];
+    ctx.fillStyle = t === 1 ? '#17324f' : t === 2 ? '#4a4f57' : ((x + y) & 1 ? '#27402b' : '#2b452f');
+    ctx.fillRect(x * T, y * T, T, T);
+    const o = G.own[y][x];
+    if (o >= 0) { ctx.fillStyle = COL[o] + '28'; ctx.fillRect(x * T, y * T, T, T); }
+    if (t === 2) { ctx.fillStyle = '#7a828d'; ctx.beginPath(); ctx.moveTo(x * T + 8, y * T + T - 10); ctx.lineTo(x * T + T / 2, y * T + 10); ctx.lineTo(x * T + T - 8, y * T + T - 10); ctx.fill(); }
+    ctx.strokeStyle = '#0003'; ctx.lineWidth = 1; ctx.strokeRect(x * T + .5, y * T + .5, T, T);
+  }
+  if (c && G.mode === 'paint') {
+    ctx.fillStyle = '#ffd16618';
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (canPaint(c, x, y)) ctx.fillRect(x * T, y * T, T, T);
+  }
+  ctx.lineWidth = 3;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const o = G.own[y][x]; if (o < 0) continue; ctx.strokeStyle = COL[o];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy; if (inb(nx, ny) && G.own[ny][nx] === o) continue;
+      ctx.beginPath();
+      if (dx) { const ex = (x + (dx > 0 ? 1 : 0)) * T; ctx.moveTo(ex, y * T); ctx.lineTo(ex, y * T + T); }
+      else { const ey = (y + (dy > 0 ? 1 : 0)) * T; ctx.moveTo(x * T, ey); ctx.lineTo(x * T + T, ey); }
+      ctx.stroke();
+    }
+  }
+  ctx.fillStyle = '#ffffff30';
+  for (const k of G.reach.keys()) { const [x, y] = unkey(k); ctx.fillRect(x * T + 4, y * T + 4, T - 8, T - 8); }
+  // painted zones
+  for (const z of caps(0)) {
+    const sel = z === c, f = force(z), order = [[z.x, z.y], ...zoneOrder(z)], split = planSplit(f, Math.min(f, order.length));
+    order.forEach(([x, y], i) => {
+      if (i === 0 && !sel) return;
+      ctx.fillStyle = sel ? '#ffd16633' : '#ffd16614'; ctx.fillRect(x * T + 2, y * T + 2, T - 4, T - 4);
+      ctx.strokeStyle = sel ? '#ffd166' : '#ffd16688'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.strokeRect(x * T + 3, y * T + 3, T - 6, T - 6); ctx.setLineDash([]);
+      if (sel && i) { ctx.fillStyle = '#ffd166'; ctx.font = 'bold 14px sans-serif'; ctx.fillText(split[i] ?? '-', x * T + T / 2, y * T + 11); }
+    });
+  }
+  // orders in flight
+  for (const d of G.ents) if (d.kind === 'det' && d.owner === 0 && !(d.x === d.tx && d.y === d.ty)) {
+    ctx.strokeStyle = COL[0] + '88'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(d.x * T + T / 2, d.y * T + T / 2); ctx.lineTo(d.tx * T + T / 2, d.ty * T + T / 2); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // cities
+  for (const ct of G.cities) {
+    ctx.fillStyle = COL[ct.owner]; ctx.fillRect(ct.x * T + 7, ct.y * T + 7, T - 14, T - 14);
+    ctx.fillStyle = '#000b'; ctx.font = 'bold 22px sans-serif'; ctx.fillText('C', ct.x * T + T / 2, ct.y * T + T / 2 + 1);
+  }
+  // entities
+  const slots = new Map();
+  for (const e of G.ents) {
+    const cx0 = e.x * T + T / 2, cy0 = e.y * T + T / 2;
+    if (e.kind === 'cap') {
+      ctx.fillStyle = COL[e.owner]; ctx.beginPath(); ctx.arc(cx0, cy0, 17, 0, 7); ctx.fill();
+      ctx.lineWidth = e === G.sel ? 4 : 2; ctx.strokeStyle = e === G.sel ? '#ffd166' : '#000a'; ctx.stroke();
+      ctx.fillStyle = '#000c'; ctx.font = 'bold 18px sans-serif'; ctx.fillText('★', cx0, cy0 + 1);
+      for (let i = 0; i < CAP_MOVE; i++) {
+        ctx.beginPath(); ctx.arc(e.x * T + 7 + i * 8, e.y * T + 7, 3, 0, 7);
+        if (i < e.mp) { ctx.fillStyle = '#7cfc7c'; ctx.fill(); } else { ctx.strokeStyle = '#8b98a8'; ctx.lineWidth = 1; ctx.stroke(); }
+      }
+      if (e.n) { ctx.fillStyle = '#000'; ctx.fillRect(cx0 + 8, cy0 + 8, 18, 14); ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(e.n, cx0 + 17, cy0 + 15); }
+      continue;
+    }
+    let px = cx0, py = cy0, r = 12;
+    if (e.kind === 'det') {
+      const k = key(e.x, e.y), i = slots.get(k) || 0; slots.set(k, i + 1);
+      const off = [[-13, -13], [13, -13], [-13, 13], [13, 13]][i % 4];
+      if (entsAt(e.x, e.y).length > 1 || cityAt(e.x, e.y)) { px += off[0]; py += off[1]; r = 9; }
+    } else { py += 1; r = 0; }
+    if (r) {
+      ctx.fillStyle = COL[e.owner]; ctx.beginPath(); ctx.rect(px - r, py - r, r * 2, r * 2); ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = '#000a'; ctx.stroke();
+      ctx.fillStyle = '#000'; ctx.font = `bold ${r > 10 ? 15 : 12}px sans-serif`; ctx.fillText(e.n, px, py + 1);
+      if (e.kind === 'det' && !(e.x === e.tx && e.y === e.ty)) { ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.fillText('\u00bb', px + r - 2, py - r - 3); }
+      for (let i = 0; i < e.entr; i++) { ctx.fillStyle = '#ffd166'; ctx.fillRect(px - r + 2 + i * 6, py + r - 1, 4, 3); }
+    } else {
+      ctx.fillStyle = '#000'; ctx.fillRect(px + 6, py + 6, 16, 14); ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(e.n, px + 14, py + 13);
+    }
+  }
+  if (G.over !== null) {
+    ctx.fillStyle = '#000a'; ctx.fillRect(0, H * T / 2 - 40, W * T, 80); ctx.fillStyle = COL[G.over]; ctx.font = 'bold 40px sans-serif';
+    ctx.fillText(`${NAME[G.over]} win!`, W * T / 2, H * T / 2);
+  }
+}
+
+// ---------- init ----------
+function newGame(i) {
+  mapIdx = i;
+  Object.assign(G, { turn: 1, ents: [], over: null, sel: null, mode: null, nextId: 1, ownTurns: [0, 0], reach: new Map() });
+  $('log').innerHTML = '';
+  genMap();
+  for (const o of [0, 1]) {
+    const ct = G.cities[o], d = o ? -1 : 1;
+    addEnt(o, 'gar', ct.x, ct.y, GARRISON, { entr: MAX_ENTR });
+    const cap = addEnt(o, 'cap', ct.x + d, ct.y, ARMY); if (o === 0) G.sel = cap;
+  }
+  log(`${MAPS[i].name}: select your captain, press Paint, drag a chain toward the red side, then Deploy.`, 's');
+  syncReach(); ui();
+}
+$('map').innerHTML = MAPS.map((m, i) => `<option value="${i}">${m.name}</option>`).join('');
+$('map').onchange = e => { e.target.blur(); newGame(+e.target.value); };
+newGame(0);
+window.G = G; window.api = { merge, tidy, balance, paintAt, eraseAt, redeploy, endTurn, advance, assault, planSplit, canPaint, moveCap, force, zoneOrder };
+</script>
+</body>
+</html>

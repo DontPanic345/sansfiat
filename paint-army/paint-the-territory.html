@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE - Paint-the-Territory Armies</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg:#f6f5f1; --panel:#fff; --ink:#1d1d1b; --muted:#6c6a63; --line:#dedbd2;
+    --accent:#d9822b; --blue:#3b6fd4; --red:#c8453b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, Segoe UI, sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 20px 60px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 10px; }
+  .badge { display:inline-block; font-size:11px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--accent); color:var(--accent); padding:1px 8px; border-radius:99px; margin-bottom:8px; }
+  .question { background:var(--panel); border-left:4px solid var(--accent); padding:12px 16px; margin:14px 0 22px; border-radius:4px; color:#3a3935; }
+  .cols { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:22px; align-items:start; }
+  @media (max-width:900px){ .cols{ grid-template-columns:1fr; } }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:18px; }
+  .bar { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-bottom:12px; color:var(--muted); }
+  .bar b { color:var(--ink); }
+  #grid { display:grid; gap:3px; }
+  .cell { position:relative; aspect-ratio:1/1; min-height:56px; border:1px solid var(--line); border-radius:4px; background:#fbfaf7; cursor:pointer; padding:3px; font-size:12px; overflow:hidden; }
+  .cell.own-blue { background:rgba(59,111,212,.14); }
+  .cell.own-red  { background:rgba(200,69,59,.14); }
+  .cell.painted-blue { box-shadow:inset 0 0 0 2px rgba(59,111,212,.55); }
+  .cell.painted-red  { box-shadow:inset 0 0 0 2px rgba(200,69,59,.55); }
+  .cell.sel { outline:2px solid var(--ink); outline-offset:-2px; }
+  .cell.draft { background:rgba(217,130,43,.28); box-shadow:inset 0 0 0 2px var(--accent); }
+  .coord { position:absolute; right:3px; bottom:1px; font-size:9px; color:#b3b0a6; }
+  .pips { position:absolute; left:3px; bottom:2px; font-size:9px; letter-spacing:1px; color:var(--muted); }
+  .chip { display:inline-block; color:#fff; border-radius:3px; padding:0 5px; margin:1px 2px 1px 0; font-weight:600; }
+  .chip.blue { background:var(--blue); } .chip.red { background:var(--red); }
+  .assign { position:absolute; right:3px; top:2px; font-size:10px; color:var(--accent); font-weight:700; }
+  button { font:inherit; border:1px solid var(--line); background:#fff; border-radius:6px; padding:6px 12px; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--ink); }
+  button:disabled { opacity:.4; cursor:default; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  .army { border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin-bottom:8px; cursor:pointer; }
+  .army.sel { border-color:var(--ink); background:#faf9f5; }
+  .army .nm { font-weight:600; }
+  .army .nm.blue { color:var(--blue); } .army .nm.red { color:var(--red); }
+  .army small { color:var(--muted); display:block; }
+  #log { font-size:13px; color:#3a3935; max-height:230px; overflow:auto; }
+  #log div { padding:2px 0; border-bottom:1px dotted var(--line); }
+  #msg { min-height:22px; color:var(--accent); font-weight:600; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .tabs button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .steps { display:flex; flex-direction:column; gap:6px; margin-top:10px; align-items:flex-start; }
+  .steps button.done { background:#eceae3; color:var(--muted); text-decoration:line-through; }
+  .steps button.next { border-color:var(--accent); box-shadow:0 0 0 2px rgba(217,130,43,.3); }
+  .rules { font-size:13px; color:var(--muted); }
+  .rules li { margin-bottom:3px; }
+  ul { padding-left:18px; margin:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">Prototype - throwaway</span>
+  <h1>Paint-the-Territory Armies</h1>
+  <div class="question">
+    <b>Question:</b> Does "paint tiles, and the captain's army divides itself across them" let you capture and hold ground cheaply
+    without feeling broken? Specifically: does the equal split, the light per-tile combat, entrenchment for defenders, and the
+    chance for a lone defender to slip away from a bunched-up charge produce interesting trade-offs? Open the guided
+    walkthroughs below, or poke at it freely.
+  </div>
+
+  <div class="cols">
+    <div>
+      <div class="panel">
+        <h2>Map</h2>
+        <div class="bar" id="bar"></div>
+        <div id="grid"></div>
+        <p class="rules" style="margin:10px 0 0">
+          Click a captain (or army in the list) to select it. <b>Paint territory</b>, click tiles, then <b>Send army</b>.
+          Orange = tiles you're painting now. Coloured frame = tiles an army is holding. <b>→n</b> = troops assigned there.
+          Pips under a tile = entrenchment.
+        </p>
+      </div>
+      <div class="panel">
+        <h2>Free play</h2>
+        <div id="msg"></div>
+        <div class="btns" id="free"></div>
+      </div>
+      <div class="panel">
+        <h2>Guided walkthroughs</h2>
+        <div class="tabs" id="tabs"></div>
+        <div id="walk"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel"><h2>Armies</h2><div id="armies"></div></div>
+      <div class="panel"><h2>What happened last turn</h2><div id="log"></div></div>
+      <div class="panel">
+        <h2>Rules in this prototype</h2>
+        <ul class="rules" id="rules"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Pure logic module: no DOM below this block's end marker ===== */
+const Sim = (() => {
+  const W = 10, H = 7;
+  const C = { REACH:4, HIT:0.35, ENTRENCH_BONUS:0.25, ENTRENCH_MAX:3, CHARGE_MIN:3, RETREAT_P:0.6 };
+  const idx = (x,y) => y*W + x;
+  const inb = (x,y) => x>=0 && y>=0 && x<W && y<H;
+  const cheb = (ax,ay,bx,by) => Math.max(Math.abs(ax-bx), Math.abs(ay-by));
+
+  function rand(s){
+    s.seed = (s.seed + 0x6D2B79F5) | 0;
+    let t = s.seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function addUnit(s, army, x, y, cap){
+    s.units.push({ id:s.nextId++, army, x, y, tx:null, ty:null, cap, fx:x, fy:y, moved:false });
+  }
+
+  function make(spec){
+    const s = { turn:1, seed:spec.seed ?? 12345, tiles:[], armies:[], units:[], nextId:1,
+                selected:null, mode:'select', draft:[], msg:'', log:[] };
+    for (let i=0;i<W*H;i++) s.tiles.push({ owner:null, entrench:0 });
+    (spec.tiles||[]).forEach(([x,y,o,e]) => { s.tiles[idx(x,y)] = { owner:o, entrench:e||0 }; });
+    spec.armies.forEach(a => {
+      s.armies.push({ id:a.id, name:a.name, owner:a.owner, painted:[], speed:1 });
+      addUnit(s, a.id, a.cap[0], a.cap[1], true);
+      const at = a.at || a.cap;
+      for (let i=0;i<a.troops;i++) addUnit(s, a.id, at[0], at[1], false);
+    });
+    return s;
+  }
+
+  const armyOf = (s,id) => s.armies.find(a => a.id===id);
+  const capOf = (s,id) => s.units.find(u => u.army===id && u.cap);
+
+  // Spread an army's troops equally over its painted tiles, keeping existing assignments where possible.
+  function assign(s, a){
+    const troops = s.units.filter(u => u.army===a.id && !u.cap);
+    const cap = capOf(s, a.id);
+    const k = a.painted.length;
+    if (cap) { cap.tx = k===1 ? a.painted[0].x : null; cap.ty = k===1 ? a.painted[0].y : null; }
+    if (!k) { troops.forEach(u => { u.tx = null; u.ty = null; }); return; }
+    const n = troops.length, base = Math.floor(n/k), rem = n % k;
+    const cur = a.painted.map(p => troops.filter(u => u.tx===p.x && u.ty===p.y).length);
+    const order = a.painted.map((_,i)=>i).sort((i,j) => cur[j]-cur[i] || i-j);
+    const quota = a.painted.map(() => base);
+    for (let r=0;r<rem;r++) quota[order[r]]++;
+    const kept = a.painted.map(() => 0), pool = [];
+    troops.forEach(u => {
+      const i = a.painted.findIndex(p => p.x===u.tx && p.y===u.ty);
+      if (i>=0 && kept[i] < quota[i]) kept[i]++; else pool.push(u);
+    });
+    pool.forEach(u => {
+      let best = -1, bd = 1e9;
+      a.painted.forEach((p,i) => {
+        if (kept[i] >= quota[i]) return;
+        const d = cheb(u.x,u.y,p.x,p.y);
+        if (d < bd) { bd = d; best = i; }
+      });
+      kept[best]++; u.tx = a.painted[best].x; u.ty = a.painted[best].y;
+    });
+  }
+
+  function kill(s, units, hits){
+    const sorted = [...units].sort((a,b) => (a.cap?1:0) - (b.cap?1:0));
+    let dead = 0;
+    for (const u of sorted) { if (dead >= hits) break; s.units = s.units.filter(v => v.id !== u.id); dead++; }
+    return dead;
+  }
+
+  function fixCaptains(s){
+    s.armies = s.armies.filter(a => {
+      const mine = s.units.filter(u => u.army===a.id);
+      if (!mine.length) return false;
+      if (!mine.some(u => u.cap)) { mine[0].cap = true; }
+      return true;
+    });
+  }
+
+  function endTurn(s){
+    const log = [];
+    s.units.forEach(u => {
+      u.fx = u.x; u.fy = u.y; u.moved = false;
+      const steps = armyOf(s,u.army).speed;
+      for (let i=0;i<steps;i++) {
+        if (u.tx!=null && (u.tx!==u.x || u.ty!==u.y)) {
+          u.x += Math.sign(u.tx-u.x); u.y += Math.sign(u.ty-u.y); u.moved = true;
+        }
+      }
+    });
+
+    const owners = id => armyOf(s,id).owner;
+    for (let y=0;y<H;y++) for (let x=0;x<W;x++) {
+      const here = s.units.filter(u => u.x===x && u.y===y);
+      const side = { blue: here.filter(u => owners(u.army)==='blue'), red: here.filter(u => owners(u.army)==='red') };
+      if (!side.blue.length || !side.red.length) continue;
+      const tile = s.tiles[idx(x,y)];
+      let def = null;
+      if (tile.owner && side[tile.owner].length) def = tile.owner;
+      else if (!side.blue.some(u=>u.moved)) def = 'blue';
+      else if (!side.red.some(u=>u.moved)) def = 'red';
+      const atk = def==='blue' ? 'red' : def==='red' ? 'blue' : null;
+      const where = `(${x},${y})`;
+
+      if (def) {
+        const charge = side[atk].filter(u => u.moved);
+        const origins = new Set(charge.map(u => u.fx+','+u.fy));
+        if (side[def].length===1 && charge.length>=C.CHARGE_MIN && origins.size===1) {
+          const roll = rand(s);
+          if (roll < C.RETREAT_P) {
+            const d = side[def][0];
+            const [ox,oy] = [...origins][0].split(',').map(Number);
+            let best = null, bs = -1e9;
+            for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) {
+              const nx=x+dx, ny=y+dy;
+              if (!(dx||dy) || !inb(nx,ny)) continue;
+              if (s.units.some(u => u.x===nx && u.y===ny && owners(u.army)!==def)) continue;
+              const sc = cheb(nx,ny,ox,oy)*2 + (s.tiles[idx(nx,ny)].owner===def ? 1 : 0);
+              if (sc > bs) { bs = sc; best = [nx,ny]; }
+            }
+            if (best) {
+              const a = armyOf(s,d.army);
+              a.painted = a.painted.filter(p => !(p.x===x && p.y===y));
+              d.x = best[0]; d.y = best[1];
+              log.push(`${where}: the lone ${def} defender saw ${charge.length} charging and slipped away to (${best[0]},${best[1]}). No fight; tile lost, unit saved.`);
+              assign(s, a);
+              continue;
+            }
+          }
+          log.push(`${where}: lone ${def} defender tried to slip away from the charge and failed (rolled ${roll.toFixed(2)}).`);
+        }
+        const ent = tile.owner===def ? tile.entrench : 0;
+        const dp = C.HIT * (1 + C.ENTRENCH_BONUS*ent);
+        let hitsOnDef=0, hitsOnAtk=0;
+        side[atk].forEach(() => { if (rand(s) < C.HIT) hitsOnDef++; });
+        side[def].forEach(() => { if (rand(s) < dp) hitsOnAtk++; });
+        const aBefore = side[atk].length, dBefore = side[def].length;
+        const dd = kill(s, side[def], hitsOnDef), ad = kill(s, side[atk], hitsOnAtk);
+        log.push(`${where}: skirmish. ${atk} attackers ${aBefore} (lost ${ad}) vs ${def} defenders ${dBefore} (lost ${dd})` +
+                 (ent ? `, defenders entrenched x${ent} (+${Math.round(ent*C.ENTRENCH_BONUS*100)}%).` : '.'));
+      } else {
+        const bb = side.blue.length, rr = side.red.length;
+        const dr = kill(s, side.red, Math.round(bb*C.HIT)), db = kill(s, side.blue, Math.round(rr*C.HIT));
+        log.push(`${where}: meeting engagement, nobody dug in. blue lost ${db}, red lost ${dr}.`);
+      }
+    }
+    fixCaptains(s);
+
+    for (let y=0;y<H;y++) for (let x=0;x<W;x++) {
+      const t = s.tiles[idx(x,y)];
+      const here = s.units.filter(u => u.x===x && u.y===y);
+      const bl = here.some(u => owners(u.army)==='blue'), rd = here.some(u => owners(u.army)==='red');
+      if (bl && rd) continue;
+      if (!here.length) { t.entrench = 0; continue; }
+      const side = bl ? 'blue' : 'red';
+      if (t.owner !== side) {
+        if (t.owner) log.push(`(${x},${y}) changes hands: ${t.owner} -> ${side}.`);
+        else log.push(`(${x},${y}) taken by ${side}.`);
+        t.owner = side; t.entrench = 0;
+      } else if (!here.some(u => u.moved)) {
+        t.entrench = Math.min(C.ENTRENCH_MAX, t.entrench + 1);
+      }
+    }
+    s.armies.forEach(a => assign(s, a));
+    s.units.forEach(u => { u.moved = false; });
+    s.turn++;
+    s.log = log.length ? log : ['Quiet turn. Nothing contested.'];
+  }
+
+  function reduce(state, action){
+    const s = structuredClone(state);
+    s.msg = '';
+    switch (action.type) {
+      case 'select': s.selected = action.id; s.mode = 'select'; s.draft = []; break;
+      case 'startPaint':
+        if (!s.selected) { s.msg = 'Select an army first.'; break; }
+        s.mode = 'paint'; s.draft = structuredClone(armyOf(s,s.selected).painted); break;
+      case 'cancelPaint': s.mode = 'select'; s.draft = []; break;
+      case 'togglePaint': {
+        if (s.mode !== 'paint') break;
+        const cap = capOf(s, s.selected), {x,y} = action;
+        const i = s.draft.findIndex(p => p.x===x && p.y===y);
+        if (i >= 0) { s.draft.splice(i,1); break; }
+        if (cheb(cap.x,cap.y,x,y) > C.REACH) { s.msg = `(${x},${y}) is out of reach: the captain can only paint within ${C.REACH} tiles.`; break; }
+        s.draft.push({x,y}); break;
+      }
+      case 'confirmPaint': {
+        if (s.mode !== 'paint') break;
+        if (!s.draft.length) { s.msg = 'Paint at least one tile (or use Recall).'; break; }
+        const a = armyOf(s, s.selected);
+        a.painted = s.draft; s.draft = []; s.mode = 'select';
+        assign(s, a); break;
+      }
+      case 'recall': {
+        if (!s.selected) { s.msg = 'Select an army first.'; break; }
+        const a = armyOf(s, s.selected), cap = capOf(s, s.selected);
+        a.painted = [{ x:cap.x, y:cap.y }]; assign(s, a); s.mode = 'select'; s.draft = []; break;
+      }
+      case 'endTurn': endTurn(s); break;
+      case 'newSeed': s.seed = (s.seed * 1664525 + 1013904223) | 0; s.msg = 'Dice reseeded.'; break;
+    }
+    return s;
+  }
+
+  const SCENARIOS = {
+    free: () => make({ armies:[
+      { id:'bh', name:'Blue Host', owner:'blue', cap:[1,3], troops:10 },
+      { id:'rh', name:'Red Host', owner:'red', cap:[8,3], troops:10 },
+      { id:'ro', name:'Red Outpost', owner:'red', cap:[5,1], troops:0 } ],
+      tiles:[[0,2,'blue'],[0,3,'blue'],[0,4,'blue'],[1,3,'blue'],[9,2,'red'],[9,3,'red'],[9,4,'red'],[8,3,'red'],[5,1,'red',2]] }),
+    spread: () => make({ armies:[{ id:'bh', name:'Blue Host', owner:'blue', cap:[2,3], troops:10 }], tiles:[[2,3,'blue']] }),
+    charge: () => make({ seed:7, armies:[
+      { id:'bh', name:'Blue Host', owner:'blue', cap:[4,3], troops:6 },
+      { id:'ro', name:'Red Outpost', owner:'red', cap:[6,3], troops:0 } ],
+      tiles:[[4,3,'blue'],[6,3,'red',2]] }),
+    light: () => make({ seed:99, armies:[
+      { id:'bh', name:'Blue Host', owner:'blue', cap:[3,3], troops:9 },
+      { id:'rg', name:'Red Garrison', owner:'red', cap:[6,3], troops:3 } ],
+      tiles:[[3,3,'blue'],[6,3,'red',3]] }),
+    reach: () => make({ armies:[{ id:'bh', name:'Blue Host', owner:'blue', cap:[2,3], troops:10 }], tiles:[[2,3,'blue']] }),
+  };
+
+  return { W, H, C, make, reduce, SCENARIOS, idx, armyOf, capOf };
+})();
+/* ===== End pure logic ===== */
+
+/* ===== Throwaway page shell ===== */
+const WALK = [
+  { name:'1. One army, three tiles', scenario:'spread',
+    blurb:'A Blue captain with 10 troops. Paint three tiles and watch the troops split themselves 4/3/3 and creep out one tile per turn, while the captain stays put. Note: nobody stood on every tile by hand.',
+    steps:[
+      ['Select the Blue Host', {type:'select', id:'bh'}],
+      ['Press "Paint territory"', {type:'startPaint'}],
+      ['Paint tile (4,2)', {type:'togglePaint', x:4, y:2}],
+      ['Paint tile (4,3)', {type:'togglePaint', x:4, y:3}],
+      ['Paint tile (4,4)', {type:'togglePaint', x:4, y:4}],
+      ['Press "Send army"', {type:'confirmPaint'}],
+      ['End turn (troops step out)', {type:'endTurn'}],
+      ['End turn (arrive, claim tiles)', {type:'endTurn'}],
+      ['End turn (start digging in)', {type:'endTurn'}],
+      ['End turn (entrenchment grows)', {type:'endTurn'}],
+    ]},
+  { name:'2. Bunched charge vs. a lone defender', scenario:'charge',
+    blurb:'Blue has 7 units stacked together, 2 tiles from a lone, entrenched Red captain. Order a single-tile charge. When the stack arrives together, the lone defender gets a chance to flee instead of dying. Press "New dice seed" in free play and rerun to see both outcomes.',
+    steps:[
+      ['Select the Blue Host', {type:'select', id:'bh'}],
+      ['Press "Paint territory"', {type:'startPaint'}],
+      ['Paint the Red tile (6,3)', {type:'togglePaint', x:6, y:3}],
+      ['Press "Send army"', {type:'confirmPaint'}],
+      ['End turn (stack moves adjacent)', {type:'endTurn'}],
+      ['End turn (charge lands)', {type:'endTurn'}],
+      ['End turn (aftermath)', {type:'endTurn'}],
+    ]},
+  { name:'3. Spread thin: light combat only', scenario:'light',
+    blurb:'Blue spreads 9 troops across three tiles, one of which Red holds with 4 entrenched units. Only that tile fights, with roughly 3 Blue vs 4 dug-in Red. The other two tiles fall without a fight. Does the "army never fully engages" idea feel right?',
+    steps:[
+      ['Select the Blue Host', {type:'select', id:'bh'}],
+      ['Press "Paint territory"', {type:'startPaint'}],
+      ['Paint (6,2)', {type:'togglePaint', x:6, y:2}],
+      ['Paint (6,3) - the Red-held tile', {type:'togglePaint', x:6, y:3}],
+      ['Paint (6,4)', {type:'togglePaint', x:6, y:4}],
+      ['Press "Send army"', {type:'confirmPaint'}],
+      ['End turn', {type:'endTurn'}],
+      ['End turn', {type:'endTurn'}],
+      ['End turn (contact)', {type:'endTurn'}],
+      ['End turn (aftermath)', {type:'endTurn'}],
+    ]},
+  { name:'4. Painting limits', scenario:'reach',
+    blurb:'Try something that should not be allowed: painting far outside the captain\'s reach. Watch the message line in Free play. Also see that clicking a painted tile again un-paints it.',
+    steps:[
+      ['Select the Blue Host', {type:'select', id:'bh'}],
+      ['Press "Paint territory"', {type:'startPaint'}],
+      ['Try to paint (8,3) - too far', {type:'togglePaint', x:8, y:3}],
+      ['Paint (4,3) - fine', {type:'togglePaint', x:4, y:3}],
+      ['Click (4,3) again - un-paints', {type:'togglePaint', x:4, y:3}],
+      ['Press "Send army" with nothing painted', {type:'confirmPaint'}],
+      ['Cancel painting', {type:'cancelPaint'}],
+    ]},
+];
+
+let state = Sim.SCENARIOS.free();
+let scenarioKey = 'free';
+let tab = 0, stepIdx = -1;
+const $ = id => document.getElementById(id);
+
+function dispatch(a){ state = Sim.reduce(state, a); render(); }
+function loadScenario(key){ scenarioKey = key; state = Sim.SCENARIOS[key](); render(); }
+
+function render(){
+  const s = state, sel = s.selected && Sim.armyOf(s, s.selected);
+  $('bar').innerHTML = `<span>Turn <b>${s.turn}</b></span>
+    <span>Selected: <b>${sel ? sel.name : 'none'}</b></span>
+    <span>Mode: <b>${s.mode==='paint' ? 'PAINTING (click tiles)' : 'select'}</b></span>`;
+
+  const g = $('grid'); g.style.gridTemplateColumns = `repeat(${Sim.W}, 1fr)`; g.innerHTML = '';
+  const paintedBy = {};
+  s.armies.forEach(a => a.painted.forEach(p => { (paintedBy[p.x+','+p.y] ||= []).push(a); }));
+  for (let y=0;y<Sim.H;y++) for (let x=0;x<Sim.W;x++) {
+    const t = s.tiles[Sim.idx(x,y)], here = s.units.filter(u => u.x===x && u.y===y);
+    const c = document.createElement('div');
+    c.className = 'cell' + (t.owner ? ' own-'+t.owner : '');
+    c.dataset.x = x; c.dataset.y = y;
+    (paintedBy[x+','+y]||[]).forEach(a => { c.className += ' painted-'+a.owner; });
+    if (sel && here.some(u => u.army===sel.id && u.cap)) c.className += ' sel';
+    if (s.mode==='paint' && s.draft.some(p => p.x===x && p.y===y)) c.className += ' draft';
+    let html = '';
+    ['blue','red'].forEach(o => {
+      const us = here.filter(u => Sim.armyOf(s,u.army).owner===o);
+      if (us.length) html += `<span class="chip ${o}">${us.some(u=>u.cap)?'★':''}${us.length}</span>`;
+    });
+    if (sel) {
+      const n = s.units.filter(u => u.army===sel.id && !u.cap && u.tx===x && u.ty===y).length;
+      if (n && sel.painted.some(p => p.x===x && p.y===y)) html += `<span class="assign">→${n}</span>`;
+    }
+    if (t.entrench) html += `<span class="pips">${'▮'.repeat(t.entrench)}${'▯'.repeat(Sim.C.ENTRENCH_MAX - t.entrench)}</span>`;
+    html += `<span class="coord">${x},${y}</span>`;
+    c.innerHTML = html; g.appendChild(c);
+  }
+
+  $('armies').innerHTML = s.armies.map(a => {
+    const us = s.units.filter(u => u.army===a.id), cap = Sim.capOf(s,a.id);
+    const arrived = us.filter(u => !u.cap && u.tx!=null && u.tx===u.x && u.ty===u.y).length;
+    const total = us.filter(u => !u.cap).length;
+    return `<div class="army ${s.selected===a.id?'sel':''}" data-army="${a.id}">
+      <span class="nm ${a.owner}">${a.name}</span> - ${us.length} unit${us.length===1?'':'s'} (captain + ${total})
+      <small>Captain at (${cap.x},${cap.y}) · speed ${a.speed} tile/turn</small>
+      <small>${a.painted.length ? 'Holding order: ' + a.painted.map(p=>`(${p.x},${p.y})`).join(' ') + ` · ${arrived}/${total} troops in place` : 'No order: standing still'}</small>
+    </div>`;
+  }).join('') || '<em>No armies left.</em>';
+
+  $('log').innerHTML = (s.log.length ? s.log : ['(no turns resolved yet)']).map(l => `<div>${l}</div>`).join('');
+  $('msg').textContent = s.msg;
+
+  $('free').innerHTML = `
+    <button data-act="startPaint" ${s.mode==='paint'?'disabled':''}>Paint territory</button>
+    <button class="primary" data-act="confirmPaint" ${s.mode!=='paint'?'disabled':''}>Send army</button>
+    <button data-act="cancelPaint" ${s.mode!=='paint'?'disabled':''}>Cancel</button>
+    <button data-act="recall">Recall to captain</button>
+    <button class="primary" data-act="endTurn">End turn</button>
+    <button data-act="newSeed">New dice seed</button>
+    <button data-act="reset">Reset board</button>`;
+
+  $('tabs').innerHTML = WALK.map((w,i) => `<button data-tab="${i}" class="${i===tab?'on':''}">${w.name}</button>`).join('');
+  const w = WALK[tab];
+  $('walk').innerHTML = `<p style="margin:0">${w.blurb}</p>
+    <div class="btns" style="margin-top:10px"><button data-start="1">${stepIdx<0?'Start this scenario':'Restart this scenario'}</button></div>
+    <div class="steps">${w.steps.map((st,i) =>
+      `<button data-step="${i}" class="${i<stepIdx?'done':''} ${i===stepIdx?'next':''}" ${i!==stepIdx?'disabled':''}>${i+1}. ${st[0]}</button>`).join('')}</div>`;
+
+  $('rules').innerHTML = [
+    `Painted tiles must be within <b>${Sim.C.REACH}</b> tiles of the captain.`,
+    'Troops split equally across painted tiles and walk 1 tile per turn. One painted tile = the whole army (captain too) marches there.',
+    `Every unit rolls <b>${Math.round(Sim.C.HIT*100)}%</b> to hit per skirmish. Only units sharing a tile fight.`,
+    `Defenders who stay still on their own tile entrench: +<b>${Math.round(Sim.C.ENTRENCH_BONUS*100)}%</b> hit chance per level, up to ${Sim.C.ENTRENCH_MAX}.`,
+    `If <b>${Sim.C.CHARGE_MIN}+</b> attackers arrive together from one tile at a lone defender, it has a <b>${Math.round(Sim.C.RETREAT_P*100)}%</b> chance to retreat unharmed.`,
+    'Captains only die when they are the last unit on their tile. Losses are re-spread evenly.',
+    'Owned tiles stay yours after leaving, but entrenchment resets.',
+  ].map(r => `<li>${r}</li>`).join('');
+}
+
+document.addEventListener('click', e => {
+  const cell = e.target.closest('.cell');
+  if (cell) {
+    const x = +cell.dataset.x, y = +cell.dataset.y;
+    if (state.mode==='paint') return dispatch({type:'togglePaint', x, y});
+    const u = state.units.find(u => u.x===x && u.y===y && u.cap) || state.units.find(u => u.x===x && u.y===y);
+    if (u) dispatch({type:'select', id:u.army});
+    return;
+  }
+  const army = e.target.closest('[data-army]');
+  if (army) return dispatch({type:'select', id:army.dataset.army});
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.act === 'reset') { loadScenario(scenarioKey); return; }
+  if (b.dataset.act) return dispatch({type:b.dataset.act});
+  if (b.dataset.tab != null) { tab = +b.dataset.tab; stepIdx = -1; return render(); }
+  if (b.dataset.start) { stepIdx = 0; return loadScenario(WALK[tab].scenario); }
+  if (b.dataset.step != null) {
+    const st = WALK[tab].steps[+b.dataset.step];
+    stepIdx = Math.min(stepIdx+1, WALK[tab].steps.length);
+    return dispatch(st[1]);
+  }
+});
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>hex4x</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; display: flex; height: 100vh; background: #10161d; color: #dde3ea; font: 14px system-ui, sans-serif; }
+    canvas { flex: 1; min-width: 0; display: block; }
+    aside { width: 260px; padding: 12px; background: #19222c; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+    h2 { margin: 0; font-size: 16px; }
+    button, select { font: inherit; padding: 6px 10px; }
+    #log { font-size: 12px; opacity: 0.8; white-space: pre-line; }
+    .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+    .keys { font-size: 12px; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <aside>
+    <h2 id="status"></h2>
+    <div id="selection"></div>
+    <button id="endTurn">End turn</button>
+    <div class="keys">Click: select / move / attack · F: found city · T: scout route · N: next unit · Space: end turn · Esc: deselect</div>
+    <div class="keys" id="seed"></div>
+    <div id="log"></div>
+  </aside>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
