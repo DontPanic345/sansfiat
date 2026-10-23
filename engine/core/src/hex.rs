@@ -1,10 +1,10 @@
 //! Axial coordinates, pointy-top.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub const DIRS: [(i32, i32); 6] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)];
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Hex {
     pub q: i32,
     pub r: i32,

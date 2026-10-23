@@ -1,29 +1,42 @@
 # engine
 
-Barter-market slice of Sans Fiat in Rust. Clans harvest goods from the land around them and trade
-at the nearest market in reach; prices are exchange ratios found by tâtonnement each turn, with no
-numeraire. One engine, two front ends: a CLI and a wasm web page.
+The Sans Fiat engine in Rust: a world that runs turn by turn and changes only through logged
+actions. One engine, two front ends: a CLI and a wasm web page. The game's design is in
+`docs/design/`; build what it says.
 
 ```
 cargo test
-cargo run -p sansfiat -- run --seed 3 --turns 50 [--every 10] [--json]
+cargo fmt --check && cargo clippy --all-targets -- -D warnings
+cargo run -p sansfiat -- run --seed 3 --turns 50 [--save game.json] [--json]
+cargo run -p sansfiat -- replay game.json [--json]
+cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
 cargo run -p sansfiat -- clear baskets.json     # or - for stdin
-./build-web.ps1; python -m http.server -d www   # http://localhost:8000
+./build-web.sh && python3 -m http.server -d www  # http://localhost:8000
 ```
 
 ## Layout
 
 | Path | What |
 | --- | --- |
-| `core/src/data.rs` | Goods, terrain yields, `SEASON`, `Config`. Tune here first. |
-| `core/src/market.rs` | `clear(baskets, start_prices, params)`, a port of `poc/src/market.js` without `wants`. |
-| `core/src/world.rs` | `World::new(config)` (Voronoi map, coast, markets spread apart, clans) and `step()`: season → harvest → trade → stats. |
-| `core/src/rng.rs` | mulberry32, matching the JS prototypes bit for bit. |
+| `core/src/world.rs` | `World`, `Action`, `TURN`, `act`, `save`, `replay`. |
+| `core/src/data.rs` | Terrain, `Config`, and the goods the market library trades. Tune here first. |
+| `core/src/map.rs` | Placeholder map: Voronoi terrain in a hex, sea at the rim. A map piece replaces it. |
+| `core/src/market.rs` | `clear(baskets, start_prices, params)`: barter exchange ratios by tâtonnement, no numeraire. A library; nothing calls it yet. |
+| `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
-| `web/` | wasm-bindgen `Sim` class; `www/main.js` draws it. `www/pkg` is built, not committed. |
+| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `state`, `save`); `www/main.js` draws it. `www/pkg` is built, not committed. |
+
+## Adding a mechanic
+
+1. Its state is a field (or a struct of fields) on `World`, built in `World::new`.
+2. Its per-turn work is one or more `Step`s in `TURN`, in the place the design puts them.
+3. Anything the player does is a variant of `Action`, checked in `validate` and applied in `act`.
+4. A module of its own under `core/src/`, tests under `core/tests/`.
 
 ## Invariants
 
-- All randomness goes through `rng::rand` on `World.rng`, so a config replays exactly.
+- The world changes only through `act`. A `Save` (config and action log) replays to an identical world;
+  `replaying_a_save_rebuilds_the_world` holds it to that.
+- All randomness goes through `rng::rand` on `World.rng`.
 - `clear` conserves every good exactly; tests hold it to that and to nobody losing utility.
 - `wasm-bindgen` in `web/Cargo.toml` is pinned to the installed `wasm-bindgen-cli` version.

@@ -60,6 +60,7 @@ jobs:
         if: inputs.command != 'status'
         with:
           targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
         if: inputs.command != 'status'
@@ -85,4 +86,4 @@ jobs:
         with:
           name: relay-runs-${{ github.run_id }}
           path: relay/runs/
-          retention-days: 7
+          retention-days: 14

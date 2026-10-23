@@ -1,9 +1,11 @@
-use std::{env, fs, io::Read, process::exit};
+use std::{env, fs, io::Read, process::exit, time::Instant};
 
-use engine::{clear, utility, Basket, Config, Params, World, GOODS, N};
+use engine::{clear, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
 
 const USAGE: &str = "\
-sansfiat run [--seed N] [--turns N] [--radius N] [--clans N] [--markets N] [--reach N] [--every N] [--json]
+sansfiat run [--seed N] [--turns N] [--radius N] [--save file.json] [--json]
+sansfiat replay <file.json> [--json]
+sansfiat bench [seed ...] [--turns N] [--radius N]
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
 sansfiat goods";
 
@@ -11,6 +13,11 @@ fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
         Some("run") => run(&args[1..]),
+        Some("replay") => match args.get(1) {
+            Some(path) => replay(path, args.iter().any(|a| a == "--json")),
+            None => Err(USAGE.to_string()),
+        },
+        Some("bench") => bench(&args[1..]),
         Some("clear") => clear_file(args.get(1).map(String::as_str).unwrap_or("-")),
         Some("goods") => {
             println!("{}", GOODS.join(" "));
@@ -26,7 +33,7 @@ fn main() {
 
 fn run(args: &[String]) -> Result<(), String> {
     let mut config = Config::default();
-    let (mut turns, mut every, mut json) = (50u32, 10u32, false);
+    let (mut turns, mut json, mut save) = (50u32, false, None);
     let mut it = args.iter();
     while let Some(flag) = it.next() {
         if flag == "--json" {
@@ -39,53 +46,73 @@ fn run(args: &[String]) -> Result<(), String> {
             "--seed" => config.seed = value.parse().map_err(bad)?,
             "--turns" => turns = value.parse().map_err(bad)?,
             "--radius" => config.radius = value.parse().map_err(bad)?,
-            "--clans" => config.clans = value.parse().map_err(bad)?,
-            "--markets" => config.markets = value.parse().map_err(bad)?,
-            "--reach" => config.reach = value.parse().map_err(bad)?,
-            "--every" => every = value.parse().map_err(bad)?,
+            "--save" => save = Some(value.clone()),
             _ => return Err(format!("unknown flag {flag}\n{USAGE}")),
         }
     }
-
     let mut w = World::new(config);
-    if json {
-        w.run(turns);
-        println!("{}", serde_json::to_string(&w).unwrap());
-        return Ok(());
+    w.run(turns);
+    if let Some(path) = save {
+        fs::write(&path, serde_json::to_string(&w.save()).unwrap()).map_err(|e| format!("{path}: {e}"))?;
     }
-
-    let trading = w.clans.iter().filter(|c| c.market.is_some()).count();
-    println!(
-        "seed {}: {} tiles, {} clans ({} in reach of a market), {} markets",
-        config.seed,
-        w.tiles.len(),
-        w.clans.len(),
-        trading,
-        w.markets.len()
-    );
-    println!("{:>5} {:>6}  {}", "turn", "gain", header());
-    for _ in 0..turns {
-        w.step();
-        if w.turn % every.max(1) != 0 && w.turn != turns {
-            continue;
-        }
-        let t = w.history.last().unwrap();
-        let gain = 100.0 * (t.traded - t.autarky) / t.autarky;
-        for m in &w.markets {
-            let lead = if m.id == 0 { format!("{:>5} {:>5.1}%", w.turn, gain) } else { " ".repeat(12) };
-            let state = if m.cleared { format!("{} traders", m.traders) } else { "no clearing".into() };
-            println!("{lead}  {}  market {} {state}", row(&m.prices), m.id);
-        }
-    }
+    report(&w, json);
     Ok(())
 }
 
-fn header() -> String {
-    GOODS.iter().map(|g| format!("{g:>7}")).collect::<Vec<_>>().join(" ")
+fn replay(path: &str, json: bool) -> Result<(), String> {
+    let text = fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let save: Save = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
+    report(&World::replay(&save)?, json);
+    Ok(())
 }
 
-fn row(b: &Basket) -> String {
-    b.iter().map(|v| format!("{v:>7.3}")).collect::<Vec<_>>().join(" ")
+fn report(w: &World, json: bool) {
+    if json {
+        println!("{}", serde_json::to_string(w).unwrap());
+        return;
+    }
+    let land = w.tiles.iter().filter(|t| TERRAIN[t.terrain].land).count();
+    println!(
+        "seed {} radius {}: turn {}, {} tiles ({} land), {} actions logged",
+        w.config.seed,
+        w.config.radius,
+        w.turn,
+        w.tiles.len(),
+        land,
+        w.log.len()
+    );
+}
+
+/// Times `turns` turns from a fresh world for each seed.
+fn bench(args: &[String]) -> Result<(), String> {
+    let mut turns = 200u32;
+    let mut seeds: Vec<u32> = Vec::new();
+    let mut radius = Config::default().radius;
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--turns" => turns = it.next().and_then(|v| v.parse().ok()).ok_or("--turns needs a number")?,
+            "--radius" => radius = it.next().and_then(|v| v.parse().ok()).ok_or("--radius needs a number")?,
+            s => seeds.push(s.parse().map_err(|_| format!("not a seed: {s}\n{USAGE}"))?),
+        }
+    }
+    if seeds.is_empty() {
+        seeds = vec![1, 2, 3];
+    }
+    for seed in seeds {
+        let start = Instant::now();
+        let mut w = World::new(Config { seed, radius });
+        let built = start.elapsed();
+        w.run(turns);
+        let total = start.elapsed();
+        println!(
+            "seed {seed}: world {:.1} ms, {turns} turns {:.1} ms ({:.3} ms a turn)",
+            built.as_secs_f64() * 1e3,
+            (total - built).as_secs_f64() * 1e3,
+            (total - built).as_secs_f64() * 1e3 / turns.max(1) as f64
+        );
+    }
+    Ok(())
 }
 
 fn basket_of(v: &serde_json::Value, what: &str) -> Result<Basket, String> {
