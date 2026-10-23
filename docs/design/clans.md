@@ -45,7 +45,8 @@ A clan is a group of people living off a territory. As in the poc:
 
 - **Seeds.** The world starts with a few small clans, and the population spreads from them.
 - **Territory.** A clan holds a connected patch of tiles around a home tile. It grows its
-  territory when it isn't fully fed, and swaps a poor tile for a better one.
+  territory when it isn't fully fed, and swaps a poor tile for a better one. See *Territory
+  shape* below for how big it gets and what shape it takes.
 - **Diet.** A clan needs one food per person per turn. Variety counts: any one food counts in
   full only up to a share of what the clan needs, and is worth less beyond that. This is the
   diversity bonus, and it's the only reason a clan wants foods it doesn't have.
@@ -76,6 +77,37 @@ between each one. So walking costs less inside the territory than outside it:
 A clan picks the tiles to harvest by what each one gives for the labour it costs: food first
 by diet share, then by how much it can take. Distant food is expensive, so a clan that
 lacks a food either does without it, walks a long way for it, or trades for it.
+
+### Territory shape
+
+A territory is as big as the clan can work, with a hard limit on top:
+
+- **Worth working.** A clan claims a tile only if the food it would get from it is worth the
+  labour of walking to it and harvesting it, at the cheaper inside cost. A clan doesn't hold
+  land it can't use.
+- **Limit.** No tile of a territory is more than `territoryRadius` (2) steps from home, so a
+  territory is at most 19 tiles. This stops a big clan's cheap inside walking turning into a
+  territory that stretches across the map.
+- **Blobby, not liney.** A territory grows as a compact blob around home, not as a line
+  following the best tiles. When a clan picks a tile to claim, the tile's score goes up for
+  each neighbour already in the territory and down with its distance from home. A tile that
+  touches only one tile of the territory is claimed only if it's much better than the
+  alternatives. When a clan drops a tile, it drops the one that touches the fewest of its
+  own tiles first.
+- **Home moves to the middle.** Home shifts one tile a turn towards the middle of the
+  territory, so the limit stays centred on the land the clan actually uses.
+
+### Grain and hearths
+
+Clans tame the grain they live with, as in the poc. This may change later, but it's in the
+right direction.
+
+- Grain on a tile a clan has held for a long time slowly becomes tame. Grain on land nobody
+  holds slowly goes wild again.
+- Tamer grain grows more: a tile's grain cap rises with how tame it is.
+- A fully tamed tile is domesticated. It's a **hearth**, with about 2.5 times its wild grain.
+
+Hearths are what make a fertile area a centre that can feed a civ.
 
 ### Trails
 
@@ -112,38 +144,19 @@ The pre-game ends once enough centres have formed by themselves. A centre is:
 
 - a market that has lasted at least a set number of turns,
 - with at least a set number of clans trading there,
-- in a fertile area,
-- and set apart from the other centres.
+- with a hearth in its reach,
+- and far from the other centres: at least `centreSpacing` (about 10) steps from any other.
 
-It ends when there are enough centres for the players and the population has spread over
-most of the land it can reach. There's also a turn limit as a backstop. What happens next,
+There are always **3 players** for now, so the pre-game waits for 3 centres. It ends when
+there are 3 and the population has spread over most of the land it can reach. The civs that
+start from these centres begin far apart. There's also a turn limit as a backstop. What happens next,
 the boon year and founding a civ, is a separate piece.
-
-## Abstractions in this piece
-
-Each one, and why it's here:
-
-| Abstraction | Stands for | Why we need it |
-|---|---|---|
-| A turn with no fixed length | The seasons averaging out | Seasons would need a calendar, and nothing in this piece needs one |
-| Territory | Semi-nomadic roaming over a year | Without it, every clan would walk every trip from a single home |
-| The cheap walk inside territory | Being somewhere nearby already | Same reason; full price outside keeps distance real |
-| The diversity bonus | Needing a varied diet | It gives clans a reason to want foods they don't have, so trade has a point |
-| The desire to gather | Festivals, company, sharing surplus | Trade alone may not bring clans together early; this is the smallest stand-in |
-| Spoilage | Food going off | Stops stores growing without limit, so a surplus has to be used |
 
 ## Open questions
 
-1. **Grain tending.** The poc's clans tamed the grain on land they held for a long time, and
-   the pre-game waited for domesticated "hearths". Is that in this piece, or a later one?
-   (This draft leaves it out.)
-2. **Traders.** When a clan divides, might some of the daughter's people become traders
-   rather than a new clan? This draft leaves it out, and uses forming at long-lived spots.
-3. **Territory size.** The poc capped a territory's total move cost. With cheap walking
-   inside, should the cap be on labour instead, so a territory is as big as the clan can
-   work?
-4. **How many centres, how far apart, and how much land must be covered** before the game
-   starts?
+1. **How much land must be covered** before the game starts? This draft says "most of the
+   land people can reach". A number, such as 80% of reachable land within a few steps of a
+   clan, would make it testable.
 
 ## The proof's question
 
@@ -159,3 +172,5 @@ them?
 - A new map generator (rivers, ridges, coasts). The placeholder map gains food and
   fertility, and nothing more.
 - Hidden trail costs and scouting.
+- Traders. Traders work between markets, and they come in a later piece.
+- More or fewer than 3 players.
