@@ -1,0 +1,37 @@
+[
+  {
+    "id": "build-1",
+    "title": "Food on the land, and clans that eat",
+    "model": "opus",
+    "effort": "medium",
+    "why": "Changes across the engine (goods, map, world, new modules) and the labour-bound harvest planner every later rule leans on."
+  },
+  {
+    "id": "build-2",
+    "title": "Rounds that change, clans that divide and move",
+    "model": "opus",
+    "effort": "high",
+    "why": "The subtlest rules: cheapest insertion, swaps, home moving and the limit interact with dividing and moving on, under a 300-turn invariant test."
+  },
+  {
+    "id": "build-3",
+    "title": "Trails, hearths, markets and the end",
+    "model": "opus",
+    "effort": "high",
+    "why": "Four mechanics that feed each other (trails into labour, markets into harvest labour, hearths into centres) plus the end test."
+  },
+  {
+    "id": "build-4",
+    "title": "Show it: stats, sweep, web map, tuning",
+    "model": "sonnet",
+    "effort": "high",
+    "why": "Contained CLI and canvas work, plus a bounded tuning pass that moves only numbers and records them."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "sonnet",
+    "effort": "high",
+    "why": "A proof's review: check no rule places centres, run the sweeps and write the findings."
+  }
+]
