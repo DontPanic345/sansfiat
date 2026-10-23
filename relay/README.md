@@ -111,8 +111,9 @@ The crew sets only the fields that exist, and only to options that exist:
 
 ## Running it
 
-The schedule is off: start a run from Actions → relay → Run workflow, or `/relay run` on a
-piece. To run every six hours, uncomment `schedule` in `.github/workflows/relay.yml`. The
+The crew runs every six hours (at 17 past 00, 06, 12 and 18 UTC). Start one sooner from
+Actions → relay → Run workflow, or `/relay run` on a piece. To turn the schedule off, comment
+out `schedule` in `.github/workflows/relay.yml`. The
 `relay` environment holds `RELAY_APP_ID`, `RELAY_APP_KEY`, `CLAUDE_CODE_OAUTH_TOKEN` and,
 for the board, `RELAY_BOARD_TOKEN`.
 

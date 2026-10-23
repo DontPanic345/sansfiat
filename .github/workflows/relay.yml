@@ -5,11 +5,11 @@ name: relay
 #
 # Start a run: Actions → relay → Run workflow, or comment `/relay run` on a piece.
 # Stop now: cancel the run; the step stays open and the next run starts it again.
-# The schedule is off until Alan turns it on: uncomment `schedule` below.
+# Runs every six hours on the schedule below; comment it out to turn it off.
 
 on:
-  # schedule:
-  #   - cron: "17 */6 * * *"
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       command:
