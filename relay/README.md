@@ -55,7 +55,7 @@ On a piece's issue, from Alan only (`relay-events.yml`):
 | `/relay pause` / `resume` | Hold the piece, or let it go again |
 | `/relay status` | The piece's steps, with their state and spend |
 | `/relay scope` | The spec's scope map and the ideas raised so far |
-| `/relay run` | Start a crew run now |
+| `/relay run` | Label the piece `relay:ready` if it isn't, and start a crew run now |
 
 ## What a session gets
 

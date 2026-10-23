@@ -1010,9 +1010,13 @@ const COMMANDS = {
         return "Resumed from the next run.";
     },
     status: async (piece) => (piece.steps.length ? stepsTable(piece.steps) : "No steps yet: the next run starts the spec."),
-    run: async () => {
+    run: async (piece) => {
+        // Asking for a run on a piece says it's ready, so the run has it to work on.
+        const readied = !piece.labels.includes("relay:ready");
+        if (readied) await addLabel(piece.number, "relay:ready");
         await github("POST", `/actions/workflows/${WORKFLOW}/dispatches`, { ref: "main", inputs: { command: "run" } }, process.env.DISPATCH_TOKEN);
-        return "Started a run.";
+        const hold = holdReason({ ...piece, labels: [...new Set([...piece.labels, "relay:ready"])] }, [], []);
+        return `${readied ? "Labelled `relay:ready` and started" : "Started"} a run.${hold ? ` This piece is held (${hold}), so the run works on others.` : ""}`;
     },
     scope: async (piece) => {
         let map = null;
