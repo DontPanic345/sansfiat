@@ -58,44 +58,45 @@ A clan is a group of people living off a territory. As in the poc:
 - **Storage.** A clan keeps a small store of what it didn't eat. The store spoils: it loses a
   share every turn.
 
-### Labour and movement
+### The round
 
-A clan's labour each turn is its people times the work each person can do. Labour pays for
-walking to food, harvesting it, and walking back.
+A territory stands in for a semi-nomadic life. Over a year, a clan works its way around its
+land, visiting its favourite spots in turn, without walking home between each one. The
+**round** is that walk: a closed loop of tiles that starts and ends at home.
 
-The point of a territory is to stand in for a semi-nomadic life. Over a year, a clan works
-its way around its own land, visiting its favourite spots in turn. It doesn't walk home
-between each one. So walking costs less inside the territory than outside it:
+- **The round defines the territory.** The territory is the tiles on the round plus the
+  tiles next to it.
+- **Walking the round** costs its total move cost, once a turn. This is the clan's
+  everyday walking.
+- **Harvesting a tile on the round** costs only the harvesting.
+- **Harvesting a tile off the round** costs the walk from the nearest tile on the round, there
+  and back (2 × path cost), plus the harvesting.
+- **Going to market** costs the walk from the nearest tile on the round to the market, there
+  and back. A round that passes near a market makes going cheap.
 
-- **Inside its territory**, harvesting a tile costs the tile's move cost × `inside` (about
-  0.25), paid once per visit, with no walk back. The clan is assumed to be somewhere nearby
-  already.
-- **Outside its territory**, harvesting a tile costs the full path cost from the nearest tile
-  of the territory, there and back: 2 × path cost.
-- **Harvesting** costs the same labour wherever the tile is.
+A clan's labour each turn is its people times the work each person can do. Walking the
+round comes out of it first, then each harvest and any market trip. A clan picks what to
+harvest by what each tile gives for the labour it costs: food first by diet share, then by
+how much it can take. Distant food is expensive, so a clan that lacks a food either does
+without it, walks a long way for it, or trades for it.
 
-A clan picks the tiles to harvest by what each one gives for the labour it costs: food first
-by diet share, then by how much it can take. Distant food is expensive, so a clan that
-lacks a food either does without it, walks a long way for it, or trades for it.
+### Changing the round
 
-### Territory shape
+A clan changes its round one tile at a time.
 
-A territory is as big as the clan can work, with a hard limit on top:
-
-- **Worth working.** A clan claims a tile only if the food it would get from it is worth the
-  labour of walking to it and harvesting it, at the cheaper inside cost. A clan doesn't hold
-  land it can't use.
-- **Limit.** No tile of a territory is more than `territoryRadius` (2) steps from home, so a
-  territory is at most 19 tiles. This stops a big clan's cheap inside walking turning into a
-  territory that stretches across the map.
-- **Blobby, not liney.** A territory grows as a compact blob around home, not as a line
-  following the best tiles. When a clan picks a tile to claim, the tile's score goes up for
-  each neighbour already in the territory and down with its distance from home. A tile that
-  touches only one tile of the territory is claimed only if it's much better than the
-  alternatives. When a clan drops a tile, it drops the one that touches the fewest of its
-  own tiles first.
-- **Home moves to the middle.** Home shifts one tile a turn towards the middle of the
-  territory, so the limit stays centred on the land the clan actually uses.
+- **Adding a tile.** The clan adds the tile where it lengthens the loop least, between the two
+  tiles on the round it fits best. Adding the cheapest way keeps the loop compact, so the
+  territory grows as a blob around home rather than a line chasing the best tiles.
+- **Worth working.** A clan adds a tile only if the food it opens up is worth the extra
+  walking. It doesn't hold land it can't use.
+- **Dropping a tile.** The clan drops the tile whose loss costs it least, and reconnects the
+  round around the gap.
+- **Starving.** A clan that isn't fully fed swaps its least valuable tile for a better one,
+  a tile a turn, so a hungry clan drifts across the land towards better ground.
+- **Home follows the middle.** Home shifts one tile a turn towards the middle of the
+  territory, and the round still starts and ends there.
+- **Limit.** No tile on the round is more than `territoryRadius` (2) steps from home, so the
+  territory can't stretch across the map however big the clan gets.
 
 ### Grain and hearths
 
@@ -111,13 +112,13 @@ Hearths are what make a fertile area a centre that can feed a civ.
 
 ### Trails
 
-Walking wears trails into the land. Every time a clan enters a tile, it adds that move cost
-to the tile's wear. Once wear passes a threshold, the tile has a trail, and its move cost
-drops (forest and hills to 1). Trails belong to the tile, not to the clan, so everyone uses
-them. A trail nobody walks wears away again.
+A round walked year after year wears a trail. A tile that has been on a clan's round for
+`trailAfter` turns in a row gets a trail, and its move cost drops (forest and hills to 1).
+Trails belong to the tile, not to the clan, so everyone uses them. A trail that's on nobody's
+round for a long time wears away again.
 
-Because walking inside a territory still costs something, clans wear trails into their own
-land. Their favourite routes get cheaper over time, and the routes to market most of all.
+So a clan's round gets cheaper the longer it keeps it, and settled clans pay less to live
+than ones that keep moving.
 
 ## Markets
 
@@ -126,11 +127,11 @@ A market is where clans meet to trade, and in the pre-game it's also a festival.
 - **Forming.** A market forms on a spot that has been lived on for a long time, with enough
   clans in reach. It's at most one new market a turn, kept a distance from other markets.
 - **Going.** Each turn, a clan goes to the nearest market in reach if going is worth the walk.
-  The walk is costed like an outside trip (there and back, full price). It's worth going when
+  The walk is from the nearest tile on the clan's round, there and back. It's worth going when
   what it would gain from trading at last turn's prices, plus its desire to gather, is more
   than the labour the walk costs.
-- **Desire to gather.** Clans want to go to festivals: to see others, and to share a good
-  year's surplus. This is the one place in this piece where something like happiness comes
+- **Desire to gather.** Clans want to go to festivals: to see others, and to share
+  their surplus. This is the one place in this piece where something like happiness comes
   in, and it's kept as simple as possible. A clan holding a surplus (a store above what it
   needs) gets a fixed bonus towards going. Sharing surplus food is the reason, and the bonus
   stands for it.
@@ -148,21 +149,16 @@ The pre-game ends once enough centres have formed by themselves. A centre is:
 - and far from the other centres: at least `centreSpacing` (about 10) steps from any other.
 
 There are always **3 players** for now, so the pre-game waits for 3 centres. It ends when
-there are 3 and the population has spread over most of the land it can reach. The civs that
-start from these centres begin far apart. There's also a turn limit as a backstop. What happens next,
-the boon year and founding a civ, is a separate piece.
-
-## Open questions
-
-1. **How much land must be covered** before the game starts? This draft says "most of the
-   land people can reach". A number, such as 80% of reachable land within a few steps of a
-   clan, would make it testable.
+there are 3 and the people have spread over the land they can reach: at least 80% of the land
+connected to the centres is within 3 steps of some clan's territory. The civs that start
+from these centres begin far apart. A turn limit is the backstop. What happens next, the boon
+year and founding a civ, is a separate piece.
 
 ## The proof's question
 
-Does a sparse world of clans, paying real labour to walk to their food, spread across the
-land and form centres with markets around fertile areas on its own, with no rule placing
-them?
+Does a sparse world of clans, walking their rounds and paying real labour to reach their
+food, spread across the land and form centres with markets around fertile areas on its own,
+with no rule placing them?
 
 ## Out of scope
 
