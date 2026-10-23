@@ -48,7 +48,14 @@ not one the design solves for them.
 
 ## Winning
 
-Conquest: the last civ standing wins.
+Not decided yet. These are the usual options, held equally open:
+
+- **Conquest:** the last civ standing wins.
+- **Time limit:** after a set number of turns, the civ with the most people, land or goods wins.
+- **Influence:** most of the world's people choose to join your civ.
+- **Great work:** you are the first to finish a project that takes the world's labour, such as a
+  temple, a city wall or a monument.
+- **Trade:** your market becomes the one the world trades at.
 
 ## Making it a game
 
