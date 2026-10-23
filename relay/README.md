@@ -80,9 +80,22 @@ share of the week.
 
 ## The board
 
-The crew updates "Sans Fiat Work" when it can: Status, Piece type, Step, Model, Effort,
-Attempts, Tokens, Context and Compactions. GitHub Apps may not reach a project on a
-personal account; if not, the run log says so and everything else carries on.
+The crew updates "Sans Fiat Work", a project on Alan's account, when it can. A GitHub App
+can't reach a personal account's project, so the board needs its own token: a classic
+personal access token with the `project` scope, stored as `RELAY_BOARD_TOKEN` in the `relay`
+environment. Without it, or without the project, the run log says so and everything else
+carries on. Sessions never get the token.
+
+The crew sets only the fields that exist, and only to options that exist:
+
+| Field | Type | Options |
+|---|---|---|
+| Status | Single select | Ready, Spec, Sign-off, Building, Waiting, Review, Done |
+| Piece type | Single select | proof, merge, polish |
+| Step | Single select | spec, spec-review, build, review |
+| Model | Single select | haiku, sonnet, opus |
+| Effort | Single select | low, medium, high |
+| Attempts, Tokens, Context, Compactions | Number | |
 
 ## Files
 
@@ -98,6 +111,12 @@ personal account; if not, the run log says so and everything else carries on.
 
 The schedule is off: start a run from Actions → relay → Run workflow, or `/relay run` on a
 piece. To run every six hours, uncomment `schedule` in `.github/workflows/relay.yml`. The
-`relay` environment holds `RELAY_APP_ID`, `RELAY_APP_KEY` and `CLAUDE_CODE_OAUTH_TOKEN`.
+`relay` environment holds `RELAY_APP_ID`, `RELAY_APP_KEY`, `CLAUDE_CODE_OAUTH_TOKEN` and,
+for the board, `RELAY_BOARD_TOKEN`.
+
+Each run installs the latest Claude Code. The run log and each finished step's comment say
+which version and model a session ran on. If a session never sends the init frame the crew
+reads (the CLI's stream-json changed, or it failed to start), the run stops without counting
+an attempt, and the Relay log issue says why.
 
 Not built yet: milestone play checks, tags and releases.

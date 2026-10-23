@@ -174,6 +174,7 @@ test("initProblem refuses the wrong model and anything but auto mode", () => {
     assert.equal(initProblem({ model: "claude-sonnet-x", permissionMode: "auto" }, "sonnet"), null);
     assert.match(initProblem({ model: "claude-opus-x", permissionMode: "auto" }, "sonnet"), /mismatch/);
     assert.match(initProblem({ model: "claude-sonnet-x", permissionMode: "default" }, "sonnet"), /not auto/);
+    assert.match(initProblem(null, "sonnet"), /no init frame/);
 });
 
 test("parseCommand and applyModel read Alan's commands", () => {

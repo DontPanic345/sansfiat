@@ -34,6 +34,7 @@ jobs:
       RELAY_APP_ID: ${{ secrets.RELAY_APP_ID }}
       RELAY_APP_KEY: ${{ secrets.RELAY_APP_KEY }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      RELAY_BOARD_TOKEN: ${{ secrets.RELAY_BOARD_TOKEN }}
     steps:
       # The crew sets up git's credentials itself, from a token file sessions can read
       # without holding the App's key.
@@ -46,9 +47,10 @@ jobs:
         with:
           node-version: 24
 
-      # Pinned: the crew reads the CLI's stream-json output, so an upgrade is a deliberate change.
+      # The latest, every run. The crew records the version on each step, and a session whose
+      # stream-json it can't read stops the run without costing the step an attempt.
       - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code@2.1.301
+        run: npm install -g @anthropic-ai/claude-code@latest
 
       - name: Status
         if: inputs.command == 'status'

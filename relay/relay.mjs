@@ -13,7 +13,9 @@
 // crew is the only one that closes a step. relay/README.md explains the whole loop.
 //
 // Environment: RELAY_APP_ID and RELAY_APP_KEY (the App, see token.mjs), CLAUDE_CODE_OAUTH_TOKEN,
-// and for `event` GITHUB_EVENT_PATH and DISPATCH_TOKEN (the workflow's own token, for `/relay run`).
+// RELAY_BOARD_TOKEN (optional: a classic token with the `project` scope, since an App can't
+// reach a personal account's project), and for `event` GITHUB_EVENT_PATH and DISPATCH_TOKEN
+// (the workflow's own token, for `/relay run`).
 
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -39,7 +41,7 @@ const STARTED = Date.now();
 const DEADLINE_MS = Number(process.env.RELAY_DEADLINE_MIN ?? 250) * 60_000;
 const SESSION_TIMEOUT_MS = Number(process.env.RELAY_SESSION_MIN ?? 90) * 60_000;
 // Written into transcripts, which become a workflow artifact anyone signed in can read.
-export const SECRETS = ["CLAUDE_CODE_OAUTH_TOKEN", "RELAY_APP_KEY", "DISPATCH_TOKEN"];
+export const SECRETS = ["CLAUDE_CODE_OAUTH_TOKEN", "RELAY_APP_KEY", "DISPATCH_TOKEN", "RELAY_BOARD_TOKEN"];
 
 export const MODELS = ["haiku", "sonnet", "opus"];
 export const EFFORTS = ["low", "medium", "high"];
@@ -287,9 +289,23 @@ export const sessionPrompt = (piece, step, files) => {
     return parts.join("\n\n") + "\n";
 };
 
+// The CLI isn't pinned, so each run records the version it got.
+let cli;
+const cliVersion = () => {
+    if (cli === undefined) {
+        try {
+            cli = execFileSync("claude", ["--version"], { encoding: "utf8" }).trim();
+        } catch {
+            cli = "(unknown version)";
+        }
+    }
+    return cli;
+};
+
 // The session's init frame says what it really got. A model the user's default overrode,
 // or a session without auto mode, can't do the step.
 export const initProblem = (frame, model) => {
+    if (!frame) return `Claude Code ${cliVersion()} sent no init frame: its stream-json may have changed`;
     if (!frame.model?.includes(model)) return `model mismatch: wanted ${model}, got ${frame.model}`;
     if (frame.permissionMode !== "auto") return `permission mode is ${frame.permissionMode}, not auto`;
     return null;
@@ -416,8 +432,8 @@ const request = async (method, url, body, auth) => {
 const github = (method, route, body, auth) =>
     request(method, `https://api.github.com/${route.startsWith("/") ? `repos/${GH_REPO}${route}` : route}`, body, auth);
 
-const graphql = async (query, variables) => {
-    const res = await request("POST", "https://api.github.com/graphql", { query, variables });
+const graphql = async (query, variables, auth) => {
+    const res = await request("POST", "https://api.github.com/graphql", { query, variables }, auth);
     if (res.errors) throw new Error(`GraphQL: ${res.errors.map((e) => e.message).join("; ")}`);
     return res.data;
 };
@@ -476,9 +492,14 @@ const closeStep = (step, reason = "completed") => github("PATCH", `/issues/${ste
 // ---- The board (best effort: the crew works without it) ----
 
 let board;
+const BOARD_TOKEN = process.env.RELAY_BOARD_TOKEN || undefined;
 
 const loadBoard = async () => {
     if (board !== undefined) return board;
+    if (!BOARD_TOKEN) {
+        log("the board won't be updated this run: RELAY_BOARD_TOKEN isn't set, and the App can't reach a personal account's project");
+        return (board = null);
+    }
     try {
         const data = await graphql(
             `query($login: String!, $q: String!) { user(login: $login) { projectsV2(first: 5, query: $q) { nodes {
@@ -486,6 +507,7 @@ const loadBoard = async () => {
                     ... on ProjectV2Field { id name dataType }
                     ... on ProjectV2SingleSelectField { id name dataType options { id name } } } } } } } }`,
             { login: ALAN, q: BOARD },
+            BOARD_TOKEN,
         );
         const project = data.user.projectsV2.nodes.find((p) => p.title === BOARD);
         if (!project) throw new Error(`no project called "${BOARD}"`);
@@ -506,6 +528,7 @@ const setBoard = async (nodeId, values) => {
         const added = await graphql(
             `mutation($p: ID!, $c: ID!) { addProjectV2ItemById(input: { projectId: $p, contentId: $c }) { item { id } } }`,
             { p: b.id, c: nodeId },
+            BOARD_TOKEN,
         );
         const item = added.addProjectV2ItemById.item.id;
         for (const [name, value] of Object.entries(values)) {
@@ -523,6 +546,7 @@ const setBoard = async (nodeId, values) => {
                 `mutation($p: ID!, $i: ID!, $f: ID!, $v: ProjectV2FieldValue!) {
                     updateProjectV2ItemFieldValue(input: { projectId: $p, itemId: $i, fieldId: $f, value: $v }) { projectV2Item { id } } }`,
                 { p: b.id, i: item, f: field.id, v },
+                BOARD_TOKEN,
             );
         }
     } catch (e) {
@@ -625,6 +649,7 @@ const runSession = (piece, step, prompt) =>
         const env = { ...process.env, PATH: `${BIN}:${process.env.PATH}` };
         delete env.RELAY_APP_KEY;
         delete env.DISPATCH_TOKEN;
+        delete env.RELAY_BOARD_TOKEN;
         const child = spawn(
             "claude",
             [
@@ -681,6 +706,8 @@ const runSession = (piece, step, prompt) =>
             clearTimeout(timer);
             clearInterval(renew);
             out.end(redact(buf, hidden));
+            // A session that never said how it started costs no attempt: the CLI changed, not the step.
+            if (!model && !refused && !timedOut) refused = initProblem(null, step.meta.model);
             resolve({ code, model, refused, timedOut, stats: sessionStats(lastAssistant, result, step.meta.model, compactions) });
         });
     });
@@ -843,7 +870,7 @@ const runStep = async (piece, step) => {
         return `#${piece.number} ${step.meta.id}: blocked (${e.message})`;
     }
     await writeTokenFile();
-    log(`start #${piece.number} ${step.meta.id} on ${step.meta.model}/${step.meta.effort}`);
+    log(`start #${piece.number} ${step.meta.id} on ${step.meta.model}/${step.meta.effort} with Claude Code ${cliVersion()}`);
     const { code, model, refused, timedOut, stats } = await runSession(piece, step, prompt);
     if (refused) {
         tidyUp(branch);
@@ -862,7 +889,7 @@ const runStep = async (piece, step) => {
     await setBoard(step.nodeId, { Attempts: meta.attempts ?? 0, Tokens: meta.tokens, Context: meta.context, Compactions: meta.compactions, Status: outcome === "done" ? "Done" : outcome === "blocked" ? "Waiting" : "Building" });
     if (exitOk) await raiseIdeas(piece, result?.ideas);
     if (outcome === "done") {
-        await comment(step.number, `✅ ${result.summary ?? "Done."}\n\n${stats.tokens.toLocaleString("en-NZ")} tokens, ${stats.context}% context, ${stats.compactions} compactions.`);
+        await comment(step.number, `✅ ${result.summary ?? "Done."}\n\n${stats.tokens.toLocaleString("en-NZ")} tokens, ${stats.context}% context, ${stats.compactions} compactions. ${model}, Claude Code ${cliVersion()}.`);
         await closeStep(step);
         await afterStep(piece, step, result);
     } else if (outcome === "blocked") {
