@@ -2,9 +2,10 @@
 
 ## The runner
 
-- Stable Rust with the wasm target, `wasm-bindgen-cli` 0.2.128, Node 24 and PowerShell are
-  installed. The engine's checks are `cargo test` in `engine/` and `./build-web.ps1`
-  (`shell: pwsh`). A prototype's checks are `npm test` in its folder.
+- Stable Rust with the wasm target, rustfmt, clippy, `wasm-bindgen-cli` 0.2.128 and Node 24
+  are installed. The engine's checks, as CI runs them in `engine/`, are `cargo fmt --check`,
+  `cargo clippy --all-targets -- -D warnings`, `cargo test` and `./build-web.sh`. A
+  prototype's checks are `npm test` in its folder.
 - The crew stops a session after 90 minutes. Commit work that passes its checks as you go.
 - Read what the step needs and no more: a session that fills its context window is a sign
   the step was too big.

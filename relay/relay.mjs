@@ -374,6 +374,12 @@ export const addIdeas = (meta, ideas) => {
     if (fresh.length === 0) return meta;
     return { ...meta, ideas: [...(meta.ideas ?? []), ...fresh.map((i) => ({ title: String(i.title), body: String(i.body ?? "") }))] };
 };
+// What a spec review says it cut, or "" when it cut nothing (sessions sometimes send [], "" or "none").
+export const scopeCutText = (cut) => {
+    const text = (Array.isArray(cut) ? cut.join("; ") : typeof cut === "string" ? cut : "").trim();
+    return /^(none|nothing)\.?$/i.test(text) ? "" : text;
+};
+
 export const ideaList = (ideas) => (ideas ?? []).map((i) => `- **${i.title}**${i.body ? `: ${i.body}` : ""}`).join("\n");
 
 // A `/relay …` command in a comment, or null.
@@ -829,9 +835,10 @@ const afterStep = async (piece, step, result) => {
         const ideas = step.meta.ideas?.length ? `\n\n💡 Ideas, not built:\n${ideaList(step.meta.ideas)}` : "";
         await comment(pr.number, `**${step.meta.id}** (${step.meta.model}/${step.meta.effort}): ${result.summary}${ideas}`);
     }
-    if (kind === "spec-review" && result.scopeCut) {
+    const cut = kind === "spec-review" ? scopeCutText(result.scopeCut) : "";
+    if (cut) {
         await addLabel(piece.number, "scope-cut");
-        await comment(piece.number, `✂️ The spec review cut work outside the scope: ${result.scopeCut}`);
+        await comment(piece.number, `✂️ The spec review cut work outside the scope: ${cut}`);
     }
     if (kind === "spec-review") await signOff(piece);
     else if (kind === "spec") await setStatus(piece, "Spec");

@@ -9,6 +9,7 @@ import {
     initProblem,
     addIdeas,
     ideaList,
+    scopeCutText,
     nextWork,
     pace,
     parseCommand,
@@ -256,4 +257,10 @@ test("addIdeas keeps new ideas on the step, once each", () => {
     assert.deepEqual(again.ideas.map((i) => i.title), ["Rivers", "Ports"]);
     assert.equal(addIdeas(meta, undefined), meta);
     assert.equal(ideaList(again.ideas), "- **Rivers**: carry goods\n- **Ports**");
+});
+
+test("scopeCutText ignores an empty or 'none' cut and joins a list", () => {
+    for (const nothing of [undefined, "", "  ", [], "None", "nothing."]) assert.equal(scopeCutText(nothing), "");
+    assert.equal(scopeCutText(["rivers", "ports"]), "rivers; ports");
+    assert.equal(scopeCutText(" the scout step "), "the scout step");
 });
