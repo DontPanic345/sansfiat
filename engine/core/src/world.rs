@@ -42,6 +42,7 @@ pub struct Step {
 /// One turn, in order.
 pub const TURN: &[Step] = &[
     Step { name: "regrow", run: land::regrow },
+    Step { name: "move", run: clans::adjust },
     Step { name: "harvest", run: clans::harvest },
     Step { name: "eat", run: clans::eat },
 ];

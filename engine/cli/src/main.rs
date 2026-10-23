@@ -1,6 +1,6 @@
 use std::{env, fs, io::Read, process::exit, time::Instant};
 
-use engine::{clear, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
+use engine::{clear, round, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
 
 const USAGE: &str = "\
 sansfiat run [--seed N] [--turns N] [--radius N] [--save file.json] [--json]
@@ -84,7 +84,13 @@ fn report(w: &World, json: bool) {
     let people: f64 = w.clans.values().map(|c| c.pop).sum();
     let fed = w.clans.values().map(|c| c.fed_ratio).sum::<f64>() / w.clans.len().max(1) as f64;
     let held = w.tiles.iter().filter(|t| t.claim.is_some()).count();
-    println!("{} clans, {people:.1} people, mean fed ratio {fed:.2}, {held} tiles held", w.clans.len());
+    let n = w.clans.len().max(1) as f64;
+    let tiles = w.clans.values().map(|c| c.round.len() as f64).sum::<f64>() / n;
+    let walk = w.clans.values().map(|c| round::cost(w, &c.round)).sum::<f64>() / n;
+    println!(
+        "{} clans, {people:.1} people, mean fed ratio {fed:.2}, {held} tiles held, mean round {tiles:.1} tiles costing {walk:.1}",
+        w.clans.len()
+    );
 }
 
 /// Times `turns` turns from a fresh world for each seed.

@@ -1,4 +1,7 @@
-use engine::clans::{eat, growth, harvest, nutrition, plan_harvest};
+mod common;
+
+use common::{at, check_rounds, flat, out, put, steps};
+use engine::clans::{adjust, eat, growth, harvest, nutrition, plan_harvest, site_value, value};
 use engine::data::*;
 use engine::land::neighbours;
 use engine::map::landmasses;
@@ -213,4 +216,96 @@ fn clans_live_for_fifty_turns() {
             }
         }
     }
+}
+
+#[test]
+fn a_clan_starving_too_long_moves_on() {
+    for hungry in [CLAN.patience - 1, CLAN.patience] {
+        let mut w = flat();
+        let o = at(0, 0);
+        let rich = out(0, 3);
+        w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0];
+        let id = put(&mut w, &[o, out(3, 1)], 5.0);
+        let c = w.clans.get_mut(&id).unwrap();
+        (c.fed, c.starving, c.hungry, c.since) = (false, true, hungry, 9);
+        let c = c.clone();
+        let now = value(&w, &c, &c.round);
+        adjust(&mut w);
+        let after = &w.clans[&id];
+        if hungry < CLAN.patience {
+            assert!(after.round.contains(&o), "moved before its patience ran out");
+            continue;
+        }
+        assert_ne!(after.home, o);
+        assert_eq!(after.round, vec![after.home]);
+        assert!(steps(&w, o, after.home) <= CLAN.move_range);
+        assert!(site_value(&w, &c, after.home, c.pop, &c.store) > now + CLAN.move_margin);
+        assert_eq!((after.since, after.hungry), (0, 0));
+        assert_eq!(w.tiles[o].claim, None);
+        assert_eq!(w.tiles[out(3, 1)].claim, None);
+        check_rounds(&w);
+    }
+}
+
+#[test]
+fn a_big_clan_divides_its_land() {
+    let mut w = flat();
+    let round: Vec<usize> = std::iter::once(at(0, 0)).chain((0..6).map(|d| out(d, 1))).chain([out(0, 2)]).collect();
+    let id = put(&mut w, &round, CLAN.split_at);
+    let c = w.clans.get_mut(&id).unwrap();
+    c.basket = [10.0, 10.0, 10.0, 0.0, 0.0];
+    c.since = 5;
+    let pop = CLAN.split_at * (1.0 + growth(6));
+    let store: f64 = 3.0 * (10.0 - CLAN.diet_share * CLAN.split_at) * (1.0 - CLAN.spoilage);
+    eat(&mut w);
+    assert_eq!(w.clans.len(), 2);
+    let (m, d) = (&w.clans[&id], w.clans.values().find(|c| c.id != id).unwrap());
+    assert_eq!(m.home, at(0, 0));
+    assert!(m.round.len() >= 1 && d.round.len() >= 1);
+    assert!(m.round.iter().all(|t| !d.round.contains(t)));
+    assert!(m.round.len() + d.round.len() <= round.len());
+    assert!((m.pop + d.pop - pop).abs() < EPS && (m.pop - d.pop).abs() < EPS);
+    assert!((total(&m.store) + total(&d.store) - store).abs() < EPS);
+    assert_eq!(d.since, m.since);
+    assert!(d.fed);
+    check_rounds(&w);
+}
+
+#[test]
+fn a_starving_clan_sends_a_daughter_only_where_she_would_be_fed() {
+    for food in [false, true] {
+        let mut w = flat();
+        let o = at(0, 0);
+        let rich = out(1, 3);
+        if food {
+            w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0];
+        }
+        let id = put(&mut w, &[o], 9.0);
+        // 70% fed: starving, but still at least `hungry_split` after shrinking.
+        w.clans.get_mut(&id).unwrap().basket = [3.6, 2.7, 0.0, 0.0, 0.0];
+        let pop = 9.0 * (1.0 - CLAN.starve * (1.0 - 0.7 / CLAN.stable_at));
+        assert!(pop >= CLAN.hungry_split);
+        eat(&mut w);
+        let total_pop: f64 = w.clans.values().map(|c| c.pop).sum();
+        assert!((total_pop - pop).abs() < EPS);
+        if !food {
+            assert_eq!(w.clans.len(), 1, "a daughter with nowhere to go");
+            continue;
+        }
+        assert_eq!(w.clans.len(), 2);
+        let d = w.clans.values().find(|c| c.id != id).unwrap();
+        assert!((d.pop - pop / 2.0).abs() < EPS);
+        assert_eq!(d.round, vec![d.home]);
+        assert!(steps(&w, o, d.home) <= CLAN.scout_range);
+        assert!(site_value(&w, d, d.home, d.pop, &d.store) >= CLAN.settle_fed);
+        assert_eq!(w.clans[&id].hungry, 0);
+        check_rounds(&w);
+    }
+}
+
+#[test]
+fn clans_spread() {
+    let mut w = World::new(Config { seed: 1, radius: 16 });
+    w.run(300);
+    assert!(w.clans.len() > 10, "{} clans", w.clans.len());
 }
