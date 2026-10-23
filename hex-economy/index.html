@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sans Fiat</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; display: flex; height: 100vh; background: #10161d; color: #dde3ea; font: 14px system-ui, sans-serif; }
+    canvas { flex: 1; min-width: 0; display: block; }
+    aside { width: 280px; padding: 12px; background: #19222c; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+    h2 { margin: 0; font-size: 16px; }
+    hr { border: 0; border-top: 1px solid #2c3845; }
+    button { font: inherit; padding: 6px 10px; }
+    .controls { display: flex; gap: 6px; flex-wrap: wrap; }
+    #log { font-size: 12px; opacity: 0.8; white-space: pre-line; }
+    .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin: 0 4px 0 2px; }
+    .sub { font-size: 12px; opacity: 0.6; margin-top: 6px; }
+    .spark { display: block; margin: 6px 0; }
+    .bar { display: grid; grid-template-columns: 70px 1fr 40px; align-items: center; gap: 6px; font-size: 12px; }
+    .bar i { display: block; height: 8px; border-radius: 2px; }
+    .bar b { font-weight: normal; text-align: right; }
+    .keys { font-size: 12px; opacity: 0.6; }
+    a { color: #8fc1ff; }
+    .row { display: flex; gap: 6px; align-items: center; margin: 0; }
+    #seed { width: 110px; font: inherit; padding: 4px; }
+    select { font: inherit; padding: 4px; }
+    .ramp { height: 10px; border-radius: 2px; margin: 4px 0 2px; }
+    .ends { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <aside>
+    <h2 id="status"></h2>
+    <form id="seedForm" class="row">
+      <label>Seed <input id="seed" type="number" min="0" step="1"></label>
+      <button>Load</button> <a href="#" id="newMap">random</a>
+    </form>
+    <div class="controls">
+      <button id="step">Step</button>
+      <button id="play">Play (P)</button>
+      <button id="fast">To game start (G)</button>
+    </div>
+    <label>View <select id="mode"></select></label>
+    <div id="legend"></div>
+    <label><input type="checkbox" id="depletion" checked> Show depletion (D)</label>
+    <div id="summary"></div>
+    <hr>
+    <div id="selection"></div>
+    <div class="keys">Space: step · 1–0, -: views · Click: inspect tile, clan, market · Esc: clear</div>
+    <div id="log"></div>
+  </aside>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
