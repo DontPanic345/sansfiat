@@ -39,8 +39,10 @@ writes `relay/runs/result.json`:
 - `blocked`, with a `blocker`: only for infrastructure or an account Alan must supply.
 
 A blocked step labels the piece `waiting`. Alan's reply on the piece unblocks it and goes
-to the next session. Anything new a session notices goes under `ideas` and becomes a
-`kind:idea` issue, never code.
+to the next session. Anything new a session notices goes under `ideas`, never into code.
+The crew keeps them on the step and lists them in the step's PR comment; `/relay scope` shows
+every idea the piece has raised. They don't become issues: open one yourself for any worth
+keeping.
 
 ## Commands
 

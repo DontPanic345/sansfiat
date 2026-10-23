@@ -7,6 +7,8 @@ import {
     checkSteps,
     holdReason,
     initProblem,
+    addIdeas,
+    ideaList,
     nextWork,
     pace,
     parseCommand,
@@ -245,4 +247,13 @@ test("stepsTable shows each step's state and spend", () => {
 
 test("redact hides secrets of eight characters or more", () => {
     assert.equal(redact("token abcdefgh and xy", ["abcdefgh", "xy"]), "token *** and xy");
+});
+
+test("addIdeas keeps new ideas on the step, once each", () => {
+    const meta = addIdeas({ id: "build-1" }, [{ title: "Rivers", body: "carry goods" }, { title: "" }, null]);
+    assert.deepEqual(meta.ideas, [{ title: "Rivers", body: "carry goods" }]);
+    const again = addIdeas(meta, [{ title: "Rivers" }, { title: "Ports" }, { title: "Ports" }]);
+    assert.deepEqual(again.ideas.map((i) => i.title), ["Rivers", "Ports"]);
+    assert.equal(addIdeas(meta, undefined), meta);
+    assert.equal(ideaList(again.ideas), "- **Rivers**: carry goods\n- **Ports**");
 });

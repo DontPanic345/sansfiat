@@ -366,6 +366,16 @@ export const applyResult = (meta, result, exitOk) => {
     return { meta: next, outcome: "blocked", why: `it ended ${next.attempts} times without finishing. Last: ${next.note}` };
 };
 
+// Ideas a session noticed stay on its step, never more code in the piece and never an issue
+// each: Alan reads them in the step's comments or with `/relay scope`.
+export const addIdeas = (meta, ideas) => {
+    const known = new Set((meta.ideas ?? []).map((i) => i.title));
+    const fresh = (Array.isArray(ideas) ? ideas : []).filter((i) => i?.title && !known.has(i.title) && known.add(i.title));
+    if (fresh.length === 0) return meta;
+    return { ...meta, ideas: [...(meta.ideas ?? []), ...fresh.map((i) => ({ title: String(i.title), body: String(i.body ?? "") }))] };
+};
+export const ideaList = (ideas) => (ideas ?? []).map((i) => `- **${i.title}**${i.body ? `: ${i.body}` : ""}`).join("\n");
+
 // A `/relay …` command in a comment, or null.
 export const parseCommand = (body) => {
     const m = /^\s*\/relay\s+(\S+)(.*)$/m.exec(body ?? "");
@@ -799,18 +809,6 @@ const blockStep = async (piece, step, why) => {
     await setStatus(piece, "Waiting");
 };
 
-// Ideas a session noticed become issues for Alan to triage, never more code in the piece.
-const raiseIdeas = async (piece, ideas) => {
-    for (const idea of (ideas ?? []).filter((i) => i?.title)) {
-        const issue = await github("POST", "/issues", {
-            title: idea.title,
-            body: `${idea.body ?? ""}\n\nRaised by #${piece.number} (Relay).`.trim(),
-            labels: ["kind:idea"],
-        });
-        log(`#${piece.number}: idea -> #${issue.number}`);
-    }
-};
-
 // What follows a finished step: a draft PR after the spec, the sign-off after its review,
 // and Alan's turn after the piece's review.
 const afterStep = async (piece, step, result) => {
@@ -827,7 +825,10 @@ const afterStep = async (piece, step, result) => {
         });
         log(`#${piece.number}: draft PR #${pr.number}`);
     }
-    if (pr && result.summary) await comment(pr.number, `**${step.meta.id}** (${step.meta.model}/${step.meta.effort}): ${result.summary}`);
+    if (pr && result.summary) {
+        const ideas = step.meta.ideas?.length ? `\n\n💡 Ideas, not built:\n${ideaList(step.meta.ideas)}` : "";
+        await comment(pr.number, `**${step.meta.id}** (${step.meta.model}/${step.meta.effort}): ${result.summary}${ideas}`);
+    }
     if (kind === "spec-review" && result.scopeCut) {
         await addLabel(piece.number, "scope-cut");
         await comment(piece.number, `✂️ The spec review cut work outside the scope: ${result.scopeCut}`);
@@ -881,13 +882,14 @@ const runStep = async (piece, step) => {
     log(`end #${piece.number} ${step.meta.id}: exit ${code}, model ${model}, ${stats.tokens} tokens, ${stats.context}% context, ${stats.compactions} compactions, result ${JSON.stringify(result)}`);
     tidyUp(branch);
 
-    const { meta, outcome, why } = applyResult(step.meta, result, exitOk);
+    const applied = applyResult(step.meta, result, exitOk);
+    const { outcome, why } = applied;
+    const meta = exitOk ? addIdeas(applied.meta, result?.ideas) : applied.meta;
     meta.tokens = (step.meta.tokens ?? 0) + stats.tokens;
     meta.context = stats.context;
     meta.compactions = (step.meta.compactions ?? 0) + stats.compactions;
     await saveMeta(step, meta);
     await setBoard(step.nodeId, { Attempts: meta.attempts ?? 0, Tokens: meta.tokens, Context: meta.context, Compactions: meta.compactions, Status: outcome === "done" ? "Done" : outcome === "blocked" ? "Waiting" : "Building" });
-    if (exitOk) await raiseIdeas(piece, result?.ideas);
     if (outcome === "done") {
         await comment(step.number, `✅ ${result.summary ?? "Done."}\n\n${stats.tokens.toLocaleString("en-NZ")} tokens, ${stats.context}% context, ${stats.compactions} compactions. ${model}, Claude Code ${cliVersion()}.`);
         await closeStep(step);
@@ -1053,11 +1055,11 @@ const COMMANDS = {
         } catch {
             // no spec yet
         }
-        const ideas = (await allPages("/issues?state=all&labels=kind:idea")).filter((i) => (i.body ?? "").includes(`Raised by #${piece.number} `));
+        const ideas = sortSteps(piece.steps).flatMap((s) => (s.meta.ideas ?? []).map((i) => ({ ...i, title: `${i.title} (${s.meta.id})` })));
         return [
             map ?? "No scope map yet: the spec isn't written.",
             piece.labels.includes("scope-cut") ? "\nThe spec review cut work from this piece; see its ✂️ comment." : "",
-            ideas.length ? `\nIdeas raised so far:\n${ideas.map((i) => `- #${i.number} ${i.title} (${i.state})`).join("\n")}` : "\nNo ideas raised so far.",
+            ideas.length ? `\nIdeas raised so far, not built:\n${ideaList(ideas)}` : "\nNo ideas raised so far.",
         ].join("\n");
     },
 };

@@ -44,4 +44,5 @@ his reply comes to the next session.
      Push what passes its checks first. Two unfinished attempts block the step.
    - `blocked`, with `"blocker": "<what Alan must supply, in one or two sentences>"`.
 
-   `ideas` may be empty. The crew opens each as an idea issue for Alan.
+   `ideas` may be empty. The crew lists them for Alan on the piece's PR, so keep them few
+   and worth his time.
