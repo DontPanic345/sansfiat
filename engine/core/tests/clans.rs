@@ -223,7 +223,7 @@ fn a_clan_starving_too_long_moves_on() {
     for hungry in [CLAN.patience - 1, CLAN.patience] {
         let mut w = flat();
         let o = at(0, 0);
-        let rich = out(0, 3);
+        let rich = out(0, 4);
         w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0];
         let id = put(&mut w, &[o, out(3, 1)], 5.0);
         let c = w.clans.get_mut(&id).unwrap();
@@ -261,7 +261,7 @@ fn a_big_clan_divides_its_land() {
     assert_eq!(w.clans.len(), 2);
     let (m, d) = (&w.clans[&id], w.clans.values().find(|c| c.id != id).unwrap());
     assert_eq!(m.home, at(0, 0));
-    assert!(m.round.len() >= 1 && d.round.len() >= 1);
+    assert!(!m.round.is_empty() && !d.round.is_empty());
     assert!(m.round.iter().all(|t| !d.round.contains(t)));
     assert!(m.round.len() + d.round.len() <= round.len());
     assert!((m.pop + d.pop - pop).abs() < EPS && (m.pop - d.pop).abs() < EPS);

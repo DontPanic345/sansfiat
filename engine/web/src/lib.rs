@@ -1,4 +1,5 @@
-use engine::{Action, Config, Save, World, TERRAIN};
+use engine::data::TENDING;
+use engine::{stats, Action, Config, Save, World, FOODS, TERRAIN};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -30,16 +31,35 @@ impl Sim {
         serde_json::to_string(&self.world).unwrap()
     }
 
+    /// The `stats::Summary` as JSON.
+    pub fn summary(&self) -> String {
+        serde_json::to_string(&stats::summary(&self.world)).unwrap()
+    }
+
     /// `{config, log}` as JSON: enough to replay this world.
     pub fn save(&self) -> String {
         serde_json::to_string(&self.world.save()).unwrap()
     }
 }
 
-/// `[{name, color, land}]` as JSON.
+/// `[{name, color, land, move_cost}]` as JSON; `move_cost` is null where impassable.
 #[wasm_bindgen]
 pub fn terrain() -> String {
-    let rows: Vec<_> =
-        TERRAIN.iter().map(|t| serde_json::json!({ "name": t.name, "color": t.color, "land": t.land })).collect();
+    let rows: Vec<_> = TERRAIN
+        .iter()
+        .map(|t| serde_json::json!({ "name": t.name, "color": t.color, "land": t.land, "move_cost": t.move_cost }))
+        .collect();
     serde_json::to_string(&rows).unwrap()
+}
+
+/// The food names, in the order of every basket, as JSON.
+#[wasm_bindgen]
+pub fn goods() -> String {
+    serde_json::to_string(&FOODS).unwrap()
+}
+
+/// Rules the page needs to read the world, as JSON: `{tame_turns}`.
+#[wasm_bindgen]
+pub fn rules() -> String {
+    serde_json::json!({ "tame_turns": TENDING.tame_turns }).to_string()
 }

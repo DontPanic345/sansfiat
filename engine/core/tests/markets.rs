@@ -92,10 +92,15 @@ fn camp(w: &mut World, home: usize, pop: f64, others: usize) {
     put(w, &[home], pop);
     w.tiles[home].held = MARKET.form_after;
     let h = w.tiles[home].hex();
-    for d in [0, 2, 4].into_iter().take(others) {
+    let mut made = 0;
+    // Every other direction, starting from the east, keeping to the land.
+    for d in [0, 2, 4, 1, 3, 5] {
         let (dq, dr) = engine::hex::DIRS[d];
-        let t = engine::map::index(R, engine::hex::Hex { q: h.q + 2 * dq, r: h.r + 2 * dr }).unwrap();
-        put(w, &[t], 3.0);
+        let at = engine::hex::Hex { q: h.q + 2 * dq, r: h.r + 2 * dr };
+        if made < others && at.distance(engine::hex::Hex::ORIGIN) < R {
+            put(w, &[engine::map::index(R, at).unwrap()], 3.0);
+            made += 1;
+        }
     }
 }
 
@@ -131,13 +136,13 @@ fn a_market_forms_on_a_long_held_home_with_four_clans_in_reach() {
 #[test]
 fn two_sites_in_a_turn_get_one_market_the_more_peopled() {
     let mut w = flat();
-    let (a, b) = (at(-3, 0), at(3, 0));
+    let (a, b) = (at(-4, 0), at(4, 0));
     camp(&mut w, a, 4.0, 3);
     camp(&mut w, b, 6.0, 3);
     form(&mut w);
     assert_eq!(w.markets.len(), 1);
     assert_eq!(w.markets.values().next().unwrap().tile, b);
-    // They're 6 apart, so the other forms next turn.
+    // They are 8 apart, the spacing, so the other forms next turn.
     form(&mut w);
     assert_eq!(w.markets.values().map(|m| m.tile).collect::<Vec<_>>(), vec![b, a]);
 }
@@ -175,15 +180,17 @@ fn a_clan_goes_when_the_trade_beats_the_walk() {
     assert_eq!((w.clans[&id].market, w.clans[&id].trip), (None, 0.0));
 
     // A surplus adds the desire to gather.
-    let (mut w, id, mid) = grain_clan(3, 0.6, 0.4);
-    assert!(0.6 >= MARKET.surplus_at * 5.0);
+    let store = 0.6;
+    let (mut w, id, mid) = grain_clan(3, store, 0.4);
+    assert!(store >= MARKET.surplus_at * 5.0);
     go(&mut w);
     assert_eq!((w.clans[&id].market, w.clans[&id].trip), (Some(mid), 6.0));
 
-    // It harvests with the trip less labour: 12.5 − 6, under its 7.5 − 0.6 budget.
+    // It harvests with the trip less labour: left 3 of it, it takes 3 food.
+    w.clans.get_mut(&id).unwrap().trip = 5.0 * CLAN.work - 3.0;
     harvest(&mut w);
     let got: f64 = w.clans[&id].harvest.iter().sum();
-    assert!((got - (5.0 * CLAN.work - 6.0)).abs() < EPS, "harvested {got}");
+    assert!((got - 3.0 / CLAN.harvest_labour).abs() < EPS, "harvested {got}");
 
     // With no gain to be had (only grain ever traded there) and no surplus, it stays home.
     let (mut w, id, mid) = grain_clan(1, 0.0, 0.4);
@@ -243,11 +250,17 @@ fn a_market_nobody_trades_at_fades() {
     // A lone trader trades nothing.
     let id = put(&mut w, &[out(0, 1)], 4.0);
     w.clans.get_mut(&id).unwrap().market = Some(mid);
-    for turn in 1..=4 {
+    // Its activity starts at 2 × min_volume and loses `1 − fade` of itself a turn.
+    let mut turns = 0;
+    let mut activity = 2.0 * MARKET.min_volume;
+    while activity * MARKET.fade >= MARKET.min_volume {
+        activity *= MARKET.fade;
+        turns += 1;
+    }
+    for turn in 1..=turns + 1 {
         trade(&mut w);
         fade(&mut w);
-        // 4 → 3.2 → 2.56 → 2.05 → 1.64
-        assert_eq!(w.markets.contains_key(&mid), turn < 4, "turn {turn}");
+        assert_eq!(w.markets.contains_key(&mid), turn <= turns, "turn {turn}");
     }
     assert_eq!(w.clans[&id].market, None);
 }

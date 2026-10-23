@@ -102,12 +102,12 @@ pub struct MarketRules {
 
 pub const MARKET: MarketRules = MarketRules {
     form_after: 20,
-    spacing: 5,
+    spacing: 8,
     reach: 3.0,
     min_clans: 4,
-    fade: 0.8,
-    min_volume: 2.0,
-    gather_bonus: 2.0,
+    fade: 0.9,
+    min_volume: 1.0,
+    gather_bonus: 6.0,
     surplus_at: 0.1,
 };
 
@@ -195,7 +195,7 @@ pub const CLAN: ClanRules = ClanRules {
     seeds: 3,
     start_pop: 6.0,
     min_landmass: 30,
-    work: 2.5,
+    work: 3.5,
     harvest_labour: 1.0,
     take_rate: 0.5,
     surplus_target: 1.5,
@@ -205,7 +205,7 @@ pub const CLAN: ClanRules = ClanRules {
     settle_turns: 30,
     stable_at: 0.8,
     starve: 0.5,
-    spoilage: 0.3,
+    spoilage: 0.1,
     split_at: 12.0,
     hungry_split: 8.0,
     settle_fed: 0.9,

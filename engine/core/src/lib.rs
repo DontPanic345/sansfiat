@@ -12,6 +12,7 @@ pub mod markets;
 pub mod pregame;
 pub mod rng;
 pub mod round;
+pub mod stats;
 pub mod world;
 
 pub use clans::{Clan, Plan};

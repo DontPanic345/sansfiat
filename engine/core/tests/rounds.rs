@@ -28,6 +28,11 @@ fn a_tile_goes_in_where_it_lengthens_the_loop_least() {
     assert_eq!(insertion(&w, &[o], n), Some((1, 3.0)));
 }
 
+/// A trip that leaves `pop` people the 2.5 labour each these tests were worked out with.
+fn tight(pop: f64) -> f64 {
+    pop * (CLAN.work - 2.5)
+}
+
 /// A hungry clan of 5 walking the ring around home, with grain at home.
 fn ring_clan() -> (World, u32, usize) {
     let mut w = flat();
@@ -35,7 +40,9 @@ fn ring_clan() -> (World, u32, usize) {
     w.tiles[o].stock[GRAIN] = 20.0;
     let round: Vec<usize> = std::iter::once(o).chain((0..6).map(|d| out(d, 1))).collect();
     let id = put(&mut w, &round, 5.0);
-    w.clans.get_mut(&id).unwrap().fed = false;
+    let c = w.clans.get_mut(&id).unwrap();
+    c.fed = false;
+    c.trip = tight(c.pop);
     // Next to the ring's 2nd and 3rd tiles.
     (w, id, at(1, -2))
 }
@@ -87,6 +94,7 @@ fn a_starving_clan_swaps_its_worst_tile() {
     let c = w.clans.get_mut(&id).unwrap();
     c.fed = false;
     c.starving = true;
+    c.trip = tight(c.pop);
     let c = c.clone();
     // Adding the fruit tile alone costs more walking than it gives.
     let added = [o, n1, n0, x];

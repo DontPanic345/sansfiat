@@ -1,10 +1,12 @@
 use std::{env, fs, io::Read, process::exit, time::Instant};
 
-use engine::{clear, land, pregame, round, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
+use engine::data::PREGAME;
+use engine::{clear, land, pregame, round, stats, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
 
 const USAGE: &str = "\
-sansfiat run [--seed N] [--turns N] [--radius N] [--save file.json] [--json]
+sansfiat run [--seed N] [--turns N] [--radius N] [--every N] [--save file.json] [--json]
 sansfiat replay <file.json> [--json]
+sansfiat sweep [seed ...] [--turns N] [--radius N]   (seeds default 1..=10)
 sansfiat bench [seed ...] [--turns N] [--radius N]
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
 sansfiat goods";
@@ -17,6 +19,7 @@ fn main() {
             Some(path) => replay(path, args.iter().any(|a| a == "--json")),
             None => Err(USAGE.to_string()),
         },
+        Some("sweep") => sweep(&args[1..]),
         Some("bench") => bench(&args[1..]),
         Some("clear") => clear_file(args.get(1).map(String::as_str).unwrap_or("-")),
         Some("goods") => {
@@ -33,7 +36,7 @@ fn main() {
 
 fn run(args: &[String]) -> Result<(), String> {
     let mut config = Config::default();
-    let (mut turns, mut json, mut save) = (50u32, false, None);
+    let (mut turns, mut json, mut save, mut every) = (PREGAME.max_turns, false, None, 0u32);
     let mut it = args.iter();
     while let Some(flag) = it.next() {
         if flag == "--json" {
@@ -46,16 +49,107 @@ fn run(args: &[String]) -> Result<(), String> {
             "--seed" => config.seed = value.parse().map_err(bad)?,
             "--turns" => turns = value.parse().map_err(bad)?,
             "--radius" => config.radius = value.parse().map_err(bad)?,
+            "--every" => every = value.parse().map_err(bad)?,
             "--save" => save = Some(value.clone()),
             _ => return Err(format!("unknown flag {flag}\n{USAGE}")),
         }
     }
     let mut w = World::new(config);
-    w.run(turns);
+    while w.turn < turns && w.end.is_none() {
+        w.run(1);
+        if every > 0 && w.turn.is_multiple_of(every) && !json {
+            println!("{}", line(&stats::summary(&w)));
+        }
+    }
     if let Some(path) = save {
         fs::write(&path, serde_json::to_string(&w.save()).unwrap()).map_err(|e| format!("{path}: {e}"))?;
     }
     report(&w, json);
+    Ok(())
+}
+
+/// One summary line.
+fn line(s: &stats::Summary) -> String {
+    format!(
+        "turn {:>4}  clans {:>3}  people {:>6.1}  fed {:.2}  held {:>3}  trails {:>3}  hearths {:>3}  markets {:>2}  trading {:>2}  centres {}  cover {:.2}",
+        s.turn, s.clans, s.people, s.mean_fed, s.held, s.trails, s.hearths, s.markets, s.trading, s.centres.len(), s.cover
+    )
+}
+
+/// The centres' report: one line each, then the distances between them.
+fn centres_text(w: &World, ids: &[u32]) -> String {
+    let mut out = String::new();
+    for c in stats::centre_report(w, ids) {
+        out += &format!(
+            "  centre market {} at ({}, {}): {} traders, age {}, {} hearths in reach, fertility near {:.2} vs land {:.2}\n",
+            c.market, c.q, c.r, c.traders, c.age, c.hearths_in_reach, c.fertility_near, c.fertility_land
+        );
+    }
+    let d = stats::distances(w, ids);
+    if !d.is_empty() {
+        out +=
+            &format!("  steps between centres: {}\n", d.iter().map(|d| d.to_string()).collect::<Vec<_>>().join(", "));
+    }
+    out
+}
+
+/// Runs seeds to their end (or `turns`), one line each, then totals.
+fn sweep(args: &[String]) -> Result<(), String> {
+    let mut turns = PREGAME.max_turns;
+    let mut seeds: Vec<u32> = Vec::new();
+    let mut radius = Config::default().radius;
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--turns" => turns = it.next().and_then(|v| v.parse().ok()).ok_or("--turns needs a number")?,
+            "--radius" => radius = it.next().and_then(|v| v.parse().ok()).ok_or("--radius needs a number")?,
+            s => seeds.push(s.parse().map_err(|_| format!("not a seed: {s}\n{USAGE}"))?),
+        }
+    }
+    if seeds.is_empty() {
+        seeds = (1..=10).collect();
+    }
+    let (mut by_centres, mut ends, mut ratios) = (0, Vec::new(), Vec::new());
+    for &seed in &seeds {
+        let start = Instant::now();
+        let mut w = World::new(Config { seed, radius });
+        while w.turn < turns && w.end.is_none() {
+            w.run(1);
+        }
+        let ms = start.elapsed().as_secs_f64() * 1e3 / w.turn.max(1) as f64;
+        let s = stats::summary(&w);
+        let (ended, how) = match &w.end {
+            Some(e) => (e.turn, if e.by_limit { "limit" } else { "centres" }),
+            None => (w.turn, "none"),
+        };
+        if how == "centres" {
+            by_centres += 1;
+        }
+        ends.push(ended);
+        let reports = stats::centre_report(&w, &s.centres);
+        let ratio = stats::mean_ratio(&reports);
+        ratios.extend(ratio);
+        println!(
+            "seed {seed:>3}: ended {ended:>3} by {how:<7}  clans {:>3}  people {:>6.1}  markets {:>2}  hearths {:>3}  cover {:.2}  fertility ratio {}  {ms:.1} ms a turn",
+            s.clans,
+            s.people,
+            s.markets,
+            s.hearths,
+            s.cover,
+            ratio.map_or("-".to_string(), |r| format!("{r:.2}")),
+        );
+    }
+    ends.sort_unstable();
+    let ratio = if ratios.is_empty() {
+        "-".to_string()
+    } else {
+        format!("{:.2}", ratios.iter().sum::<f64>() / ratios.len() as f64)
+    };
+    println!(
+        "{by_centres} of {} ended by centres, median end turn {}, mean fertility ratio {ratio}",
+        seeds.len(),
+        ends[ends.len() / 2]
+    );
     Ok(())
 }
 
@@ -111,6 +205,13 @@ fn report(w: &World, json: bool) {
         "{} markets, {trading} clans trading, {hearths} hearths, {trails} trails, cover {cover:.2}, {end}",
         w.markets.len()
     );
+    let (ids, what) = match &w.end {
+        Some(e) if e.by_limit => (e.centres.clone(), "turn limit reached, centres it had"),
+        Some(e) => (e.centres.clone(), "centres"),
+        None => (pregame::centres(w), "not ended, centres so far"),
+    };
+    println!("{what}: {}", ids.len());
+    print!("{}", centres_text(w, &ids));
 }
 
 /// Times `turns` turns from a fresh world for each seed.

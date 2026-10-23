@@ -7,7 +7,8 @@ actions. One engine, two front ends: a CLI and a wasm web page. The game's desig
 ```
 cargo test
 cargo fmt --check && cargo clippy --all-targets -- -D warnings
-cargo run -p sansfiat -- run --seed 3 --turns 50 [--save game.json] [--json]
+cargo run -p sansfiat -- run --seed 3 [--turns N] [--every 25] [--save game.json] [--json]  # stops at the pre-game's end
+cargo run -p sansfiat -- sweep [seed ...] [--radius N] [--turns N]   # seeds default 1..=10
 cargo run -p sansfiat -- replay game.json [--json]
 cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
 cargo run -p sansfiat -- clear baskets.json     # or - for stdin
@@ -27,9 +28,10 @@ cargo run -p sansfiat -- clear baskets.json     # or - for stdin
 | `core/src/market.rs` | `clear(baskets, start_prices, params)`: barter exchange ratios by tâtonnement, no numeraire. A library `markets` calls. |
 | `core/src/markets.rs` | Markets: `reach`, the `go` (worth the walk?), `trade` (clearing) and `markets` (fade, then form one) steps. |
 | `core/src/pregame.rs` | The pre-game's end: centres (age, traders, a hearth in reach, far apart), land cover, and the `end` step. |
+| `core/src/stats.rs` | `summary` (counts off the world), `centre_report` (fertility near each centre vs all land), `distances`: the evidence the CLI and the web page show. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
-| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `state`, `save`); `www/main.js` draws it. `www/pkg` is built, not committed. |
+| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `state`, `summary`, `save`) and `terrain`, `goods`, `rules`; `www/main.js` draws the map (fertility view, territories, rounds, trails, hearths, markets, centres) and a Run to end button. `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 
