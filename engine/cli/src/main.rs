@@ -81,6 +81,10 @@ fn report(w: &World, json: bool) {
         land,
         w.log.len()
     );
+    let people: f64 = w.clans.values().map(|c| c.pop).sum();
+    let fed = w.clans.values().map(|c| c.fed_ratio).sum::<f64>() / w.clans.len().max(1) as f64;
+    let held = w.tiles.iter().filter(|t| t.claim.is_some()).count();
+    println!("{} clans, {people:.1} people, mean fed ratio {fed:.2}, {held} tiles held", w.clans.len());
 }
 
 /// Times `turns` turns from a fresh world for each seed.

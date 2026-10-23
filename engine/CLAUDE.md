@@ -19,8 +19,11 @@ cargo run -p sansfiat -- clear baskets.json     # or - for stdin
 | Path | What |
 | --- | --- |
 | `core/src/world.rs` | `World`, `Action`, `TURN`, `act`, `save`, `replay`. |
-| `core/src/data.rs` | Terrain, `Config`, and the goods the market library trades. Tune here first. |
-| `core/src/map.rs` | Placeholder map: Voronoi terrain in a hex, sea at the rim. A map piece replaces it. |
+| `core/src/data.rs` | Terrain, foods (the goods), `CLAN` rules, `Config`. Tune here first. |
+| `core/src/map.rs` | Placeholder map: Voronoi terrain in a hex, sea at the rim, food scaled by patchy fertility. A map piece replaces it. |
+| `core/src/land.rs` | Neighbours, move costs, bounded Dijkstra (`cost_map`), and the `regrow` step. |
+| `core/src/round.rs` | A clan's round: leg and loop costs, territory, what it can harvest. |
+| `core/src/clans.rs` | Clans: seeding, the `harvest` and `eat` steps. |
 | `core/src/market.rs` | `clear(baskets, start_prices, params)`: barter exchange ratios by tâtonnement, no numeraire. A library; nothing calls it yet. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |

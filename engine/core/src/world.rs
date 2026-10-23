@@ -5,9 +5,13 @@
 //! `act`, which checks an action, applies it and logs it, so `replay(config, log)` rebuilds the
 //! same world exactly: the log is the save file.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
+use crate::clans::{self, Clan};
 use crate::data::Config;
+use crate::land;
 use crate::map::{self, Tile};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -17,6 +21,9 @@ pub struct World {
     /// The only source of randomness: `rng::rand(&mut world.rng)`.
     pub rng: u32,
     pub tiles: Vec<Tile>,
+    pub clans: BTreeMap<u32, Clan>,
+    /// The next id for a clan (and, later, a market), from 1.
+    pub next_id: u32,
     /// Every action applied, in order.
     pub log: Vec<Action>,
 }
@@ -32,8 +39,12 @@ pub struct Step {
     pub run: fn(&mut World),
 }
 
-/// One turn, in order. Empty until mechanics add their steps.
-pub const TURN: &[Step] = &[];
+/// One turn, in order.
+pub const TURN: &[Step] = &[
+    Step { name: "regrow", run: land::regrow },
+    Step { name: "harvest", run: clans::harvest },
+    Step { name: "eat", run: clans::eat },
+];
 
 /// What a save holds: enough to replay the world.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -46,7 +57,9 @@ impl World {
     pub fn new(config: Config) -> World {
         let mut rng = config.seed;
         let tiles = map::generate(config.radius, &mut rng);
-        World { config, turn: 0, rng, tiles, log: Vec::new() }
+        let mut w = World { config, turn: 0, rng, tiles, clans: BTreeMap::new(), next_id: 1, log: Vec::new() };
+        clans::seed(&mut w);
+        w
     }
 
     /// Checks `action` against the world; `Err` says why it can't happen.
