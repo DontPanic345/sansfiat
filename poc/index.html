@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sans Fiat</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; display: flex; height: 100vh; background: #10161d; color: #dde3ea; font: 14px system-ui, sans-serif; }
+    canvas { flex: 1; min-width: 0; display: block; }
+    aside { width: 280px; padding: 12px; background: #19222c; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+    h2 { margin: 0; font-size: 16px; }
+    hr { border: 0; border-top: 1px solid #2c3845; }
+    button { font: inherit; padding: 6px 10px; }
+    .controls { display: flex; gap: 6px; flex-wrap: wrap; }
+    #log { font-size: 12px; opacity: 0.8; }
+    .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin: 0 4px 0 2px; }
+    .sub { font-size: 12px; opacity: 0.6; margin-top: 6px; }
+    .spark { display: block; margin: 6px 0; }
+    .bar { display: grid; grid-template-columns: 70px 1fr 40px; align-items: center; gap: 6px; font-size: 12px; }
+    .bar i { display: block; height: 8px; border-radius: 2px; }
+    .bar b { font-weight: normal; text-align: right; }
+    .keys { font-size: 12px; opacity: 0.6; }
+    a { color: #8fc1ff; }
+    .row { display: flex; gap: 6px; align-items: center; margin: 0; }
+    #seed { width: 110px; font: inherit; padding: 4px; }
+    select { font: inherit; padding: 4px; }
+    .ramp { height: 10px; border-radius: 2px; margin: 4px 0 2px; }
+    .ends { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.8; }
+    .why { margin: 2px 0; padding-left: 16px; font-size: 12px; }
+    .why span { opacity: 0.5; }
+    #choose .row { margin: 4px 0; }
+    .cand { margin: 6px 0; }
+    .cand .sub { margin-top: 2px; }
+    button:disabled { opacity: 0.5; }
+    [hidden] { display: none !important; }
+    details > summary { cursor: pointer; font-size: 13px; opacity: 0.85; }
+    details[open] > summary { margin-bottom: 6px; }
+    #newGame form { flex-wrap: wrap; }
+    .banner { margin-top: 6px; padding: 6px 8px; border-radius: 4px; font-size: 14px; font-weight: 600; }
+    .banner.win { background: #2f5a2f; }
+    .banner.lose { background: #6a2a2a; }
+    .alert { color: #ffd479; font-weight: 600; }
+    #alerts { font-size: 12px; }
+    #log .alert { opacity: 1; }
+    .help { font-size: 12px; line-height: 1.4; }
+    .help ul { margin: 4px 0; padding-left: 16px; }
+    .help kbd { background: #2c3845; border-radius: 3px; padding: 0 4px; font: inherit; }
+  </style>
+</head>
+<body>
+  <canvas id="map"></canvas>
+  <aside>
+    <h2 id="status"></h2>
+    <div class="controls">
+      <button id="step">Step (Space)</button>
+      <button id="play">Play (P)</button>
+      <button id="fast">Fast-forward (G)</button>
+      <button id="skip">Skip pre-game (K)</button>
+    </div>
+    <details id="newGame">
+      <summary>New game</summary>
+      <form id="seedForm" class="row">
+        <label>Seed <input id="seed" type="number" min="0" step="1"></label>
+        <label>Civs <select id="players"><option>2</option><option>3</option><option>4</option></select></label>
+        <button>Load</button> <a href="#" id="newMap">random</a>
+      </form>
+    </details>
+    <div id="choose"></div>
+    <label>View <select id="mode"></select></label>
+    <div id="legend"></div>
+    <label><input type="checkbox" id="depletion" checked> Show depletion (D)</label>
+    <div id="summary"></div>
+    <hr>
+    <div id="selection"></div>
+    <div id="modules"></div>
+    <details class="help">
+      <summary>How to play</summary>
+      <b>Phases.</b> In the pre-game clans forage, trade and settle with no player; the markets that tame
+      the most grain become civs. At founding you pick one to lead (or watch all-AI). The main game then
+      runs turn by turn until one civ holds every founding city (conquest) or, at the turn limit, the civ
+      that has grown most since founding (people now over people at founding) wins by prosperity.
+      <br><b>You control</b> (side panel, your civ only):
+      <ul>
+        <li><b>Projects</b>: what each city builds (granary, storehouse, wall...).</li>
+        <li><b>Gifts</b>: food to unaligned clans so they lean toward you and join.</li>
+        <li><b>Scouts</b>: click your scout, then a tile to send it; it reveals land and trail costs.</li>
+        <li><b>Armies</b>: "Raise army" in the Army panel (pick the city; select a city tile to raise there),
+          then select the captain, pick a mode (Move, Paint, Unpaint) and click the map; detachments
+          spread, fight and besiege cities (a garrison loses at most 2 troops a turn).</li>
+        <li><b>Defend</b>: rivals arm after about 20 turns. Watch the <span class="alert">!</span> alerts
+          (an army raised near you, troops near a city, a siege) and answer them: raise an army and stand
+          it on the threatened city, build a wall (more garrison, defenders × 1.5), and have a captain
+          build forts on the approaches. A city falls only when an enemy holds its tile with the
+          garrison at 0; the garrison regrows once the siege lifts.</li>
+        <li><b>Several units on a tile</b>: click the tile, then pick one under "Your units here".</li>
+        <li><b>Porters and supply</b>: keep armies fed from cities and caches.</li>
+      </ul>
+      <b>Keys</b>: <kbd>Space</kbd> step / end turn · <kbd>P</kbd> play · <kbd>G</kbd> fast-forward ·
+      <kbd>K</kbd> skip pre-game · <kbd>Esc</kbd> clear selection · <kbd>D</kbd> depletion ·
+      <kbd>1</kbd>–<kbd>0</kbd>, <kbd>-</kbd>, <kbd>=</kbd> map views. Click a tile to inspect it.
+      <br><a href="docs/guide.html" target="_blank">Full guide</a>
+    </details>
+    <div id="alerts"></div>
+    <label id="mineRow" class="sub"><input type="checkbox" id="mineOnly"> Mine only</label>
+    <div id="log"></div>
+  </aside>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
