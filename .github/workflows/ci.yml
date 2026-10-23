@@ -1,0 +1,76 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  js:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        prototype: [poc, hex-economy, hex4x, scout, supply-lines]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm test
+        working-directory: ${{ matrix.prototype }}
+
+  engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@0.2.128
+      - run: cargo test
+      - run: ./build-web.ps1
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-www
+          path: engine/www
+
+  pages:
+    if: github.ref == 'refs/heads/main'
+    needs: [js, engine]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-www
+          path: _site/engine
+      - run: |
+          for d in poc hex-economy hex4x scout supply-lines paint-army; do cp -r "$d" "_site/$d"; done
+          {
+            echo '<!doctype html><meta charset="utf-8"><title>Sans Fiat</title><h1>Sans Fiat prototypes</h1><ul>'
+            for d in engine poc hex-economy hex4x scout supply-lines paint-army; do echo "<li><a href=\"$d/\">$d</a></li>"; done
+            echo '<li><a href="paint-army/paint-the-territory.html">paint-army (territory)</a></li>'
+            echo '<li><a href="poc/docs/guide.html">poc guide</a></li></ul>'
+          } > _site/index.html
+      - uses: actions/upload-pages-artifact@v3
+      - id: deploy
+        uses: actions/deploy-pages@v4
