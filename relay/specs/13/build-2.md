@@ -72,7 +72,10 @@ stops at `surplus_target` × need, so a well-fed clan gains nothing from more la
      home. If it isn't home, home steps to a neighbouring round tile that's nearer to it in
      hex steps (the lowest index if several); if none, home stays. The round is rotated to
      start at the new home.
-  5. **Limit.** Any round tile more than `territory_radius` steps from home drops.
+  5. **Limit.** After home has moved, any round tile more than `territory_radius` steps from
+     home drops, and so does any tile with no leg from the previous round tile (repeat until
+     every leg exists). This can drop several tiles in one turn; it is the limit, not a second
+     change.
   Keep `claim` in step with every add and drop.
 
 ### Dividing, daughters and sites (`clans.rs`)
@@ -129,9 +132,9 @@ stock and rounds directly) unless said:
   there; with none in reach, it doesn't.
 - Over 300 turns at radius 16 on seeds 1 to 3, checked every turn: rounds have distinct tiles
   and are pairwise disjoint; a tile's `claim` is set exactly when it's on that clan's round;
-  `round[0] == home`; every round tile is within 2 steps of home; each clan's round differs
-  from last turn's by at most one added and one dropped tile, apart from moving on and
-  dividing.
+  `round[0] == home`; every round tile is within 2 steps of home; each clan's round gains at most
+  one tile a turn and loses at most the one tile its change dropped plus the tiles the limit
+  dropped, apart from moving on and dividing.
 - Spread: at 300 turns on seed 1, radius 16, there are more than 10 clans.
 - `same_seed_same_world` and `replaying_a_save_rebuilds_the_world` still pass.
 

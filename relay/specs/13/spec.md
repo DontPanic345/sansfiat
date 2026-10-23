@@ -45,7 +45,7 @@ It's a proof: its PR is never merged. Shortcuts it takes, outside the question:
 | build-1: Food on the land, and clans that eat | Food on the placeholder map …; Clans: seeds, diet with the diversity bonus, growth, starving, … a small store that spoils; The round: territory as a loop from home, labour for walking it, harvesting on and off it |
 | build-2: Rounds that change, clans that divide and move | The round: … changing it one tile at a time (cheapest insertion, starving swaps, home follows the middle, 2-step limit); Clans: … dividing, moving on |
 | build-3: Trails, hearths, markets and the end | Trails worn by rounds kept for `trailAfter` turns …; Grain taming on held land, going wild on unheld land, and hearths; Markets: forming, going, clearing, fading; The pre-game end: 3 centres … a turn limit as a backstop |
-| build-4: Show it: stats, sweep, web map, tuning | What a proof needs to show the answer: CLI stats and the web map drawing clans, rounds, trails, markets and hearths |
+| build-4: Show it: stats, sweep, web map, tuning | What a proof needs to show the answer: CLI stats and the web map drawing clans, rounds, trails, markets and hearths. Its one tuning pass moves only the starting values the design calls "to tune", so that the pre-game end can be reached and the question answered; no rule changes |
 | review | Every line: checks the piece against the question and writes the findings |
 
 ## Design questions
@@ -148,12 +148,13 @@ holds no land it can't use, but not the order, or what "worth" is measured in.
 
 - **a.** One change a turn. The value of a round is how well it would feed the clan this
   turn: the planned harvest with that round, plus the store, as a share of need (planning
-  stops at 1.2 × need). Not fully fed last turn: add the free tile next to the round whose
+  stops at `surplusTarget` × need). Not fully fed last turn: add the free tile next to the round whose
   cheapest insertion raises the value most, if by more than `landMargin` 0.02; failing
   that, swap: add that tile and drop the round tile whose loss leaves the most value, if
   the swap gains more than 0.02. Fully fed: drop the tile whose loss leaves the most value,
   if the value doesn't fall. Then home steps one tile towards the middle, and round tiles
-  more than 2 from home drop.
+  more than 2 from home, or that no leg within 2 of home reaches, drop (so a turn can drop
+  more than the one tile the change dropped).
 - **b.** As a., but a clan may add and swap in the same turn.
 
 **Recommend a.** One tile a turn is what the design says.
@@ -187,9 +188,9 @@ Starting values, mostly the poc's:
 
 | Name | Value | Meaning |
 |---|---|---|
-| seeds, startPop | 3, 6 | One seed per landmass of 30+ land tiles, then the rest anywhere, as the poc |
+| seeds, startPop | 3, 6 | One seed per landmass of 30+ land tiles (more than 3 if there are more such landmasses), then more anywhere up to 3, as the poc |
 | dietShare, excessValue | 0.4, 0.3 | Poc |
-| surplusTarget | 1.2 | A clan plans to harvest up to 1.2 × need, less its store (poc) |
+| surplusTarget | 1.5 | A clan plans to harvest up to 1.5 × need, less its store (poc 1.2; see question 10) |
 | growth, settleTurns | 0.03 → 0.07, 30 | Poc |
 | stableAt, starve | 0.8, 0.5 | Poc |
 | spoilage | 0.3 | Poc |
@@ -210,6 +211,25 @@ Starting values, mostly the poc's:
 | maxTurns | 500 | Poc |
 
 **Recommend** these as starting values; build-4 tunes them once and records what it changed.
+
+### 10. Can a clan on two-food land be fully fed?
+
+Each land terrain carries at most two foods (coast carries three), and a food counts in full
+only up to `dietShare` 0.4 of need, the rest at `excessValue` 0.3. With the poc's
+`surplusTarget` 1.2 a clan harvests at most 1.2 × need, so on two foods it reaches
+0.4 + 0.4 + 0.3 × 0.4 = 0.92 of need: never fully fed, so it never grows, never divides and
+never sends a daughter (hungry clans only do at `hungrySplit` 8, and a stuck seed has 6).
+Spread would then depend on seeds happening to sit where three foods meet.
+
+- **a.** Raise `surplusTarget` to 1.5: two foods then reach 1.01 of need, three or more
+  more. A number only.
+- **b.** Keep 1.2 and give every land terrain a third food (say plains fruit 1, hills
+  grain 1). Changes the caps table and so how specialised clans start.
+- **c.** Keep both as they are and let the tuning pass find out.
+
+**Recommend a.** It keeps the design's spread-out foods and the diversity bonus working (a
+clan with three foods is still better off than with two), and only a number moves. The
+briefs use 1.5.
 
 ## Design
 
@@ -329,7 +349,8 @@ freed.
 
 **Round changes** as Design question 6, with cheapest insertion: the position between
 consecutive round tiles `a, b` (including the last back to home) that minimises
-`leg(a, t) + leg(t, b) − leg(a, b)`. Home steps to a neighbouring round tile nearer the
+`leg(a, t) + leg(t, b) − leg(a, b)`. After home moves, tiles more than `territoryRadius` from it, or with no leg from the
+previous round tile, drop. Home steps to a neighbouring round tile nearer the
 territory's middle (the territory tile with the least total hex distance to the others;
 ties to home, then lowest index), and the round is rotated to start there.
 
@@ -379,8 +400,9 @@ over land to a centre's market that lie within `coverSteps` steps of a territory
   moving on.
 - `rounds.rs` (2): cheapest insertion on a hand-built round; worth working; dropping;
   starving swap; home moves at most a tile a turn; over 300 turns on seeds 1 to 3: rounds
-  disjoint and matching `claim`, home first, every round tile within 2 of home, one change a
-  turn per clan; clans spread past the seeds.
+  disjoint and matching `claim`, home first, every round tile within 2 of home, at most one
+  tile added a turn per clan and no more dropped than the change's one plus the limit's;
+  clans spread past the seeds.
 - `markets.rs` (3, plus the existing library tests at 5 goods): forming, going and not
   going, trip labour, clearing conserves food, fading; trails and taming in `hold`.
 - `pregame.rs` (3): `centres` and `land_cover` on hand-built worlds; `end` by centres and by

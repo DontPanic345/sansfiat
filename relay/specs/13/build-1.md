@@ -51,7 +51,7 @@ with `total_cmp`, and break ties by tile index or id.
   | `work` | 2.5 | Labour a person gives a turn |
   | `harvest_labour` | 1.0 | Labour to harvest one unit of food |
   | `take_rate` | 0.5 | Most of a tile's stock a clan takes in a turn |
-  | `surplus_target` | 1.2 | A clan plans to harvest up to this × need, less its store |
+  | `surplus_target` | 1.5 | A clan plans to harvest up to this × need, less its store (the poc's 1.2 can't fully feed a clan on two foods: spec question 10) |
   | `diet_share` | 0.4 | A food counts in full up to this share of need |
   | `excess_value` | 0.3 | … and at this beyond it |
   | `growth` | (0.03, 0.07) | Growth when fed: just moved → settled |
@@ -116,7 +116,8 @@ is the cheapest path between them over passable tiles within `territory_radius` 
 - `pub fn leg(w, home: usize, a: usize, b: usize) -> Option<f64>`: `cost_map` from `a`,
   allowed tiles within `territory_radius` hex steps of `home`, read at `b`. `a == b` is 0.
 - `pub fn cost(w, round: &[usize]) -> f64`: the sum of the legs around the loop. One tile:
-  0. Two tiles: there and back.
+  0. Two tiles: there and back. A leg with no path counts as `f64::INFINITY` (build-2 drops
+  such tiles at once, so it only shows in a half-built round).
 - `pub fn territory(w, round: &[usize]) -> Vec<usize>`: the round's tiles and their land
   neighbours, sorted, no repeats.
 - `pub fn options(w, clan_id: u32, round: &[usize]) -> Vec<(usize, f64)>`: what the clan can
@@ -126,6 +127,9 @@ is the cheapest path between them over passable tiles within `territory_radius` 
   clan), at `2 × path cost` (there and back from the nearest round tile). Sorted by tile.
 
 ### `core/src/clans.rs` (new)
+
+`Clan` and `Plan` derive what `World` needs (`Clone, Debug, PartialEq, Serialize, Deserialize`),
+and so do every struct added to `World` or `Tile` in this piece.
 
 ```rust
 pub struct Clan {
@@ -143,8 +147,8 @@ pub struct Plan { pub take: Vec<(usize, Basket)>, pub food: Basket, pub labour: 
   later, markets, from 1). Build-3 adds `markets` and `end`; leave them out.
 - `pub fn seed(w: &mut World)`, called at the end of `World::new`: one clan on a random land
   tile with some food in each landmass of at least `min_landmass` tiles (in `landmasses`
-  order), then more on random land tiles with food until there are `seeds` (skip a tile
-  already held). Each has `start_pop` people, round `[home]`, `claim` set on home, fed, an
+  order), then more on random land tiles with food until there are at least `seeds` (skip a tile
+  already held; with more big landmasses than `seeds`, every one still gets its seed). Each has `start_pop` people, round `[home]`, `claim` set on home, fed, an
   empty store.
 - `pub fn nutrition(b: &Basket, need: f64) -> f64`: with `k = diet_share × need`,
   `Σ min(b_f, k) + excess_value × Σ max(0, b_f − k)`.
@@ -204,7 +208,7 @@ In `core/tests/land.rs` and `core/tests/clans.rs`, plus the existing tests passi
 - `step_cost`: sea `None`, plains 1, forest 2, forest with a trail 1.
 - Regrowth: grain taken to 0 regrows `0.25 × cap` a turn; game at `0.1 × cap` regrows
   exactly by the breeding formula, and takes more turns to get back to cap than grain does.
-- Seeds: `seeds` clans of `start_pop` on distinct land tiles, round `[home]`, `claim` set.
+- Seeds: `max(seeds, big landmasses)` clans of `start_pop` on distinct land tiles, round `[home]`, `claim` set; every landmass of `min_landmass`+ tiles has one.
 - `nutrition`: need 10, one food 10 → 4 + 0.3 × 6 = 5.8; four foods of 2.5 each → 10.
 - `plan_harvest` on a hand-built world (set tiles' stock directly):
   - with the same food on a round tile and a neighbouring off-round tile, it takes the round
