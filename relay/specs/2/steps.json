@@ -1,0 +1,4 @@
+[
+  { "id": "build-1", "title": "Write the root CLAUDE.md", "model": "sonnet", "effort": "medium", "why": "One short doc file, but it takes judgment on what a cold session needs and running every check it lists." },
+  { "id": "review", "title": "Review the piece", "model": "sonnet", "effort": "medium", "why": "A polish's review of one doc file: re-run its commands, check its facts against the tree and CI." }
+]
