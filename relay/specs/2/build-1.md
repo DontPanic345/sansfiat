@@ -72,12 +72,15 @@ No code changes, so no test files. Prove the file instead:
    ```
    git worktree add /tmp/before origin/main
    Q='Without using any tools, from what you already know of this repo: which commands check it, in which folder does each run, and what are docs/design/ and relay/? If you do not know, say so.'
-   (cd /tmp/before && claude -p --model haiku --tools "" "$Q")   # before
-   claude -p --model haiku --tools "" "$Q"                       # after, from the root
+   (cd /tmp/before && claude -p "$Q" --model haiku --tools "")   # before
+   claude -p "$Q" --model haiku --tools ""                       # after, from the root
    git worktree remove /tmp/before
    ```
 
-   If `--tools ""` isn't accepted, see `claude --help` for how to turn the tools off.
+   Keep the prompt before `--tools ""`: `--tools` takes a list, so a prompt written after it
+   is read as a tool name and `claude` fails with "Input must be provided". (`-- "$Q"` or
+   piping `$Q` on stdin also works.) If `--tools ""` isn't accepted, see `claude --help`
+   for how to turn the tools off.
    Before, it can't name the checks; after, it names all of them with their folders. Put
    both answers, trimmed, in your summary as the before and after. If `claude` won't run
    (no auth), say so in the summary and rely on 1 and 2.
