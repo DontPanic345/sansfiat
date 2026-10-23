@@ -1,0 +1,86 @@
+name: relay
+
+# Runs the Relay crew (relay/relay.mjs): one `claude -p` session per step, until the budget,
+# the deadline or the work runs out. See relay/README.md.
+#
+# Start a run: Actions → relay → Run workflow, or comment `/relay run` on a piece.
+# Stop now: cancel the run; the step stays open and the next run starts it again.
+# The schedule is off until Alan turns it on: uncomment `schedule` below.
+
+on:
+  # schedule:
+  #   - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "run, or status to print the next step and the pacing without running anything"
+        type: choice
+        options: [run, status]
+        default: run
+
+concurrency:
+  group: relay
+  cancel-in-progress: false
+
+permissions:
+  contents: read # the crew writes with the sansfiat-relay App's token, not this one
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    environment: relay
+    env:
+      RELAY_APP_ID: ${{ secrets.RELAY_APP_ID }}
+      RELAY_APP_KEY: ${{ secrets.RELAY_APP_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    steps:
+      # The crew sets up git's credentials itself, from a token file sessions can read
+      # without holding the App's key.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Pinned: the crew reads the CLI's stream-json output, so an upgrade is a deliberate change.
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.301
+
+      - name: Status
+        if: inputs.command == 'status'
+        run: node relay/relay.mjs status
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: inputs.command != 'status'
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        if: inputs.command != 'status'
+        with:
+          workspaces: engine
+
+      - uses: taiki-e/install-action@v2
+        if: inputs.command != 'status'
+        with:
+          tool: wasm-bindgen-cli@0.2.128
+
+      - name: Run the crew
+        if: inputs.command != 'status'
+        run: node relay/relay.mjs run
+
+      # A cancelled or timed-out job never reaches the crew's own crash report.
+      - name: Report a run that didn't finish
+        if: failure() || cancelled()
+        run: node relay/relay.mjs report "Relay run ${{ github.run_id }} ended ${{ job.status }} — https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.command != 'status'
+        with:
+          name: relay-runs-${{ github.run_id }}
+          path: relay/runs/
+          retention-days: 7

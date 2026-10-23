@@ -1,0 +1,40 @@
+name: relay-events
+
+# Acts on Alan's comments on a piece: `/relay` commands, and replies that unblock a step.
+# Only Alan's comments start a job, so no one else's text ever reaches the App's key.
+
+on:
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: relay-events-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write # `/relay run` starts relay.yml
+
+jobs:
+  event:
+    if: >-
+      github.event.comment.user.login == 'DontPanic345' &&
+      !github.event.issue.pull_request &&
+      (contains(github.event.issue.labels.*.name, 'kind:piece') || startsWith(github.event.comment.body, '/relay'))
+    runs-on: ubuntu-latest
+    environment: relay
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Act on the comment
+        env:
+          RELAY_APP_ID: ${{ secrets.RELAY_APP_ID }}
+          RELAY_APP_KEY: ${{ secrets.RELAY_APP_KEY }}
+          DISPATCH_TOKEN: ${{ github.token }}
+        run: node relay/relay.mjs event
