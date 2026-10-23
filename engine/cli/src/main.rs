@@ -1,6 +1,6 @@
 use std::{env, fs, io::Read, process::exit, time::Instant};
 
-use engine::{clear, round, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
+use engine::{clear, land, pregame, round, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
 
 const USAGE: &str = "\
 sansfiat run [--seed N] [--turns N] [--radius N] [--save file.json] [--json]
@@ -90,6 +90,26 @@ fn report(w: &World, json: bool) {
     println!(
         "{} clans, {people:.1} people, mean fed ratio {fed:.2}, {held} tiles held, mean round {tiles:.1} tiles costing {walk:.1}",
         w.clans.len()
+    );
+    let trading = w.clans.values().filter(|c| c.market.is_some()).count();
+    let hearths = w.tiles.iter().filter(|t| land::is_hearth(t)).count();
+    let trails = w.tiles.iter().filter(|t| t.trail).count();
+    let cover = pregame::land_cover(w, &pregame::centres(w));
+    let end = match &w.end {
+        Some(e) => {
+            let tiles: Vec<String> = e
+                .centres
+                .iter()
+                .map(|id| w.markets.get(id).map_or("gone".to_string(), |m| format!("{}", m.tile)))
+                .collect();
+            let how = if e.by_limit { "by the turn limit" } else { "by its centres" };
+            format!("ended turn {} {how}, centres at tiles [{}]", e.turn, tiles.join(", "))
+        }
+        None => "not ended".to_string(),
+    };
+    println!(
+        "{} markets, {trading} clans trading, {hearths} hearths, {trails} trails, cover {cover:.2}, {end}",
+        w.markets.len()
     );
 }
 

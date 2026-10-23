@@ -310,7 +310,7 @@ pub struct Plan { pub take: Vec<(usize, Basket)>, pub food: Basket, pub labour: 
 
 // markets.rs
 pub struct Market { pub id: u32, pub tile: usize, pub founded: u32, pub prices: Basket,
-    pub activity: f64, pub volume: f64, pub traders: usize }
+    pub goods: Vec<usize>, pub activity: f64, pub volume: f64, pub traders: usize }
 
 // pregame.rs
 pub struct End { pub turn: u32, pub centres: Vec<u32>, pub cover: f64, pub by_limit: bool }
@@ -373,7 +373,7 @@ is a hearth.
 **Markets.** A market's reach is a `cost_map` from its tile out to `reach`. *Go*: each clan
 looks for the market nearest any of its round tiles within reach, and goes if Design
 question 7's test passes. *Trade*: each market clears its clans' baskets with
-`clear(&baskets, &m.prices, &Params::default())`, takes the new prices if it cleared, and
+`clear(&baskets, &m.prices, &Params::default())`, takes the new prices and goods if it cleared, and
 smooths `activity = fade × activity + (1 − fade) × volume`. *Fade*: a market with
 `activity < minVolume` goes (it starts at `2 × minVolume`). *Form*: among clan homes held
 `formAfter` turns, at least `spacing` steps from every market, with at least `minClans`

@@ -59,7 +59,7 @@ pub const FOOD: [Food; N] = [
 /// The range a tile's fertility scales its caps by.
 pub const FERTILITY: (f64, f64) = (0.4, 2.0);
 
-pub struct Trail {
+pub struct TrailRules {
     /// Turns in a row on a round before a tile gets a trail.
     pub after: u32,
     /// Turns on nobody's round before it wears away.
@@ -68,7 +68,75 @@ pub struct Trail {
     pub cost: f64,
 }
 
-pub const TRAIL: Trail = Trail { after: 10, fade: 30, cost: 1.0 };
+pub const TRAIL: TrailRules = TrailRules { after: 10, fade: 30, cost: 1.0 };
+
+pub struct TendingRules {
+    /// Turns in a row on a round before its grain starts to tame.
+    pub after: u32,
+    /// Steps of `tame` to a hearth: one a turn held, one back a turn unheld.
+    pub tame_turns: u32,
+    /// A hearth's grain cap as a multiple of its wild grain.
+    pub domestic: f64,
+}
+
+pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5 };
+
+pub struct MarketRules {
+    /// Turns a home must have been held for a market to form there.
+    pub form_after: u32,
+    /// Hex steps from every other market.
+    pub spacing: i32,
+    /// Path cost from the market a clan's round must come within.
+    pub reach: f64,
+    /// Clans in reach for a market to form.
+    pub min_clans: usize,
+    /// How much of last turn's activity is kept.
+    pub fade: f64,
+    /// A market whose activity falls under this goes.
+    pub min_volume: f64,
+    /// Labour a clan with a surplus is willing to walk to gather.
+    pub gather_bonus: f64,
+    /// A store of at least this × people is a surplus.
+    pub surplus_at: f64,
+}
+
+pub const MARKET: MarketRules = MarketRules {
+    form_after: 20,
+    spacing: 5,
+    reach: 3.0,
+    min_clans: 4,
+    fade: 0.8,
+    min_volume: 2.0,
+    gather_bonus: 2.0,
+    surplus_at: 0.1,
+};
+
+pub struct PregameRules {
+    /// Centres the pre-game waits for.
+    pub players: usize,
+    /// Turns a centre's market has lasted.
+    pub centre_age: u32,
+    /// Clans that traded at a centre last turn.
+    pub centre_clans: usize,
+    /// Hex steps between centres.
+    pub centre_spacing: i32,
+    /// Share of the centres' land near some clan's territory…
+    pub cover: f64,
+    /// …within this many hex steps.
+    pub cover_steps: i32,
+    /// The backstop.
+    pub max_turns: u32,
+}
+
+pub const PREGAME: PregameRules = PregameRules {
+    players: 3,
+    centre_age: 30,
+    centre_clans: 4,
+    centre_spacing: 10,
+    cover: 0.8,
+    cover_steps: 3,
+    max_turns: 500,
+};
 
 pub struct ClanRules {
     /// Seed clans.

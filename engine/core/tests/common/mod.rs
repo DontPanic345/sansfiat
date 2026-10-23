@@ -5,11 +5,11 @@ use engine::clans::new_clan;
 use engine::data::*;
 use engine::hex::{Hex, DIRS};
 use engine::map::index;
-use engine::{Config, World};
+use engine::{Config, Market, World};
 
 pub const R: i32 = 6;
 
-/// A world of bare plains with sea at the rim: no food, no clans.
+/// A world of bare plains with sea at the rim: no food, no clans, no markets.
 pub fn flat() -> World {
     let mut w = World::new(Config { seed: 1, radius: R });
     w.clans.clear();
@@ -19,8 +19,14 @@ pub fn flat() -> World {
         }
         t.cap = [0.0; N];
         t.stock = [0.0; N];
+        t.wild_grain = 0.0;
+        t.tame = 0;
         t.claim = None;
+        t.held = 0;
+        t.unheld = 0;
+        t.trail = false;
     }
+    w.markets.clear();
     w
 }
 
@@ -76,4 +82,30 @@ pub fn check_rounds(w: &World) {
     for (t, tile) in w.tiles.iter().enumerate() {
         assert_eq!(tile.claim, owner[t], "tile {t}'s claim");
     }
+}
+
+/// Opens a market on `tile` as `form` would, founded on turn 0.
+pub fn open(w: &mut World, tile: usize) -> u32 {
+    let id = w.next_id;
+    w.next_id += 1;
+    let m = Market {
+        id,
+        tile,
+        founded: 0,
+        prices: [1.0; N],
+        goods: Vec::new(),
+        activity: 2.0 * MARKET.min_volume,
+        volume: 0.0,
+        traders: 0,
+    };
+    w.markets.insert(id, m);
+    id
+}
+
+/// Makes `tile` a hearth with `wild` grain.
+pub fn hearth(w: &mut World, tile: usize, wild: f64) {
+    let t = &mut w.tiles[tile];
+    t.wild_grain = wild;
+    t.tame = TENDING.tame_turns;
+    t.cap[GRAIN] = wild * TENDING.domestic;
 }

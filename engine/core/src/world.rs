@@ -13,6 +13,8 @@ use crate::clans::{self, Clan};
 use crate::data::Config;
 use crate::land;
 use crate::map::{self, Tile};
+use crate::markets::{self, Market};
+use crate::pregame::{self, End};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct World {
@@ -22,8 +24,11 @@ pub struct World {
     pub rng: u32,
     pub tiles: Vec<Tile>,
     pub clans: BTreeMap<u32, Clan>,
-    /// The next id for a clan (and, later, a market), from 1.
+    pub markets: BTreeMap<u32, Market>,
+    /// The next id for a clan or a market, from 1.
     pub next_id: u32,
+    /// Set once, when the pre-game ends.
+    pub end: Option<End>,
     /// Every action applied, in order.
     pub log: Vec<Action>,
 }
@@ -43,8 +48,13 @@ pub struct Step {
 pub const TURN: &[Step] = &[
     Step { name: "regrow", run: land::regrow },
     Step { name: "move", run: clans::adjust },
+    Step { name: "go", run: markets::go },
     Step { name: "harvest", run: clans::harvest },
+    Step { name: "trade", run: markets::trade },
     Step { name: "eat", run: clans::eat },
+    Step { name: "hold", run: land::hold },
+    Step { name: "markets", run: markets::form_and_fade },
+    Step { name: "end", run: pregame::check_end },
 ];
 
 /// What a save holds: enough to replay the world.
@@ -58,7 +68,17 @@ impl World {
     pub fn new(config: Config) -> World {
         let mut rng = config.seed;
         let tiles = map::generate(config.radius, &mut rng);
-        let mut w = World { config, turn: 0, rng, tiles, clans: BTreeMap::new(), next_id: 1, log: Vec::new() };
+        let mut w = World {
+            config,
+            turn: 0,
+            rng,
+            tiles,
+            clans: BTreeMap::new(),
+            markets: BTreeMap::new(),
+            next_id: 1,
+            end: None,
+            log: Vec::new(),
+        };
         clans::seed(&mut w);
         w
     }

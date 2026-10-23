@@ -64,7 +64,7 @@ For every tile, after eating:
 
 ```rust
 pub struct Market { pub id: u32, pub tile: usize, pub founded: u32, pub prices: Basket,
-    pub activity: f64, pub volume: f64, pub traders: usize }
+    pub goods: Vec<usize>, pub activity: f64, pub volume: f64, pub traders: usize }
 ```
 
 `World` gains `pub markets: BTreeMap<u32, Market>` (ids from `next_id`).
@@ -75,7 +75,9 @@ pub struct Market { pub id: u32, pub tile: usize, pub founded: u32, pub prices: 
   the market nearest to any of its round tiles within reach (least cost, ties to the lower
   id), at cost `c`. No market: `market = None`, `trip = 0`. Otherwise:
   - the basket it expects to bring, `b = store + harvest` (last turn's harvest);
-  - its gain from trading at last turn's prices: `goods` the foods with `b > 0`,
+  - its gain from trading at last turn's prices: `goods` the foods with `b > 0` and the
+    market's `goods` (what it last traded, as the poc's `worthTrading`; with only its own
+    foods, `demand` hands a one-food clan its basket back and it never gains),
     `d = demand(&b, &m.prices, &goods)`, `gain = max(0, nutrition(d, pop) − nutrition(b, pop))`;
   - its desire to gather: `gather_bonus` (2 labour) if it holds a surplus,
     `Σ store ≥ surplus_at × pop`, else 0;
@@ -84,7 +86,7 @@ pub struct Market { pub id: u32, pub tile: usize, pub founded: u32, pub prices: 
   harvest then has that much less labour). Otherwise `None` and 0.
 - **Clearing**, the `trade` step, after `harvest`. For each market in id order: the
   baskets of its clans (in id order); `clear(&baskets, &m.prices, &Params::default())`; each
-  clan's basket becomes its `after`; if it cleared, `prices = c.prices`.
+  clan's basket becomes its `after`; if it cleared, `prices = c.prices`, `goods = c.goods`.
   `volume = Σ c.volume`, `traders` = clans that came,
   `activity = fade × activity + (1 − fade) × volume`.
 - **Fading and forming**, the `markets` step, last but `end`:

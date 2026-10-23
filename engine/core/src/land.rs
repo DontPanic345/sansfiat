@@ -1,10 +1,10 @@
-//! Moving over the land, and food growing back on it.
+//! Moving over the land, food growing back on it, and what holding it does: trails and tame grain.
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap};
 
 use crate::data::*;
-use crate::map;
+use crate::map::{self, Tile};
 use crate::world::World;
 
 /// On-map neighbours of tile `i`, in `DIRS` order.
@@ -81,5 +81,43 @@ pub fn regrow(w: &mut World) {
             };
             t.stock[f] = grown.min(cap);
         }
+    }
+}
+
+/// A fully tamed tile: its grain cap is `TENDING.domestic` times its wild grain.
+pub fn is_hearth(t: &Tile) -> bool {
+    t.wild_grain > 0.0 && t.tame >= TENDING.tame_turns
+}
+
+/// The `hold` step, after eating: each tile counts the turns it has been on some round, or on
+/// none. Held `TRAIL.after` turns it gets a trail, unheld `TRAIL.fade` it loses it. Grain held
+/// `TENDING.after` turns tames a step a turn, unheld it goes wild a step a turn, and its cap
+/// follows.
+pub fn hold(w: &mut World) {
+    let round1 = |v: f64| (v * 10.0).round() / 10.0;
+    for t in &mut w.tiles {
+        let held = t.claim.is_some();
+        if held {
+            t.held += 1;
+            t.unheld = 0;
+        } else {
+            t.held = 0;
+            t.unheld += 1;
+        }
+        if t.held >= TRAIL.after {
+            t.trail = true;
+        } else if t.trail && t.unheld >= TRAIL.fade {
+            t.trail = false;
+        }
+        if t.wild_grain <= 0.0 {
+            continue;
+        }
+        if held && t.held >= TENDING.after {
+            t.tame = (t.tame + 1).min(TENDING.tame_turns);
+        } else if !held {
+            t.tame = t.tame.saturating_sub(1);
+        }
+        let tame = t.tame as f64 / TENDING.tame_turns as f64;
+        t.cap[GRAIN] = round1(t.wild_grain * (1.0 + (TENDING.domestic - 1.0) * tame));
     }
 }

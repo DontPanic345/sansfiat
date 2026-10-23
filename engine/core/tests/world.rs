@@ -22,6 +22,16 @@ fn replaying_a_save_rebuilds_the_world() {
 }
 
 #[test]
+fn replaying_a_save_with_markets_rebuilds_the_world() {
+    let mut w = World::new(Config::default());
+    w.run(50);
+    assert!(!w.markets.is_empty() && w.tiles.iter().any(|t| t.trail));
+    let json = serde_json::to_string(&w.save()).unwrap();
+    let save: Save = serde_json::from_str(&json).unwrap();
+    assert_eq!(World::replay(&save).unwrap(), w);
+}
+
+#[test]
 fn every_action_is_logged_and_counts_turns() {
     let mut w = World::new(Config::default());
     w.act(Action::EndTurn).unwrap();
