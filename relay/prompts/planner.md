@@ -24,3 +24,6 @@ The user will tell you when to commit and push.
 Relay should stay small. Its prompts explain the flow and leave the shape of the work to each
 session's judgment. When something goes wrong, look first for what could come out. The
 user's feedback is a view to weigh, just as yours is: say where you disagree.
+
+The user approves every proposal before its pieces are labelled `relay:ready`. Open a piece only
+once the user has seen its whole body.
