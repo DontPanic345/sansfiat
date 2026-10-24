@@ -23,9 +23,11 @@ these lines from its body, in any order:
 **Decided:** …
 **In scope:** …
 **Out of scope:** …
+**After:** #31
 ```
 
-`Spec` is required: a piece without it is held. Every `docs/design/*.md` path in the body
+`Spec` is required: a piece without it is held. A piece is also held until every piece its
+`After` line names is merged. Every `docs/design/*.md` path in the body
 goes to the spec and review sessions in full.
 
 Its **steps** are sub-issues, each carrying its model, effort, attempts, tokens, cost,
@@ -38,17 +40,19 @@ spec, the briefs and `steps.json` live on the piece's branch, `relay/<number>`, 
 | `spec` | Writes the spec, a brief per later step, and `steps.json` with each step's model, effort and why. Runs on the model the piece's `Spec` line names |
 | `spec-review` | Reads the plan the way the later sessions will, and fixes it |
 | `build-N` | Builds what its brief says |
-| `review` | The crew marks the PR ready, so CI runs. The session merges `main` in, reviews the whole piece, fixes what matters, ends the PR description with a verdict (merge, or don't and why), and waits for CI to go green |
+| `review` | The crew marks the PR ready, so CI runs. The session merges `main` in, reviews the whole piece, fixes what matters, ends the PR description with a verdict (merge, or don't and why), and waits for CI to go green. On a merge verdict with CI green, the crew merges the PR |
 
 The spec step isn't done until `steps.json` reads cleanly; then the crew makes every later
 step and carries on, with no stop for the owner. Every step's prompt carries every earlier step's
 summary and decisions.
 
-Then it's the owner's turn: merge the PR, which closes the piece, or close the piece, which
-tags the branch head `proof/<number>` and closes the PR. Closing a piece closes its open steps.
+Otherwise it's the owner's turn: merge the PR, which closes the piece, or close the piece,
+which tags the branch head `proof/<number>` and closes the PR. Closing a piece closes its open
+steps. The owner plays the game on main or on a PR's preview, and what plays badly becomes a
+new piece.
 
 The crew works on the oldest piece that has a step to run, so a later piece goes ahead only
-while an earlier one waits on the owner.
+while an earlier one waits on the owner, and never ahead of a piece its `After` line names.
 
 ## How a step counts
 

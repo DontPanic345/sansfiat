@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+    afterOf,
     applyModel,
     applyResult,
     atLevel,
     checkSteps,
+    checksGreen,
     designPaths,
     dollars,
     holdReason,
@@ -108,6 +110,22 @@ test("holdReason needs a ready piece from the owner with the spec's model", () =
     assert.match(holdReason(piece(9, [], [], { body: "**Goal:** rivers" })), /Spec/);
     // Once the spec step exists, its model is on the step, not the body.
     assert.equal(holdReason(piece(9, [], [step("spec")], { body: "**Goal:** rivers" })), null);
+});
+
+test("a piece waits for the pieces its After line names to be merged", () => {
+    assert.deepEqual(afterOf("**Goal:** units.\n**After:** #31 and #32, for the map"), [31, 32]);
+    assert.deepEqual(afterOf("**Goal:** units."), []);
+    const after = [{ number: 31, merged: true }, { number: 32, merged: false }];
+    assert.equal(holdReason(piece(9, [], [], { after })), "after #32, not merged yet");
+    assert.equal(holdReason(piece(9, [], [], { after: [after[0]] })), null);
+});
+
+test("CI is green when every check finished and none failed", () => {
+    const run = (status, conclusion) => ({ status, conclusion });
+    assert.equal(checksGreen([run("completed", "success"), run("completed", "skipped")]), true);
+    assert.equal(checksGreen([run("completed", "success"), run("in_progress", null)]), false);
+    assert.equal(checksGreen([run("completed", "failure")]), false);
+    assert.equal(checksGreen([]), false);
 });
 
 test("nextWork takes the oldest piece that can run", () => {

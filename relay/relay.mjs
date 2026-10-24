@@ -88,6 +88,13 @@ export const specChoice = (body) => {
     return model && effort ? { model, effort, why: line } : null;
 };
 
+// `**After:** #31, #32`: the pieces this one waits to see merged.
+export const afterOf = (body) => [...(pieceField(body, "After") ?? "").matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
+
+// Every check on a commit finished and none failed. No checks at all isn't green.
+export const checksGreen = (runs) =>
+    runs.length > 0 && runs.every((c) => c.status === "completed" && ["success", "neutral", "skipped"].includes(c.conclusion));
+
 // The `docs/design/` files a piece's body names.
 export const designPaths = (body) => [...new Set((body ?? "").match(/docs\/design\/[\w./-]+\.md/g) ?? [])];
 
@@ -138,6 +145,8 @@ export const holdReason = (piece) => {
     if (piece.author !== OWNER) return "not opened by the owner";
     if (piece.labels.includes("relay:paused")) return "paused";
     if (piece.labels.includes("waiting")) return "waiting on the owner";
+    const unmerged = (piece.after ?? []).filter((a) => !a.merged).map((a) => `#${a.number}`);
+    if (unmerged.length) return `after ${unmerged.join(", ")}, not merged yet`;
     if (piece.steps.length === 0 && !specChoice(piece.body)) return "the body has no `Spec:` model and effort";
     return null;
 };
@@ -438,6 +447,13 @@ const toStep = (issue) => ({
     meta: readMeta(issue.body) ?? { id: "?" },
 });
 
+// A piece done by hand has no branch, so closing it counts as merged.
+const isMerged = async (number) => {
+    const prs = await github("GET", `/pulls?state=all&head=${OWNER}:${encodeURIComponent(`relay/${number}`)}`);
+    if (prs.length) return prs.some((p) => p.merged_at);
+    return (await github("GET", `/issues/${number}`)).state === "closed";
+};
+
 const toPiece = async (issue) => ({
     number: issue.number,
     nodeId: issue.node_id,
@@ -446,6 +462,7 @@ const toPiece = async (issue) => ({
     author: issue.user.login,
     labels: issue.labels.map((l) => l.name),
     milestone: issue.milestone,
+    after: await Promise.all(afterOf(issue.body).map(async (number) => ({ number, merged: await isMerged(number) }))),
     steps: (await allPages(`/issues/${issue.number}/sub_issues`)).filter((s) => readMeta(s.body)).map(toStep),
 });
 
@@ -758,6 +775,22 @@ const blockStep = async (piece, step, why) => {
 
 // What follows a finished step: a draft PR and the later steps after the spec, and the owner's
 // turn after the piece's review.
+// Merges the PR when the review says merge and CI is green. Returns why it didn't, or null.
+const autoMerge = async (piece, pr, result) => {
+    if (!pr) return "there's no PR";
+    if (result.merge !== true) return "its verdict isn't merge";
+    const { check_runs } = await github("GET", `/commits/${pr.head.sha}/check-runs?per_page=100`);
+    if (!checksGreen(check_runs)) return "CI isn't green";
+    try {
+        await github("PUT", `/pulls/${pr.number}/merge`, { sha: pr.head.sha, merge_method: "squash", commit_title: `${piece.title} (#${pr.number})` });
+    } catch (e) {
+        return `merging failed: ${e.message}`;
+    }
+    log(`#${piece.number}: merged PR #${pr.number}`);
+    await comment(piece.number, `🔀 The review's verdict is merge and CI is green, so ${pr.html_url} is merged.`);
+    return null;
+};
+
 const afterStep = async (piece, step, result) => {
     const kind = stepKind(step.meta.id);
     let pr = await findPr(piece);
@@ -780,11 +813,14 @@ const afterStep = async (piece, step, result) => {
     if (kind === "spec") await plan(await loadPiece(piece.number));
     else if (kind === "build") await setStatus(piece, "Building");
     else if (kind === "review") {
-        await comment(
-            piece.number,
-            `🔍 The review is done and CI has run on ${pr?.html_url ?? "the PR"}; its description ends with the review's verdict. Merge it, which closes this piece, or close this piece to keep the branch as \`proof/${piece.number}\`.`,
-        );
-        await setStatus(piece, "Review");
+        const why = await autoMerge(piece, pr, result);
+        if (why) {
+            await comment(
+                piece.number,
+                `🔍 The review is done on ${pr?.html_url ?? "the PR"}, but ${why}. Its description ends with the review's verdict. Merge it, which closes this piece, or close this piece to keep the branch as \`proof/${piece.number}\`.`,
+            );
+            await setStatus(piece, "Review");
+        }
     }
 };
 

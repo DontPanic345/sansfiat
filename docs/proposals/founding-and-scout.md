@@ -51,7 +51,7 @@ output, the page, tests that events fire and replay identically, and the sweep.
 **Out of scope:** founding, civs and units; a minimap, graphs, start screen and saving;
 climate beyond deserts. merge4 stays frozen.
 
-It runs after #23, so the generator's maths is the same native and in the browser.
+**After:** #23, so the generator's maths is the same native and in the browser.
 
 ## Founding
 
@@ -90,7 +90,7 @@ selection panel, the new events, and tests.
 
 **Out of scope:** scouting; the boon year; minimap, graphs, start screen, saving.
 
-Runs after #31. Read its PR description and fold in any of its findings that matter here.
+**After:** #31. Read its PR description and fold in any of its findings that matter here.
 
 ## Piece 3: Scout on the engine (#28)
 
@@ -117,4 +117,4 @@ tests, archiving `scout/`.
 
 **Out of scope:** fog, bridge-span technology, alliances, several scouts on one route.
 
-Runs after #32. Read its PR description and fold in any of its findings that matter here.
+**After:** #32. Read its PR description and fold in any of its findings that matter here.
