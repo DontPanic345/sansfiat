@@ -5,10 +5,16 @@
 //! `act`, which checks an action, applies it and logs it, so `replay(config, log)` rebuilds the
 //! same world exactly: the log is the save file.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
+use crate::clans::{self, Clan};
 use crate::data::Config;
+use crate::land;
 use crate::map::{self, Tile};
+use crate::markets::{self, Market};
+use crate::pregame::{self, End};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct World {
@@ -17,6 +23,12 @@ pub struct World {
     /// The only source of randomness: `rng::rand(&mut world.rng)`.
     pub rng: u32,
     pub tiles: Vec<Tile>,
+    pub clans: BTreeMap<u32, Clan>,
+    pub markets: BTreeMap<u32, Market>,
+    /// The next id for a clan or a market, from 1.
+    pub next_id: u32,
+    /// Set once, when the pre-game ends.
+    pub end: Option<End>,
     /// Every action applied, in order.
     pub log: Vec<Action>,
 }
@@ -32,8 +44,18 @@ pub struct Step {
     pub run: fn(&mut World),
 }
 
-/// One turn, in order. Empty until mechanics add their steps.
-pub const TURN: &[Step] = &[];
+/// One turn, in order.
+pub const TURN: &[Step] = &[
+    Step { name: "regrow", run: land::regrow },
+    Step { name: "move", run: clans::adjust },
+    Step { name: "go", run: markets::go },
+    Step { name: "harvest", run: clans::harvest },
+    Step { name: "trade", run: markets::trade },
+    Step { name: "eat", run: clans::eat },
+    Step { name: "hold", run: land::hold },
+    Step { name: "markets", run: markets::form_and_fade },
+    Step { name: "end", run: pregame::check_end },
+];
 
 /// What a save holds: enough to replay the world.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -46,7 +68,19 @@ impl World {
     pub fn new(config: Config) -> World {
         let mut rng = config.seed;
         let tiles = map::generate(config.radius, &mut rng);
-        World { config, turn: 0, rng, tiles, log: Vec::new() }
+        let mut w = World {
+            config,
+            turn: 0,
+            rng,
+            tiles,
+            clans: BTreeMap::new(),
+            markets: BTreeMap::new(),
+            next_id: 1,
+            end: None,
+            log: Vec::new(),
+        };
+        clans::seed(&mut w);
+        w
     }
 
     /// Checks `action` against the world; `Err` says why it can't happen.

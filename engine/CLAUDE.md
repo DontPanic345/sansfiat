@@ -7,7 +7,8 @@ actions. One engine, two front ends: a CLI and a wasm web page. The game's desig
 ```
 cargo test
 cargo fmt --check && cargo clippy --all-targets -- -D warnings
-cargo run -p sansfiat -- run --seed 3 --turns 50 [--save game.json] [--json]
+cargo run -p sansfiat -- run --seed 3 [--turns N] [--every 25] [--save game.json] [--json]  # stops at the pre-game's end
+cargo run -p sansfiat -- sweep [seed ...] [--radius N] [--turns N]   # seeds default 1..=10
 cargo run -p sansfiat -- replay game.json [--json]
 cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
 cargo run -p sansfiat -- clear baskets.json     # or - for stdin
@@ -19,12 +20,18 @@ cargo run -p sansfiat -- clear baskets.json     # or - for stdin
 | Path | What |
 | --- | --- |
 | `core/src/world.rs` | `World`, `Action`, `TURN`, `act`, `save`, `replay`. |
-| `core/src/data.rs` | Terrain, `Config`, and the goods the market library trades. Tune here first. |
-| `core/src/map.rs` | Placeholder map: Voronoi terrain in a hex, sea at the rim. A map piece replaces it. |
-| `core/src/market.rs` | `clear(baskets, start_prices, params)`: barter exchange ratios by tâtonnement, no numeraire. A library; nothing calls it yet. |
+| `core/src/data.rs` | Terrain, foods (the goods), `CLAN`, `TRAIL`, `TENDING`, `MARKET` and `PREGAME` rules, `Config`. Tune here first. |
+| `core/src/map.rs` | Placeholder map: Voronoi terrain in a hex, sea at the rim, food scaled by patchy fertility. A map piece replaces it. |
+| `core/src/land.rs` | Neighbours, move costs, bounded Dijkstra (`cost_map`), the `regrow` step, and the `hold` step: held counters, trails, taming and hearths. |
+| `core/src/round.rs` | A clan's round: leg and loop costs (`Legs` caches them per home), cheapest insertion, free edge, middle, territory, what it can harvest. |
+| `core/src/clans.rs` | Clans: seeding, a round's `value`, the `move` (`adjust`: moving on, one round change, home follows the middle, the limit), `harvest` and `eat` steps; dividing and daughters after eating. |
+| `core/src/market.rs` | `clear(baskets, start_prices, params)`: barter exchange ratios by tâtonnement, no numeraire. A library `markets` calls. |
+| `core/src/markets.rs` | Markets: `reach`, the `go` (worth the walk?), `trade` (clearing) and `markets` (fade, then form one) steps. |
+| `core/src/pregame.rs` | The pre-game's end: centres (age, traders, a hearth in reach, far apart), land cover, and the `end` step. |
+| `core/src/stats.rs` | `summary` (counts off the world), `centre_report` (fertility near each centre vs all land), `distances`: the evidence the CLI and the web page show. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
-| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `state`, `save`); `www/main.js` draws it. `www/pkg` is built, not committed. |
+| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `state`, `summary`, `save`) and `terrain`, `goods`, `rules`; `www/main.js` draws the map (fertility view, territories, rounds, trails, hearths, markets, centres) and a Run to end button. `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 

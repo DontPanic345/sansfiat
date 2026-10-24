@@ -1,11 +1,11 @@
-use engine::{clear, rng::rand, utility, Basket, Params};
+use engine::{clear, rng::rand, utility, Basket, Params, N};
 
 const P: Params = Params { iterations: 300, step: 0.5, tolerance: 1e-5 };
 
 fn total(bs: &[Basket]) -> Basket {
-    let mut t = [0.0; 4];
+    let mut t = [0.0; N];
     for b in bs {
-        for g in 0..4 {
+        for g in 0..N {
             t[g] += b[g];
         }
     }
@@ -23,7 +23,7 @@ fn rng_matches_the_js_prototypes() {
 
 #[test]
 fn symmetric_traders_split_evenly() {
-    let c = clear(&[[4.0, 0.0, 0.0, 0.0], [0.0, 4.0, 0.0, 0.0]], &[1.0; 4], &P);
+    let c = clear(&[[4.0, 0.0, 0.0, 0.0, 0.0], [0.0, 4.0, 0.0, 0.0, 0.0]], &[1.0; N], &P);
     assert!(c.cleared);
     assert_eq!(c.goods, vec![0, 1]);
     for b in &c.after {
@@ -34,16 +34,17 @@ fn symmetric_traders_split_evenly() {
 #[test]
 fn the_scarce_good_is_dearer() {
     // Σ sqrt utility: aggregate demand ∝ 1/p², so p_fish / p_grain = sqrt(9 / 1).
-    let c = clear(&[[9.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]], &[1.0; 4], &P);
+    let c = clear(&[[9.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0]], &[1.0; N], &P);
     assert!((c.prices[1] / c.prices[0] - 3.0).abs() < 1e-3, "{:?}", c.prices);
 }
 
 #[test]
 fn goods_are_conserved_and_nobody_loses() {
-    let before = [[5.0, 1.0, 0.0, 2.0], [0.0, 6.0, 1.0, 0.0], [1.0, 0.0, 7.0, 0.5], [2.0, 2.0, 2.0, 2.0]];
-    let c = clear(&before, &[1.0; 4], &P);
+    let before =
+        [[5.0, 1.0, 0.0, 2.0, 0.0], [0.0, 6.0, 1.0, 0.0, 0.0], [1.0, 0.0, 7.0, 0.5, 0.0], [2.0, 2.0, 2.0, 2.0, 0.0]];
+    let c = clear(&before, &[1.0; N], &P);
     let (a, b) = (total(&before), total(&c.after));
-    for g in 0..4 {
+    for g in 0..N {
         assert!((a[g] - b[g]).abs() < 1e-9, "good {g}: {} -> {}", a[g], b[g]);
     }
     for (x, y) in before.iter().zip(&c.after) {
@@ -55,8 +56,8 @@ fn goods_are_conserved_and_nobody_loses() {
 
 #[test]
 fn one_trader_does_not_clear() {
-    let start = [2.0, 0.5, 1.0, 1.0];
-    let c = clear(&[[1.0, 1.0, 1.0, 1.0]], &start, &P);
+    let start = [2.0, 0.5, 1.0, 1.0, 1.0];
+    let c = clear(&[[1.0, 1.0, 1.0, 1.0, 0.0]], &start, &P);
     assert!(!c.cleared);
     assert_eq!(c.prices, start);
 }
