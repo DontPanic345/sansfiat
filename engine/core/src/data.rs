@@ -79,7 +79,8 @@ pub struct MapRules {
     pub mountain_cost: u8,
     pub mountain_span: [(Option<u8>, u32); 3],
     /// River sources tried (per small map, never below `rivers_floor`), the steps of land a
-    /// source must be from water, and the chance a river sidesteps when it could go downhill.
+    /// source must be from water (fewer where the map's land isn't that deep: one less than its
+    /// deepest), and the chance a river sidesteps when it could go downhill.
     pub rivers: usize,
     pub rivers_floor: usize,
     pub river_min: u32,

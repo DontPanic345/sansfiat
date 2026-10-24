@@ -223,7 +223,7 @@ fn floodplains_are_the_richest_land_and_deltas_are_marsh_on_the_ocean() {
         println!("{name}: {floods} of {} seeds have a floodplain, {deltas} a delta", SEEDS.count());
         found.push((floods, deltas));
     }
-    // Found over seeds 1..=15: small 11 and 4, medium 15 and 8, large 15 and 15.
+    // Found over seeds 1..=15: small 9 and 4, medium 15 and 8, large 15 and 15.
     let [small, medium, large] = found[..] else { unreachable!() };
     assert!(small.0 >= 8 && small.1 >= 3, "small {small:?}");
     assert!(medium.0 >= 12 && medium.1 >= 5, "medium {medium:?}");

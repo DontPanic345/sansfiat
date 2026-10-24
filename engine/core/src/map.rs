@@ -357,8 +357,9 @@ fn water_distance(nbrs: &[Vec<usize>], terrain: &[usize], water: impl Fn(usize) 
 }
 
 /// Runs a river from `source` down `dist`: each step goes to an unvisited neighbour nearer the
-/// water, or (with chance `river_wiggle`, if there is one) sidesteps to one as near; ties to the
-/// lower noisy height `h`, then the lower index. It ends on reaching water or another river.
+/// water, or (with chance `river_wiggle`, if there is one) sidesteps to one as near; ties to a
+/// river it can join, then the lower noisy height `h`, then the lower index. It ends on reaching
+/// water or another river.
 /// A neighbour nearer the water is never on the path, so the river never fails.
 fn run_river(
     rng: &mut u32,
@@ -374,11 +375,10 @@ fn run_river(
     loop {
         let d = dist[here].expect("a river runs on land that reaches water");
         let best = |want: u32| {
-            nbrs[here]
-                .iter()
-                .copied()
-                .filter(|&j| dist[j] == Some(want) && !path.contains(&j))
-                .min_by(|&a, &b| h[a].total_cmp(&h[b]).then(a.cmp(&b)))
+            nbrs[here].iter().copied().filter(|&j| dist[j] == Some(want) && !path.contains(&j)).min_by(|&a, &b| {
+                let joins = |i: usize| flow[i].is_none();
+                joins(a).cmp(&joins(b)).then(h[a].total_cmp(&h[b])).then(a.cmp(&b))
+            })
         };
         let next = match (best(d - 1), best(d)) {
             (Some(lower), Some(side)) => {
@@ -426,7 +426,8 @@ fn carve_rivers(
             break;
         }
         let source = sources.swap_remove(rand_index(rng, sources.len()));
-        if flow[source].is_none() {
+        // A source on or beside a river would only run alongside it.
+        if flow[source].is_none() && nbrs[source].iter().all(|&j| flow[j].is_none()) {
             run_river(rng, nbrs, h, &dist, terrain, &mut flow, source);
         }
     }
