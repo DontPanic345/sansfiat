@@ -107,12 +107,16 @@ and `./build-web.sh` green (build-4 and build-5 also run `./cross-build.sh`).
     raises rings of mountain (and, for passes, hills) around chosen interiors, or cuts water
     to leave a neck. Zones are tagged on the tiles. A sealed valley's wall always has at least
     one mountain with `span: Some(1)`. Clans are never seeded in a sealed zone and can't walk
-    in, so it stays empty.
+    in, so it stays empty. (Build-3: features are placed in turns, sealed, neck, valley, from
+    centres that fit; necks are radius 2 only and their cut may run into a lake or inland sea
+    as long as the map keeps a lake; a feature that leaves the open land likely short of three
+    sites, judged on the terrain before coast and rivers, is taken down again.)
 12. **Open land guarantee**: after generation, `map::open_sites` finds three centre-sized sites
     at least `PREGAME.centre_spacing` apart in the open (zone `Open`, connected, passable) land;
     if not, the closed features are re-rolled (up to 8 attempts, then the closed features are
     dropped, then, if the base land alone can't hold three sites, the whole map is re-rolled from
-    the continuing rng, up to 8 times). The guarantee applies only at radius 16 and up: tiny
+    the continuing rng, up to 8 times; build-3 skips the layouts on base land that likely can't
+    hold three sites even all open, and goes straight to the drop). The guarantee applies only at radius 16 and up: tiny
     hand-test radii (the tests' `flat()` is radius 6) get no closed country, no retry and no
     `open_sites` check, and must still generate without panicking. A test holds it over many
     seeds and all sizes.

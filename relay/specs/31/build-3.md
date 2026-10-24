@@ -105,3 +105,19 @@ per size over seeds 1..=10. Run `sweep --size small` for seeds 1..=10 and put th
 your result.
 
 Commit when checks pass: "#31 build-3: closed country and the open-land guarantee".
+
+## As built (build-3)
+
+- `generate_with` returns `Generated { tiles, wind, tries }`; `Tries { layouts, dropped, maps }`
+  with `all_open()` and `rerolled()` reports the fallbacks. `map::zone_groups(tiles, radius, zone)`
+  gives each feature's tiles (one connected group of a zone is one feature).
+- Placement takes the kinds in turns (sealed, neck, valley, neck, valley, …) and draws centres
+  only from tiles that fit (footprint clear, land counts right), 50 tries per feature
+  (`MAP.closed_tries_each`). Necks use radius 2 (blob 8..=19 land tiles). A neck's ring may
+  touch a lake or inland sea as well as the ocean; the cut may merge water bodies but never
+  takes the map's last lake. Each feature is checked against an estimate of `open_sites` on
+  its terrain and taken down if it would leave fewer than three.
+- Tagged tiles: valley/sealed interiors, wall mountains and passes; a neck's blob land and its
+  neck tiles. Sea is never tagged, nor mountains inside a neck's blob.
+- The forced `span: Some(1)` on a sealed wall is picked on the hidden stream, so it changes
+  nothing else and its place can't be guessed.

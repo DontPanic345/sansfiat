@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::data::*;
 use crate::land::{neighbours, passable};
-use crate::map;
+use crate::map::{self, Zone};
 use crate::market::Basket;
 use crate::rng::{rand, rand_index};
 use crate::round::{self, Legs};
@@ -56,9 +56,10 @@ fn shuffled(w: &mut World) -> Vec<u32> {
 }
 
 /// Seed clans: one on a random land tile with food in each landmass of `min_landmass`+ tiles,
-/// then more on random free land tiles with food until there are `seeds`.
+/// then more on random free land tiles with food until there are `seeds`; never in a sealed valley.
 pub fn seed(w: &mut World) {
-    let has_food = |w: &World, i: usize| w.tiles[i].cap.iter().any(|&c| c > 0.0);
+    // Nobody starts in a sealed valley: it stays empty until a scout bridges its wall.
+    let has_food = |w: &World, i: usize| w.tiles[i].cap.iter().any(|&c| c > 0.0) && w.tiles[i].zone != Zone::Sealed;
     let mut homes: Vec<usize> = Vec::new();
     for mass in map::landmasses(&w.tiles, w.config.radius) {
         if mass.len() < CLAN.min_landmass {

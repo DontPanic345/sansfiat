@@ -1,7 +1,7 @@
 use std::{env, fs, io::Read, process::exit, time::Instant};
 
 use engine::data::{size_radius, DESERT, FOREST, HILLS, MARSH, MOUNTAIN, PREGAME, SEA, SIZES};
-use engine::map;
+use engine::map::{self, Zone};
 use engine::{clear, land, pregame, round, stats, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
 
 const USAGE: &str = "\
@@ -100,6 +100,7 @@ fn map(args: &[String]) -> Result<(), String> {
     let legend = [('~', "sea"), ('=', "lake"), (',', "coast"), ('.', "plains"), ('f', "forest"), ('h', "hills")]
         .into_iter()
         .chain([('^', "mountain"), (':', "desert"), ('%', "marsh"), ('r', "river"), ('z', "floodplain")])
+        .chain([('V', "valley"), ('P', "pass"), ('S', "sealed valley"), ('N', "neck")])
         .map(|(c, n)| format!("{c} {n}"))
         .collect::<Vec<_>>()
         .join("  ");
@@ -124,6 +125,15 @@ fn map(args: &[String]) -> Result<(), String> {
         count(HILLS),
         count(DESERT),
         count(FOREST)
+    );
+    let zones = |zone: Zone| map::zone_groups(&w.tiles, config.radius, zone).len();
+    let passes = w.tiles.iter().filter(|t| t.pass).count();
+    let sites = map::open_sites(&w.tiles, config.radius);
+    println!(
+        "closed country: {} valleys ({passes} passes), {} sealed valleys, {} necks; open sites at {sites:?}",
+        zones(Zone::Valley),
+        zones(Zone::Sealed),
+        zones(Zone::Neck)
     );
     Ok(())
 }

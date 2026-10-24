@@ -95,6 +95,31 @@ pub struct MapRules {
     pub delta_river: u32,
     /// Floodplain and delta fertility: above `FERTILITY.1`, the richest land.
     pub flood_fertility: f64,
+    /// The radius from which a map has closed country and its open land is held to three sites.
+    pub closed_from: i32,
+    /// Sealed valleys, valleys behind a pass and peninsulas on a neck (per small map, never below
+    /// their floors), each skipped after `closed_tries_each` random tries that don't fit.
+    pub sealed: usize,
+    pub sealed_floor: usize,
+    pub valleys: usize,
+    pub valleys_floor: usize,
+    pub necks: usize,
+    pub necks_floor: usize,
+    pub closed_tries_each: usize,
+    /// Hex steps between closed features (and from a feature to the rim).
+    pub closed_clearance: i32,
+    /// Land tiles a valley's inside must have before it is ringed, and a peninsula's range.
+    pub valley_land: usize,
+    pub neck_land: (usize, usize),
+    /// Closed-country layouts tried before they are dropped, and whole maps re-rolled after that,
+    /// until the open land holds `PREGAME.players` sites.
+    pub closed_tries: usize,
+    pub map_tries: usize,
+    /// A site for a centre: `site_tiles` open tiles with grain or fruit within `site_steps`
+    /// steps, of mean fertility `site_fertility` or more.
+    pub site_steps: i32,
+    pub site_tiles: usize,
+    pub site_fertility: f64,
 }
 
 pub const MAP: MapRules = MapRules {
@@ -122,6 +147,22 @@ pub const MAP: MapRules = MapRules {
     flood_reach: 6,
     delta_river: 10,
     flood_fertility: 2.2,
+    closed_from: 16,
+    sealed: 1,
+    sealed_floor: 1,
+    valleys: 2,
+    valleys_floor: 1,
+    necks: 2,
+    necks_floor: 1,
+    closed_tries_each: 50,
+    closed_clearance: 3,
+    valley_land: 7,
+    neck_land: (8, 20),
+    closed_tries: 8,
+    map_tries: 8,
+    site_steps: 3,
+    site_tiles: 12,
+    site_fertility: 0.8,
 };
 
 pub struct Features {

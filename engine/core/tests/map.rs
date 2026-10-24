@@ -4,7 +4,7 @@ mod common;
 use engine::data::*;
 use engine::hex::Hex;
 use engine::land::step_cost;
-use engine::map::{self, generate, generate_with, index, Tile};
+use engine::map::{self, generate, generate_with, index, Tile, Zone};
 use engine::{Config, World};
 
 const SEEDS: std::ops::RangeInclusive<u32> = 1..=20;
@@ -224,7 +224,6 @@ fn caps_follow_terrain_and_fertility() {
         } else {
             assert!((FERTILITY.0..=FERTILITY.1).contains(&t.fertility));
         }
-        assert!(!t.pass && t.zone == map::Zone::Open);
     }
 }
 
@@ -245,7 +244,9 @@ fn every_landmass_that_can_feed_has_a_clan() {
         for seed in 1..=5 {
             let w = World::new(Config { seed, radius });
             for mass in map::landmasses(&w.tiles, radius) {
-                let fed = mass.iter().any(|&i| w.tiles[i].cap.iter().any(|&c| c > 0.0));
+                // Nobody is seeded in a sealed valley (a landmass of its own).
+                let fed =
+                    mass.iter().any(|&i| w.tiles[i].cap.iter().any(|&c| c > 0.0) && w.tiles[i].zone != Zone::Sealed);
                 if mass.len() >= CLAN.min_landmass && fed {
                     assert!(
                         w.clans.values().any(|c| mass.contains(&c.home)),
