@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use serde::{Deserialize, Serialize};
 
 use crate::data::*;
-use crate::land::{is_hearth, neighbours, step_cost};
+use crate::land::{is_hearth, neighbours, passable};
 use crate::markets::{reach, Market};
 use crate::round;
 use crate::world::World;
@@ -54,7 +54,7 @@ pub fn centres(w: &World) -> Vec<u32> {
 /// centres) that lies within `cover_steps` steps of some clan's territory.
 pub fn land_cover(w: &World, centres: &[u32]) -> f64 {
     let n = w.tiles.len();
-    let passable = |i: usize| TERRAIN[w.tiles[i].terrain].land && step_cost(w, i).is_some();
+    let passable = |i: usize| TERRAIN[w.tiles[i].terrain].land && passable(w, i);
     let land: Vec<usize> = if centres.is_empty() {
         (0..n).filter(|&i| TERRAIN[w.tiles[i].terrain].land).collect()
     } else {

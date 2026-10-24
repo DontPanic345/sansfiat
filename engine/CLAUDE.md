@@ -5,10 +5,11 @@ actions. One engine, two front ends: a CLI and a wasm web page. The game's desig
 `docs/design/`; build what it says.
 
 ```
-cargo test
+cargo test   # [profile.dev] opt-level = 3: the engine is too slow unoptimised for whole pre-games
 cargo fmt --check && cargo clippy --all-targets -- -D warnings
-cargo run -p sansfiat -- run --seed 3 [--turns N] [--every 25] [--save game.json] [--json]  # stops at the pre-game's end
-cargo run -p sansfiat -- sweep [seed ...] [--radius N] [--turns N]   # seeds default 1..=10
+cargo run -p sansfiat -- map [--seed N] [--size small|medium|large | --radius N]   # the map as ASCII, a legend and counts
+cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--every 25] [--save game.json] [--json]  # stops at the pre-game's end
+cargo run -p sansfiat -- sweep [seed ...] [--radius N | --size NAME] [--turns N]   # seeds default 1..=10
 cargo run -p sansfiat -- replay game.json [--json]
 cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
 cargo run -p sansfiat -- clear baskets.json     # or - for stdin
@@ -23,8 +24,8 @@ cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N]   # "turn di
 | --- | --- |
 | `core/src/world.rs` | `World`, `Action`, `TURN`, `act`, `save`, `replay`. |
 | `core/src/data.rs` | Terrain, foods (the goods), `CLAN`, `TRAIL`, `TENDING`, `MARKET` and `PREGAME` rules, `Config`. Tune here first. |
-| `core/src/map.rs` | Placeholder map: Voronoi terrain in a hex, sea at the rim, food scaled by patchy fertility. A map piece replaces it. |
-| `core/src/land.rs` | Neighbours, move costs, bounded Dijkstra (`cost_map`), the `regrow` step, and the `hold` step: held counters, trails, taming and hearths. |
+| `core/src/map.rs` | The map: noise terrain in a hex, sea at the rim, inlets, inland seas and lakes, ridges, rain-shadow deserts, coast, patchy fertility, rivers down a distance-to-water field (`carve_rivers`; lakes fed and drained), floodplains and deltas (`flood`); `finish_caps` turns terrain, river and fertility into food; hidden trail costs from their own rng stream; `ascii` draws it. |
+| `core/src/land.rs` | Neighbours, `passable`, move costs (`step_cost(from, to)`: entering a river off its course costs `RIVER.cross`, a trail bridges it), bounded Dijkstra (`cost_map`), the `regrow` step, and the `hold` step: held counters, trails, taming and hearths. |
 | `core/src/round.rs` | A clan's round: leg and loop costs (`Legs` caches them per home), cheapest insertion, free edge, middle, territory, what it can harvest. |
 | `core/src/clans.rs` | Clans: seeding, a round's `value`, the `move` (`adjust`: moving on, one round change, home follows the middle, the limit), `harvest` and `eat` steps; dividing and daughters after eating. |
 | `core/src/market.rs` | `clear(baskets, start_prices, params)`: barter exchange ratios by tâtonnement, no numeraire. A library `markets` calls. |

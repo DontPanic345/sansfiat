@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use crate::clans::Clan;
 use crate::data::*;
-use crate::land::{cost_map, neighbours, step_cost};
+use crate::land::{cost_map, neighbours, passable};
 use crate::world::World;
 
 /// Legs within `territory_radius` of one home, each source's paths found once.
@@ -90,7 +90,7 @@ pub fn territory(w: &World, round: &[usize]) -> Vec<usize> {
 /// tiles at 0, and every tile within `fetch_range` of the round with food in stock and on no
 /// other clan's round at 2 × path cost (there and back).
 pub fn options(w: &World, clan_id: u32, round: &[usize]) -> Vec<(usize, f64)> {
-    cost_map(w, round, CLAN.fetch_range, |i| step_cost(w, i).is_some())
+    cost_map(w, round, CLAN.fetch_range, |i| passable(w, i))
         .into_iter()
         .filter_map(|(i, c)| {
             if round.contains(&i) {
@@ -121,7 +121,7 @@ pub fn free_edge(w: &World, clan: &Clan) -> Vec<usize> {
         .filter(|&j| {
             let t = &w.tiles[j];
             TERRAIN[t.terrain].land
-                && step_cost(w, j).is_some()
+                && passable(w, j)
                 && t.claim.is_none()
                 && t.hex().distance(h) <= CLAN.territory_radius
         })

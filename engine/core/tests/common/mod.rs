@@ -4,15 +4,19 @@
 use engine::clans::new_clan;
 use engine::data::*;
 use engine::hex::{Hex, DIRS};
-use engine::map::index;
+use engine::map::{index, Zone};
 use engine::{Config, Market, World};
 
 pub const R: i32 = 6;
 
-/// A world of bare plains with sea at the rim: no food, no clans, no markets.
+/// A world of bare plains with sea at the rim: no food, no clans, no markets. Its random state
+/// and next id are what the placeholder generator left, so every test's draws and ids hold; no
+/// river, lake, zone or hidden cost is left on a tile.
 pub fn flat() -> World {
     let mut w = World::new(Config { seed: 1, radius: R });
     w.clans.clear();
+    w.rng = 4151932303;
+    w.next_id = 4;
     for t in &mut w.tiles {
         if t.hex().distance(Hex::ORIGIN) < R {
             t.terrain = PLAINS;
@@ -25,6 +29,14 @@ pub fn flat() -> World {
         t.held = 0;
         t.unheld = 0;
         t.trail = false;
+        t.river = 0;
+        t.flow = None;
+        t.lake = false;
+        t.flood = false;
+        t.zone = Zone::Open;
+        t.pass = false;
+        t.trail_cost = None;
+        t.span = None;
     }
     w.markets.clear();
     w
