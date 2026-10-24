@@ -6,6 +6,5 @@ publish.workspace = true
 
 [dependencies]
 serde.workspace = true
-
-[dev-dependencies]
+libm = "0.2"
 serde_json.workspace = true

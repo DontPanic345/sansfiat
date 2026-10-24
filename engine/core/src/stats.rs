@@ -133,3 +133,13 @@ pub fn mean_ratio(reports: &[CentreReport]) -> Option<f64> {
     }
     Some(reports.iter().map(|r| r.fertility_near / r.fertility_land).sum::<f64>() / reports.len() as f64)
 }
+
+/// One value that changes if any bit of the world does, so two builds (native and wasm) can be
+/// compared turn by turn: FNV-1a 64 over the world's JSON, as 16 lowercase hex digits.
+pub fn digest(w: &World) -> String {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for b in serde_json::to_string(w).unwrap().bytes() {
+        h = (h ^ b as u64).wrapping_mul(0x100000001b3);
+    }
+    format!("{h:016x}")
+}

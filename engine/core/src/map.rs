@@ -94,7 +94,7 @@ pub fn generate(radius: i32, rng: &mut u32) -> Vec<Tile> {
         .enumerate()
         .map(|(i, h)| {
             let t = (y[i] - lo) / span;
-            let fertility = round1(FERTILITY.0 + (FERTILITY.1 - FERTILITY.0) * t.powf(1.5));
+            let fertility = round1(FERTILITY.0 + (FERTILITY.1 - FERTILITY.0) * libm::pow(t, 1.5));
             let cap: Basket = TERRAIN[terrain[i]].food.map(|f| round1(f * fertility));
             Tile {
                 q: h.q,

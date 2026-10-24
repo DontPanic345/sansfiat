@@ -12,7 +12,9 @@ cargo run -p sansfiat -- sweep [seed ...] [--radius N] [--turns N]   # seeds def
 cargo run -p sansfiat -- replay game.json [--json]
 cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
 cargo run -p sansfiat -- clear baskets.json     # or - for stdin
+cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N]   # "turn digest" lines, to compare builds
 ./build-web.sh && python3 -m http.server -d www  # http://localhost:8000
+./build-web.sh && ./cross-build.sh              # native and wasm (under Node) give the same digests
 ```
 
 ## Layout
@@ -28,10 +30,10 @@ cargo run -p sansfiat -- clear baskets.json     # or - for stdin
 | `core/src/market.rs` | `clear(baskets, start_prices, params)`: barter exchange ratios by tâtonnement, no numeraire. A library `markets` calls. |
 | `core/src/markets.rs` | Markets: `reach`, the `go` (worth the walk?), `trade` (clearing) and `markets` (fade, then form one) steps. |
 | `core/src/pregame.rs` | The pre-game's end: centres (age, traders, a hearth in reach, far apart), land cover, and the `end` step. |
-| `core/src/stats.rs` | `summary` (counts off the world), `centre_report` (fertility near each centre vs all land), `distances`: the evidence the CLI and the web page show. |
+| `core/src/stats.rs` | `summary` (counts off the world), `centre_report` (fertility near each centre vs all land), `distances`: the evidence the CLI and the web page show; `digest` (FNV-1a of the world JSON) to compare builds. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
-| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `state`, `summary`, `save`) and `terrain`, `goods`, `rules`; `www/main.js` draws the map (fertility view, territories, rounds, trails, hearths, markets, centres) and a Run to end button. `www/pkg` is built, not committed. |
+| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `state`, `summary`, `save`, `digest`) and `terrain`, `goods`, `rules`; `www/main.js` draws the map (fertility view, territories, rounds, trails, hearths, markets, centres) and a Run to end button. `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 
@@ -45,5 +47,8 @@ cargo run -p sansfiat -- clear baskets.json     # or - for stdin
 - The world changes only through `act`. A `Save` (config and action log) replays to an identical world;
   `replaying_a_save_rebuilds_the_world` holds it to that.
 - All randomness goes through `rng::rand` on `World.rng`.
+- Floating-point `exp`, `ln`, `powf` and the like go through `libm` (clippy's `disallowed_methods` enforces it), so a save
+  replays identically native and in the browser.
+- The native and wasm builds give the same `stats::digest` for the same seed after every turn; `./cross-build.sh` checks it in CI.
 - `clear` conserves every good exactly; tests hold it to that and to nobody losing utility.
 - `wasm-bindgen` in `web/Cargo.toml` is pinned to the installed `wasm-bindgen-cli` version.

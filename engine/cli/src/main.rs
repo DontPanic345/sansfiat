@@ -8,6 +8,7 @@ sansfiat run [--seed N] [--turns N] [--radius N] [--every N] [--save file.json] 
 sansfiat replay <file.json> [--json]
 sansfiat sweep [seed ...] [--turns N] [--radius N]   (seeds default 1..=10)
 sansfiat bench [seed ...] [--turns N] [--radius N]
+sansfiat digest [--seed N] [--radius N] [--turns N]   (prints turn and digest, from turn 0)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
 sansfiat goods";
 
@@ -21,6 +22,7 @@ fn main() {
         },
         Some("sweep") => sweep(&args[1..]),
         Some("bench") => bench(&args[1..]),
+        Some("digest") => digest(&args[1..]),
         Some("clear") => clear_file(args.get(1).map(String::as_str).unwrap_or("-")),
         Some("goods") => {
             println!("{}", GOODS.join(" "));
@@ -65,6 +67,30 @@ fn run(args: &[String]) -> Result<(), String> {
         fs::write(&path, serde_json::to_string(&w.save()).unwrap()).map_err(|e| format!("{path}: {e}"))?;
     }
     report(&w, json);
+    Ok(())
+}
+
+/// Prints `<turn> <digest>` for turn 0 and after each of `--turns` turns (400), end or not.
+fn digest(args: &[String]) -> Result<(), String> {
+    let mut config = Config::default();
+    let mut turns = 400u32;
+    let mut it = args.iter();
+    while let Some(flag) = it.next() {
+        let value = it.next().ok_or(format!("{flag} needs a value\n{USAGE}"))?;
+        let bad = |_| format!("{flag}: not a number: {value}");
+        match flag.as_str() {
+            "--seed" => config.seed = value.parse().map_err(bad)?,
+            "--radius" => config.radius = value.parse().map_err(bad)?,
+            "--turns" => turns = value.parse().map_err(bad)?,
+            _ => return Err(format!("unknown flag {flag}\n{USAGE}")),
+        }
+    }
+    let mut w = World::new(config);
+    println!("{} {}", w.turn, stats::digest(&w));
+    for _ in 0..turns {
+        w.run(1);
+        println!("{} {}", w.turn, stats::digest(&w));
+    }
     Ok(())
 }
 
