@@ -74,6 +74,8 @@ what it owns, and how a unit is made, moved and disbanded. The HUD is plain JS.
 
 **Decided:**
 - Founding, the store and units as `founding.md` says.
+- The one unit is a generic warrior, a stand-in that later pieces replace or change. Each
+  civ starts with one and can make more.
 - Every unit moves and disbands. Select it, right-click a tile, and it paths there over the
   cheapest route it knows; disband is a button in the selection panel.
 - New events: a civ is founded, a unit is made, goes hungry or disbands.

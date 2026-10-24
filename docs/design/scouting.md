@@ -10,8 +10,9 @@ are starting values to tune.
 
 ## Who scouts
 
-Only a civ scouts, so scouting comes after founding. A scout is a civ's unit; clans don't
-scout.
+Only a civ scouts, so scouting comes after founding. A scout is a civ's unit, made, fed,
+moved and disbanded like any unit (`founding.md`); clans don't scout. Each civ starts with
+one scout.
 
 ## Hidden costs
 

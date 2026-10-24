@@ -44,7 +44,9 @@ A unit is people, so it costs people and food.
 - **Moving.** Select a unit, right-click a tile, and it paths there over the cheapest route
   it knows, a turn's labour at a time.
 
-Each civ starts with one scout.
+The one kind of unit for now is a **warrior**: a generic unit that moves, eats and disbands,
+and nothing else. It's a stand-in so founding has a unit to work with; the scout, army and
+supply pieces replace or change it. Each civ starts with one.
 
 ## Out of scope
 
