@@ -4,5 +4,9 @@ Review the whole piece as built, as a reader who didn't build it, against the pi
 and its design files. Read the code in the diff (`git diff origin/main...HEAD`), not only the
 tests. Your brief says where to look hardest. Fix what is substantive yourself and leave nits.
 
-The PR is ready now, so CI runs on every push. Finish `done` when it's green
+Merge `origin/main` first if it has moved, so the PR is what would land.
+
+The PR is ready now, so CI runs on every push. Rewrite its description (`gh pr edit --body`),
+keeping the first line "Closes #<piece>", to say what the piece delivers or what it found,
+and end it with your verdict: merge, or don't and why. Finish `done` when CI is green
 (`gh pr checks --watch`).

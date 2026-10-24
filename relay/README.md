@@ -17,8 +17,7 @@ opens it as an issue labelled `kind:piece` and `relay:ready`, and starts a run. 
 these lines from its body, in any order:
 
 ```
-**Goal:** what the piece delivers, or the one question a proof answers
-**Ends:** main, or its branch
+**Goal:** what the piece delivers, and the question it answers if it has one
 **Spec:** opus high, because …
 **Design:** docs/design/clans.md
 **Decided:** …
@@ -26,9 +25,8 @@ these lines from its body, in any order:
 **Out of scope:** …
 ```
 
-`Ends` and `Spec` are required: a piece without them is held. `Ends: main` changes the game;
-anything else is a proof, which stays on its branch. Every `docs/design/*.md` path in the
-body goes to the spec and review sessions in full.
+`Spec` is required: a piece without it is held. Every `docs/design/*.md` path in the body
+goes to the spec and review sessions in full.
 
 Its **steps** are sub-issues, each carrying its model, effort, attempts, tokens, cost,
 context, compactions, summary and decisions in a hidden `<!-- relay {...} -->` block. The
@@ -40,18 +38,17 @@ spec, the briefs and `steps.json` live on the piece's branch, `relay/<number>`, 
 | `spec` | Writes the spec, a brief per later step, and `steps.json` with each step's model, effort and why. Runs on the model the piece's `Spec` line names |
 | `spec-review` | Reads the plan the way the later sessions will, and fixes it |
 | `build-N` | Builds what its brief says |
-| `review` | The crew marks the PR ready, so CI runs. The session reviews the whole piece, fixes what matters, and waits for CI to go green |
+| `review` | The crew marks the PR ready, so CI runs. The session merges `main` in, reviews the whole piece, fixes what matters, ends the PR description with a verdict (merge, or don't and why), and waits for CI to go green |
 
 The spec step isn't done until `steps.json` reads cleanly; then the crew makes every later
 step and carries on, with no stop for the owner. Every step's prompt carries every earlier step's
 summary and decisions.
 
-Then it's the owner's turn: a proof's PR stays open with its findings and the owner closes the piece,
-which tags the branch head `proof/<number>`; a piece that ends on main has a PR for the owner to
-approve and merge. Closing a piece closes its open steps.
+Then it's the owner's turn: merge the PR, which closes the piece, or close the piece, which
+tags the branch head `proof/<number>` and closes the PR. Closing a piece closes its open steps.
 
-Pieces that end on main never overlap: one waits while an older one is open. Proofs never
-wait.
+The crew works on the oldest piece that has a step to run, so a later piece goes ahead only
+while an earlier one waits on the owner.
 
 ## How a step counts
 
@@ -117,7 +114,6 @@ The crew sets only the fields that exist, and only to options that exist:
 | Field | Type | Options |
 |---|---|---|
 | Status | Single select | Ready, Spec, Building, Waiting, Review, Done |
-| Ends | Single select | main, branch |
 | Step | Single select | spec, spec-review, build, review |
 | Model | Single select | haiku, sonnet, opus |
 | Effort | Single select | low, medium, high |

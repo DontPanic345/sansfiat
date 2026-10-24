@@ -7,7 +7,6 @@ import {
     checkSteps,
     designPaths,
     dollars,
-    endsOnMain,
     holdReason,
     initProblem,
     ideaList,
@@ -52,12 +51,9 @@ test("a step's meta block round-trips and replaces itself", () => {
     assert.equal(readMeta(tricky).summary, "a --> b } -->");
 });
 
-test("a piece's body says how it ends, the spec's model and its design files", () => {
-    const body = "**Goal:** rivers.\n\n- **Ends**: on main\n**Spec:** Opus high, because rivers touch every mechanic.\n\nBuilds docs/design/map.md and docs/design/map.md.";
+test("a piece's body says the spec's model and its design files", () => {
+    const body = "**Goal:** rivers.\n\n- **Spec**: Opus high, because rivers touch every mechanic.\n\nBuilds docs/design/map.md and docs/design/map.md.";
     assert.equal(pieceField(body, "Goal"), "rivers.");
-    assert.equal(endsOnMain(body), true);
-    assert.equal(endsOnMain("**Ends:** on its branch"), false);
-    assert.equal(endsOnMain("no line"), null);
     assert.deepEqual(specChoice(body), { model: "opus", effort: "high", why: "Opus high, because rivers touch every mechanic." });
     assert.equal(specChoice("**Spec:** opus"), null);
     assert.deepEqual(designPaths(body), ["docs/design/map.md"]);
@@ -81,7 +77,7 @@ const step = (id, state = "open", meta = {}) => ({ number: 100, state, meta: { i
 const piece = (number, labels, steps = [], extra = {}) => ({
     number,
     title: `Piece ${number}`,
-    body: "**Goal:** rivers.\n**Ends:** on its branch\n**Spec:** sonnet high, because it's one module.\n**Design:** docs/design/map.md\n\n**In scope**\n\n- rivers",
+    body: "**Goal:** rivers.\n**Spec:** sonnet high, because it's one module.\n**Design:** docs/design/map.md\n\n**In scope**\n\n- rivers",
     labels: ["kind:piece", "relay:ready", ...labels],
     author: "DontPanic345",
     milestone: null,
@@ -103,21 +99,15 @@ test("pieceAction starts, plans after the spec, then runs each open step in orde
     assert.equal(pieceAction(finished), null);
 });
 
-test("holdReason keeps pieces that end on main one at a time, and needs the body's lines", () => {
-    const main = (n) => piece(n, [], [], { body: "**Ends:** main\n**Spec:** opus medium, because." });
-    const [a, b] = [main(5), main(7)];
-    const proof = piece(8, []);
-    assert.equal(holdReason(a, [a, b]), null);
-    assert.match(holdReason(b, [a, b]), /#5 goes to main first/);
-    assert.equal(holdReason(proof, [a, b, proof]), null);
-    assert.equal(holdReason(piece(9, ["waiting"]), []), "waiting on the owner");
-    assert.equal(holdReason(piece(9, ["relay:paused"]), []), "paused");
-    assert.equal(holdReason({ ...piece(9, []), labels: ["kind:piece"] }, []), "not ready");
-    assert.equal(holdReason({ ...piece(9, []), author: "someone" }, []), "not opened by the owner");
-    assert.match(holdReason(piece(9, [], [], { body: "**Spec:** opus high" }), []), /Ends/);
-    assert.match(holdReason(piece(9, [], [], { body: "**Ends:** branch" }), []), /Spec/);
+test("holdReason needs a ready piece from the owner with the spec's model", () => {
+    assert.equal(holdReason(piece(9, [])), null);
+    assert.equal(holdReason(piece(9, ["waiting"])), "waiting on the owner");
+    assert.equal(holdReason(piece(9, ["relay:paused"])), "paused");
+    assert.equal(holdReason({ ...piece(9, []), labels: ["kind:piece"] }), "not ready");
+    assert.equal(holdReason({ ...piece(9, []), author: "someone" }), "not opened by the owner");
+    assert.match(holdReason(piece(9, [], [], { body: "**Goal:** rivers" })), /Spec/);
     // Once the spec step exists, its model is on the step, not the body.
-    assert.equal(holdReason(piece(9, [], [step("spec")], { body: "**Ends:** branch" }), []), null);
+    assert.equal(holdReason(piece(9, [], [step("spec")], { body: "**Goal:** rivers" })), null);
 });
 
 test("nextWork takes the oldest piece that can run", () => {

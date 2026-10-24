@@ -21,7 +21,5 @@ You plan the piece for the sessions after you. Write in `relay/specs/<piece>/`:
 
 Models are `haiku`, `sonnet` and `opus`; efforts are `low`, `medium` and `high`.
 
-The piece says whether it ends on main or on its branch. One that ends on its branch is a
-proof: it answers its question and no more, and its review writes the answer and the
-evidence into the PR description (`gh pr edit --body`), keeping the first line "Proof for
-#<piece>".
+A piece that asks a question answers it and no more, and its review writes the answer and
+the evidence into the PR description.

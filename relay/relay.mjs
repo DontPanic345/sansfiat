@@ -79,12 +79,6 @@ export const pieceField = (body, name) => {
     return m ? m[1].trim() : null;
 };
 
-// `**Ends:** main` changes the game; `**Ends:** its branch` is a proof. null when the line is missing.
-export const endsOnMain = (body) => {
-    const ends = pieceField(body, "Ends");
-    return ends ? /\bmain\b/i.test(ends) : null;
-};
-
 // `**Spec:** opus high, because …`: the spec step's model, effort and why, or null.
 export const specChoice = (body) => {
     const line = pieceField(body, "Spec");
@@ -137,21 +131,14 @@ export const checkSteps = (text) => {
     return { steps };
 };
 
-// Why a piece can't run now, or null when it can. `pieces` are every open piece, ready or not.
-export const holdReason = (piece, pieces) => {
+// Why a piece can't run now, or null when it can.
+export const holdReason = (piece) => {
     if (!piece.labels.includes("relay:ready")) return "not ready";
     // Anyone can open an issue, but only the owner's words reach a session.
     if (piece.author !== OWNER) return "not opened by the owner";
     if (piece.labels.includes("relay:paused")) return "paused";
     if (piece.labels.includes("waiting")) return "waiting on the owner";
-    const onMain = endsOnMain(piece.body);
-    if (onMain === null) return "the body has no `Ends:` line";
     if (piece.steps.length === 0 && !specChoice(piece.body)) return "the body has no `Spec:` model and effort";
-    // Pieces that change main go one at a time, so each starts from the last one merged.
-    if (onMain) {
-        const earlier = pieces.find((p) => p.number < piece.number && endsOnMain(p.body));
-        if (earlier) return `#${earlier.number} goes to main first`;
-    }
     return null;
 };
 
@@ -169,7 +156,7 @@ export const pieceAction = (piece) => {
 // The next piece and what to do with it, oldest first.
 export const nextWork = (pieces) => {
     for (const piece of [...pieces].sort((a, b) => a.number - b.number)) {
-        if (holdReason(piece, pieces)) continue;
+        if (holdReason(piece)) continue;
         const next = pieceAction(piece);
         if (next) return { piece, ...next };
     }
@@ -542,7 +529,7 @@ const setBoard = async (nodeId, values) => {
     }
 };
 
-const setStatus = (piece, status) => setBoard(piece.nodeId, { Status: status, Ends: endsOnMain(piece.body) ? "main" : "branch" });
+const setStatus = (piece, status) => setBoard(piece.nodeId, { Status: status });
 
 // ---- Git ----
 
@@ -773,7 +760,6 @@ const blockStep = async (piece, step, why) => {
 // turn after the piece's review.
 const afterStep = async (piece, step, result) => {
     const kind = stepKind(step.meta.id);
-    const onMain = endsOnMain(piece.body);
     let pr = await findPr(piece);
     if (!pr && git("rev-list", `origin/main..origin/${branchOf(piece)}`)) {
         pr = await github("POST", "/pulls", {
@@ -781,7 +767,7 @@ const afterStep = async (piece, step, result) => {
             head: branchOf(piece),
             base: "main",
             draft: true,
-            body: onMain ? `Closes #${piece.number}.` : `Proof for #${piece.number}. Not to be merged: the branch is the proof.`,
+            body: `Closes #${piece.number}.`,
         });
         log(`#${piece.number}: draft PR #${pr.number}`);
     }
@@ -796,9 +782,7 @@ const afterStep = async (piece, step, result) => {
     else if (kind === "review") {
         await comment(
             piece.number,
-            onMain
-                ? `🔍 The review is done and CI has run on ${pr?.html_url ?? "the PR"}. Approve and merge it; that closes this piece.`
-                : `🔍 The review is done. Read the findings in ${pr?.html_url ?? "the PR"}, then close this piece. The PR isn't merged: the branch is the proof.`,
+            `🔍 The review is done and CI has run on ${pr?.html_url ?? "the PR"}; its description ends with the review's verdict. Merge it, which closes this piece, or close this piece to keep the branch as \`proof/${piece.number}\`.`,
         );
         await setStatus(piece, "Review");
     }
@@ -934,7 +918,7 @@ const run = async () => {
 
 const status = async () => {
     const pieces = await loadPieces();
-    for (const p of pieces) console.log(`#${p.number} ${p.title}: ${holdReason(p, pieces) ?? JSON.stringify(pieceAction(p)?.action ?? "finished")}`);
+    for (const p of pieces) console.log(`#${p.number} ${p.title}: ${holdReason(p) ?? JSON.stringify(pieceAction(p)?.action ?? "finished")}`);
     const next = nextWork(pieces);
     console.log(next ? `next: #${next.piece.number} ${next.action}${next.step ? ` ${next.step.meta.id}` : ""}` : "next: nothing");
     console.log(`pacing: ${JSON.stringify(pace(await usage(), new Date()))}`);
@@ -998,26 +982,27 @@ const COMMANDS = {
         const readied = !piece.labels.includes("relay:ready");
         if (readied) await addLabel(piece.number, "relay:ready");
         await dispatchRun();
-        const hold = holdReason({ ...piece, labels: [...new Set([...piece.labels, "relay:ready"])] }, []);
+        const hold = holdReason({ ...piece, labels: [...new Set([...piece.labels, "relay:ready"])] });
         return `${readied ? "Labelled `relay:ready` and started" : "Started"} a run.${hold ? ` This piece is held (${hold}), so the run works on others.` : ""}`;
     },
 };
 
 export const HELP = "Commands: `run`, `retry [step]`, `skip <step>`, `model <step> <model> [effort]`, `pause`, `resume`, `status`.";
 
-// A closed piece closes its open steps, and a proof's branch head is tagged `proof/<n>` so
-// it stays playable once the branch goes.
+// A closed piece closes its open steps. Closed without merging, its branch head is tagged
+// `proof/<n>` and its PR closed.
 const closePiece = async (number) => {
     const piece = await loadPiece(number);
     for (const s of piece.steps.filter((s) => s.state === "open")) {
         await comment(s.number, `Closed with #${number}.`);
         await closeStep(s, "not_planned");
     }
-    if (endsOnMain(piece.body) === false) {
+    const pr = await findPr(piece);
+    if (pr) {
         try {
-            const ref = await github("GET", `/git/ref/heads/${branchOf(piece)}`);
-            await github("POST", "/git/refs", { ref: `refs/tags/proof/${number}`, sha: ref.object.sha });
-            log(`#${number}: tagged proof/${number}`);
+            await github("POST", "/git/refs", { ref: `refs/tags/proof/${number}`, sha: pr.head.sha });
+            await github("PATCH", `/pulls/${pr.number}`, { state: "closed" });
+            log(`#${number}: tagged proof/${number} and closed PR #${pr.number}`);
         } catch (e) {
             log(`#${number}: couldn't tag the proof: ${e.message}`);
         }
