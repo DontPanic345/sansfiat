@@ -1,6 +1,6 @@
 use engine::data::*;
 use engine::land::is_hearth;
-use engine::stats::{centre_report, summary};
+use engine::stats::{centre_report, digest, summary};
 use engine::{Config, World};
 
 #[test]
@@ -53,4 +53,19 @@ fn centre_report_compares_with_the_mean_over_land() {
 
 fn land_tile(w: &World) -> usize {
     w.tiles.iter().position(|t| TERRAIN[t.terrain].land).unwrap()
+}
+
+#[test]
+fn digest_is_stable_16_hex_and_moves_with_the_world() {
+    let run = |turns| {
+        let mut w = World::new(Config { seed: 3, radius: 10 });
+        w.run(turns);
+        w
+    };
+    let (a, b) = (run(20), run(20));
+    assert_eq!(digest(&a), digest(&b));
+    let d = digest(&a);
+    assert_eq!(d.len(), 16);
+    assert!(d.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')));
+    assert_ne!(d, digest(&run(21)));
 }

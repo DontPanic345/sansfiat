@@ -1,0 +1,12 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 3f481e4..f863fba 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -53,3 +53,7 @@ jobs:
+       - run: cargo clippy --all-targets -- -D warnings
+       - run: cargo test
+       - run: ./build-web.sh
++      - uses: actions/setup-node@v4
++        with:
++          node-version: 24
++      - run: ./cross-build.sh

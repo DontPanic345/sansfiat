@@ -36,6 +36,11 @@ impl Sim {
         serde_json::to_string(&stats::summary(&self.world)).unwrap()
     }
 
+    /// `stats::digest` of the world: 16 hex digits that match the native build's for the same seed.
+    pub fn digest(&self) -> String {
+        stats::digest(&self.world)
+    }
+
     /// `{config, log}` as JSON: enough to replay this world.
     pub fn save(&self) -> String {
         serde_json::to_string(&self.world.save()).unwrap()
