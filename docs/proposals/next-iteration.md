@@ -11,8 +11,7 @@ run. Every decision you care about is made in the proposal, so it's in the issue
 
 The issue body has what the spec needs, in Claude's words:
 
-- **Goal**: what the piece delivers, or the one question a proof answers.
-- **Ends**: on main (it changes the game), or on its branch (a proof).
+- **Goal**: what the piece delivers, and the question it answers if it has one.
 - **Design**: the `docs/design/` files it builds.
 - **Decided**: the decisions from the proposal.
 - **In scope** and **Out of scope**.
@@ -21,17 +20,21 @@ The issue body has what the spec needs, in Claude's words:
 - Anything the work needs that a session wouldn't know to do, such as merging `main` first or
   archiving a prototype folder it replaces.
 
-There's one kind of piece. A proof stays on its branch, tagged `proof/<n>` when it closes, and
-section 3 makes it playable there. A proof that turns out well becomes a piece that ends on main.
-Merging proofs into a `proofs/<n>/` folder was considered and dropped: proofs change shared code
-(`engine/core`, a prototype's `src`), so a copy forks it.
+There's one kind of piece, and every PR is written to be merged. A piece that asks a question
+answers it in the PR, and the review ends with a verdict: merge, or don't and why. You merge it
+or close the piece; closing tags the head `proof/<n>`, so nothing is lost. #13 was a proof and
+its code was the base everything else builds on, so it merged anyway (PR #16); a proof/main
+split only adds a decision up front that the review is better placed to make.
 
 All issue forms go, and `config.yml` turns blank issues on. The crew makes its own step and log
 issues from code, so it needs no templates.
 
 Removes: `type:*` labels, the seven forms, `type-*.md` prompts (done), the "no type label" hold,
 merge/milestone gating and `milestoneRank`, and `parseForm` (the spec reads the body as prose).
-Pieces that end on main still queue behind each other; a proof never waits.
+Still to remove after #22: the `Ends` line and its hold, the main/branch queue rule, the board's
+Ends field, and "the branch is the proof" in the prompts. Pieces queue one at a time, oldest
+first. Proofs used to skip the queue, but the crew runs one session at a time, so they never
+truly ran side by side.
 
 ## 2. Spec, spec-review and decisions
 
@@ -78,25 +81,23 @@ main: it copies the prototypes into `_site/`, adds the wasm engine under `engine
 index. Branches never appear. Every prototype is plain static files loaded by relative path, so
 any of them works under a subfolder as-is; only the engine needs a build.
 
-GitHub Pages is one site per repo and each deploy replaces all of it, so "every branch playable"
-means one deploy with every live branch built into a subfolder:
+The point is to play a piece before merging it. With every PR meant to merge, that means open
+PR branches; closed-proof tags don't need hosting. GitHub Pages is one site per repo and each
+deploy replaces all of it, so it's one deploy with every open branch built into a subfolder:
 
 ```
 /                     main, as today
 /b/relay/13/engine/   a piece's branch
-/b/proof/7/engine/    a closed proof, kept as a tag
 ```
 
 1. Move the site assembly out of `ci.yml` into `tools/site.sh <out>` on each branch, so a branch
    that adds a prototype publishes it without a workflow change. Branches without it use main's.
 2. A new `site.yml`, started by `workflow_run` on CI (which runs in main's context, so the
-   `github-pages` environment allows the deploy) and on branch delete. It builds main, every
-   `relay/*` and `claude/*` branch and every `proof/*` tag, and deploys once. `concurrency` keeps
-   only the latest rebuild.
+   `github-pages` environment allows the deploy) and on branch delete. It builds main and every
+   branch with an open PR, and deploys once. `concurrency` keeps only the latest rebuild.
 3. The index lists main's prototypes, then a row per branch (piece, PR, CI status, last commit,
-   a link to each folder it built), then closed proofs. Branches that failed to build are listed.
-4. The review step puts the play link in the PR body. When a proof closes, the crew tags its
-   head `proof/<n>`, so the branch can go and the proof stays playable.
+   a link to each folder it built). Branches that failed to build are listed.
+4. The review step puts the play link in the PR body.
 
 Engine rebuilds per branch are the cost; if they get slow, cache `www/pkg` per branch keyed on the
 `engine/` tree hash. Cloudflare Pages or Netlify would give real per-branch URLs but need an
@@ -153,7 +154,7 @@ The secret is set: runs show it masked. No run has logged a board error, but the
 steps (17:12 on 2026-10-23) left no board line either way, and `gh` here can't read projects, so
 whether it's writing is unconfirmed. Open the project after the next run that starts a step. If
 it's empty, the run log's board line says why. The crew already adds both pieces and steps; with
-piece types gone, the "Piece type" field goes and an "Ends" field (main, branch) can replace it.
+piece types gone, the "Piece type" field goes; "List $" is the only new field it needs.
 
 ### 5b. Secrets
 
@@ -255,7 +256,7 @@ reference, so anything added there is thrown away.
   and speed, an event feed that centres the map on the event and selects it, and a tile tooltip
   naming the clan holding it.
 
-It needs the pre-game on main, and no player mechanics. The resource bar, pan and zoom and the
+It needs no player mechanics, and the pre-game is on main now. The resource bar, pan and zoom and the
 minimap wait for founding.
 
 ## 9. Interviews
@@ -296,25 +297,28 @@ can't write to the repo, so it ends with a Markdown summary pasted into Claude C
 
 ## 10. M1
 
-1. **Tidy.** Close #2's leftovers (PR #9, steps #10 and #11). `poc/` is now `merge4/`.
-2. **Relay changes, by hand**, in one Claude Code session: sections 1, 2, 5 and the cost half of
-   6, with the prompts from section 4, as one PR.
-3. **`usage.mjs`** (section 6).
-4. **`site.yml`** (section 3).
-5. **Interviews** on the four prototypes (section 9), your time, alongside 2 to 4.
-6. **Merge the pre-game.** A piece that ends on main, bringing `relay/13` over: it merges `main`
-   first, then takes what PR #16 found (centres formed on 3 seeds of 10) as its first job.
-7. **Rebuild the four prototypes on the engine** as four proofs, opened together, each from its
-   interview's design file.
-8. **Event feed and top bar** (section 8), ending on main.
+Done: the Relay changes and `usage.mjs` (#22), and the pre-game, merged as it was (#16). #2's
+draft PR #9 is closed.
+
+1. **Tidy.** Close #2's steps #10 and #11 and delete the `relay/2` branch.
+2. **Drop `Ends`, by hand** (section 1): one kind of piece, a review verdict, one queue.
+3. **`site.yml`** (section 3), open PR branches only.
+4. **Same maths for native and web.** A piece, unattended. The same seed ends on turn 363
+   natively and 314 in the browser, because `exp`, `ln` and `powf` differ between the two
+   builds' maths libraries (the market library, `pick_site`, the fertility curve), so a save
+   replays on one build only. A deterministic maths library for every float function the
+   simulation calls, and a test that native and wasm agree on a run.
+5. **Event feed and top bar** (section 8). A piece, unattended, after 4.
+6. **The hex-economy interview first**, your time, alongside 2 to 5. #16 found trade too thin:
+   clans eat what they harvest, so there's little to swap, and centres never pick out fertile
+   land. What makes trade pay is that interview's first question, so it's also the design for
+   fixing the pre-game. It ends in `docs/design/trade.md`.
+7. **Trade that pays.** A piece from `trade.md`, measured against #16's table: centres on more
+   seeds, and on richer land than the clans' homes.
+8. **The other three interviews**, then **rebuild those prototypes on the engine**, one piece
+   each, opened together; they run one after another.
 9. **Retro** on M1 (section 7). The first one by hand from a Claude Code session; the crew step
    once its shape is clear.
 
-Steps 2, 3 and 4 are independent and can run side by side in separate sessions.
-
-**Opening the four proofs together** works: proofs never wait on each other. But the crew runs one
-session at a time (`concurrency: relay`) and goes through pieces oldest first, so they build one
-after another, each paced by the 50% five-hour budget. #13 took about seven sessions and a day;
-four proofs is a few days. Running them truly in parallel would need a job per piece, and the
-budget is the real limit, not the queue. They need the pre-game on main first, since each builds
-on its clans and markets.
+Steps 2 and 3 are independent and can run side by side in separate sessions. Steps 4 and 5
+touch `engine/` and don't need you.
