@@ -1,0 +1,6 @@
+[
+  { "id": "spec-review", "title": "Review the spec", "model": "sonnet", "effort": "medium", "why": "The spec already ran the experiment that confirms the cause; the review reads the plan and the briefs for gaps and checks the lint and digest design against the repo." },
+  { "id": "build-1", "title": "Route the maths through libm, lint it", "model": "sonnet", "effort": "low", "why": "Four call sites, a dependency, a clippy.toml and a proof the lint bites. Mechanical, and the brief names every line." },
+  { "id": "build-2", "title": "Cross-build check in CI, sweep, evidence", "model": "sonnet", "effort": "high", "why": "The check across native and wasm takes judgment: a digest on both sides, a Node runner, a script that can't pass vacuously, a CI edit, a demonstrated failure, and any other divergence it turns up." },
+  { "id": "review", "title": "Review the piece", "model": "sonnet", "effort": "high", "why": "Reads the check for ways it could pass vacuously, reruns the sweep and the browser check, and writes the PR description with the answer." }
+]
