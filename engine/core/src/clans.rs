@@ -301,7 +301,7 @@ fn sites(w: &World, clan: &Clan, steps: i32) -> Vec<usize> {
 pub fn pick_site(w: &mut World, scored: &[(usize, f64)], min: f64) -> Option<usize> {
     let ok: Vec<(usize, f64)> = scored.iter().copied().filter(|&(_, v)| v > min).collect();
     let best = ok.iter().map(|&(_, v)| v).max_by(f64::total_cmp)?;
-    let weights: Vec<f64> = ok.iter().map(|&(_, v)| ((v - best) / CLAN.choice_spread).exp()).collect();
+    let weights: Vec<f64> = ok.iter().map(|&(_, v)| libm::exp((v - best) / CLAN.choice_spread)).collect();
     let mut r = rand(&mut w.rng) * weights.iter().sum::<f64>();
     for (&(site, _), wt) in ok.iter().zip(&weights) {
         if r < *wt {

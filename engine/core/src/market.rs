@@ -75,9 +75,9 @@ pub fn clear(baskets: &[Basket], start: &Basket, p: &Params) -> Clearing {
         for &g in &goods {
             let excess = (want[g] - supply[g]) / supply[g];
             worst = worst.max(excess.abs());
-            prices[g] *= (p.step * excess.clamp(-1.0, 1.0)).exp();
+            prices[g] *= libm::exp(p.step * excess.clamp(-1.0, 1.0));
         }
-        let mean = (goods.iter().map(|&g| prices[g].ln()).sum::<f64>() / goods.len() as f64).exp();
+        let mean = libm::exp(goods.iter().map(|&g| libm::log(prices[g])).sum::<f64>() / goods.len() as f64);
         for &g in &goods {
             prices[g] /= mean;
         }

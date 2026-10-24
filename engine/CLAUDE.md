@@ -45,5 +45,7 @@ cargo run -p sansfiat -- clear baskets.json     # or - for stdin
 - The world changes only through `act`. A `Save` (config and action log) replays to an identical world;
   `replaying_a_save_rebuilds_the_world` holds it to that.
 - All randomness goes through `rng::rand` on `World.rng`.
+- Floating-point `exp`, `ln`, `powf` and the like go through `libm` (clippy's `disallowed_methods` enforces it), so a save
+  replays identically native and in the browser.
 - `clear` conserves every good exactly; tests hold it to that and to nobody losing utility.
 - `wasm-bindgen` in `web/Cargo.toml` is pinned to the installed `wasm-bindgen-cli` version.
