@@ -1,16 +1,25 @@
 use std::{env, fs, io::Read, process::exit, time::Instant};
 
-use engine::data::PREGAME;
+use engine::data::{size_radius, DESERT, FOREST, HILLS, MOUNTAIN, PREGAME, SEA, SIZES};
+use engine::map;
 use engine::{clear, land, pregame, round, stats, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
 
 const USAGE: &str = "\
-sansfiat run [--seed N] [--turns N] [--radius N] [--every N] [--save file.json] [--json]
+sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json]
+sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json]
-sansfiat sweep [seed ...] [--turns N] [--radius N]   (seeds default 1..=10)
-sansfiat bench [seed ...] [--turns N] [--radius N]
-sansfiat digest [--seed N] [--radius N] [--turns N]   (prints turn and digest, from turn 0)
+sansfiat sweep [seed ...] [--turns N] [--radius N | --size NAME]   (seeds default 1..=10)
+sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
+sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N]   (prints turn and digest, from turn 0)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
 sansfiat goods";
+
+/// The radius of the map size called `name`.
+fn size(name: &str) -> Result<i32, String> {
+    size_radius(name).ok_or_else(|| {
+        format!("unknown size {name}; sizes: {}", SIZES.iter().map(|s| s.0).collect::<Vec<_>>().join(" "))
+    })
+}
 
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -23,6 +32,7 @@ fn main() {
         Some("sweep") => sweep(&args[1..]),
         Some("bench") => bench(&args[1..]),
         Some("digest") => digest(&args[1..]),
+        Some("map") => map(&args[1..]),
         Some("clear") => clear_file(args.get(1).map(String::as_str).unwrap_or("-")),
         Some("goods") => {
             println!("{}", GOODS.join(" "));
@@ -51,6 +61,7 @@ fn run(args: &[String]) -> Result<(), String> {
             "--seed" => config.seed = value.parse().map_err(bad)?,
             "--turns" => turns = value.parse().map_err(bad)?,
             "--radius" => config.radius = value.parse().map_err(bad)?,
+            "--size" => config.radius = size(value)?,
             "--every" => every = value.parse().map_err(bad)?,
             "--save" => save = Some(value.clone()),
             _ => return Err(format!("unknown flag {flag}\n{USAGE}")),
@@ -70,6 +81,47 @@ fn run(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+/// Prints the map as text, a legend and counts.
+fn map(args: &[String]) -> Result<(), String> {
+    let mut config = Config::default();
+    let mut it = args.iter();
+    while let Some(flag) = it.next() {
+        let value = it.next().ok_or(format!("{flag} needs a value\n{USAGE}"))?;
+        let bad = |_| format!("{flag}: not a number: {value}");
+        match flag.as_str() {
+            "--seed" => config.seed = value.parse().map_err(bad)?,
+            "--radius" => config.radius = value.parse().map_err(bad)?,
+            "--size" => config.radius = size(value)?,
+            _ => return Err(format!("unknown flag {flag}\n{USAGE}")),
+        }
+    }
+    let w = World::new(config);
+    print!("{}", map::ascii(&w.tiles, config.radius));
+    let legend = [('~', "sea"), ('=', "lake"), (',', "coast"), ('.', "plains"), ('f', "forest"), ('h', "hills")]
+        .into_iter()
+        .chain([('^', "mountain"), (':', "desert"), ('%', "marsh")])
+        .map(|(c, n)| format!("{c} {n}"))
+        .collect::<Vec<_>>()
+        .join("  ");
+    println!("{legend}");
+    let count = |terrain: usize| w.tiles.iter().filter(|t| t.terrain == terrain).count();
+    let land = w.tiles.iter().filter(|t| TERRAIN[t.terrain].land).count();
+    let lakes = w.tiles.iter().filter(|t| t.lake).count();
+    let masses = map::landmasses(&w.tiles, config.radius).len();
+    println!(
+        "seed {} radius {}: {} tiles, {land} land, {} water ({lakes} lake), {} mountains, {} hills, {} deserts, {} forests, {masses} landmasses",
+        config.seed,
+        config.radius,
+        w.tiles.len(),
+        count(SEA),
+        count(MOUNTAIN),
+        count(HILLS),
+        count(DESERT),
+        count(FOREST)
+    );
+    Ok(())
+}
+
 /// Prints `<turn> <digest>` for turn 0 and after each of `--turns` turns (400), end or not.
 fn digest(args: &[String]) -> Result<(), String> {
     let mut config = Config::default();
@@ -81,6 +133,7 @@ fn digest(args: &[String]) -> Result<(), String> {
         match flag.as_str() {
             "--seed" => config.seed = value.parse().map_err(bad)?,
             "--radius" => config.radius = value.parse().map_err(bad)?,
+            "--size" => config.radius = size(value)?,
             "--turns" => turns = value.parse().map_err(bad)?,
             _ => return Err(format!("unknown flag {flag}\n{USAGE}")),
         }
@@ -129,6 +182,7 @@ fn sweep(args: &[String]) -> Result<(), String> {
         match a.as_str() {
             "--turns" => turns = it.next().and_then(|v| v.parse().ok()).ok_or("--turns needs a number")?,
             "--radius" => radius = it.next().and_then(|v| v.parse().ok()).ok_or("--radius needs a number")?,
+            "--size" => radius = size(it.next().ok_or("--size needs a name")?)?,
             s => seeds.push(s.parse().map_err(|_| format!("not a seed: {s}\n{USAGE}"))?),
         }
     }
@@ -250,6 +304,7 @@ fn bench(args: &[String]) -> Result<(), String> {
         match a.as_str() {
             "--turns" => turns = it.next().and_then(|v| v.parse().ok()).ok_or("--turns needs a number")?,
             "--radius" => radius = it.next().and_then(|v| v.parse().ok()).ok_or("--radius needs a number")?,
+            "--size" => radius = size(it.next().ok_or("--size needs a name")?)?,
             s => seeds.push(s.parse().map_err(|_| format!("not a seed: {s}\n{USAGE}"))?),
         }
     }
