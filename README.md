@@ -6,7 +6,7 @@ Each folder stands alone. Live builds are on [GitHub Pages](https://dontpanic345
 | Folder | What |
 | --- | --- |
 | [`engine/`](engine/) | The game: a Rust engine with a CLI and a wasm web front end. New work goes here. |
-| [`poc/`](poc/) | The full proof of concept: pre-game economy, civs, scouts, armies, supply. |
+| [`merge4/`](merge4/) | hex-economy, hex4x, scout and supply-lines merged into one game: pre-game economy, civs, scouts, armies, supply. |
 | [`hex-economy/`](hex-economy/) | Pre-game only: clans, land, gatherings, tended grain. |
 | [`hex4x/`](hex4x/) | Minimal turn-based hex 4X used as a base. |
 | [`scout/`](scout/) | Hidden trail costs and scouting routes. |

@@ -5,7 +5,7 @@ player could get to, people already live. As they settle, small centres grow up 
 fertile land on their own, with markets where people gather. Once enough of those centres
 have formed, the game can start.
 
-The poc's clans are the starting point. Its rules for land, harvest, diet, growth and
+merge4's clans are the starting point. Its rules for land, harvest, diet, growth and
 dividing are kept unless this file changes them. The numbers below are starting values to
 tune, not targets.
 
@@ -41,7 +41,7 @@ nothing more.
 
 ## Clans
 
-A clan is a group of people living off a territory. As in the poc:
+A clan is a group of people living off a territory. As in merge4:
 
 - **Seeds.** The world starts with a few small clans, and the population spreads from them.
 - **Territory.** A clan holds a connected patch of tiles around a home tile. It grows its
@@ -100,7 +100,7 @@ A clan changes its round one tile at a time.
 
 ### Grain and hearths
 
-Clans tame the grain they live with, as in the poc. This may change later, but it's in the
+Clans tame the grain they live with, as in merge4. This may change later, but it's in the
 right direction.
 
 - Grain on a tile a clan has held for a long time slowly becomes tame. Grain on land nobody
