@@ -297,7 +297,7 @@ can't write to the repo, so it ends with a Markdown summary pasted into Claude C
 ## 10. M1
 
 The [M1 milestone](https://github.com/DontPanic345/sansfiat/milestone/2): the Relay changes and
-the event feed, then the three rebuilds and the retro.
+the map, founding, then the three rebuilds and the retro.
 
 Done: the Relay changes and `usage.mjs` (#22), the pre-game, merged as it was (#16), dropping
 `Ends`, and the tidy.
@@ -306,11 +306,13 @@ Done: the Relay changes and `usage.mjs` (#22), the pre-game, merged as it was (#
 2. **Same maths for native and web** (#23), unattended. The same seed ends on turn 363
    natively and 314 in the browser, because `exp`, `ln` and `powf` differ between the two
    builds' maths libraries, so a save replays on one build only.
-3. **Event feed and top bar** (#26, section 8), unattended, after #23.
-4. **The three interviews**, your time, alongside 1 to 3: paint-army, scout, supply-lines.
-5. **Rebuild those prototypes on the engine** (#27, #28, #29), each made ready once its
-   interview's design file exists. They run one after another.
-6. **Retro** on M1 (#30, section 7), by hand from a Claude Code session.
+3. **The map and the page** (#31), then **Founding** (#32): the rebuilds are all things a
+   player does, so a civ comes first. [founding-and-scout.md](founding-and-scout.md) has
+   both, with #26 folded into #31.
+4. **Rebuild the prototypes on the engine**: scout (#28, designed in
+   `docs/design/scouting.md`), then paint-army (#27) and supply-lines (#29) once their
+   interviews are done.
+5. **Retro** on M1 (#30, section 7), by hand from a Claude Code session.
 
 Later: **trade that pays**. #16 found trade too thin: clans eat what they harvest, so there's
 little to swap, and centres never pick out fertile land. It needs a trade interview first,
