@@ -78,6 +78,22 @@ pub struct MapRules {
     pub hills_cost: [(u8, u32); 2],
     pub mountain_cost: u8,
     pub mountain_span: [(Option<u8>, u32); 3],
+    /// River sources tried (per small map, never below `rivers_floor`), the steps of land a
+    /// source must be from water, and the chance a river sidesteps when it could go downhill.
+    pub rivers: usize,
+    pub rivers_floor: usize,
+    pub river_min: u32,
+    /// Noisy height from which land counts as high ground a river may start on, as hills and
+    /// tiles beside a mountain do (sea is under 0.35, hills over 0.72).
+    pub upland: f64,
+    pub river_wiggle: f64,
+    /// A river this big (tiles upstream) floods its last `flood_reach` steps to its mouth.
+    pub big_river: u32,
+    pub flood_reach: u32,
+    /// A river this big ends in a delta where it meets the ocean.
+    pub delta_river: u32,
+    /// Floodplain and delta fertility: above `FERTILITY.1`, the richest land.
+    pub flood_fertility: f64,
 }
 
 pub const MAP: MapRules = MapRules {
@@ -96,7 +112,30 @@ pub const MAP: MapRules = MapRules {
     hills_cost: [(1, 1), (2, 2)],
     mountain_cost: 3,
     mountain_span: [(Some(1), 1), (Some(2), 1), (None, 8)],
+    rivers: 16,
+    rivers_floor: 3,
+    river_min: 6,
+    upland: 0.6,
+    river_wiggle: 0.25,
+    big_river: 8,
+    flood_reach: 6,
+    delta_river: 10,
+    flood_fertility: 2.2,
 };
+
+pub struct Features {
+    /// Food a river adds to its tile's caps, before fertility.
+    pub river: [f64; N],
+}
+
+pub const FEATURES: Features = Features { river: [0.0, 1.0, 0.0, 5.0, 0.0] };
+
+pub struct RiverRules {
+    /// Extra labour to enter a river tile off its course, unless a trail bridges it.
+    pub cross: f64,
+}
+
+pub const RIVER: RiverRules = RiverRules { cross: 2.0 };
 
 /// `per_small` features per `SMALL_TILES` tiles, for a map of `tiles`, rounded.
 pub fn scaled(per_small: usize, tiles: usize) -> usize {

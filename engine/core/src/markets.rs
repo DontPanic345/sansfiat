@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::clans::nutrition;
 use crate::data::*;
-use crate::land::{cost_map, step_cost};
+use crate::land::{cost_map, passable};
 use crate::market::{clear, demand, Basket, Params};
 use crate::world::World;
 
@@ -32,7 +32,7 @@ pub struct Market {
 
 /// Path cost from the market's tile over passable tiles, out to `MARKET.reach`.
 pub fn reach(w: &World, tile: usize) -> BTreeMap<usize, f64> {
-    cost_map(w, &[tile], MARKET.reach, |i| step_cost(w, i).is_some())
+    cost_map(w, &[tile], MARKET.reach, |i| passable(w, i))
 }
 
 /// For each clan with a round tile in some market's reach: that market's id and the least path

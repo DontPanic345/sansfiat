@@ -35,7 +35,7 @@ fn a_round_wears_a_trail_and_an_unwalked_one_wears_away() {
     assert!(!w.tiles[f].trail);
     hold(&mut w);
     assert!(w.tiles[f].trail, "held {} turns", w.tiles[f].held);
-    assert_eq!(step_cost(&w, f), Some(TRAIL.cost));
+    assert_eq!(step_cost(&w, o, f), Some(TRAIL.cost));
     assert_eq!(cost(&w, &w.clans[&id].round), 2.0);
 
     free(&mut w, id);
@@ -45,7 +45,7 @@ fn a_round_wears_a_trail_and_an_unwalked_one_wears_away() {
     assert!(w.tiles[f].trail);
     hold(&mut w);
     assert!(!w.tiles[f].trail, "unheld {} turns", w.tiles[f].unheld);
-    assert_eq!(step_cost(&w, f), Some(2.0));
+    assert_eq!(step_cost(&w, o, f), Some(2.0));
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use std::{env, fs, io::Read, process::exit, time::Instant};
 
-use engine::data::{size_radius, DESERT, FOREST, HILLS, MOUNTAIN, PREGAME, SEA, SIZES};
+use engine::data::{size_radius, DESERT, FOREST, HILLS, MARSH, MOUNTAIN, PREGAME, SEA, SIZES};
 use engine::map;
 use engine::{clear, land, pregame, round, stats, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
 
@@ -99,7 +99,7 @@ fn map(args: &[String]) -> Result<(), String> {
     print!("{}", map::ascii(&w.tiles, config.radius));
     let legend = [('~', "sea"), ('=', "lake"), (',', "coast"), ('.', "plains"), ('f', "forest"), ('h', "hills")]
         .into_iter()
-        .chain([('^', "mountain"), (':', "desert"), ('%', "marsh")])
+        .chain([('^', "mountain"), (':', "desert"), ('%', "marsh"), ('r', "river"), ('z', "floodplain")])
         .map(|(c, n)| format!("{c} {n}"))
         .collect::<Vec<_>>()
         .join("  ");
@@ -108,8 +108,14 @@ fn map(args: &[String]) -> Result<(), String> {
     let land = w.tiles.iter().filter(|t| TERRAIN[t.terrain].land).count();
     let lakes = w.tiles.iter().filter(|t| t.lake).count();
     let masses = map::landmasses(&w.tiles, config.radius).len();
+    let rivers = w.tiles.iter().filter(|t| t.river > 0).count();
+    let mouths = w.tiles.iter().filter(|t| t.flow.is_some_and(|j| w.tiles[j].terrain == SEA)).count();
+    let flood = w.tiles.iter().filter(|t| t.flood && t.terrain != MARSH).count();
+    let deltas = w.tiles.iter().filter(|t| t.flood && t.terrain == MARSH).count();
+    let longest = w.tiles.iter().map(|t| t.river).max().unwrap_or(0);
     println!(
-        "seed {} radius {}: {} tiles, {land} land, {} water ({lakes} lake), {} mountains, {} hills, {} deserts, {} forests, {masses} landmasses",
+        "seed {} radius {}: {} tiles, {land} land, {} water ({lakes} lake), {} mountains, {} hills, {} deserts, {} forests, {masses} landmasses, \
+         {rivers} river tiles ({mouths} mouths, longest {longest}), {flood} floodplain, {deltas} delta",
         config.seed,
         config.radius,
         w.tiles.len(),

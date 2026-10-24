@@ -80,8 +80,10 @@ and `./build-web.sh` green (build-4 and build-5 also run `./cross-build.sh`).
    desert allowed); a river steps to an unvisited neighbour whose distance is not greater,
    preferring lower, with a sidestep chance for wiggle. Distance strictly falls on every
    non-sidestep step, no tile is revisited, so it can't double back and always ends in water
-   or in another river. Sources on hills (or beside mountains) at least `river_min` steps
-   from water. Crossing rule: `step_cost(w, from, to)` takes the tile left as well as the one
+   or in another river. Sources on high ground (hills, beside mountains, or noisy height
+   `≥ MAP.upland` 0.6) at least `river_min` (6) steps from water, lowered to the map's deepest
+   land less one where the land isn't that deep (build-2: small maps rarely have land more
+   than 4 steps from water). Crossing rule: `step_cost(w, from, to)` takes the tile left as well as the one
    entered; entering a river tile costs `RIVER.cross` (starting value 2.0) extra unless
    `from.flow == Some(to)` or `to.flow == Some(from)` (along the course) or the tile has a
    trail. A leg's cost therefore differs by direction only when an endpoint is a river tile;
@@ -90,7 +92,7 @@ and `./build-web.sh` green (build-4 and build-5 also run `./cross-build.sh`).
    `FLOOD_REACH` (6) path steps of its mouth, plus its non-mountain land neighbours there;
    fertility is `FLOODPLAIN_FERTILITY` (2.2), above the normal 2.0 cap, so it is the richest
    land on the map; the terrain becomes PLAINS if it was coast/desert. A delta is the mouth
-   tile of a river with `river ≥ DELTA_RIVER` (12) that empties into an *ocean* (not a lake)
+   tile of a river with `river ≥ DELTA_RIVER` (10; 12 in the plan, lowered in build-2) that empties into an *ocean* (not a lake)
    and the mouth's land neighbours that touch the sea: terrain `MARSH`, fertility 2.2. Marsh is
    slow (cost 3).
 9. **Rain shadow**: one wind direction per map (from the rng). A desert candidate's score is

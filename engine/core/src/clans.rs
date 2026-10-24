@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::data::*;
-use crate::land::{neighbours, step_cost};
+use crate::land::{neighbours, passable};
 use crate::map;
 use crate::market::Basket;
 use crate::rng::{rand, rand_index};
@@ -276,7 +276,7 @@ pub fn site_value(w: &World, clan: &Clan, site: usize, pop: f64, store: &Basket)
 
 /// Tiles within `steps` steps of home over passable land, on no round, in tile order.
 fn sites(w: &World, clan: &Clan, steps: i32) -> Vec<usize> {
-    let passable = |i: usize| TERRAIN[w.tiles[i].terrain].land && step_cost(w, i).is_some();
+    let passable = |i: usize| TERRAIN[w.tiles[i].terrain].land && passable(w, i);
     let mut seen = vec![clan.home];
     let mut frontier = vec![clan.home];
     for _ in 0..steps {

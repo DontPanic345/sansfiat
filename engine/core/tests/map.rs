@@ -178,21 +178,21 @@ fn the_hidden_rolls_change_nothing_else() {
 #[test]
 fn step_cost_ignores_the_hidden_rolls() {
     let mut w = common::flat();
-    let i = common::at(1, 1);
+    let (from, i) = (common::at(1, 0), common::at(1, 1));
     w.tiles[i].terrain = FOREST;
-    let base = step_cost(&w, i);
+    let base = step_cost(&w, from, i);
     assert_eq!(base, Some(2.0));
     for (cost, span) in [(Some(1.0), None), (Some(3.0), Some(2)), (None, Some(1))] {
         w.tiles[i].trail_cost = cost;
         w.tiles[i].span = span;
-        assert_eq!(step_cost(&w, i), base);
+        assert_eq!(step_cost(&w, from, i), base);
     }
     // Worn trails still bring forest and hills down to the trail cost.
     for terrain in [FOREST, HILLS] {
         w.tiles[i].terrain = terrain;
         w.tiles[i].trail_cost = Some(2.0);
         w.tiles[i].trail = true;
-        assert_eq!(step_cost(&w, i), Some(TRAIL.cost));
+        assert_eq!(step_cost(&w, from, i), Some(TRAIL.cost));
     }
 }
 
@@ -212,14 +212,19 @@ fn mountains_are_not_land_and_split_landmasses() {
 #[test]
 fn caps_follow_terrain_and_fertility() {
     for t in made(16, 4) {
-        for f in 0..N {
-            let want = (TERRAIN[t.terrain].food[f] * t.fertility * 10.0).round() / 10.0;
+        let river = if t.river > 0 { FEATURES.river } else { [0.0; N] };
+        for (f, extra) in river.into_iter().enumerate() {
+            let want = ((TERRAIN[t.terrain].food[f] + extra) * t.fertility * 10.0).round() / 10.0;
             assert_eq!(t.cap[f], want);
         }
         assert_eq!(t.stock, t.cap);
         assert_eq!(t.wild_grain, t.cap[GRAIN]);
-        assert!((FERTILITY.0..=FERTILITY.1).contains(&t.fertility));
-        assert!(t.river == 0 && t.flow.is_none() && !t.flood && !t.pass && t.zone == map::Zone::Open);
+        if t.flood {
+            assert_eq!(t.fertility, MAP.flood_fertility);
+        } else {
+            assert!((FERTILITY.0..=FERTILITY.1).contains(&t.fertility));
+        }
+        assert!(!t.pass && t.zone == map::Zone::Open);
     }
 }
 
