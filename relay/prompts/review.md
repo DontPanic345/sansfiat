@@ -8,5 +8,6 @@ Merge `origin/main` first if it has moved, so the PR is what would land.
 
 The PR is ready now, so CI runs on every push. Rewrite its description (`gh pr edit --body`),
 keeping the first line "Closes #<piece>", to say what the piece delivers or what it found,
-and end it with your verdict: merge, or don't and why. Finish `done` when CI is green
+with the play link `https://dontpanic345.github.io/sansfiat/b/<branch>/`, and end it with your
+verdict: merge, or don't and why. Finish `done` when CI is green
 (`gh pr checks --watch`).
