@@ -1,7 +1,7 @@
 name: relay-events
 
-# Acts on Alan's comments on a piece (`/relay` commands, and replies that unblock a step), and
-# on a piece closing (its open steps close, and a proof's branch is tagged). Only Alan's
+# Acts on the owner's comments on a piece (`/relay` commands, and replies that unblock a step), and
+# on a piece closing (its open steps close, and a proof's branch is tagged). Only the owner's
 # comments start a job, so no one else's text ever reaches the App's key.
 
 on:

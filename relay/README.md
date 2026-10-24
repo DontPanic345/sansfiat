@@ -1,4 +1,8 @@
 # Relay
+_You and a team of runners are going a long way to a known finish, further than any of you
+could go alone. Pick up the baton from the runner before you, run your leg and hand it on;
+each leg starts right where the last one finished. The support crew marks out the course and
+keeps the race going between legs._
 
 Relay builds Sans Fiat one piece at a time, in cold `claude -p` sessions, with no one
 watching. The crew, `relay/relay.mjs`, runs in GitHub Actions (`relay.yml`). It picks the
@@ -8,7 +12,7 @@ Jogging, with GitHub instead of `state.json` holding the state.
 
 ## Pieces and steps
 
-A **piece** starts as a proposal Claude brings to Alan. Once Alan is happy with it, Claude
+A **piece** starts as a proposal Claude brings to the owner. Once the owner is happy with it, Claude
 opens it as an issue labelled `kind:piece` and `relay:ready`, and starts a run. Relay reads
 these lines from its body, in any order:
 
@@ -35,15 +39,15 @@ spec, the briefs and `steps.json` live on the piece's branch, `relay/<number>`, 
 |---|---|
 | `spec` | Writes the spec, a brief per later step, and `steps.json` with each step's model, effort and why. Runs on the model the piece's `Spec` line names |
 | `spec-review` | Reads the plan the way the later sessions will, and fixes it |
-| `build-N` | Builds what its brief says. At most four |
+| `build-N` | Builds what its brief says |
 | `review` | The crew marks the PR ready, so CI runs. The session reviews the whole piece, fixes what matters, and waits for CI to go green |
 
 The spec step isn't done until `steps.json` reads cleanly; then the crew makes every later
-step and carries on, with no stop for Alan. Every step's prompt carries every earlier step's
+step and carries on, with no stop for the owner. Every step's prompt carries every earlier step's
 summary and decisions.
 
-Then it's Alan's turn: a proof's PR stays open with its findings and Alan closes the piece,
-which tags the branch head `proof/<number>`; a piece that ends on main has a PR for Alan to
+Then it's the owner's turn: a proof's PR stays open with its findings and the owner closes the piece,
+which tags the branch head `proof/<number>`; a piece that ends on main has a PR for the owner to
 approve and merge. Closing a piece closes its open steps.
 
 Pieces that end on main never overlap: one waits while an older one is open. Proofs never
@@ -60,15 +64,14 @@ writes `relay/runs/result.json`:
   (a crash or timeout counts) block the step.
 - `blocked`, with a `blocker`: the step can't go on as it stands.
 
-A blocked step labels the piece `waiting`. Alan's reply on the piece unblocks it, goes to the
+A blocked step labels the piece `waiting`. The owner's reply on the piece unblocks it, goes to the
 next session, and starts a run. Anything new a session notices goes under `ideas`, never into
-code. The crew keeps them on the step and lists them in the step's PR comment; `/relay scope`
-shows every idea the piece has raised. They don't become issues: open one yourself for any
-worth keeping.
+code. The crew lists them in the step's PR comment. They don't become issues: open one yourself
+for any worth keeping.
 
 ## Commands
 
-On a piece's issue, from Alan only (`relay-events.yml`):
+On a piece's issue, from the owner only (`relay-events.yml`):
 
 | Command | Effect |
 |---|---|
@@ -78,7 +81,6 @@ On a piece's issue, from Alan only (`relay-events.yml`):
 | `/relay model <step> <model> [effort]` | Change an open step's model or effort |
 | `/relay pause` / `resume` | Hold the piece, or let it go again |
 | `/relay status` | The piece's steps, with their state and spend |
-| `/relay scope` | The spec's scope map and the ideas raised so far |
 
 ## What a session gets
 
@@ -104,7 +106,7 @@ window passes 50% or the weekly window passes its share of the week.
 
 ## The board
 
-The crew updates "Sans Fiat Work", a project on Alan's account, when it can. A GitHub App
+The crew updates "Sans Fiat Work", a project on the owner's account, when it can. A GitHub App
 can't reach a personal account's project, so the board needs its own token: a classic
 personal access token with the `project` scope, stored as `RELAY_BOARD_TOKEN` in the `relay`
 environment. Without it, or without the project, the run log says so and everything else
@@ -126,7 +128,7 @@ The crew sets only the fields that exist, and only to options that exist:
 | File | Written by |
 |---|---|
 | `relay.mjs`, `token.mjs`, `usage.mjs`, tests | Claude Code sessions, by hand |
-| `prompts/*.md` | Alan owns them. How the flow works, for the sessions in it |
+| `prompts/*.md` | The owner. How the flow works, for the sessions in it |
 | `specs/<n>/` | Spec and spec-review sessions, on the piece's branch |
 | `runs/` | The crew and sessions: prompts, transcripts, `result.json`. Not committed |
 

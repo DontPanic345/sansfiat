@@ -3,7 +3,7 @@
 //
 //   node relay/relay.mjs run       # run steps until the budget, the deadline or the work runs out
 //   node relay/relay.mjs status    # print the next step and the pacing verdict, run nothing
-//   node relay/relay.mjs event     # act on Alan's comment (relay-events.yml)
+//   node relay/relay.mjs event     # act on the owner's comment (relay-events.yml)
 //   node relay/relay.mjs report <message>   # comment on the Relay log issue
 //
 // GitHub holds the state. A piece is an open `kind:piece` issue labelled `relay:ready`; its
@@ -29,13 +29,12 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.dirname(HERE);
 const RUNS = path.join(HERE, "runs");
 const RESULT = path.join(RUNS, "result.json");
-export const ALAN = "DontPanic345";
-const GH_REPO = `${ALAN}/sansfiat`;
+export const OWNER = "DontPanic345";
+const GH_REPO = `${OWNER}/sansfiat`;
 const BOARD = "Sans Fiat Work";
 const LOG_TITLE = "Relay log";
 const WORKFLOW = "relay.yml";
 const MAX_ATTEMPTS = 2;
-export const MAX_BUILDS = 4;
 const STARTED = Date.now();
 // The job is killed at 345 minutes. No step starts after the deadline, and none runs past
 // its timeout, so the crew always gets to record the last one.
@@ -126,7 +125,6 @@ export const checkSteps = (text) => {
         return { error: "steps.json must list `spec-review`, the build steps, then `review`" };
     }
     const builds = steps.slice(1, -1);
-    if (builds.length > MAX_BUILDS) return { error: `steps.json has ${builds.length} build steps; at most ${MAX_BUILDS}` };
     for (const [i, s] of builds.entries()) {
         if (s.id !== `build-${i + 1}`) return { error: `build step ${i + 1} in steps.json must be \`build-${i + 1}\`, not \`${s.id}\`` };
     }
@@ -142,10 +140,10 @@ export const checkSteps = (text) => {
 // Why a piece can't run now, or null when it can. `pieces` are every open piece, ready or not.
 export const holdReason = (piece, pieces) => {
     if (!piece.labels.includes("relay:ready")) return "not ready";
-    // Anyone can open an issue, but only Alan's words reach a session.
-    if (piece.author !== ALAN) return "not opened by Alan";
+    // Anyone can open an issue, but only the owner's words reach a session.
+    if (piece.author !== OWNER) return "not opened by the owner";
     if (piece.labels.includes("relay:paused")) return "paused";
-    if (piece.labels.includes("waiting")) return "waiting on Alan";
+    if (piece.labels.includes("waiting")) return "waiting on the owner";
     const onMain = endsOnMain(piece.body);
     if (onMain === null) return "the body has no `Ends:` line";
     if (piece.steps.length === 0 && !specChoice(piece.body)) return "the body has no `Spec:` model and effort";
@@ -194,25 +192,6 @@ export const atLevel = (md, level = 2) => {
         .join("\n");
 };
 
-// The text under a heading, e.g. "Scope map", or null. Matches a heading that starts with it.
-export const section = (md, name) => {
-    const lines = (md ?? "").split("\n");
-    let fenced = false;
-    let start = -1;
-    let level = 0;
-    for (const [i, line] of lines.entries()) {
-        if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-        const m = !fenced && /^(#{1,6})\s+(.+?)\s*$/.exec(line);
-        if (!m) continue;
-        if (start >= 0 && m[1].length <= level) return lines.slice(start, i).join("\n").trim();
-        if (start < 0 && m[2].toLowerCase().startsWith(name.toLowerCase())) {
-            start = i;
-            level = m[1].length;
-        }
-    }
-    return start >= 0 ? lines.slice(start).join("\n").trim() : null;
-};
-
 // A finished step's summary and decisions, as later steps see them.
 export const soFar = (s) => {
     const decided = (s.meta.decisions ?? []).map((d) => `\n  - Decided: ${d.decision}${d.why ? ` (${d.why})` : ""}`).join("");
@@ -246,11 +225,11 @@ export const sessionPrompt = (piece, step, files) => {
         parts.push(atLevel(files.brief.trim(), 1));
     } else {
         const what = kind === "spec" ? "Write the spec, the briefs and steps.json" : "Review the spec, the briefs and steps.json";
-        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what} for this piece, as agreed with Alan:`);
+        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what} for this piece, as agreed with the owner:`);
         parts.push(atLevel(`# The piece\n\n${piece.body.trim()}`));
     }
     if (step.meta.note) parts.push(`# The last attempt didn't finish\n\nPick up from here.\n\n${step.meta.note}`);
-    if (step.meta.reply) parts.push(`# Alan's reply to this step's blocker\n\nAct on it.\n\n"""${step.meta.reply}"""`);
+    if (step.meta.reply) parts.push(`# The owner's reply to this step's blocker\n\nAct on it.\n\n"""${step.meta.reply}"""`);
     if (kind !== "build") {
         const named = Object.entries(files.design ?? {});
         const builds = named.length
@@ -354,21 +333,12 @@ export const applyResult = (meta, result, exitOk) => {
     return { meta: next, outcome: "blocked", why: `it ended ${next.attempts} times without finishing. Last: ${next.note}` };
 };
 
-// Ideas a session noticed stay on its step, never more code in the piece and never an issue
-// each: Alan reads them in the step's comments or with `/relay scope`.
-export const addIdeas = (meta, ideas) => {
-    const known = new Set((meta.ideas ?? []).map((i) => i.title));
-    const fresh = (Array.isArray(ideas) ? ideas : []).filter((i) => i?.title && !known.has(i.title) && known.add(i.title));
-    if (fresh.length === 0) return meta;
-    return { ...meta, ideas: [...(meta.ideas ?? []), ...fresh.map((i) => ({ title: String(i.title), body: String(i.body ?? "") }))] };
-};
-// What a spec review says it cut, or "" when it cut nothing (sessions sometimes send [], "" or "none").
-export const scopeCutText = (cut) => {
-    const text = (Array.isArray(cut) ? cut.join("; ") : typeof cut === "string" ? cut : "").trim();
-    return /^(none|nothing)\.?$/i.test(text) ? "" : text;
-};
-
-export const ideaList = (ideas) => (ideas ?? []).map((i) => `- **${i.title}**${i.body ? `: ${i.body}` : ""}`).join("\n");
+// The ideas a session noticed, as a list for its PR comment.
+export const ideaList = (ideas) =>
+    (Array.isArray(ideas) ? ideas : [])
+        .filter((i) => i?.title)
+        .map((i) => `- **${i.title}**${i.body ? `: ${i.body}` : ""}`)
+        .join("\n");
 
 // A `/relay …` command in a comment, or null.
 export const parseCommand = (body) => {
@@ -524,7 +494,7 @@ const loadBoard = async () => {
                 id title fields(first: 50) { nodes {
                     ... on ProjectV2Field { id name dataType }
                     ... on ProjectV2SingleSelectField { id name dataType options { id name } } } } } } } }`,
-            { login: ALAN, q: BOARD },
+            { login: OWNER, q: BOARD },
             BOARD_TOKEN,
         );
         const project = data.user.projectsV2.nodes.find((p) => p.title === BOARD);
@@ -576,7 +546,7 @@ const setStatus = (piece, status) => setBoard(piece.nodeId, { Status: status, En
 
 // ---- Git ----
 
-// Alan may push to a piece's branch while a run is going, so every push rebases first.
+// The owner may push to a piece's branch while a run is going, so every push rebases first.
 const push = (branch) => {
     for (let i = 1; ; i++) {
         try {
@@ -749,7 +719,7 @@ const stepPrompt = (piece, step) => {
 // ---- Piece transitions ----
 
 const findPr = async (piece) => {
-    const prs = await github("GET", `/pulls?state=open&head=${ALAN}:${encodeURIComponent(branchOf(piece))}`);
+    const prs = await github("GET", `/pulls?state=open&head=${OWNER}:${encodeURIComponent(branchOf(piece))}`);
     return prs[0] ?? null;
 };
 
@@ -799,7 +769,7 @@ const blockStep = async (piece, step, why) => {
     await setStatus(piece, "Waiting");
 };
 
-// What follows a finished step: a draft PR and the later steps after the spec, and Alan's
+// What follows a finished step: a draft PR and the later steps after the spec, and the owner's
 // turn after the piece's review.
 const afterStep = async (piece, step, result) => {
     const kind = stepKind(step.meta.id);
@@ -817,13 +787,9 @@ const afterStep = async (piece, step, result) => {
     }
     if (pr && result.summary) {
         const decided = step.meta.decisions?.length ? `\n\n🧭 Decided:\n${step.meta.decisions.map((d) => `- ${d.decision}${d.why ? `: ${d.why}` : ""}`).join("\n")}` : "";
-        const ideas = step.meta.ideas?.length ? `\n\n💡 Ideas, not built:\n${ideaList(step.meta.ideas)}` : "";
+        const list = ideaList(result.ideas);
+        const ideas = list ? `\n\n💡 Ideas, not built:\n${list}` : "";
         await comment(pr.number, `**${step.meta.id}** (${step.meta.model}/${step.meta.effort}): ${result.summary}${decided}${ideas}`);
-    }
-    const cut = kind === "spec-review" ? scopeCutText(result.scopeCut) : "";
-    if (cut) {
-        await addLabel(piece.number, "scope-cut");
-        await comment(piece.number, `✂️ The spec review cut work outside the scope: ${cut}`);
     }
     if (kind === "spec") await plan(await loadPiece(piece.number));
     else if (kind === "build") await setStatus(piece, "Building");
@@ -880,7 +846,7 @@ const runStep = async (piece, step) => {
 
     const applied = applyResult(step.meta, result, exitOk);
     const { outcome, why } = applied;
-    const meta = exitOk ? addIdeas(applied.meta, result?.ideas) : applied.meta;
+    const { meta } = applied;
     meta.tokens = (step.meta.tokens ?? 0) + stats.tokens;
     meta.cost = (step.meta.cost ?? 0) + stats.cost;
     meta.context = stats.context;
@@ -977,11 +943,11 @@ const status = async () => {
 // For the workflow to report a failure the crew couldn't, e.g. the job timing out.
 const report = async () => comment(await logIssue(), `⚠️ ${process.argv.slice(3).join(" ")}`);
 
-// ---- Events: Alan's comments on a piece ----
+// ---- Events: the owner's comments on a piece ----
 
 const findStep = (piece, id) => piece.steps.find((s) => s.meta.id === id && s.state === "open");
 
-// Alan's reply on a piece with a blocked step goes to that step's next session.
+// The owner's reply on a piece with a blocked step goes to that step's next session.
 const unblock = async (piece, step, reply) => {
     const meta = { ...step.meta, status: "pending", attempts: 0 };
     if (reply) meta.reply = reply;
@@ -998,7 +964,7 @@ const COMMANDS = {
         const meta = applyModel(step.meta, rest);
         if (!meta) return `Name a model (${MODELS.join(", ")}) or an effort (${EFFORTS.join(", ")}).`;
         const was = `${step.meta.model}/${step.meta.effort}`;
-        await saveMeta(step, { ...meta, why: `Alan's choice (the spec had ${was}).${step.meta.why ? ` ${step.meta.why}` : ""}` });
+        await saveMeta(step, { ...meta, why: `The owner's choice (the spec had ${was}).${step.meta.why ? ` ${step.meta.why}` : ""}` });
         await setBoard(step.nodeId, { Model: meta.model, Effort: meta.effort });
         return `${id}: ${was} → ${meta.model}/${meta.effort}.`;
     },
@@ -1012,7 +978,7 @@ const COMMANDS = {
     skip: async (piece, [id]) => {
         const step = findStep(piece, id);
         if (!step) return `No open step \`${id}\`.`;
-        await comment(step.number, "Skipped by Alan.");
+        await comment(step.number, "Skipped by the owner.");
         await closeStep(step, "not_planned");
         step.state = "closed";
         if (!piece.steps.some((s) => s.state === "open" && s.meta.status === "blocked")) await removeLabel(piece.number, "waiting");
@@ -1035,24 +1001,9 @@ const COMMANDS = {
         const hold = holdReason({ ...piece, labels: [...new Set([...piece.labels, "relay:ready"])] }, []);
         return `${readied ? "Labelled `relay:ready` and started" : "Started"} a run.${hold ? ` This piece is held (${hold}), so the run works on others.` : ""}`;
     },
-    scope: async (piece) => {
-        let map = null;
-        try {
-            const file = await github("GET", `/contents/${specDir(piece)}/spec.md?ref=${encodeURIComponent(branchOf(piece))}`);
-            map = section(Buffer.from(file.content, "base64").toString("utf8"), "Scope map");
-        } catch {
-            // no spec yet
-        }
-        const ideas = sortSteps(piece.steps).flatMap((s) => (s.meta.ideas ?? []).map((i) => ({ ...i, title: `${i.title} (${s.meta.id})` })));
-        return [
-            map ?? "No scope map yet: the spec isn't written.",
-            piece.labels.includes("scope-cut") ? "\nThe spec review cut work from this piece; see its ✂️ comment." : "",
-            ideas.length ? `\nIdeas raised so far, not built:\n${ideaList(ideas)}` : "\nNo ideas raised so far.",
-        ].join("\n");
-    },
 };
 
-export const HELP = "Commands: `run`, `retry [step]`, `skip <step>`, `model <step> <model> [effort]`, `pause`, `resume`, `status`, `scope`.";
+export const HELP = "Commands: `run`, `retry [step]`, `skip <step>`, `model <step> <model> [effort]`, `pause`, `resume`, `status`.";
 
 // A closed piece closes its open steps, and a proof's branch head is tagged `proof/<n>` so
 // it stays playable once the branch goes.
@@ -1080,7 +1031,7 @@ const event = async () => {
         if (e.issue.labels.some((l) => l.name === "kind:piece")) await closePiece(e.issue.number);
         return;
     }
-    if (e.comment?.user?.login !== ALAN || e.issue?.pull_request) return log("not Alan's comment on an issue; ignoring");
+    if (e.comment?.user?.login !== OWNER || e.issue?.pull_request) return log("not the owner's comment on an issue; ignoring");
     const labels = e.issue.labels.map((l) => l.name);
     const cmd = parseCommand(e.comment.body);
     if (!labels.includes("kind:piece")) {

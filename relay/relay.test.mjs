@@ -10,9 +10,7 @@ import {
     endsOnMain,
     holdReason,
     initProblem,
-    addIdeas,
     ideaList,
-    scopeCutText,
     nextWork,
     pace,
     parseCommand,
@@ -21,7 +19,6 @@ import {
     readMeta,
     readResult,
     redact,
-    section,
     sessionPrompt,
     sessionStats,
     specChoice,
@@ -66,7 +63,7 @@ test("a piece's body says how it ends, the spec's model and its design files", (
     assert.deepEqual(designPaths(body), ["docs/design/map.md"]);
 });
 
-test("checkSteps wants the spec-review, builds in order, at most four, then the review, each with a why", () => {
+test("checkSteps wants the spec-review, builds in order, then the review, each with a why", () => {
     const s = (id, extra = {}) => ({ id, title: "t", model: "sonnet", effort: "medium", why: "w", ...extra });
     const ok = (...ids) => JSON.stringify(ids.map((id) => (typeof id === "string" ? s(id) : id)));
     assert.ok(checkSteps(ok("spec-review", "build-1", "review")).steps);
@@ -75,7 +72,6 @@ test("checkSteps wants the spec-review, builds in order, at most four, then the 
     assert.match(checkSteps(ok("spec-review", "review")).error, /spec-review/);
     assert.match(checkSteps(ok("spec-review", "build-1", "build-3", "review")).error, /build-2/);
     assert.match(checkSteps(ok("spec-review", "build-1", "build-2")).error, /review/);
-    assert.match(checkSteps(ok("spec-review", "build-1", "build-2", "build-3", "build-4", "build-5", "review")).error, /at most 4/);
     assert.match(checkSteps(ok("spec-review", s("build-1", { model: "gpt" }), "review")).error, /model/);
     assert.match(checkSteps(ok("spec-review", s("build-1", { effort: "max" }), "review")).error, /effort/);
     assert.match(checkSteps(ok("spec-review", s("build-1", { why: "" }), "review")).error, /no why/);
@@ -114,10 +110,10 @@ test("holdReason keeps pieces that end on main one at a time, and needs the body
     assert.equal(holdReason(a, [a, b]), null);
     assert.match(holdReason(b, [a, b]), /#5 goes to main first/);
     assert.equal(holdReason(proof, [a, b, proof]), null);
-    assert.equal(holdReason(piece(9, ["waiting"]), []), "waiting on Alan");
+    assert.equal(holdReason(piece(9, ["waiting"]), []), "waiting on the owner");
     assert.equal(holdReason(piece(9, ["relay:paused"]), []), "paused");
     assert.equal(holdReason({ ...piece(9, []), labels: ["kind:piece"] }, []), "not ready");
-    assert.equal(holdReason({ ...piece(9, []), author: "someone" }, []), "not opened by Alan");
+    assert.equal(holdReason({ ...piece(9, []), author: "someone" }, []), "not opened by the owner");
     assert.match(holdReason(piece(9, [], [], { body: "**Spec:** opus high" }), []), /Ends/);
     assert.match(holdReason(piece(9, [], [], { body: "**Ends:** branch" }), []), /Spec/);
     // Once the spec step exists, its model is on the step, not the body.
@@ -144,7 +140,7 @@ test("applyResult closes, retries once, then blocks", () => {
     const second = applyResult(first.meta, null, false);
     assert.equal(second.outcome, "blocked");
     assert.match(second.why, /2 times/);
-    // A crashed session may not have read Alan's reply, so it's kept for the next one.
+    // A crashed session may not have read the owner's reply, so it's kept for the next one.
     assert.equal(applyResult(meta, null, false).meta.reply, "use the river map");
     const blocked = applyResult(meta, { status: "blocked", blocker: "Needs a Steam account" }, true);
     assert.deepEqual([blocked.outcome, blocked.why], ["blocked", "Needs a Steam account"]);
@@ -179,7 +175,7 @@ test("initProblem refuses the wrong model and anything but auto mode", () => {
     assert.match(initProblem(null, "sonnet"), /no init frame/);
 });
 
-test("parseCommand and applyModel read Alan's commands", () => {
+test("parseCommand and applyModel read the owner's commands", () => {
     assert.deepEqual(parseCommand("Thanks.\n/relay model build-2 Opus high"), { name: "model", args: ["build-2", "Opus", "high"] });
     assert.deepEqual(parseCommand("/relay run"), { name: "run", args: [] });
     assert.equal(parseCommand("no command here"), null);
@@ -189,17 +185,14 @@ test("parseCommand and applyModel read Alan's commands", () => {
     assert.equal(applyModel(meta, ["fast"]), null);
 });
 
-test("section and atLevel handle headings outside code fences", () => {
-    const md = "# Spec\n\n## Scope map\n\n| a | b |\n\n```\n# not a heading\n```\n\n## Design\n\nx";
-    assert.equal(section(md, "Scope map"), "## Scope map\n\n| a | b |\n\n```\n# not a heading\n```");
-    assert.equal(section(md, "Missing"), null);
+test("atLevel moves headings outside code fences", () => {
     assert.equal(atLevel("# A\n## B\n```\n# c\n```", 2), "## A\n### B\n```\n# c\n```");
 });
 
 const files = (extra = {}) => ({
     prompts: { spec: "# Spec step", build: "# Build step", review: "# Review step", session: "# Every session" },
     brief: "# build-1: Rivers\n\nBuild rivers.",
-    spec: "# Spec\n\n## Scope map",
+    spec: "# Spec\n\n## Decisions",
     design: { "docs/design/map.md": "# Map\n\nRivers run downhill.", "docs/design/sea.md": null },
     designFiles: ["docs/design/map.md", "docs/design/clans.md"],
     diffStat: " engine/core/src/world.rs | 10 +",
@@ -219,7 +212,7 @@ test("a spec session gets the piece, its design files and the spec prompt", () =
     assert.ok(text.indexOf("# Spec step") < text.indexOf("# Every session"));
 });
 
-test("a build session gets its brief, not the design, and Alan's reply", () => {
+test("a build session gets its brief, not the design, and the owner's reply", () => {
     const p = piece(4, [], [step("spec", "closed", { summary: "Wrote the spec.", decisions: [{ decision: "Rivers flow east", why: "the map tilts" }] })]);
     const text = sessionPrompt(p, step("build-1", "open", { reply: "Use 0.5", note: "tests half done" }), files());
     assert.match(text, /^# build-1: Rivers/m);
@@ -255,17 +248,8 @@ test("redact hides secrets of eight characters or more, and any GitHub token", (
     assert.equal(redact("ghost_writer ghs_short", []), "ghost_writer ghs_short");
 });
 
-test("addIdeas keeps new ideas on the step, once each", () => {
-    const meta = addIdeas({ id: "build-1" }, [{ title: "Rivers", body: "carry goods" }, { title: "" }, null]);
-    assert.deepEqual(meta.ideas, [{ title: "Rivers", body: "carry goods" }]);
-    const again = addIdeas(meta, [{ title: "Rivers" }, { title: "Ports" }, { title: "Ports" }]);
-    assert.deepEqual(again.ideas.map((i) => i.title), ["Rivers", "Ports"]);
-    assert.equal(addIdeas(meta, undefined), meta);
-    assert.equal(ideaList(again.ideas), "- **Rivers**: carry goods\n- **Ports**");
-});
-
-test("scopeCutText ignores an empty or 'none' cut and joins a list", () => {
-    for (const nothing of [undefined, "", "  ", [], "None", "nothing."]) assert.equal(scopeCutText(nothing), "");
-    assert.equal(scopeCutText(["rivers", "ports"]), "rivers; ports");
-    assert.equal(scopeCutText(" the scout step "), "the scout step");
+test("ideaList lists a session's ideas and skips any without a title", () => {
+    assert.equal(ideaList([{ title: "Rivers", body: "carry goods" }, { title: "" }, null, { title: "Ports" }]), "- **Rivers**: carry goods\n- **Ports**");
+    assert.equal(ideaList(undefined), "");
+    assert.equal(ideaList("rivers"), "");
 });

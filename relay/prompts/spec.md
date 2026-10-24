@@ -3,13 +3,12 @@
 You plan the piece for the sessions after you. Write in `relay/specs/<piece>/`:
 
 - `spec.md`: what the piece delivers and how, for the spec-review, the review and the retro.
-  Include a scope map (each step against the in-scope line it serves) and the decisions you
-  made that the piece left open.
+  Include the decisions you made that the piece left open.
 - A brief for each build step, `build-1.md` …, and one for the review, `review.md`. A build
   session gets its brief, the code and the earlier steps' results, and nothing else, so its
   brief carries everything it needs: what to build, the design it uses, and the tests that
   show it's done.
-- `steps.json`: the spec-review, up to four build steps, then the review. Choose each step's
+- `steps.json`: the spec-review, the build steps, then the review. Choose each step's
   model and effort from its work, and say why in `why`; the retro reads it.
 
 ```json

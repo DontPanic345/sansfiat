@@ -6,12 +6,9 @@
 - { name: "kind:idea", color: "fbca04", description: "Something new that is out of scope today" }
 - { name: "kind:chore", color: "bfdadc", description: "Repo or Relay upkeep" }
 
-# Relay control (Alan only)
-- { name: "relay:ready", color: "0e8a16", description: "Alan: Relay may start this piece" }
-- { name: "relay:paused", color: "b60205", description: "Alan: Relay leaves this piece alone" }
+# Relay control (owner only)
+- { name: "relay:ready", color: "0e8a16", description: "Owner: Relay may start this piece" }
+- { name: "relay:paused", color: "b60205", description: "Owner: Relay leaves this piece alone" }
 
 # Waiting
-- { name: "waiting", color: "e99695", description: "Relay needs Alan: a blocked step" }
-
-# Outcome
-- { name: "scope-cut", color: "f9d0c4", description: "Spec review removed work outside the scope" }
+- { name: "waiting", color: "e99695", description: "Relay needs the owner: a blocked step" }

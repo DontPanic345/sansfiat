@@ -1,6 +1,6 @@
 # Sans Fiat — Game Design Document
 
-Oct 17, 2026 · @Alan · updated Oct 20, 2026 to the proof of concept as built (after the integration and polish passes)
+Oct 17, 2026 · updated Oct 20, 2026 to the proof of concept as built (after the integration and polish passes)
 
 ## How to read this document
 

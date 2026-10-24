@@ -2,20 +2,20 @@
 
 ## How Relay works
 
-A piece is an issue Alan agreed with Claude before it was opened, so what it says is decided.
+A piece is an issue the owner agreed with Claude before it was opened, so what it says is decided.
 Relay builds it as a run of steps, each a cold session like you, on the piece's branch:
 
 1. **spec** plans the piece: a spec, a brief for each later step, and `steps.json`.
 2. **spec-review** reads the plan the way the later sessions will, and fixes it.
-3. **build-1** to **build-4** each build what their brief says.
-4. **review** reviews the whole piece and gets CI green.
+3. **build-1** to **build-n** each build what their brief says.
+4. **review** reviews the whole piece and fixes it.
 
-No one watches in between. What you write in `result.json` is how the later steps, Alan and
+No one watches in between. What you write in `result.json` is how the later steps, the owner and
 the retro after the milestone learn what happened, so write what they need. Each later step
 sees every earlier step's summary and decisions.
 
-`docs/design/` is Alan's: read it and leave it as it is. Anything you notice beyond your step
-goes under `ideas`, where Alan sees it, rather than into the code.
+`docs/design/` is the owner's: read it and leave it as it is. Anything you notice beyond your step
+goes under `ideas`, where the owner sees it, rather than into the code.
 
 ## The runner
 
@@ -42,6 +42,6 @@ goes under `ideas`, where Alan sees it, rather than into the code.
 
    - `status` is `done`; or `pending` with a `note` on where the next attempt picks up (two
      unfinished attempts block the step); or `blocked` with a `blocker` saying what stops the
-     step, which the crew takes to Alan, and his reply comes to the next session.
+     step, which the crew takes to the owner, and their reply comes to the next session.
    - `decisions` are the choices you made that the piece, the design and your brief left
      open, and that a player or a later piece would notice.

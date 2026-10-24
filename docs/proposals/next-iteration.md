@@ -5,9 +5,9 @@ browser, the pre-game merged, and the four prototypes rebuilt on the engine.
 
 ## 1. How a piece starts and ends
 
-Alan doesn't write piece issues or sign off specs. Claude brings a proposal like this one; once
-Alan is happy with it, Claude opens the piece's issue from it, labels it `relay:ready` and starts a
-run. Every decision Alan cares about is made in the proposal, so it's in the issue body.
+You don't write piece issues or sign off specs. Claude brings a proposal like this one; once
+you're happy with it, Claude opens the piece's issue from it, labels it `relay:ready` and starts a
+run. Every decision you care about is made in the proposal, so it's in the issue body.
 
 The issue body has what the spec needs, in Claude's words:
 
@@ -47,7 +47,7 @@ A piece runs **spec → spec-review → build-1…4 → review**, with no stop b
 - **Build and review** sessions record their own decisions in `result.json`'s `decisions`. The
   crew shows them to the review step and lists them on the PR, so the retro can read them.
 
-**"The numbers work"** is about numbers the spec picks, not ones Alan writes. On #13 the spec chose
+**"The numbers work"** is about numbers the spec picks, not ones you write. On #13 the spec chose
 when a clan is fed, when it divides, and when a centre forms, and the end test checked for centres.
 Spec-review found clans on two-food land could never be fully fed, so they'd never grow, and the
 test could never pass; the build would have burned a session finding that out. Checking a test can
@@ -105,12 +105,12 @@ outside account and token, so they're the fallback.
 ## 4. Prompts
 
 Rewritten to explain the flow and leave the judgment to the sessions, using `writing-for-agents`,
-on top of Alan's changes. 96 lines across the prompts, down from 171. Not committed: they have to
+on top of your changes. 96 lines across the prompts, down from 171. Not committed: they have to
 land with the crew changes in sections 1, 2 and 5, because the new `steps.json` lists spec-review
 and today's crew would make it twice.
 
 - `session.md` opens with how Relay works: the four kinds of step, that no one watches between
-  them, and that `result.json` is how later steps, Alan and the retro learn what happened. Then
+  them, and that `result.json` is how later steps, the owner and the retro learn what happened. Then
   the runner (checks point at `engine/CLAUDE.md`) and finishing.
 - `spec.md` says what the spec, the briefs and `steps.json` are for and who reads them. Every
   step's model and effort is the spec's choice, with a `why`. A proof answers its question and
@@ -142,7 +142,7 @@ Tidy now: #2's draft PR #9 and steps #10 and #11 are still open with #2 closed.
 
 ### 5a. The board
 
-What it needs, all on Alan's side:
+What it needs, all on your side:
 
 1. A project called exactly **Sans Fiat Work** on the DontPanic345 account, with the fields in
    `relay/README.md` (only the ones that exist get set).
@@ -174,7 +174,7 @@ What's missing:
   expanded would write it into the transcript in the clear. It lasts an hour and can write to
   the repo. Fix: redact the current token too, or every `ghs_…` pattern.
 - Redaction covers what the crew writes, not what a session pushes or posts itself: a token in a
-  commit, a PR comment or a file under `relay/specs/` gets through. Pieces come only from Alan,
+  commit, a PR comment or a file under `relay/specs/` gets through. Pieces come only from you,
   so this would take a session going badly wrong; it's worth knowing, not worth code.
 - `session.md` told sessions transcripts are public for seven days; the artifact is kept for 14.
   Fixed in the prompt.
@@ -212,13 +212,13 @@ answers there before the Python goes.
 ## 7. The retro
 
 When a milestone's last piece closes, the crew opens a `retro` step on the milestone. One session
-reads every piece's spec, decisions, step comments, ideas, blockers and cost, and Alan's play
+reads every piece's spec, decisions, step comments, ideas, blockers and cost, and your play
 notes, and opens a PR with two short lists:
 
 - **Process:** edits to `relay/prompts/` and `relay.mjs`, each tied to its evidence.
 - **Game:** proposed edits to `docs/design/`, and candidate pieces for the next milestone.
 
-Alan owns both folders, so the PR is a proposal. What the retro reads for:
+You own both folders, so the PR is a proposal. What the retro reads for:
 
 - each step's model and effort against its `why`, its cost and how it went, ending in guidance
   for the next proposals' and specs' choices,
@@ -301,7 +301,7 @@ can't write to the repo, so it ends with a Markdown summary pasted into Claude C
    6, with the prompts from section 4, as one PR.
 3. **`usage.mjs`** (section 6).
 4. **`site.yml`** (section 3).
-5. **Interviews** on the four prototypes (section 9), Alan's time, alongside 2 to 4.
+5. **Interviews** on the four prototypes (section 9), your time, alongside 2 to 4.
 6. **Merge the pre-game.** A piece that ends on main, bringing `relay/13` over: it merges `main`
    first, then takes what PR #16 found (centres formed on 3 seeds of 10) as its first job.
 7. **Rebuild the four prototypes on the engine** as four proofs, opened together, each from its
