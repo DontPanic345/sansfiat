@@ -88,6 +88,8 @@ selection panel, the new events, and tests.
 
 **Out of scope:** scouting; the boon year; minimap, graphs, start screen, saving.
 
+Runs after #31. Read its PR description and fold in any of its findings that matter here.
+
 ## Piece 3: Scout on the engine (#28)
 
 **Goal:** A civ's scout finds and improves routes over hard country, given by the player
@@ -112,3 +114,5 @@ trails; the search needs care.
 tests, archiving `scout/`.
 
 **Out of scope:** fog, bridge-span technology, alliances, several scouts on one route.
+
+Runs after #32. Read its PR description and fold in any of its findings that matter here.
