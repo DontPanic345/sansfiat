@@ -31,10 +31,10 @@ issues from code, so it needs no templates.
 
 Removes: `type:*` labels, the seven forms, `type-*.md` prompts (done), the "no type label" hold,
 merge/milestone gating and `milestoneRank`, and `parseForm` (the spec reads the body as prose).
-Still to remove after #22: the `Ends` line and its hold, the main/branch queue rule, the board's
-Ends field, and "the branch is the proof" in the prompts. Pieces queue one at a time, oldest
-first. Proofs used to skip the queue, but the crew runs one session at a time, so they never
-truly ran side by side.
+Also removed: the `Ends` line and its hold, the queue rule, the board's Ends field, and "the
+branch is the proof" in the prompts. The crew works on the oldest piece with a step to run, so a
+later piece goes ahead only while an earlier one waits on you; its review merges `main` in
+first, so the PR is what would land.
 
 ## 2. Spec, spec-review and decisions
 
@@ -301,7 +301,7 @@ Done: the Relay changes and `usage.mjs` (#22), and the pre-game, merged as it wa
 draft PR #9 is closed.
 
 1. **Tidy.** Close #2's steps #10 and #11 and delete the `relay/2` branch.
-2. **Drop `Ends`, by hand** (section 1): one kind of piece, a review verdict, one queue.
+2. **Drop `Ends`.** Done: one kind of piece, a review verdict, no queue rule.
 3. **`site.yml`** (section 3), open PR branches only.
 4. **Same maths for native and web.** A piece, unattended. The same seed ends on turn 363
    natively and 314 in the browser, because `exp`, `ln` and `powf` differ between the two
