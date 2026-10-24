@@ -261,14 +261,13 @@ minimap wait for founding.
 
 ## 9. Interviews
 
-The four mechanic prototypes first, one interview each, each ending in a design file the proof
-builds. `hex4x/` is the base 4X the others grew from, with no mechanic of its own; the military
+The three mechanic prototypes first, one interview each, each ending in a design file the rebuild
+builds. `hex-economy/` was the pre-game prototype, rebuilt on the engine as #16. `hex4x/` is the base 4X the others grew from, with no mechanic of its own; the military
 and territory prototype is `paint-army/` (its paint-the-territory page was removed on 2026-10-23,
 and `index.html`, "Paint Army", is what's left):
 
 | Prototype | Mechanic | Opening questions |
 |---|---|---|
-| hex-economy | Barter market and trade | What makes trade pay: diets or specialisation? Does the festival bonus stay? Kin terms? When do traders and bead tokens come in? Much of it is already in the pre-game. |
 | paint-army | Captains, territory and armies | Territory from troops only, or clans and cities too? What happens to cut-off detachments? Is 3 captains real? Entrenchment and retreat? |
 | scout | Scouting, trails and fog | What does a scout cost? Are clan trails and scout trails one thing? Opaque or soft fog? Is a map tradeable? |
 | supply-lines | Supply lines | Do enemy units cut lines, or only territory? Do lines carry goods for projects? Do pack animals or rivers extend reach? |
@@ -297,28 +296,22 @@ can't write to the repo, so it ends with a Markdown summary pasted into Claude C
 
 ## 10. M1
 
-Done: the Relay changes and `usage.mjs` (#22), and the pre-game, merged as it was (#16). #2's
-draft PR #9 is closed.
+The [M1 milestone](https://github.com/DontPanic345/sansfiat/milestone/2): the Relay changes and
+the event feed, then the three rebuilds and the retro.
 
-1. **Tidy.** Close #2's steps #10 and #11 and delete the `relay/2` branch.
-2. **Drop `Ends`.** Done: one kind of piece, a review verdict, no queue rule.
-3. **`site.yml`** (section 3), open PR branches only.
-4. **Same maths for native and web.** A piece, unattended. The same seed ends on turn 363
+Done: the Relay changes and `usage.mjs` (#22), the pre-game, merged as it was (#16), dropping
+`Ends`, and the tidy.
+
+1. **`site.yml`** (section 3), open PR branches only: PR #25.
+2. **Same maths for native and web** (#23), unattended. The same seed ends on turn 363
    natively and 314 in the browser, because `exp`, `ln` and `powf` differ between the two
-   builds' maths libraries (the market library, `pick_site`, the fertility curve), so a save
-   replays on one build only. A deterministic maths library for every float function the
-   simulation calls, and a test that native and wasm agree on a run.
-5. **Event feed and top bar** (section 8). A piece, unattended, after 4.
-6. **The hex-economy interview first**, your time, alongside 2 to 5. #16 found trade too thin:
-   clans eat what they harvest, so there's little to swap, and centres never pick out fertile
-   land. What makes trade pay is that interview's first question, so it's also the design for
-   fixing the pre-game. It ends in `docs/design/trade.md`.
-7. **Trade that pays.** A piece from `trade.md`, measured against #16's table: centres on more
-   seeds, and on richer land than the clans' homes.
-8. **The other three interviews**, then **rebuild those prototypes on the engine**, one piece
-   each, opened together; they run one after another.
-9. **Retro** on M1 (section 7). The first one by hand from a Claude Code session; the crew step
-   once its shape is clear.
+   builds' maths libraries, so a save replays on one build only.
+3. **Event feed and top bar** (#26, section 8), unattended, after #23.
+4. **The three interviews**, your time, alongside 1 to 3: paint-army, scout, supply-lines.
+5. **Rebuild those prototypes on the engine** (#27, #28, #29), each made ready once its
+   interview's design file exists. They run one after another.
+6. **Retro** on M1 (#30, section 7), by hand from a Claude Code session.
 
-Steps 2 and 3 are independent and can run side by side in separate sessions. Steps 4 and 5
-touch `engine/` and don't need you.
+Later: **trade that pays**. #16 found trade too thin: clans eat what they harvest, so there's
+little to swap, and centres never pick out fertile land. It needs a trade interview first,
+ending in `docs/design/trade.md`, and a piece measured against #16's table.
