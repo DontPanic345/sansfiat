@@ -22,8 +22,8 @@ exist, top up to exactly `players` as decision 13 says:
   the same passable region as the first centre (or, with no centres, as the most populated
   clan's home).
 - Raising a market: a normal `Market` (next id, `tile`, `founded = w.turn`, zero traders and
-  volume, prices all 1.0, `goods` empty, activity 0 — copy how `markets::form` builds one; reuse
-  that code through a helper, don't copy it) and the tile isn't already a market's.
+  volume, prices all 1.0, `goods` empty, and the same starting `activity` as `markets::form`
+  gives: factor `form`'s construction into a helper both call, don't copy it) and the tile isn't already a market's.
 - `End` gains `topped_up: Vec<u32>` (ids added, in order, a subset of `centres`) and still
   `by_limit`. `by_limit` stays true for any end by the limit. Update users of `End` (stats,
   web, CLI).
@@ -33,15 +33,23 @@ exist, top up to exactly `players` as decision 13 says:
   doesn't happen, and the sweep reports it if it does.
 - Cover isn't needed at the limit.
 
-Tests (`core/tests/pregame.rs`): on `flat()` worlds: (1) zero centres at the limit → three
+After the end, `stats::summary`'s `centres` is `end.centres` (the greedy `centres()` can differ
+from what the end chose, and the page and CLI show it).
+
+Tests (`core/tests/pregame.rs`): on `flat()` worlds (radius 6: three sites 10 apart only fit
+at about `(5,0)`, `(-5,5)`, `(0,-5)`, as the existing `three` helper uses; add a larger
+hand-built world helper to `common` for tests that need room, leaving `R` alone; the existing
+limit tests at the end of `tests/pregame.rs` have no grain land, so they should stand
+unchanged): (1) zero centres at the limit → three
 sites from the best three markets that are ≥ spacing apart (give five markets, two close
 together); (2) two centres and no more markets → tier (b) picks the most tended tile and
 raises a market; (3) no tame land → tier (c) picks the most fertile grain tiles; (4) the
 mixed order: one tier-(a) market, then (b), then (c); (5) candidate in a sealed zone or
 closer than spacing is skipped; (6) one centre by itself and 2 topped up, `topped_up` has
 exactly the two new ids; (7) topped-up markets survive turns after the end. And: for sizes
-small/medium/large on seeds 1..=5 each, `w.run` to the end gives `end.centres.len() == 3`
-with the sites ≥ `centre_spacing` apart.
+small/medium/large, `w.run` to the end gives `end.centres.len() == 3` with the sites ≥
+`centre_spacing` apart (seeds 1..=5 on small; fewer on medium and large, by the measured
+test time: see `spec.md` "Test speed").
 
 ## 2. Events (`world.rs`, the steps)
 
@@ -114,8 +122,9 @@ find why (map land? unreachable grain? spacing?) and report; adjust the generato
 
 ## 6. Cross-build
 
-`cross-build.sh`: add a medium map pair (`"3 23"`) with a shorter run (say 150 turns) so the
-check stays fast; larger digests of a new map across native and wasm catch float drift in the
+`cross-build.sh` runs every pair for one `turns` (400): add a medium map pair (`"3 23"`) with a
+shorter run (say 150 turns; make the turns part of each pair, `"seed radius turns"`) so the check
+stays fast; larger digests of a new map across native and wasm catch float drift in the
 generator. Run `./build-web.sh && ./cross-build.sh` and put the result in yours.
 
 ## 7. Web crate

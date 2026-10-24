@@ -109,17 +109,21 @@ and `./build-web.sh` green (build-4 and build-5 also run `./cross-build.sh`).
 12. **Open land guarantee**: after generation, `map::open_sites` finds three centre-sized sites
     at least `PREGAME.centre_spacing` apart in the open (zone `Open`, connected, passable) land;
     if not, the closed features are re-rolled (up to 8 attempts, then the closed features are
-    dropped). A test holds it over many seeds and all sizes.
+    dropped, then, if the base land alone can't hold three sites, the whole map is re-rolled from
+    the continuing rng, up to 8 times). The guarantee applies only at radius 16 and up: tiny
+    hand-test radii (the tests' `flat()` is radius 6) get no closed country, no retry and no
+    `open_sites` check, and must still generate without panicking. A test holds it over many
+    seeds and all sizes.
 13. **The top-up** (`pregame::check_end`, at `w.turn + 1 >= max_turns` with fewer than
     `players` centres): keep the centres already chosen, then add sites until there are three
     in this order of preference, each at least `centre_spacing` steps from every taken site and
-    on open, passable land: (a) existing markets, best first (traders, then older, then lower
+    on passable land in an `Open`, `Valley` or `Neck` zone (never `Sealed`) and in the same passable region as the first centre: (a) existing markets, best first (traders, then older, then lower
     id), whatever their age or hearths; (b) the most tended land: tiles by `tame` (highest
     first), a market raised on it; (c) any fertile land: tiles with grain by fertility, a
     market raised on it. A raised market is an ordinary `Market` (founded this turn, no
     traders). `End` gains `topped_up: Vec<u32>` (the market ids added, a subset of `centres`).
     Markets in `End.centres` never fade after the end.
-14. **Events** are `world::Event { turn, kind, tile, clan, market }` pushed to
+14. **Events** are `world::Event { turn, kind, tile, clan, market, other }` (`other` is the daughter on a division) pushed to
     `World.events` by the steps where things happen; `#[serde(skip)]` so they're not saved or
     in the digest but a replay rebuilds them identically (the replay test compares them).
     `Event::text()` is the one place a line is worded; the CLI and the page use it. Kinds:
@@ -166,3 +170,14 @@ and `./build-web.sh` green (build-4 and build-5 also run `./cross-build.sh`).
 - All randomness through `rng::rand` on the main stream except the hidden-cost sub-stream.
   Iteration orders must be deterministic (no `HashMap`; sort before using).
 - A map generates in well under a second at radius 33; keep it so (bench).
+- **Test speed.** `cargo test` builds the engine unoptimised: a 300-turn small run takes about
+  26 s there (88 ms a turn; release is about 7 ms), and a large map has several times the clans.
+  Build-1 sets `[profile.dev] opt-level = 3` in `engine/Cargo.toml` (debug assertions and
+  overflow checks stay on) and records `cargo test` before and after. Tests that run whole
+  pre-games on medium and large maps use few seeds (say 2 medium, 1 large) unless the measured
+  time allows more; the whole `cargo test` should stay under about 10 minutes in CI.
+- **Hand-built worlds.** `core/tests/common/mod.rs`'s `flat()` calls `World::new` at radius 6 and
+  then overwrites terrain, caps and claims. Build-1 makes it also reset every new tile field
+  (`river`, `flow`, `lake`, `flood`, `zone`, `pass`, `trail_cost`, `span`) and pin `w.rng` and
+  `w.next_id` to the values the old generator left (print them before changing the generator),
+  so tests on hand-built worlds don't move.

@@ -9,6 +9,19 @@ First of five builds for #31, "The map and the page". Read `spec.md` here first 
 This step builds everything in the generator **except rivers, floodplains, deltas and closed
 country** (builds 2 and 3). After it the pre-game runs on the new map.
 
+## Before you change the generator
+
+- `core/tests/common/mod.rs`'s `flat()` builds `World::new` (radius 6, seed 1), then overwrites
+  terrain and food. Print `w.rng` and `w.next_id` from `flat()` now, and once the new generator
+  is in, pin both in `flat()` to those values, so every test on a hand-built world keeps its
+  random draws and clan ids. `flat()` also resets every new tile field (`river`, `flow`, `lake`,
+  `flood`, `zone`, `pass`, `trail_cost`, `span`) to its zero, so no river or hidden cost leaks
+  into a hand-built world. `island()` and `flat()` otherwise stay as they are.
+- `cargo test` runs the engine unoptimised and is slow (a 300-turn small run is ~26 s; release
+  ~2 s). Time `cargo test` first, then set `[profile.dev] opt-level = 3` in `engine/Cargo.toml`
+  (debug assertions stay on) and time it again; note both in your result. Later builds run
+  whole pre-games on medium and large maps in tests and rely on this.
+
 ## What to build
 
 1. **`data.rs`**
@@ -31,7 +44,9 @@ country** (builds 2 and 3). After it the pre-game runs on the new map.
    default `Open`). Only `lake`, `trail_cost` and `span` get real values in this step; the rest
    are initialised to their zero (`0`, `None`, `false`, `Open`) and filled by builds 2–3.
    Fix every place that builds a `Tile`.
-3. **`map::generate(radius, rng) -> Vec<Tile>`**, rewritten, in this order. Use the hex
+3. **`map::generate(radius, rng) -> Vec<Tile>`**, rewritten, and it must work at any radius
+   from 2 up (the tests build radius 6 worlds): features that need room (`edge ≥ 5`, inland seas,
+   lakes) are simply skipped when there is none, never a panic. In this order. Use the hex
    helpers (`Hex::within`, `neighbors`, `distance`, `DIRS`) and `map::index`:
    1. Per tile `h`, `m`, `y` from the main rng (draw them in that order per tile), three
       smoothing passes (`(2·self + Σ neighbours) / (2 + n)`), normalise each to 0..1.
@@ -43,9 +58,10 @@ country** (builds 2 and 3). After it the pre-game runs on the new map.
    4. Ridges: merge4's `raiseRidges` (random-walk chains of mountain, hills on the flanks
       with `flank_hills`, hills instead of mountain at a pass with `pass_chance`; ridges
       don't overwrite sea).
-   5. Rain shadow and deserts (decision 9): draw one wind direction from the rng. For each
-      plains tile count mountain tiles within `shadow_reach` steps *upwind* (along the
-      opposite of the wind direction; cap the count at 3). Score = `m − 0.25 × shadow` (tune
+   5. Rain shadow and deserts (decision 9): draw one wind direction `d` (an index into `DIRS`)
+      from the rng; the wind comes from that side. For each plains tile count mountain tiles
+      at `tile + k·DIRS[d]` for `k = 1..=shadow_reach` (the tiles upwind of it; cap the count
+      at 3). Score = `m − 0.25 × shadow` (tune
       the weight so deserts visibly sit behind ridges); the lowest-scoring plains become
       desert until `desert_share` of the land (not sea) is desert. Deserts only come from
       plains, as merge4.
@@ -59,7 +75,8 @@ country** (builds 2 and 3). After it the pre-game runs on the new map.
       that computes caps from terrain + flags + fertility, which build 2 extends.)
    9. Hidden trail costs (decision 10) from the sub-stream.
 4. **Seeding and landmasses** (`clans.rs` `seed`, `map::landmasses`): no logic change should
-   be needed because mountains aren't land. Check `seed` still gives each landmass of
+   be needed because mountains aren't land (build-3 adds the sealed-zone exception to both of
+   `seed`'s loops). Check `seed` still gives each landmass of
    `min_landmass`+ tiles a clan, and that `landmasses` is still deterministic.
 5. **`sansfiat map [--seed N] [--size small|medium|large | --radius N]`**: prints the map as
    ASCII, one char per tile, rows offset by half a tile per row (pointy-top), a legend, and

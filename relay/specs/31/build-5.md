@@ -10,6 +10,12 @@ warnings`, `./build-web.sh`, `./cross-build.sh`. Serve with
 
 The wasm side (`Sim.events(from)`, `sizes()`, the extra tile fields in `state()`) exists from
 build-4; if something the page needs isn't exposed, add it to `web/src/lib.rs`, additively.
+`state()` is the whole world as JSON (megabytes on a large map). If serialising and parsing it
+every turn is what keeps "fast" from keeping up, add (additively) a static layout call made once
+per map (terrain, river, flow, lake, flood, zone, pass per tile) and a per-turn call with only
+what changes (claims, trails, tame, clans, markets, `end`); `state()` stays for save/debug.
+After the pre-game ends, the centres to show are `end.centres` (also `summary.centres`), not a
+recomputed list.
 
 ## What to build
 

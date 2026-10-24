@@ -15,7 +15,8 @@ rivers (so rivers and coasts see the finished terrain). Per-817-tile counts in `
 `valleys` 2 (floor 1), `sealed` 1 (floor 1), `necks` 2 (floor 1). "A few of each, more on
 bigger maps."
 
-1. **Valley behind a pass** (`Zone::Valley`). Choose a centre `c` on land at `edge ≥ 6` with at
+1. **Valley behind a pass** (`Zone::Valley`). Choose a centre `c` on land at `edge ≥ ρ + 4` (the
+   wall, at ρ+1, stays 3 steps off the rim) with at
    least 7 land tiles' worth of interior, radius ρ = 2..=3 (interior = tiles within ρ of c, wall
    = tiles at distance ρ+1). Interior tiles stay as they are (but sea/mountain in the interior
    becomes plains/forest by the underlying noise: simply keep land and turn sea tiles to
@@ -40,7 +41,9 @@ bigger maps."
 All three kinds are tagged on the tiles; the wall tiles carry the zone too (so the page can
 outline them) except that the sea stays sea but zone isn't set on tiles that were outside.
 Zones don't overlap; keep ≥ 3 steps of clearance between features and don't build any within 3
-of the rim.
+of the rim. On small radii (< 16) build none (see `spec.md` decision 12). A small map has
+room for few: the 2 valleys, 1 sealed and 2 necks are a target, and a feature that can't be
+placed after a handful of random tries is skipped.
 
 ## Never where a centre has to be: `map::open_sites`
 
@@ -51,15 +54,19 @@ of the rim.
   Take the best sites first (most such tiles, then lowest index). Return as many as found up to
   3.
 - Generation retries: if `open_sites` finds fewer than 3, re-roll the closed features (not the
-  base land) up to 8 attempts, then drop all closed features (the map is then all open); the
-  base land alone must satisfy it for every seed in the tests (if some seed's base land can't
-  hold three sites, say so; for small maps there's a floor on how much land there must be,
-  see below).
-- After closing, call the same coast / lake / river steps.
+  base land) up to 8 attempts, then drop all closed features (the map is then all open). If even
+  then the base land can't hold three sites, re-roll the whole map from the continuing rng (up
+  to 8 times; the world's rng is whatever it is afterwards, deterministic). `open_sites` needs
+  fertility, so one attempt is: closed features, then coast, `lake`, rivers and `finish_caps`
+  (builds 1 and 2) on a copy of the base land, then `open_sites`; keep a snapshot of the base
+  land to start each attempt from. Report how often each fallback fired.
+- At radius < 16 skip all of this (no closed country, no check).
 
 ## What closed country means for the rest of the engine
 
-- **Seeding** (`clans.rs`): never seed a clan in a `Sealed` zone. Daughters and moves can't
+- **Seeding** (`clans.rs`): never seed a clan in a `Sealed` zone, in either of `seed`'s loops
+  (the per-landmass one: a radius-3 sealed interior has 37 tiles, over `min_landmass`; and the
+  random free-land one). Daughters and moves can't
   enter anyway (walls are mountain and sea); assert that in a test.
 - **Pass tiles**: nothing special in movement; `pass` is for the page and tests.
 - **Peninsulas** are ordinary land: they may be seeded, and may be settled by clans from the
@@ -69,9 +76,11 @@ of the rim.
 
 ## Tests (`core/tests/closed.rs`)
 
-- Over every size × 15 seeds: each size has at least `scaled(valleys)` valleys (one valley is
-  one connected `Valley` zone), at least one sealed valley, at least one neck; larger sizes
-  have more in total than smaller (compare totals pooled over seeds); zones don't overlap.
+- Over every size (radius 16 and up) × 15 seeds: pooled over the seeds, each size has at least
+  `15 × scaled(valleys) × 0.7` valleys (one valley is one connected `Valley` zone), and sealed
+  valleys and necks likewise; at least 12 of the 15 maps have each kind; larger sizes have more
+  in total than smaller; zones don't overlap. (A map can lose its closed features to the retry
+  fallback, so a per-map floor would be flaky: report how many maps lack each kind.)
 - Valley: its wall has exactly one or two pass tiles, each `HILLS` + `pass`; every other wall
   tile is mountain or sea; from the open outside you can reach the interior through a pass over
   passable land and **can't** reach it without (BFS over passable tiles that excludes the pass

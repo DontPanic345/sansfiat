@@ -27,7 +27,12 @@ a source is from water), `river_wiggle` 0.25.
   a river tile (it **joins**: `flow = Some(that tile)`). By construction it never revisits a
   tile and can't double back; a test proves it.
   Every attempt ends in water or a join, so every kept river is a success; no river is
-  dropped.
+  dropped. A source needs `river_min` (6) steps of land to the water, and a map of radius 16
+  has little land that far in: if small maps come out with no river of 5 or more tiles,
+  floodplains or deltas, tune `river_min`, `big_river` and `delta_river` (a lower `river_min`,
+  e.g. 4, is better than a lower floodplain threshold) and say what you changed. Each size must
+  have at least one river of 5+ tiles on every seed tested, and floodplains and deltas on
+  most seeds of medium and large.
 - **Fields.** Along the path set `flow` to the next tile, and recompute `river` (upstream
   tile count incl. self) for the whole network after all rivers are carved (topological: sum
   into the tile downstream; rivers are a forest of trees pointing to the sea, so a simple
@@ -73,8 +78,10 @@ Start values in `MAP`: `big_river` 8, `flood_reach` 6, `delta_river` 12,
   single course (two tributaries side by side) costs the extra; a confluence step along a
   `flow` is free.
 - Add `land::passable(w, i) -> bool` (`step_cost` without the river: terrain can be entered)
-  and use it where code asked `step_cost(w, i).is_some()` (`markets.rs`, `round.rs`,
-  `clans.rs`, `pregame.rs`). `cost_map` uses `step_cost(w, i, j)`.
+  and use it where code asked `step_cost(w, i).is_some()` (`markets.rs:35`, `round.rs:93, 124`,
+  `clans.rs:279`, `pregame.rs:57`). `cost_map` uses `step_cost(w, i, j)`. Tests that call
+  `step_cost(&w, tile)` (`tests/land.rs` `step_costs`, `tests/markets.rs`, the trail tests) move
+  to the new signature: pass a `from` that is no river's course, so their numbers stay.
 - A trail on a river tile bridges it: the check is `t.trail`, which both worn trails (the
   `hold` step) and built trails set. A trail on a river tile at the *course* does nothing
   more. Don't change what trails cost otherwise.
@@ -82,7 +89,8 @@ Start values in `MAP`: `big_river` 8, `flood_reach` 6, `delta_river` 12,
   (entering costs, leaving doesn't). Make sure rounds and `Legs` still compute `leg(a, b)` and
   `leg(b, a)` consistently with how they used to (look at `round.rs`: if it caches one
   direction and doubles it, the doubling is still the rule: say what you did); add a test
-  that a round and its reverse cost the same total.
+  that a round and its reverse cost the same total on constructed rounds (a river crossed once,
+  a round that runs along a river); if a legitimate case differs, say which and why.
 - Pre-game ending: `pregame::land_cover` uses passable land; rivers don't block it.
 
 ## Tests (`core/tests/rivers.rs`, `land.rs`)
