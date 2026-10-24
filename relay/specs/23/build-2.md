@@ -26,7 +26,9 @@ Work in `engine/`. Checks, all in `engine/`: `cargo test`, `cargo fmt --check`,
 4. **`engine/cross-build.mjs`**: Node (24, ESM, no dependencies). Arguments `seed radius
    turns`; it imports `./www/pkg/web.js` (resolve the path from `import.meta.url`, use
    `pathToFileURL` and `initSync({ module: readFileSync('www/pkg/web_bg.wasm') })`; the
-   `--target web` build has no auto-loading of the wasm under Node), makes
+   `--target web` build has no auto-loading of the wasm under Node; spec-review checked that a
+   dynamic `await import(pathToFileURL(...).href)` of `www/pkg/web.js` works under Node 24 with
+   no `package.json`), makes
    `new Sim(seed, radius)`, and prints the same `<turn> <digest>` lines as the CLI (turn 0
    first, then `sim.act('{"type":"endTurn"}')` and `sim.digest()` after each turn).
 5. **`engine/cross-build.sh`** (`set -euo pipefail`, `cd "$(dirname "$0")"`, executable): for
