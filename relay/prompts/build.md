@@ -1,12 +1,5 @@
 # Build step
 
-Your brief is the whole job: build what it says, with the tests it lists.
-
-1. Build it.
-2. Run the checks for what you touched (see "The runner") until they pass. Run all of them
-   again, exactly as listed, after your last edit: CI fails a piece on a single clippy lint,
-   tests included.
-3. Finish as "Finishing" says.
-
-When the brief or the spec turns out wrong, correct them in your commit and say so in your
-summary.
+Your brief is the job: build what it says, with its tests, and leave every check passing
+after your last edit. When the brief or the spec turns out wrong, correct them in your
+commit and say so in your summary, since later steps read them.

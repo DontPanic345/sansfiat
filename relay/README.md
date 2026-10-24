@@ -1,4 +1,8 @@
 # Relay
+_You and a team of runners are going a long way to a known finish, further than any of you
+could go alone. Pick up the baton from the runner before you, run your leg and hand it on;
+each leg starts right where the last one finished. The support crew marks out the course and
+keeps the race going between legs._
 
 Relay builds Sans Fiat one piece at a time, in cold `claude -p` sessions, with no one
 watching. The crew, `relay/relay.mjs`, runs in GitHub Actions (`relay.yml`). It picks the
@@ -8,81 +12,101 @@ Jogging, with GitHub instead of `state.json` holding the state.
 
 ## Pieces and steps
 
-A **piece** is an issue opened by Alan from a piece form (proof, merge or polish). Relay
-works on it once Alan adds `relay:ready`. Its **steps** are sub-issues, each carrying its
-model, effort, attempts, tokens, context and compactions in a hidden `<!-- relay {...} -->`
-block. The spec, the briefs and `steps.json` live on the piece's branch, `relay/<number>`,
-in `relay/specs/<number>/`.
+A **piece** starts as a proposal Claude brings to the owner. Once the owner is happy with it, Claude
+opens it as an issue labelled `kind:piece` and `relay:ready`, and starts a run. Relay reads
+these lines from its body, in any order:
+
+```
+**Goal:** what the piece delivers, or the one question a proof answers
+**Ends:** main, or its branch
+**Spec:** opus high, because …
+**Design:** docs/design/clans.md
+**Decided:** …
+**In scope:** …
+**Out of scope:** …
+```
+
+`Ends` and `Spec` are required: a piece without them is held. `Ends: main` changes the game;
+anything else is a proof, which stays on its branch. Every `docs/design/*.md` path in the
+body goes to the spec and review sessions in full.
+
+Its **steps** are sub-issues, each carrying its model, effort, attempts, tokens, cost,
+context, compactions, summary and decisions in a hidden `<!-- relay {...} -->` block. The
+spec, the briefs and `steps.json` live on the piece's branch, `relay/<number>`, in
+`relay/specs/<number>/`.
 
 | Step | What it does |
 |---|---|
-| `spec` | Writes the spec (with its scope map and design questions), a brief per step, and `steps.json` |
-| `spec-review` | Reviews them as their sessions will read them, and cuts work outside the scope |
-| *sign-off* | The crew makes the build and review steps and labels the piece `waiting`. Alan answers the design questions in `docs/design/`, checks the models, and comments `/relay go` |
-| `build-N` | Builds what its brief says. At most four |
-| `review` | The crew marks the PR ready, so CI runs. The session reviews the whole piece, fixes what's substantive, and waits for CI to go green |
+| `spec` | Writes the spec, a brief per later step, and `steps.json` with each step's model, effort and why. Runs on the model the piece's `Spec` line names |
+| `spec-review` | Reads the plan the way the later sessions will, and fixes it |
+| `build-N` | Builds what its brief says |
+| `review` | The crew marks the PR ready, so CI runs. The session reviews the whole piece, fixes what matters, and waits for CI to go green |
 
-Then it's Alan's turn: a proof's PR stays open with its findings and Alan closes the piece;
-a merge's or polish's PR is Alan's to approve and merge.
+The spec step isn't done until `steps.json` reads cleanly; then the crew makes every later
+step and carries on, with no stop for the owner. Every step's prompt carries every earlier step's
+summary and decisions.
 
-Merges never overlap: a merge waits while an older merge piece is open, and while an
-earlier milestone (by its number, "M1", "M2" …) is still open. Proofs can run ahead.
+Then it's the owner's turn: a proof's PR stays open with its findings and the owner closes the piece,
+which tags the branch head `proof/<number>`; a piece that ends on main has a PR for the owner to
+approve and merge. Closing a piece closes its open steps.
+
+Pieces that end on main never overlap: one waits while an older one is open. Proofs never
+wait.
 
 ## How a step counts
 
 Steps mark their own homework. A session commits and pushes to the piece's branch and
 writes `relay/runs/result.json`:
 
-- `done`, with a `summary`: the crew closes the step and posts the summary on the step and the PR.
+- `done`, with a `summary` and any `decisions`: the crew closes the step and posts both on
+  the step and the PR.
 - `pending`, with a `note`: the next attempt picks up from the note. Two unfinished attempts
   (a crash or timeout counts) block the step.
-- `blocked`, with a `blocker`: only for infrastructure or an account Alan must supply.
+- `blocked`, with a `blocker`: the step can't go on as it stands.
 
-A blocked step labels the piece `waiting`. Alan's reply on the piece unblocks it and goes
-to the next session. Anything new a session notices goes under `ideas`, never into code.
-The crew keeps them on the step and lists them in the step's PR comment; `/relay scope` shows
-every idea the piece has raised. They don't become issues: open one yourself for any worth
-keeping.
+A blocked step labels the piece `waiting`. The owner's reply on the piece unblocks it, goes to the
+next session, and starts a run. Anything new a session notices goes under `ideas`, never into
+code. The crew lists them in the step's PR comment. They don't become issues: open one yourself
+for any worth keeping.
 
 ## Commands
 
-On a piece's issue, from Alan only (`relay-events.yml`):
+On a piece's issue, from the owner only (`relay-events.yml`):
 
 | Command | Effect |
 |---|---|
-| `/relay go` | Sign off the spec and start building |
-| `/relay model <step> <model> [effort]` | Change an open step's model or effort |
-| `/relay retry [step]` | Give a blocked step two fresh attempts |
+| `/relay run` | Label the piece `relay:ready` if it isn't, and start a crew run now |
+| `/relay retry [step]` | Give a blocked step two fresh attempts, and start a run |
 | `/relay skip <step>` | Close a step without running it |
+| `/relay model <step> <model> [effort]` | Change an open step's model or effort |
 | `/relay pause` / `resume` | Hold the piece, or let it go again |
 | `/relay status` | The piece's steps, with their state and spend |
-| `/relay scope` | The spec's scope map and the ideas raised so far |
-| `/relay run` | Label the piece `relay:ready` if it isn't, and start a crew run now |
 
 ## What a session gets
 
-The crew writes each session's whole prompt and saves it beside the transcript in
-`runs/`. Spec and spec-review sessions get the piece as Alan wrote it and its design file;
-build sessions get only their brief, which carries all the design it needs; the review
-gets its brief, the diff and the whole spec. Every session gets `prompts/session.md`, its
-kind's prompt and its piece type's (`type-proof.md` and so on).
+The crew writes each session's whole prompt and saves it beside the transcript in `runs/`.
+Spec and spec-review sessions get the piece and its design files; build sessions get only
+their brief, which carries all the design it needs; the review gets its brief, the design
+files, the diff and the whole spec. Every session gets the earlier steps' summaries and
+decisions, `prompts/session.md` and its kind's prompt.
 
-Sessions never see the App's key. The crew keeps a fresh installation token in a file
-that git's credential helper and a `gh` wrapper read, so a 90-minute session never
-outlives its token.
+Sessions never see the App's key. The crew keeps a fresh installation token in a file that
+git's credential helper and a `gh` wrapper read, so a 90-minute session never outlives its
+token. Transcripts are redacted of the crew's secrets and of anything shaped like a GitHub
+token before they're written.
 
 ## Spend
 
-Each step records its tokens (every model, input, cache and output), the context its last
-turn held as a share of the window, and how many times it compacted. Pieces are sized so
-sessions shouldn't need to compact: a count above 0 says the step was too big. The board
-gets these as Tokens, Context and Compactions if those fields exist. Usage is paced as in
-Jogging: no step starts once the 5-hour window passes 50% or the weekly window passes its
-share of the week.
+Each step records its tokens (every model, input, cache and output), its cost at list price
+(the CLI's `total_cost_usd`, summed across attempts), the context its last turn held as a
+share of the window, and how many times it compacted. On a subscription the cost isn't
+money spent; it makes steps, models and pieces comparable. A crashed attempt has no result
+frame and records nothing. Usage is paced as in Jogging: no step starts once the 5-hour
+window passes 50% or the weekly window passes its share of the week.
 
 ## The board
 
-The crew updates "Sans Fiat Work", a project on Alan's account, when it can. A GitHub App
+The crew updates "Sans Fiat Work", a project on the owner's account, when it can. A GitHub App
 can't reach a personal account's project, so the board needs its own token: a classic
 personal access token with the `project` scope, stored as `RELAY_BOARD_TOKEN` in the `relay`
 environment. Without it, or without the project, the run log says so and everything else
@@ -92,34 +116,34 @@ The crew sets only the fields that exist, and only to options that exist:
 
 | Field | Type | Options |
 |---|---|---|
-| Status | Single select | Ready, Spec, Sign-off, Building, Waiting, Review, Done |
-| Piece type | Single select | proof, merge, polish |
+| Status | Single select | Ready, Spec, Building, Waiting, Review, Done |
+| Ends | Single select | main, branch |
 | Step | Single select | spec, spec-review, build, review |
 | Model | Single select | haiku, sonnet, opus |
 | Effort | Single select | low, medium, high |
-| Attempts, Tokens, Context, Compactions | Number | |
+| Attempts, Tokens, List $, Context, Compactions | Number | |
 
 ## Files
 
 | File | Written by |
 |---|---|
-| `relay.mjs`, `token.mjs`, tests | Claude Code sessions, by hand |
-| `prompts/*.md` | Alan owns them (CODEOWNERS). The rules sessions follow |
-| `usage.py` | Copied from Jogging: reads the subscription's usage |
+| `relay.mjs`, `token.mjs`, `usage.mjs`, tests | Claude Code sessions, by hand |
+| `prompts/*.md` | The owner. How the flow works, for the sessions in it |
 | `specs/<n>/` | Spec and spec-review sessions, on the piece's branch |
 | `runs/` | The crew and sessions: prompts, transcripts, `result.json`. Not committed |
 
+`node relay/usage.mjs` prints the subscription's usage windows.
+
 ## Running it
 
-The crew runs every six hours (at 17 past 00, 06, 12 and 18 UTC). Start one sooner from
-Actions → relay → Run workflow, or `/relay run` on a piece. To turn the schedule off, comment
-out `schedule` in `.github/workflows/relay.yml`. The
-`relay` environment holds `RELAY_APP_ID`, `RELAY_APP_KEY`, `CLAUDE_CODE_OAUTH_TOKEN` and,
-for the board, `RELAY_BOARD_TOKEN`.
+A run starts every six hours (`schedule` in `.github/workflows/relay.yml`), from Actions →
+relay → Run workflow, or from `/relay run`, `/relay retry` or a reply to a blocked step. The
+`relay` environment holds `RELAY_APP_ID`, `RELAY_APP_KEY`, `CLAUDE_CODE_OAUTH_TOKEN` and, for
+the board, `RELAY_BOARD_TOKEN`.
 
 Each run installs the latest Claude Code. The run log and each finished step's comment say
 which version and model a session ran on. If a session never sends the init frame the crew
 reads (the CLI's stream-json changed, or it failed to start), the run stops without counting
 an attempt, and the Relay log issue says why.
 
-Not built yet: milestone play checks, tags and releases.
+Not built yet: the retro after a milestone, milestone play checks, tags and releases.

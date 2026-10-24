@@ -1,36 +1,14 @@
 # Synced to the repo by .github/workflows/labels.yml. Labels not listed here are left alone.
 
 # Kind
-- { name: "kind:piece", color: "1d76db", description: "One unit of work: a proof, a merge or a polish" }
+- { name: "kind:piece", color: "1d76db", description: "One piece of work Relay builds, opened from an agreed proposal" }
 - { name: "kind:step", color: "c5def5", description: "One session's job inside a piece" }
-- { name: "kind:playcheck", color: "0e8a16", description: "What Alan plays to pass a milestone" }
-- { name: "kind:bug", color: "d73a4a", description: "Something broken in the game" }
 - { name: "kind:idea", color: "fbca04", description: "Something new that is out of scope today" }
 - { name: "kind:chore", color: "bfdadc", description: "Repo or Relay upkeep" }
 
-# Piece type
-- { name: "type:proof", color: "5319e7", description: "Answers one question on its own branch; the PR isn't merged" }
-- { name: "type:merge", color: "006b75", description: "Brings one proven mechanic into the game" }
-- { name: "type:polish", color: "c2e0c6", description: "Improves something merged, with no new rules" }
-
-# Area
-- { name: "area:map", color: "ededed", description: "" }
-- { name: "area:economy", color: "ededed", description: "" }
-- { name: "area:civ", color: "ededed", description: "" }
-- { name: "area:explore", color: "ededed", description: "" }
-- { name: "area:supply", color: "ededed", description: "" }
-- { name: "area:military", color: "ededed", description: "" }
-- { name: "area:ai", color: "ededed", description: "" }
-- { name: "area:web", color: "ededed", description: "" }
-- { name: "area:infra", color: "ededed", description: "" }
-
-# Relay control (Alan only)
-- { name: "relay:ready", color: "0e8a16", description: "Alan: Relay may start this piece" }
-- { name: "relay:paused", color: "b60205", description: "Alan: Relay leaves this piece alone" }
+# Relay control (owner only)
+- { name: "relay:ready", color: "0e8a16", description: "Owner: Relay may start this piece" }
+- { name: "relay:paused", color: "b60205", description: "Owner: Relay leaves this piece alone" }
 
 # Waiting
-- { name: "waiting", color: "e99695", description: "Relay needs Alan: a spec sign-off or a blocked step" }
-
-# Outcome
-- { name: "scope-cut", color: "f9d0c4", description: "Spec review removed work outside the scope" }
-- { name: "budget-stop", color: "f9d0c4", description: "A session stopped when the usage budget ran out" }
+- { name: "waiting", color: "e99695", description: "Relay needs the owner: a blocked step" }

@@ -3,7 +3,7 @@
 //
 //   node relay/relay.mjs run       # run steps until the budget, the deadline or the work runs out
 //   node relay/relay.mjs status    # print the next step and the pacing verdict, run nothing
-//   node relay/relay.mjs event     # act on Alan's comment (relay-events.yml)
+//   node relay/relay.mjs event     # act on the owner's comment (relay-events.yml)
 //   node relay/relay.mjs report <message>   # comment on the Relay log issue
 //
 // GitHub holds the state. A piece is an open `kind:piece` issue labelled `relay:ready`; its
@@ -15,7 +15,7 @@
 // Environment: RELAY_APP_ID and RELAY_APP_KEY (the App, see token.mjs), CLAUDE_CODE_OAUTH_TOKEN,
 // RELAY_BOARD_TOKEN (optional: a classic token with the `project` scope, since an App can't
 // reach a personal account's project), and for `event` GITHUB_EVENT_PATH and DISPATCH_TOKEN
-// (the workflow's own token, for `/relay run`).
+// (the workflow's own token, for starting a run).
 
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -23,18 +23,18 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { appToken } from "./token.mjs";
+import { readUsage } from "./usage.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.dirname(HERE);
 const RUNS = path.join(HERE, "runs");
 const RESULT = path.join(RUNS, "result.json");
-export const ALAN = "DontPanic345";
-const GH_REPO = `${ALAN}/sansfiat`;
+export const OWNER = "DontPanic345";
+const GH_REPO = `${OWNER}/sansfiat`;
 const BOARD = "Sans Fiat Work";
 const LOG_TITLE = "Relay log";
 const WORKFLOW = "relay.yml";
 const MAX_ATTEMPTS = 2;
-export const MAX_BUILDS = 4;
 const STARTED = Date.now();
 // The job is killed at 345 minutes. No step starts after the deadline, and none runs past
 // its timeout, so the crew always gets to record the last one.
@@ -45,7 +45,6 @@ export const SECRETS = ["CLAUDE_CODE_OAUTH_TOKEN", "RELAY_APP_KEY", "DISPATCH_TO
 
 export const MODELS = ["haiku", "sonnet", "opus"];
 export const EFFORTS = ["low", "medium", "high"];
-export const TYPES = ["proof", "merge", "polish"];
 
 // ---- Pure logic (covered by relay.test.mjs) ----
 
@@ -62,31 +61,6 @@ export const pace = ({ session, weekly, weeklyResetsAt }, now) => {
     return { ok: true, reason: `5-hour ${session}%, weekly ${weekly}% < ${weeklyLimit.toFixed(1)}% (day ${day})` };
 };
 
-export const parseUsage = (raw) => {
-    const limits = raw.limits ?? [];
-    const session = limits.find((l) => l.kind === "session");
-    const weekly = limits.find((l) => l.kind === "weekly_all");
-    if (session && weekly) {
-        return { session: session.percent, weekly: weekly.percent, weeklyResetsAt: new Date(weekly.resets_at) };
-    }
-    if (raw.five_hour && raw.seven_day) {
-        return {
-            session: raw.five_hour.utilization,
-            weekly: raw.seven_day.utilization,
-            weeklyResetsAt: new Date(raw.seven_day.resets_at),
-        };
-    }
-    const uw = raw.unifiedWindows;
-    if (uw?.five_hour && uw?.seven_day) {
-        return {
-            session: uw.five_hour.utilization * 100,
-            weekly: uw.seven_day.utilization * 100,
-            weeklyResetsAt: new Date(uw.seven_day.resetsAt * 1000),
-        };
-    }
-    throw new Error("no session/weekly windows in the usage payload");
-};
-
 // The `<!-- relay {...} -->` block in a step issue's body.
 const META = /<!-- relay (\{.*?\}) -->/s;
 export const readMeta = (body) => {
@@ -99,18 +73,29 @@ export const writeMeta = (body, meta) => {
     return META.test(body ?? "") ? body.replace(META, () => block) : `${(body ?? "").trimEnd()}\n\n${block}\n`;
 };
 
-// An issue form's answers, by heading: `### In scope` → `form["in scope"]`.
-export const parseForm = (body) => {
-    const form = {};
-    for (const part of (body ?? "").split(/^### /m).slice(1)) {
-        const nl = part.indexOf("\n");
-        const value = part.slice(nl + 1).trim();
-        form[part.slice(0, nl).trim().toLowerCase()] = value === "_No response_" ? "" : value;
-    }
-    return form;
+// A `**Name:** value` line in a piece's body (bold, list marker and colon placement vary), or null.
+export const pieceField = (body, name) => {
+    const m = new RegExp(`^[\\s>*-]*${name}[*\\s]*:[*\\s]*(.+)$`, "im").exec(body ?? "");
+    return m ? m[1].trim() : null;
 };
 
-export const pieceType = (labels) => TYPES.find((t) => labels.includes(`type:${t}`)) ?? null;
+// `**Ends:** main` changes the game; `**Ends:** its branch` is a proof. null when the line is missing.
+export const endsOnMain = (body) => {
+    const ends = pieceField(body, "Ends");
+    return ends ? /\bmain\b/i.test(ends) : null;
+};
+
+// `**Spec:** opus high, because …`: the spec step's model, effort and why, or null.
+export const specChoice = (body) => {
+    const line = pieceField(body, "Spec");
+    const words = (line ?? "").toLowerCase().split(/[^a-z]+/);
+    const model = words.find((w) => MODELS.includes(w));
+    const effort = words.find((w) => EFFORTS.includes(w));
+    return model && effort ? { model, effort, why: line } : null;
+};
+
+// The `docs/design/` files a piece's body names.
+export const designPaths = (body) => [...new Set((body ?? "").match(/docs\/design\/[\w./-]+\.md/g) ?? [])];
 
 // Steps run spec, spec-review, build-1 … build-N, review.
 export const stepRank = (id) => {
@@ -135,63 +120,56 @@ export const checkSteps = (text) => {
     } catch (e) {
         return { error: `steps.json isn't JSON: ${e.message}` };
     }
-    if (!Array.isArray(steps) || steps.length < 2) return { error: "steps.json must list the build steps and the review" };
-    const builds = steps.slice(0, -1);
-    if (steps.at(-1).id !== "review") return { error: "the last step in steps.json must be `review`" };
-    if (builds.length > MAX_BUILDS) return { error: `steps.json has ${builds.length} build steps; at most ${MAX_BUILDS}` };
+    const ids = Array.isArray(steps) ? steps.map((s) => s?.id) : [];
+    if (ids[0] !== "spec-review" || ids.at(-1) !== "review" || ids.length < 3) {
+        return { error: "steps.json must list `spec-review`, the build steps, then `review`" };
+    }
+    const builds = steps.slice(1, -1);
     for (const [i, s] of builds.entries()) {
-        if (s.id !== `build-${i + 1}`) return { error: `step ${i + 1} in steps.json must be \`build-${i + 1}\`, not \`${s.id}\`` };
+        if (s.id !== `build-${i + 1}`) return { error: `build step ${i + 1} in steps.json must be \`build-${i + 1}\`, not \`${s.id}\`` };
     }
     for (const s of steps) {
         if (!MODELS.includes(s.model)) return { error: `${s.id}: model must be one of ${MODELS.join(", ")}` };
         if (!EFFORTS.includes(s.effort)) return { error: `${s.id}: effort must be one of ${EFFORTS.join(", ")}` };
         if (!s.title) return { error: `${s.id}: no title` };
+        if (!s.why) return { error: `${s.id}: no why for its model and effort` };
     }
     return { steps };
 };
 
-// The milestone number in a title such as "M2 Pre-game", for ordering gates.
-const milestoneRank = (m) => (m ? Number(/M(\d+)/i.exec(m.title)?.[1] ?? 999) : 9999);
-
-// Why a piece can't run now, or null when it can. `pieces` are every open piece, ready or
-// not, and `openMilestones` the repo's open milestones.
-export const holdReason = (piece, pieces, openMilestones) => {
+// Why a piece can't run now, or null when it can. `pieces` are every open piece, ready or not.
+export const holdReason = (piece, pieces) => {
     if (!piece.labels.includes("relay:ready")) return "not ready";
-    // Anyone can open an issue, but only Alan's words reach a session.
-    if (piece.author !== ALAN) return "not opened by Alan";
+    // Anyone can open an issue, but only the owner's words reach a session.
+    if (piece.author !== OWNER) return "not opened by the owner";
     if (piece.labels.includes("relay:paused")) return "paused";
-    if (piece.labels.includes("waiting")) return "waiting on Alan";
-    if (!pieceType(piece.labels)) return "no type label";
-    if (pieceType(piece.labels) === "merge") {
-        // Merges never overlap, and a milestone's merges wait for the gates before it.
-        const earlier = pieces.find((p) => p.number < piece.number && pieceType(p.labels) === "merge");
-        if (earlier) return `merge #${earlier.number} goes first`;
-        const gate = openMilestones.find((m) => milestoneRank(m) < milestoneRank(piece.milestone));
-        if (gate) return `waiting for the ${gate.title} gate`;
+    if (piece.labels.includes("waiting")) return "waiting on the owner";
+    const onMain = endsOnMain(piece.body);
+    if (onMain === null) return "the body has no `Ends:` line";
+    if (piece.steps.length === 0 && !specChoice(piece.body)) return "the body has no `Spec:` model and effort";
+    // Pieces that change main go one at a time, so each starts from the last one merged.
+    if (onMain) {
+        const earlier = pieces.find((p) => p.number < piece.number && endsOnMain(p.body));
+        if (earlier) return `#${earlier.number} goes to main first`;
     }
     return null;
 };
 
 // What the crew does next for one piece: "start" (it has no steps yet), "step" (run
-// `step`), "signoff" (the spec is reviewed but its build steps aren't made), or null.
+// `step`), "plan" (the spec is done but its steps aren't made), or null.
 export const pieceAction = (piece) => {
     if (piece.steps.length === 0) return { action: "start" };
     const steps = sortSteps(piece.steps);
     const open = steps.find((s) => s.state === "open");
     if (open) return open.meta.status === "blocked" ? null : { action: "step", step: open };
-    const reviewed = steps.some((s) => s.meta.id === "spec-review");
-    const built = steps.some((s) => stepKind(s.meta.id) === "build" || s.meta.id === "review");
-    if (reviewed && !built) return { action: "signoff" };
+    if (steps.every((s) => s.meta.id === "spec")) return { action: "plan" };
     return null;
 };
 
-// The next piece and what to do with it: pieces in milestone order, then oldest first.
-export const nextWork = (pieces, openMilestones) => {
-    const order = [...pieces].sort(
-        (a, b) => milestoneRank(a.milestone) - milestoneRank(b.milestone) || a.number - b.number,
-    );
-    for (const piece of order) {
-        if (holdReason(piece, pieces, openMilestones)) continue;
+// The next piece and what to do with it, oldest first.
+export const nextWork = (pieces) => {
+    for (const piece of [...pieces].sort((a, b) => a.number - b.number)) {
+        if (holdReason(piece, pieces)) continue;
         const next = pieceAction(piece);
         if (next) return { piece, ...next };
     }
@@ -214,23 +192,10 @@ export const atLevel = (md, level = 2) => {
         .join("\n");
 };
 
-// The text under a heading, e.g. "Scope map", or null. Matches a heading that starts with it.
-export const section = (md, name) => {
-    const lines = (md ?? "").split("\n");
-    let fenced = false;
-    let start = -1;
-    let level = 0;
-    for (const [i, line] of lines.entries()) {
-        if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-        const m = !fenced && /^(#{1,6})\s+(.+?)\s*$/.exec(line);
-        if (!m) continue;
-        if (start >= 0 && m[1].length <= level) return lines.slice(start, i).join("\n").trim();
-        if (start < 0 && m[2].toLowerCase().startsWith(name.toLowerCase())) {
-            start = i;
-            level = m[1].length;
-        }
-    }
-    return start >= 0 ? lines.slice(start).join("\n").trim() : null;
+// A finished step's summary and decisions, as later steps see them.
+export const soFar = (s) => {
+    const decided = (s.meta.decisions ?? []).map((d) => `\n  - Decided: ${d.decision}${d.why ? ` (${d.why})` : ""}`).join("");
+    return `- **${s.meta.id}**: ${s.meta.summary}${decided}`;
 };
 
 // The `relay/prompts/` files each kind of step follows, besides `session.md`.
@@ -244,45 +209,43 @@ export const PROMPTS_FOR = {
 // A session's whole prompt: its step first, then only the material that serves it, then
 // the rules for its kind of step. Throws when a build or review step has no brief; the
 // crew blocks the step on that.
-// `files` holds `prompts` (name → text), `brief`, `spec` and `design` (null when missing),
-// `designFiles` (paths in docs/design/), and `diffStat` (review only).
+// `files` holds `prompts` (name → text), `brief` and `spec` (null when missing), `design`
+// (path → text, null for a named file that doesn't exist), `designFiles` (every path in
+// docs/design/), and `diffStat` (review only).
 export const sessionPrompt = (piece, step, files) => {
     const kind = stepKind(step.meta.id);
-    const type = pieceType(piece.labels);
-    const form = parseForm(piece.body);
-    const designPath = form["design file"] || "(none given)";
     const parts = [
         `You are a Relay session for Sans Fiat, in GitHub Actions with no other context: one cold session ` +
-            `doing one step of ${type} piece #${piece.number}, "${piece.title}". You are on its branch, ` +
-            `\`${branchOf(piece)}\`, and its spec lives in \`${specDir(piece)}/\`. This prompt holds Relay's ` +
-            `rules; the design and the code hold the rest.`,
+            `doing one step of piece #${piece.number}, "${piece.title}". You are on its branch, ` +
+            `\`${branchOf(piece)}\`, and its spec lives in \`${specDir(piece)}/\`. This prompt holds how Relay ` +
+            `works; the design and the code hold the rest.`,
     ];
     if (kind === "build" || kind === "review") {
         if (!files.brief) throw new Error(`${specDir(piece)}/${step.meta.id}.md is missing`);
         parts.push(atLevel(files.brief.trim(), 1));
     } else {
         const what = kind === "spec" ? "Write the spec, the briefs and steps.json" : "Review the spec, the briefs and steps.json";
-        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what} for this piece, as Alan wrote it:`);
+        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what} for this piece, as agreed with the owner:`);
         parts.push(atLevel(`# The piece\n\n${piece.body.trim()}`));
     }
     if (step.meta.note) parts.push(`# The last attempt didn't finish\n\nPick up from here.\n\n${step.meta.note}`);
-    if (step.meta.reply) parts.push(`# Alan's reply to this step's blocker\n\nAct on it.\n\n"""${step.meta.reply}"""`);
+    if (step.meta.reply) parts.push(`# The owner's reply to this step's blocker\n\nAct on it.\n\n"""${step.meta.reply}"""`);
     if (kind !== "build") {
-        const design = files.design
-            ? atLevel(files.design.trim(), 3)
-            : "That file doesn't exist yet. Every rule the piece needs is then a design question for Alan.";
-        const others = (files.designFiles ?? []).map((f) => `- \`${f}\``).join("\n") || "- (none yet)";
-        parts.push(`# The design\n\nThe piece builds \`${designPath}\`:\n\n${design}\n\nThe other design files, to read as you need them:\n\n${others}`);
+        const named = Object.entries(files.design ?? {});
+        const builds = named.length
+            ? named.map(([f, text]) => `## \`${f}\`\n\n${text ? atLevel(text.trim(), 3) : "That file doesn't exist yet."}`).join("\n\n")
+            : "The piece names no design file.";
+        const others = (files.designFiles ?? []).filter((f) => !(f in (files.design ?? {})));
+        const rest = others.length ? `\n\nThe other design files, to read as you need them:\n\n${others.map((f) => `- \`${f}\``).join("\n")}` : "";
+        parts.push(`# The design\n\n${builds}${rest}`);
     }
     if (kind === "review") {
         parts.push(`# The diff to review\n\nThe piece's changes against \`main\`:\n\n\`\`\`\n${(files.diffStat ?? "").trim()}\n\`\`\``);
         if (files.spec) parts.push(`# The whole spec\n\n${atLevel(files.spec.trim())}`);
     }
     const done = sortSteps(piece.steps).filter((s) => s.state === "closed" && s.meta.summary);
-    if (done.length) {
-        parts.push(`# This piece so far\n\n${done.map((s) => `- **${s.meta.id}**: ${s.meta.summary}`).join("\n")}`);
-    }
-    for (const name of [...PROMPTS_FOR[kind], `type-${type}`, "session"]) {
+    if (done.length) parts.push(`# This piece so far\n\n${done.map(soFar).join("\n")}`);
+    for (const name of [...PROMPTS_FOR[kind], "session"]) {
         if (files.prompts[name]) parts.push(atLevel(files.prompts[name].trim(), 1));
     }
     parts.push(`Do this one step, then finish as "Finishing" says.`);
@@ -311,9 +274,9 @@ export const initProblem = (frame, model) => {
     return null;
 };
 
-// What a session used: every token across its models, the context its last turn held as a
-// share of the step model's window, and how many times it compacted. Pieces are sized so a
-// session shouldn't need to compact; a count above 0 says the step was too big.
+// What a session used: every token across its models, what they'd cost at list price (the
+// CLI's own figure), the context its last turn held as a share of the step model's window,
+// and how many times it compacted. A count above 0 says the step was too big.
 export const sessionStats = (lastAssistant, result, model, compactions = 0) => {
     const usage = result?.modelUsage ?? {};
     const tokens = Object.values(usage).reduce(
@@ -323,8 +286,10 @@ export const sessionStats = (lastAssistant, result, model, compactions = 0) => {
     const u = lastAssistant?.message?.usage;
     const held = u ? (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.output_tokens ?? 0) : 0;
     const window = Object.entries(usage).find(([k]) => k.includes(model))?.[1]?.contextWindow ?? 200_000;
-    return { tokens, context: Math.round((held / window) * 100), compactions };
+    return { tokens, cost: result?.total_cost_usd ?? 0, context: Math.round((held / window) * 100), compactions };
 };
+
+export const dollars = (n) => `$${(n ?? 0).toFixed(2)}`;
 
 // How a session ended: what it wrote to result.json, or null when it wrote nothing usable.
 export const readResult = (text) => {
@@ -350,6 +315,8 @@ export const applyResult = (meta, result, exitOk) => {
         delete next.note;
         next.status = "done";
         if (result.summary) next.summary = result.summary;
+        const decisions = (Array.isArray(result.decisions) ? result.decisions : []).filter((d) => d?.decision);
+        if (decisions.length) next.decisions = decisions.map((d) => ({ decision: String(d.decision), why: String(d.why ?? "") }));
         return { meta: next, outcome: "done" };
     }
     if (status === "blocked") {
@@ -366,21 +333,12 @@ export const applyResult = (meta, result, exitOk) => {
     return { meta: next, outcome: "blocked", why: `it ended ${next.attempts} times without finishing. Last: ${next.note}` };
 };
 
-// Ideas a session noticed stay on its step, never more code in the piece and never an issue
-// each: Alan reads them in the step's comments or with `/relay scope`.
-export const addIdeas = (meta, ideas) => {
-    const known = new Set((meta.ideas ?? []).map((i) => i.title));
-    const fresh = (Array.isArray(ideas) ? ideas : []).filter((i) => i?.title && !known.has(i.title) && known.add(i.title));
-    if (fresh.length === 0) return meta;
-    return { ...meta, ideas: [...(meta.ideas ?? []), ...fresh.map((i) => ({ title: String(i.title), body: String(i.body ?? "") }))] };
-};
-// What a spec review says it cut, or "" when it cut nothing (sessions sometimes send [], "" or "none").
-export const scopeCutText = (cut) => {
-    const text = (Array.isArray(cut) ? cut.join("; ") : typeof cut === "string" ? cut : "").trim();
-    return /^(none|nothing)\.?$/i.test(text) ? "" : text;
-};
-
-export const ideaList = (ideas) => (ideas ?? []).map((i) => `- **${i.title}**${i.body ? `: ${i.body}` : ""}`).join("\n");
+// The ideas a session noticed, as a list for its PR comment.
+export const ideaList = (ideas) =>
+    (Array.isArray(ideas) ? ideas : [])
+        .filter((i) => i?.title)
+        .map((i) => `- **${i.title}**${i.body ? `: ${i.body}` : ""}`)
+        .join("\n");
 
 // A `/relay …` command in a comment, or null.
 export const parseCommand = (body) => {
@@ -398,21 +356,35 @@ export const applyModel = (meta, args) => {
     return { ...meta, model: model ?? meta.model, effort: effort ?? meta.effort };
 };
 
-// The steps table for the sign-off and `/relay status`.
-export const stepsTable = (steps) =>
-    [
-        "| Step | State | Model | Effort | Attempts | Tokens | Context | Compactions | Why |",
-        "|---|---|---|---|---|---|---|---|---|",
-        ...sortSteps(steps).map((s) => {
+// The steps table for `/relay status`, with the piece's total cost.
+export const stepsTable = (steps) => {
+    const sorted = sortSteps(steps);
+    const total = sorted.reduce((n, s) => n + (s.meta.cost ?? 0), 0);
+    return [
+        "| Step | State | Model | Effort | Attempts | Tokens | List $ | Context | Compactions | Why |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+        ...sorted.map((s) => {
             const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : "done") : s.meta.status ?? "pending";
             const why = (s.meta.why ?? "").replaceAll("|", "\\|");
             const tokens = s.meta.tokens ? s.meta.tokens.toLocaleString("en-NZ") : "";
+            const cost = s.meta.cost != null ? dollars(s.meta.cost) : "";
             const context = s.meta.context != null ? `${s.meta.context}%` : "";
-            return `| ${s.meta.id} | ${state} | ${s.meta.model} | ${s.meta.effort} | ${s.meta.attempts ?? 0} | ${tokens} | ${context} | ${s.meta.compactions ?? ""} | ${why} |`;
+            return `| ${s.meta.id} | ${state} | ${s.meta.model} | ${s.meta.effort} | ${s.meta.attempts ?? 0} | ${tokens} | ${cost} | ${context} | ${s.meta.compactions ?? ""} | ${why} |`;
         }),
+        "",
+        `${dollars(total)} at list price so far.`,
     ].join("\n");
+};
 
-export const redact = (text, secrets) => secrets.filter((s) => s && s.length >= 8).reduce((t, s) => t.split(s).join("***"), text);
+// GitHub tokens (an installation token's `ghs_`, a classic PAT's `ghp_`, a fine-grained
+// `github_pat_`), whether or not they're in `secrets`: a session can read the token file.
+const GITHUB_TOKEN = /\b(gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})\b/g;
+
+export const redact = (text, secrets) =>
+    secrets
+        .filter((s) => s && s.length >= 8)
+        .reduce((t, s) => t.split(s).join("***"), text)
+        .replace(GITHUB_TOKEN, "***");
 
 // ---- Side effects ----
 
@@ -522,7 +494,7 @@ const loadBoard = async () => {
                 id title fields(first: 50) { nodes {
                     ... on ProjectV2Field { id name dataType }
                     ... on ProjectV2SingleSelectField { id name dataType options { id name } } } } } } } }`,
-            { login: ALAN, q: BOARD },
+            { login: OWNER, q: BOARD },
             BOARD_TOKEN,
         );
         const project = data.user.projectsV2.nodes.find((p) => p.title === BOARD);
@@ -570,11 +542,11 @@ const setBoard = async (nodeId, values) => {
     }
 };
 
-const setStatus = (piece, status) => setBoard(piece.nodeId, { Status: status, "Piece type": pieceType(piece.labels) });
+const setStatus = (piece, status) => setBoard(piece.nodeId, { Status: status, Ends: endsOnMain(piece.body) ? "main" : "branch" });
 
 // ---- Git ----
 
-// Alan may push to a piece's branch while a run is going, so every push rebases first.
+// The owner may push to a piece's branch while a run is going, so every push rebases first.
 const push = (branch) => {
     for (let i = 1; ; i++) {
         try {
@@ -731,17 +703,13 @@ const runSession = (piece, step, prompt) =>
 // The files a step's prompt draws on, read from the piece's branch.
 const stepPrompt = (piece, step) => {
     const kind = stepKind(step.meta.id);
-    const type = pieceType(piece.labels);
-    const prompts = Object.fromEntries(
-        [...PROMPTS_FOR[kind], `type-${type}`, "session"].map((n) => [n, readRepo(`relay/prompts/${n}.md`)]),
-    );
-    const designPath = parseForm(piece.body)["design file"];
+    const prompts = Object.fromEntries([...PROMPTS_FOR[kind], "session"].map((n) => [n, readRepo(`relay/prompts/${n}.md`)]));
     const designDir = path.join(REPO, "docs/design");
     const files = {
         prompts,
         brief: readRepo(`${specDir(piece)}/${step.meta.id}.md`),
         spec: readRepo(`${specDir(piece)}/spec.md`),
-        design: designPath && /^docs\/design\/[\w./-]+$/.test(designPath) ? readRepo(designPath) : null,
+        design: Object.fromEntries(designPaths(piece.body).map((f) => [f, readRepo(f)])),
         designFiles: fs.existsSync(designDir) ? fs.readdirSync(designDir).map((f) => `docs/design/${f}`) : [],
         diffStat: kind === "review" ? git("diff", "--stat=120", "origin/main...HEAD") : "",
     };
@@ -751,7 +719,7 @@ const stepPrompt = (piece, step) => {
 // ---- Piece transitions ----
 
 const findPr = async (piece) => {
-    const prs = await github("GET", `/pulls?state=open&head=${ALAN}:${encodeURIComponent(branchOf(piece))}`);
+    const prs = await github("GET", `/pulls?state=open&head=${OWNER}:${encodeURIComponent(branchOf(piece))}`);
     return prs[0] ?? null;
 };
 
@@ -767,43 +735,29 @@ const createStep = async (piece, s) => {
     log(`#${piece.number}: made step ${s.id} (#${issue.number})`);
 };
 
-// A new piece gets its spec and spec-review steps. Alan can change their models on the
-// step issues, or with `/relay model`, before they run.
+// A new piece gets its spec step, on the model and effort the piece's body chose.
 const startPiece = async (piece) => {
-    await createStep(piece, { id: "spec", title: "Spec and briefs", model: "opus", effort: "high", why: "Writes the spec, briefs and steps" });
-    await createStep(piece, { id: "spec-review", title: "Review the spec", model: "sonnet", effort: "high", why: "Checks the briefs and cuts work outside the scope" });
+    const { model, effort, why } = specChoice(piece.body);
+    await createStep(piece, { id: "spec", title: "Spec and briefs", model, effort, why });
     await setStatus(piece, "Spec");
 };
 
-// After the spec review: the build and review steps are made from steps.json, and the
-// piece waits for Alan's `/relay go`.
-const signOff = async (piece) => {
+const readSteps = (piece) => checkSteps(readRepo(`${specDir(piece)}/steps.json`) ?? "");
+
+// After the spec: every later step, from steps.json. The spec step checked it before it
+// closed, so an error here means the branch changed since; the spec runs again to fix it.
+const plan = async (piece) => {
     checkoutPiece(piece);
-    const { steps, error } = checkSteps(readRepo(`${specDir(piece)}/steps.json`) ?? "");
+    const { steps, error } = readSteps(piece);
     if (error) {
-        await addLabel(piece.number, "waiting");
-        await comment(piece.number, `⛔ The spec's steps can't be read: ${error}\n\nFix \`${specDir(piece)}/steps.json\` on \`${branchOf(piece)}\`, then \`/relay go\`.`);
-        await setStatus(piece, "Waiting");
+        const spec = piece.steps.find((s) => s.meta.id === "spec");
+        await github("PATCH", `/issues/${spec.number}`, { state: "open" });
+        await saveMeta(spec, { ...spec.meta, status: "pending", note: `steps.json can't be read: ${error}` });
+        log(`#${piece.number}: ${error}; the spec runs again`);
         return;
     }
-    // Waiting first: if the crew stops partway, no build starts before Alan signs off.
-    await addLabel(piece.number, "waiting");
     for (const s of steps) await createStep(piece, s);
-    const fresh = await loadPiece(piece.number);
-    const pr = await findPr(piece);
-    await comment(
-        piece.number,
-        [
-            `📝 The spec is reviewed and ready for your sign-off: \`${specDir(piece)}/spec.md\`${pr ? ` in ${pr.html_url}` : ""}.`,
-            "",
-            stepsTable(fresh.steps.filter((s) => s.state === "open")),
-            "",
-            "Answer any design questions in `docs/design/` first. Then:",
-            "- `/relay model <step> <model> [effort]` to change a step",
-            "- `/relay go` to start building",
-        ].join("\n"),
-    );
-    await setStatus(piece, "Sign-off");
+    await setStatus(piece, "Spec");
 };
 
 const blockStep = async (piece, step, why) => {
@@ -815,11 +769,11 @@ const blockStep = async (piece, step, why) => {
     await setStatus(piece, "Waiting");
 };
 
-// What follows a finished step: a draft PR after the spec, the sign-off after its review,
-// and Alan's turn after the piece's review.
+// What follows a finished step: a draft PR and the later steps after the spec, and the owner's
+// turn after the piece's review.
 const afterStep = async (piece, step, result) => {
     const kind = stepKind(step.meta.id);
-    const type = pieceType(piece.labels);
+    const onMain = endsOnMain(piece.body);
     let pr = await findPr(piece);
     if (!pr && git("rev-list", `origin/main..origin/${branchOf(piece)}`)) {
         pr = await github("POST", "/pulls", {
@@ -827,28 +781,24 @@ const afterStep = async (piece, step, result) => {
             head: branchOf(piece),
             base: "main",
             draft: true,
-            body: type === "proof" ? `Proof for #${piece.number}. Not to be merged: the branch is the proof.` : `Closes #${piece.number}.`,
+            body: onMain ? `Closes #${piece.number}.` : `Proof for #${piece.number}. Not to be merged: the branch is the proof.`,
         });
         log(`#${piece.number}: draft PR #${pr.number}`);
     }
     if (pr && result.summary) {
-        const ideas = step.meta.ideas?.length ? `\n\n💡 Ideas, not built:\n${ideaList(step.meta.ideas)}` : "";
-        await comment(pr.number, `**${step.meta.id}** (${step.meta.model}/${step.meta.effort}): ${result.summary}${ideas}`);
+        const decided = step.meta.decisions?.length ? `\n\n🧭 Decided:\n${step.meta.decisions.map((d) => `- ${d.decision}${d.why ? `: ${d.why}` : ""}`).join("\n")}` : "";
+        const list = ideaList(result.ideas);
+        const ideas = list ? `\n\n💡 Ideas, not built:\n${list}` : "";
+        await comment(pr.number, `**${step.meta.id}** (${step.meta.model}/${step.meta.effort}): ${result.summary}${decided}${ideas}`);
     }
-    const cut = kind === "spec-review" ? scopeCutText(result.scopeCut) : "";
-    if (cut) {
-        await addLabel(piece.number, "scope-cut");
-        await comment(piece.number, `✂️ The spec review cut work outside the scope: ${cut}`);
-    }
-    if (kind === "spec-review") await signOff(piece);
-    else if (kind === "spec") await setStatus(piece, "Spec");
+    if (kind === "spec") await plan(await loadPiece(piece.number));
     else if (kind === "build") await setStatus(piece, "Building");
     else if (kind === "review") {
         await comment(
             piece.number,
-            type === "proof"
-                ? `🔍 The review is done. Read the findings in ${pr?.html_url ?? "the PR"}, then close this piece. The PR isn't merged: the branch is the proof.`
-                : `🔍 The review is done and CI has run on ${pr?.html_url ?? "the PR"}. Approve and merge it; that closes this piece.`,
+            onMain
+                ? `🔍 The review is done and CI has run on ${pr?.html_url ?? "the PR"}. Approve and merge it; that closes this piece.`
+                : `🔍 The review is done. Read the findings in ${pr?.html_url ?? "the PR"}, then close this piece. The PR isn't merged: the branch is the proof.`,
         );
         await setStatus(piece, "Review");
     }
@@ -885,20 +835,26 @@ const runStep = async (piece, step) => {
         throw Object.assign(new Error(`stopped #${piece.number} ${step.meta.id} before it began: ${refused}`), { refused: true });
     }
     const exitOk = code === 0 && !timedOut && model !== null;
-    const result = readResult(fs.existsSync(RESULT) ? fs.readFileSync(RESULT, "utf8") : null);
-    log(`end #${piece.number} ${step.meta.id}: exit ${code}, model ${model}, ${stats.tokens} tokens, ${stats.context}% context, ${stats.compactions} compactions, result ${JSON.stringify(result)}`);
+    let result = readResult(fs.existsSync(RESULT) ? fs.readFileSync(RESULT, "utf8") : null);
+    log(`end #${piece.number} ${step.meta.id}: exit ${code}, model ${model}, ${stats.tokens} tokens, ${dollars(stats.cost)}, ${stats.context}% context, ${stats.compactions} compactions, result ${JSON.stringify(result)}`);
     tidyUp(branch);
+    // A spec isn't done until the crew can make its steps.
+    if (step.meta.id === "spec" && result?.status === "done") {
+        const { error } = readSteps(piece);
+        if (error) result = { status: "pending", note: `You reported done, but steps.json can't be read: ${error}` };
+    }
 
     const applied = applyResult(step.meta, result, exitOk);
     const { outcome, why } = applied;
-    const meta = exitOk ? addIdeas(applied.meta, result?.ideas) : applied.meta;
+    const { meta } = applied;
     meta.tokens = (step.meta.tokens ?? 0) + stats.tokens;
+    meta.cost = (step.meta.cost ?? 0) + stats.cost;
     meta.context = stats.context;
     meta.compactions = (step.meta.compactions ?? 0) + stats.compactions;
     await saveMeta(step, meta);
-    await setBoard(step.nodeId, { Attempts: meta.attempts ?? 0, Tokens: meta.tokens, Context: meta.context, Compactions: meta.compactions, Status: outcome === "done" ? "Done" : outcome === "blocked" ? "Waiting" : "Building" });
+    await setBoard(step.nodeId, { Attempts: meta.attempts ?? 0, Tokens: meta.tokens, "List $": meta.cost, Context: meta.context, Compactions: meta.compactions, Status: outcome === "done" ? "Done" : outcome === "blocked" ? "Waiting" : "Building" });
     if (outcome === "done") {
-        await comment(step.number, `✅ ${result.summary ?? "Done."}\n\n${stats.tokens.toLocaleString("en-NZ")} tokens, ${stats.context}% context, ${stats.compactions} compactions. ${model}, Claude Code ${cliVersion()}.`);
+        await comment(step.number, `✅ ${result.summary ?? "Done."}\n\n${stats.tokens.toLocaleString("en-NZ")} tokens, ${dollars(stats.cost)} at list price, ${stats.context}% context, ${stats.compactions} compactions. ${model}, Claude Code ${cliVersion()}.`);
         await closeStep(step);
         await afterStep(piece, step, result);
     } else if (outcome === "blocked") {
@@ -911,10 +867,16 @@ const runStep = async (piece, step) => {
 
 // ---- Commands ----
 
-const readUsage = () => {
-    const out = sh("python3", [path.join(HERE, "usage.py"), "--json"], { timeout: 240_000 });
-    return parseUsage(JSON.parse(out).raw);
+// Pacing from the subscription's usage windows, saying which route answered.
+const usage = async () => {
+    const { route, usage: u } = await readUsage();
+    log(`usage from the ${route} route`);
+    return u;
 };
+
+// Starts a crew run, as if from Actions → relay → Run workflow.
+const dispatchRun = () =>
+    github("POST", `/actions/workflows/${WORKFLOW}/dispatches`, { ref: "main", inputs: { command: "run" } }, process.env.DISPATCH_TOKEN);
 
 const logIssue = async () => {
     const found = (await allPages("/issues?state=open&labels=kind:chore")).find((i) => i.title === LOG_TITLE);
@@ -932,20 +894,19 @@ const runSteps = async (ran) => {
     for (;;) {
         if (Date.now() - STARTED > DEADLINE_MS) return "deadline: no time for another step in this job";
         const pieces = await loadPieces();
-        const milestones = await github("GET", "/milestones?state=open&per_page=100");
-        const next = nextWork(pieces, milestones);
+        const next = nextWork(pieces);
         if (!next) return "nothing to do: every ready piece is waiting, paused, held or finished";
         if (next.action === "start") {
             await startPiece(next.piece);
             ran.push(`#${next.piece.number}: started`);
             continue;
         }
-        if (next.action === "signoff") {
-            await signOff(next.piece);
-            ran.push(`#${next.piece.number}: waiting for sign-off`);
+        if (next.action === "plan") {
+            await plan(next.piece);
+            ran.push(`#${next.piece.number}: steps made`);
             continue;
         }
-        const verdict = pace(readUsage(), new Date());
+        const verdict = pace(await usage(), new Date());
         if (!verdict.ok) return `budget stop: ${verdict.reason}`;
         log(verdict.reason);
         ran.push(await runStep(next.piece, next.step));
@@ -973,21 +934,20 @@ const run = async () => {
 
 const status = async () => {
     const pieces = await loadPieces();
-    const milestones = await github("GET", "/milestones?state=open&per_page=100");
-    for (const p of pieces) console.log(`#${p.number} ${p.title}: ${holdReason(p, pieces, milestones) ?? JSON.stringify(pieceAction(p)?.action ?? "finished")}`);
-    const next = nextWork(pieces, milestones);
+    for (const p of pieces) console.log(`#${p.number} ${p.title}: ${holdReason(p, pieces) ?? JSON.stringify(pieceAction(p)?.action ?? "finished")}`);
+    const next = nextWork(pieces);
     console.log(next ? `next: #${next.piece.number} ${next.action}${next.step ? ` ${next.step.meta.id}` : ""}` : "next: nothing");
-    console.log(`pacing: ${JSON.stringify(pace(readUsage(), new Date()))}`);
+    console.log(`pacing: ${JSON.stringify(pace(await usage(), new Date()))}`);
 };
 
 // For the workflow to report a failure the crew couldn't, e.g. the job timing out.
 const report = async () => comment(await logIssue(), `⚠️ ${process.argv.slice(3).join(" ")}`);
 
-// ---- Events: Alan's comments on a piece ----
+// ---- Events: the owner's comments on a piece ----
 
 const findStep = (piece, id) => piece.steps.find((s) => s.meta.id === id && s.state === "open");
 
-// Alan's reply on a piece with a blocked step goes to that step's next session.
+// The owner's reply on a piece with a blocked step goes to that step's next session.
 const unblock = async (piece, step, reply) => {
     const meta = { ...step.meta, status: "pending", attempts: 0 };
     if (reply) meta.reply = reply;
@@ -998,27 +958,13 @@ const unblock = async (piece, step, reply) => {
 };
 
 const COMMANDS = {
-    go: async (piece) => {
-        const built = piece.steps.some((s) => stepKind(s.meta.id) === "build");
-        const reviewed = piece.steps.some((s) => s.meta.id === "spec-review" && s.state === "closed");
-        if (!built && !reviewed) return "There's nothing to sign off yet: the spec isn't reviewed.";
-        if (!built) {
-            // steps.json couldn't be read; the next run reads it again.
-            await removeLabel(piece.number, "waiting");
-            return "The next run reads `steps.json` again and makes the build steps.";
-        }
-        if (piece.steps.some((s) => s.state === "open" && s.meta.status === "blocked")) return "A step is blocked: reply, `/relay retry` or `/relay skip <step>` instead.";
-        await removeLabel(piece.number, "waiting");
-        await setStatus(piece, "Building");
-        return "Signed off. Building starts on the next run.";
-    },
     model: async (piece, [id, ...rest]) => {
         const step = findStep(piece, id);
         if (!step) return `No open step \`${id}\`.`;
         const meta = applyModel(step.meta, rest);
         if (!meta) return `Name a model (${MODELS.join(", ")}) or an effort (${EFFORTS.join(", ")}).`;
         const was = `${step.meta.model}/${step.meta.effort}`;
-        await saveMeta(step, { ...meta, why: `Alan's choice (the spec had ${was}).${step.meta.why ? ` ${step.meta.why}` : ""}` });
+        await saveMeta(step, { ...meta, why: `The owner's choice (the spec had ${was}).${step.meta.why ? ` ${step.meta.why}` : ""}` });
         await setBoard(step.nodeId, { Model: meta.model, Effort: meta.effort });
         return `${id}: ${was} → ${meta.model}/${meta.effort}.`;
     },
@@ -1026,12 +972,13 @@ const COMMANDS = {
         const step = id ? findStep(piece, id) : piece.steps.find((s) => s.state === "open" && s.meta.status === "blocked");
         if (!step) return id ? `No open step \`${id}\`.` : "No step is blocked.";
         await unblock(piece, step, null);
-        return `${step.meta.id} gets two fresh attempts from the next run.`;
+        await dispatchRun();
+        return `${step.meta.id} gets two fresh attempts, starting now.`;
     },
     skip: async (piece, [id]) => {
         const step = findStep(piece, id);
         if (!step) return `No open step \`${id}\`.`;
-        await comment(step.number, "Skipped by Alan.");
+        await comment(step.number, "Skipped by the owner.");
         await closeStep(step, "not_planned");
         step.state = "closed";
         if (!piece.steps.some((s) => s.state === "open" && s.meta.status === "blocked")) await removeLabel(piece.number, "waiting");
@@ -1050,32 +997,41 @@ const COMMANDS = {
         // Asking for a run on a piece says it's ready, so the run has it to work on.
         const readied = !piece.labels.includes("relay:ready");
         if (readied) await addLabel(piece.number, "relay:ready");
-        await github("POST", `/actions/workflows/${WORKFLOW}/dispatches`, { ref: "main", inputs: { command: "run" } }, process.env.DISPATCH_TOKEN);
-        const hold = holdReason({ ...piece, labels: [...new Set([...piece.labels, "relay:ready"])] }, [], []);
+        await dispatchRun();
+        const hold = holdReason({ ...piece, labels: [...new Set([...piece.labels, "relay:ready"])] }, []);
         return `${readied ? "Labelled `relay:ready` and started" : "Started"} a run.${hold ? ` This piece is held (${hold}), so the run works on others.` : ""}`;
-    },
-    scope: async (piece) => {
-        let map = null;
-        try {
-            const file = await github("GET", `/contents/${specDir(piece)}/spec.md?ref=${encodeURIComponent(branchOf(piece))}`);
-            map = section(Buffer.from(file.content, "base64").toString("utf8"), "Scope map");
-        } catch {
-            // no spec yet
-        }
-        const ideas = sortSteps(piece.steps).flatMap((s) => (s.meta.ideas ?? []).map((i) => ({ ...i, title: `${i.title} (${s.meta.id})` })));
-        return [
-            map ?? "No scope map yet: the spec isn't written.",
-            piece.labels.includes("scope-cut") ? "\nThe spec review cut work from this piece; see its ✂️ comment." : "",
-            ideas.length ? `\nIdeas raised so far, not built:\n${ideaList(ideas)}` : "\nNo ideas raised so far.",
-        ].join("\n");
     },
 };
 
-export const HELP = "Commands: `go`, `model <step> <model> [effort]`, `retry [step]`, `skip <step>`, `pause`, `resume`, `status`, `run`, `scope`.";
+export const HELP = "Commands: `run`, `retry [step]`, `skip <step>`, `model <step> <model> [effort]`, `pause`, `resume`, `status`.";
+
+// A closed piece closes its open steps, and a proof's branch head is tagged `proof/<n>` so
+// it stays playable once the branch goes.
+const closePiece = async (number) => {
+    const piece = await loadPiece(number);
+    for (const s of piece.steps.filter((s) => s.state === "open")) {
+        await comment(s.number, `Closed with #${number}.`);
+        await closeStep(s, "not_planned");
+    }
+    if (endsOnMain(piece.body) === false) {
+        try {
+            const ref = await github("GET", `/git/ref/heads/${branchOf(piece)}`);
+            await github("POST", "/git/refs", { ref: `refs/tags/proof/${number}`, sha: ref.object.sha });
+            log(`#${number}: tagged proof/${number}`);
+        } catch (e) {
+            log(`#${number}: couldn't tag the proof: ${e.message}`);
+        }
+    }
+    await setStatus(piece, "Done");
+};
 
 const event = async () => {
     const e = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
-    if (e.comment?.user?.login !== ALAN || e.issue?.pull_request) return log("not Alan's comment on an issue; ignoring");
+    if (e.action === "closed" && !e.comment) {
+        if (e.issue.labels.some((l) => l.name === "kind:piece")) await closePiece(e.issue.number);
+        return;
+    }
+    if (e.comment?.user?.login !== OWNER || e.issue?.pull_request) return log("not the owner's comment on an issue; ignoring");
     const labels = e.issue.labels.map((l) => l.name);
     const cmd = parseCommand(e.comment.body);
     if (!labels.includes("kind:piece")) {
@@ -1087,7 +1043,8 @@ const event = async () => {
         const blocked = piece.steps.find((s) => s.state === "open" && s.meta.status === "blocked");
         if (!blocked) return log("a comment, not a command, and nothing is blocked");
         await unblock(piece, blocked, e.comment.body);
-        await comment(piece.number, `Picked up. ${blocked.meta.id} carries on from the next run with your reply.`);
+        await dispatchRun();
+        await comment(piece.number, `Picked up. ${blocked.meta.id} carries on with your reply, starting now.`);
         return;
     }
     const handler = COMMANDS[cmd.name];
