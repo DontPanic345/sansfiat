@@ -36,9 +36,9 @@ Checks, in `engine/`: `cargo test`, `cargo fmt --check`, `cargo clippy --all-tar
 ## The PR description
 
 The piece asks a question in effect: do the native and wasm builds now give the same world, and
-was libm the whole cause? Write the answer and its evidence into the PR description (the
-runner takes it from `relay/specs/23/evidence.md`, so update that file to be the description
-you want; start it with the answer in one or two sentences, then the evidence):
+was libm the whole cause? Rewrite the PR description (`gh pr edit --body`, as your session prompt says), drawing on
+`relay/specs/23/evidence.md` (build-2's notes). Start with the answer in one or two sentences,
+then the evidence, and end with your verdict:
 
 - the answer, plain: yes or no, and for what seeds and turns it was checked;
 - the cause and the swap experiment (363 vs 314 → 314 and 314, same digests);
