@@ -5,6 +5,9 @@ import {
     applyResult,
     atLevel,
     checkSteps,
+    designPaths,
+    dollars,
+    endsOnMain,
     holdReason,
     initProblem,
     addIdeas,
@@ -13,15 +16,15 @@ import {
     nextWork,
     pace,
     parseCommand,
-    parseForm,
-    parseUsage,
     pieceAction,
+    pieceField,
     readMeta,
     readResult,
     redact,
     section,
     sessionPrompt,
     sessionStats,
+    specChoice,
     stepsTable,
     writeMeta,
 } from "./relay.mjs";
@@ -41,20 +44,6 @@ test("pace spreads the weekly budget across the cycle", () => {
     assert.equal(pace({ session: 0, weekly: 95, weeklyResetsAt: resets }, day(7)).ok, false);
 });
 
-test("parseUsage reads the direct route's rows and the probe's fractions", () => {
-    const direct = parseUsage({
-        limits: [
-            { kind: "session", percent: 2, resets_at: "2026-10-12T08:09:59Z" },
-            { kind: "weekly_all", percent: 9, resets_at: "2026-10-17T08:59:59Z" },
-        ],
-    });
-    assert.deepEqual([direct.session, direct.weekly], [2, 9]);
-    const probe = parseUsage({
-        unifiedWindows: { five_hour: { utilization: 0.3, resetsAt: 1 }, seven_day: { utilization: 0.5, resetsAt: 2 } },
-    });
-    assert.deepEqual([probe.session, probe.weekly], [30, 50]);
-});
-
 test("a step's meta block round-trips and replaces itself", () => {
     const body = writeMeta("Step `build-1` of #3.", { id: "build-1", model: "sonnet" });
     assert.deepEqual(readMeta(body), { id: "build-1", model: "sonnet" });
@@ -66,30 +55,37 @@ test("a step's meta block round-trips and replaces itself", () => {
     assert.equal(readMeta(tricky).summary, "a --> b } -->");
 });
 
-test("parseForm reads an issue form's answers", () => {
-    const form = parseForm("### Design file\n\ndocs/design/map.md\n\n### In scope\n\n- rivers\n- coast\n\n### Depends on\n\n_No response_");
-    assert.equal(form["design file"], "docs/design/map.md");
-    assert.equal(form["in scope"], "- rivers\n- coast");
-    assert.equal(form["depends on"], "");
+test("a piece's body says how it ends, the spec's model and its design files", () => {
+    const body = "**Goal:** rivers.\n\n- **Ends**: on main\n**Spec:** Opus high, because rivers touch every mechanic.\n\nBuilds docs/design/map.md and docs/design/map.md.";
+    assert.equal(pieceField(body, "Goal"), "rivers.");
+    assert.equal(endsOnMain(body), true);
+    assert.equal(endsOnMain("**Ends:** on its branch"), false);
+    assert.equal(endsOnMain("no line"), null);
+    assert.deepEqual(specChoice(body), { model: "opus", effort: "high", why: "Opus high, because rivers touch every mechanic." });
+    assert.equal(specChoice("**Spec:** opus"), null);
+    assert.deepEqual(designPaths(body), ["docs/design/map.md"]);
 });
 
-test("checkSteps wants builds in order, at most four, then the review", () => {
-    const s = (id, extra = {}) => ({ id, title: "t", model: "sonnet", effort: "medium", ...extra });
-    assert.ok(checkSteps(JSON.stringify([s("build-1"), s("review")])).steps);
+test("checkSteps wants the spec-review, builds in order, at most four, then the review, each with a why", () => {
+    const s = (id, extra = {}) => ({ id, title: "t", model: "sonnet", effort: "medium", why: "w", ...extra });
+    const ok = (...ids) => JSON.stringify(ids.map((id) => (typeof id === "string" ? s(id) : id)));
+    assert.ok(checkSteps(ok("spec-review", "build-1", "review")).steps);
     assert.match(checkSteps("nope").error, /JSON/);
-    assert.match(checkSteps(JSON.stringify([s("build-1"), s("build-3"), s("review")])).error, /build-2/);
-    assert.match(checkSteps(JSON.stringify([s("build-1"), s("build-2")])).error, /review/);
-    const five = [1, 2, 3, 4, 5].map((n) => s(`build-${n}`));
-    assert.match(checkSteps(JSON.stringify([...five, s("review")])).error, /at most 4/);
-    assert.match(checkSteps(JSON.stringify([s("build-1", { model: "gpt" }), s("review")])).error, /model/);
-    assert.match(checkSteps(JSON.stringify([s("build-1", { effort: "max" }), s("review")])).error, /effort/);
+    assert.match(checkSteps(ok("build-1", "review")).error, /spec-review/);
+    assert.match(checkSteps(ok("spec-review", "review")).error, /spec-review/);
+    assert.match(checkSteps(ok("spec-review", "build-1", "build-3", "review")).error, /build-2/);
+    assert.match(checkSteps(ok("spec-review", "build-1", "build-2")).error, /review/);
+    assert.match(checkSteps(ok("spec-review", "build-1", "build-2", "build-3", "build-4", "build-5", "review")).error, /at most 4/);
+    assert.match(checkSteps(ok("spec-review", s("build-1", { model: "gpt" }), "review")).error, /model/);
+    assert.match(checkSteps(ok("spec-review", s("build-1", { effort: "max" }), "review")).error, /effort/);
+    assert.match(checkSteps(ok("spec-review", s("build-1", { why: "" }), "review")).error, /no why/);
 });
 
 const step = (id, state = "open", meta = {}) => ({ number: 100, state, meta: { id, model: "sonnet", effort: "medium", ...meta } });
 const piece = (number, labels, steps = [], extra = {}) => ({
     number,
     title: `Piece ${number}`,
-    body: "### Design file\n\ndocs/design/map.md\n\n### In scope\n\n- rivers",
+    body: "**Goal:** rivers.\n**Ends:** on its branch\n**Spec:** sonnet high, because it's one module.\n**Design:** docs/design/map.md\n\n**In scope**\n\n- rivers",
     labels: ["kind:piece", "relay:ready", ...labels],
     author: "DontPanic345",
     milestone: null,
@@ -97,50 +93,51 @@ const piece = (number, labels, steps = [], extra = {}) => ({
     ...extra,
 });
 
-test("pieceAction starts, runs the next open step, then waits for sign-off", () => {
-    assert.deepEqual(pieceAction(piece(1, ["type:proof"])), { action: "start" });
-    const specDone = piece(1, ["type:proof"], [step("spec-review"), step("spec", "closed")]);
-    assert.equal(pieceAction(specDone).step.meta.id, "spec-review");
-    const reviewed = piece(1, ["type:proof"], [step("spec", "closed"), step("spec-review", "closed")]);
-    assert.deepEqual(pieceAction(reviewed), { action: "signoff" });
-    const building = piece(1, ["type:proof"], [step("spec", "closed"), step("spec-review", "closed"), step("review"), step("build-2"), step("build-1", "closed")]);
+test("pieceAction starts, plans after the spec, then runs each open step in order", () => {
+    assert.deepEqual(pieceAction(piece(1, [])), { action: "start" });
+    assert.equal(pieceAction(piece(1, [], [step("spec")])).step.meta.id, "spec");
+    assert.deepEqual(pieceAction(piece(1, [], [step("spec", "closed")])), { action: "plan" });
+    const planned = piece(1, [], [step("spec", "closed"), step("review"), step("build-1"), step("spec-review")]);
+    assert.equal(pieceAction(planned).step.meta.id, "spec-review");
+    const building = piece(1, [], [step("spec", "closed"), step("spec-review", "closed"), step("review"), step("build-2"), step("build-1", "closed")]);
     assert.equal(pieceAction(building).step.meta.id, "build-2");
-    const blocked = piece(1, ["type:proof"], [step("spec", "closed"), step("spec-review", "closed"), step("build-1", "open", { status: "blocked" })]);
+    const blocked = piece(1, [], [step("spec", "closed"), step("spec-review", "closed"), step("build-1", "open", { status: "blocked" })]);
     assert.equal(pieceAction(blocked), null);
-    const finished = piece(1, ["type:proof"], [step("spec", "closed"), step("spec-review", "closed"), step("build-1", "closed"), step("review", "closed")]);
+    const finished = piece(1, [], [step("spec", "closed"), step("spec-review", "closed"), step("build-1", "closed"), step("review", "closed")]);
     assert.equal(pieceAction(finished), null);
 });
 
-test("holdReason keeps merges one at a time and behind earlier gates", () => {
-    const m1 = { title: "M1 Core" };
-    const m2 = { title: "M2 Pre-game" };
-    const a = piece(5, ["type:merge"], [], { milestone: m2 });
-    const b = piece(7, ["type:merge"], [], { milestone: m2 });
-    const proof = piece(8, ["type:proof"], [], { milestone: m2 });
-    assert.equal(holdReason(a, [a, b], []), null);
-    assert.match(holdReason(b, [a, b], []), /#5 goes first/);
-    assert.match(holdReason(a, [a], [m1, m2]), /M1 Core gate/);
-    assert.equal(holdReason(proof, [proof], [m1, m2]), null);
-    assert.equal(holdReason(piece(9, ["type:proof", "waiting"]), [], []), "waiting on Alan");
-    assert.equal(holdReason(piece(9, ["type:proof", "relay:paused"]), [], []), "paused");
-    assert.equal(holdReason({ ...piece(9, ["type:proof"]), labels: ["kind:piece", "type:proof"] }, [], []), "not ready");
-    assert.equal(holdReason({ ...piece(9, ["type:proof"]), author: "someone" }, [], []), "not opened by Alan");
+test("holdReason keeps pieces that end on main one at a time, and needs the body's lines", () => {
+    const main = (n) => piece(n, [], [], { body: "**Ends:** main\n**Spec:** opus medium, because." });
+    const [a, b] = [main(5), main(7)];
+    const proof = piece(8, []);
+    assert.equal(holdReason(a, [a, b]), null);
+    assert.match(holdReason(b, [a, b]), /#5 goes to main first/);
+    assert.equal(holdReason(proof, [a, b, proof]), null);
+    assert.equal(holdReason(piece(9, ["waiting"]), []), "waiting on Alan");
+    assert.equal(holdReason(piece(9, ["relay:paused"]), []), "paused");
+    assert.equal(holdReason({ ...piece(9, []), labels: ["kind:piece"] }, []), "not ready");
+    assert.equal(holdReason({ ...piece(9, []), author: "someone" }, []), "not opened by Alan");
+    assert.match(holdReason(piece(9, [], [], { body: "**Spec:** opus high" }), []), /Ends/);
+    assert.match(holdReason(piece(9, [], [], { body: "**Ends:** branch" }), []), /Spec/);
+    // Once the spec step exists, its model is on the step, not the body.
+    assert.equal(holdReason(piece(9, [], [step("spec")], { body: "**Ends:** branch" }), []), null);
 });
 
-test("nextWork takes pieces in milestone order, then oldest first", () => {
-    const later = piece(2, ["type:proof"], [], { milestone: { title: "M3" } });
-    const sooner = piece(9, ["type:proof"], [], { milestone: { title: "M2" } });
-    assert.equal(nextWork([later, sooner], []).piece.number, 9);
-    const waiting = piece(1, ["type:proof", "waiting"]);
-    assert.equal(nextWork([waiting, later], []).piece.number, 2);
-    assert.equal(nextWork([waiting], []), null);
+test("nextWork takes the oldest piece that can run", () => {
+    const [older, newer] = [piece(2, []), piece(9, [])];
+    assert.equal(nextWork([newer, older]).piece.number, 2);
+    const waiting = piece(1, ["waiting"]);
+    assert.equal(nextWork([waiting, newer]).piece.number, 9);
+    assert.equal(nextWork([waiting]), null);
 });
 
 test("applyResult closes, retries once, then blocks", () => {
     const meta = { id: "build-1", attempts: 0, reply: "use the river map" };
-    const done = applyResult(meta, { status: "done", summary: "Built it." }, true);
+    const done = applyResult(meta, { status: "done", summary: "Built it.", decisions: [{ decision: "Rivers flow east", why: "the map tilts" }, { why: "no decision" }] }, true);
     assert.equal(done.outcome, "done");
     assert.equal(done.meta.summary, "Built it.");
+    assert.deepEqual(done.meta.decisions, [{ decision: "Rivers flow east", why: "the map tilts" }]);
     assert.equal(done.meta.reply, undefined);
     const first = applyResult(meta, { status: "pending", note: "half way" }, true);
     assert.deepEqual([first.outcome, first.meta.attempts, first.meta.note], ["pending", 1, "half way"]);
@@ -164,13 +161,15 @@ test("readResult accepts only a known status, and a blocker with its reason", ()
 test("sessionStats sums every model's tokens and measures the last turn's context", () => {
     const last = { message: { usage: { input_tokens: 10, cache_creation_input_tokens: 990, cache_read_input_tokens: 49_000, output_tokens: 0 } } };
     const result = {
+        total_cost_usd: 1.25,
         modelUsage: {
             "claude-sonnet-x": { inputTokens: 100, outputTokens: 200, cacheReadInputTokens: 300, cacheCreationInputTokens: 400, contextWindow: 200_000 },
             "claude-haiku-x": { inputTokens: 5, outputTokens: 5, contextWindow: 200_000 },
         },
     };
-    assert.deepEqual(sessionStats(last, result, "sonnet", 1), { tokens: 1010, context: 25, compactions: 1 });
-    assert.deepEqual(sessionStats(null, null, "sonnet"), { tokens: 0, context: 0, compactions: 0 });
+    assert.deepEqual(sessionStats(last, result, "sonnet", 1), { tokens: 1010, cost: 1.25, context: 25, compactions: 1 });
+    assert.deepEqual(sessionStats(null, null, "sonnet"), { tokens: 0, cost: 0, context: 0, compactions: 0 });
+    assert.equal(dollars(2.143), "$2.14");
 });
 
 test("initProblem refuses the wrong model and anything but auto mode", () => {
@@ -182,7 +181,7 @@ test("initProblem refuses the wrong model and anything but auto mode", () => {
 
 test("parseCommand and applyModel read Alan's commands", () => {
     assert.deepEqual(parseCommand("Thanks.\n/relay model build-2 Opus high"), { name: "model", args: ["build-2", "Opus", "high"] });
-    assert.deepEqual(parseCommand("/relay go"), { name: "go", args: [] });
+    assert.deepEqual(parseCommand("/relay run"), { name: "run", args: [] });
     assert.equal(parseCommand("no command here"), null);
     const meta = { id: "build-2", model: "sonnet", effort: "medium" };
     assert.deepEqual(applyModel(meta, ["Opus", "high"]), { ...meta, model: "opus", effort: "high" });
@@ -198,40 +197,41 @@ test("section and atLevel handle headings outside code fences", () => {
 });
 
 const files = (extra = {}) => ({
-    prompts: { spec: "# Spec step", build: "# Build step", review: "# Review step", "type-proof": "# Proof", session: "# Every session" },
+    prompts: { spec: "# Spec step", build: "# Build step", review: "# Review step", session: "# Every session" },
     brief: "# build-1: Rivers\n\nBuild rivers.",
     spec: "# Spec\n\n## Scope map",
-    design: "# Map\n\nRivers run downhill.",
-    designFiles: ["docs/design/map.md"],
+    design: { "docs/design/map.md": "# Map\n\nRivers run downhill.", "docs/design/sea.md": null },
+    designFiles: ["docs/design/map.md", "docs/design/clans.md"],
     diffStat: " engine/core/src/world.rs | 10 +",
     ...extra,
 });
 
-test("a spec session gets the piece, its design file and the spec rules", () => {
-    const p = piece(4, ["type:proof"]);
-    const text = sessionPrompt(p, step("spec"), files());
-    assert.match(text, /proof piece #4/);
+test("a spec session gets the piece, its design files and the spec prompt", () => {
+    const text = sessionPrompt(piece(4, []), step("spec"), files());
+    assert.match(text, /piece #4/);
     assert.match(text, /relay\/4/);
     assert.match(text, /- rivers/);
     assert.match(text, /Rivers run downhill/);
+    assert.match(text, /docs\/design\/sea\.md`\n\nThat file doesn't exist yet/);
+    assert.match(text, /- `docs\/design\/clans\.md`/);
+    assert.doesNotMatch(text, /- `docs\/design\/map\.md`/);
     assert.match(text, /# Spec step/);
-    assert.match(text, /# Proof/);
     assert.ok(text.indexOf("# Spec step") < text.indexOf("# Every session"));
 });
 
 test("a build session gets its brief, not the design, and Alan's reply", () => {
-    const p = piece(4, ["type:proof"], [step("spec", "closed", { summary: "Wrote the spec." })]);
+    const p = piece(4, [], [step("spec", "closed", { summary: "Wrote the spec.", decisions: [{ decision: "Rivers flow east", why: "the map tilts" }] })]);
     const text = sessionPrompt(p, step("build-1", "open", { reply: "Use 0.5", note: "tests half done" }), files());
     assert.match(text, /^# build-1: Rivers/m);
     assert.doesNotMatch(text, /Rivers run downhill/);
     assert.match(text, /Use 0\.5/);
     assert.match(text, /tests half done/);
-    assert.match(text, /\*\*spec\*\*: Wrote the spec\./);
+    assert.match(text, /\*\*spec\*\*: Wrote the spec\.\n  - Decided: Rivers flow east \(the map tilts\)/);
     assert.throws(() => sessionPrompt(p, step("build-2"), files({ brief: null })), /build-2\.md is missing/);
 });
 
 test("a review session gets the diff and the whole spec", () => {
-    const text = sessionPrompt(piece(4, ["type:proof"]), step("review"), files());
+    const text = sessionPrompt(piece(4, []), step("review"), files());
     assert.match(text, /world\.rs \| 10/);
     assert.match(text, /# The whole spec/);
 });
@@ -239,15 +239,20 @@ test("a review session gets the diff and the whole spec", () => {
 test("stepsTable shows each step's state and spend", () => {
     const table = stepsTable([
         step("review"),
-        { ...step("build-1", "closed", { tokens: 12345, context: 40, compactions: 0, attempts: 1 }), stateReason: "completed" },
+        { ...step("build-1", "closed", { tokens: 12345, cost: 1.5, context: 40, compactions: 0, attempts: 1 }), stateReason: "completed" },
+        { ...step("spec", "closed", { cost: 2 }), stateReason: "completed" },
     ]);
     const rows = table.split("\n");
-    assert.match(rows[2], /\| build-1 \| done \| sonnet \| medium \| 1 \| 12,345 \| 40% \| 0 \|/);
-    assert.match(rows[3], /\| review \| pending \|/);
+    assert.match(rows[3], /\| build-1 \| done \| sonnet \| medium \| 1 \| 12,345 \| \$1\.50 \| 40% \| 0 \|/);
+    assert.match(rows[4], /\| review \| pending \|/);
+    assert.equal(rows.at(-1), "$3.50 at list price so far.");
 });
 
-test("redact hides secrets of eight characters or more", () => {
+test("redact hides secrets of eight characters or more, and any GitHub token", () => {
     assert.equal(redact("token abcdefgh and xy", ["abcdefgh", "xy"]), "token *** and xy");
+    const ghs = "ghs_" + "a1B2".repeat(9);
+    assert.equal(redact(`password=${ghs}\n`, []), "password=***\n");
+    assert.equal(redact("ghost_writer ghs_short", []), "ghost_writer ghs_short");
 });
 
 test("addIdeas keeps new ideas on the step, once each", () => {

@@ -1,11 +1,14 @@
 name: relay-events
 
-# Acts on Alan's comments on a piece: `/relay` commands, and replies that unblock a step.
-# Only Alan's comments start a job, so no one else's text ever reaches the App's key.
+# Acts on Alan's comments on a piece (`/relay` commands, and replies that unblock a step), and
+# on a piece closing (its open steps close, and a proof's branch is tagged). Only Alan's
+# comments start a job, so no one else's text ever reaches the App's key.
 
 on:
   issue_comment:
     types: [created]
+  issues:
+    types: [closed]
 
 concurrency:
   group: relay-events-${{ github.event.issue.number }}
@@ -13,14 +16,17 @@ concurrency:
 
 permissions:
   contents: read
-  actions: write # `/relay run` starts relay.yml
+  actions: write # `/relay run`, `/relay retry` and an unblocking reply start relay.yml
 
 jobs:
   event:
     if: >-
-      github.event.comment.user.login == 'DontPanic345' &&
-      !github.event.issue.pull_request &&
-      (contains(github.event.issue.labels.*.name, 'kind:piece') || startsWith(github.event.comment.body, '/relay'))
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'kind:piece')) ||
+      (github.event_name == 'issue_comment' &&
+        github.event.comment.user.login == 'DontPanic345' &&
+        !github.event.issue.pull_request &&
+        (startsWith(github.event.comment.body, '/relay') ||
+          (contains(github.event.issue.labels.*.name, 'kind:piece') && contains(github.event.issue.labels.*.name, 'waiting'))))
     runs-on: ubuntu-latest
     environment: relay
     steps:

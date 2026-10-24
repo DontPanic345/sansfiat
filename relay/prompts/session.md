@@ -1,30 +1,30 @@
 # Every Relay session
 
+## How Relay works
+
+A piece is an issue Alan agreed with Claude before it was opened, so what it says is decided.
+Relay builds it as a run of steps, each a cold session like you, on the piece's branch:
+
+1. **spec** plans the piece: a spec, a brief for each later step, and `steps.json`.
+2. **spec-review** reads the plan the way the later sessions will, and fixes it.
+3. **build-1** to **build-4** each build what their brief says.
+4. **review** reviews the whole piece and gets CI green.
+
+No one watches in between. What you write in `result.json` is how the later steps, Alan and
+the retro after the milestone learn what happened, so write what they need. Each later step
+sees every earlier step's summary and decisions.
+
+`docs/design/` is Alan's: read it and leave it as it is. Anything you notice beyond your step
+goes under `ideas`, where Alan sees it, rather than into the code.
+
 ## The runner
 
 - Stable Rust with the wasm target, rustfmt, clippy, `wasm-bindgen-cli` 0.2.128 and Node 24
-  are installed. The engine's checks, as CI runs them in `engine/`, are `cargo fmt --check`,
-  `cargo clippy --all-targets -- -D warnings`, `cargo test` and `./build-web.sh`. A
-  prototype's checks are `npm test` in its folder.
+  are installed. The checks are the ones CI runs: in `engine/`, those `engine/CLAUDE.md`
+  lists and `./build-web.sh`; in a prototype, `npm test` in its folder.
 - The crew stops a session after 90 minutes. Commit work that passes its checks as you go.
-- Read what the step needs and no more: a session that fills its context window is a sign
-  the step was too big.
-- Anyone signed in to GitHub can read your transcript for seven days. Never print secrets
-  or the environment.
-
-## Scope and design
-
-- Build only what your step says. Anything else you notice, however small or tempting,
-  goes under `ideas` in your result, never into the code.
-- `docs/design/` is Alan's. Read it; never edit it.
-- A design question the design and the spec don't answer: settle it the way they point,
-  and say what you chose and why in your result's `summary`. Design questions never block.
-
-## Blockers
-
-A **blocker** makes the step impossible without Alan: infrastructure or an account only he
-can supply. Push what you have and finish with a `blocked` result. The crew asks Alan, and
-his reply comes to the next session.
+- Anyone signed in to GitHub can read your transcript for two weeks. Never print secrets or
+  the environment.
 
 ## Finishing
 
@@ -34,16 +34,14 @@ his reply comes to the next session.
    ```json
    {
      "status": "done",
-     "summary": "Two or three sentences on what you did, and any design choice you made.",
+     "summary": "What you did, and what the later steps need to know.",
+     "decisions": [{ "decision": "…", "why": "…" }],
      "ideas": [{ "title": "…", "body": "…" }]
    }
    ```
 
-   `status` is one of:
-   - `done`: the step is finished and pushed. You marked your own homework, so be sure.
-   - `pending`, with `"note": "<where the next session picks up>"`: you ran out of room.
-     Push what passes its checks first. Two unfinished attempts block the step.
-   - `blocked`, with `"blocker": "<what Alan must supply, in one or two sentences>"`.
-
-   `ideas` may be empty. The crew lists them for Alan on the piece's PR, so keep them few
-   and worth his time.
+   - `status` is `done`; or `pending` with a `note` on where the next attempt picks up (two
+     unfinished attempts block the step); or `blocked` with a `blocker` saying what stops the
+     step, which the crew takes to Alan, and his reply comes to the next session.
+   - `decisions` are the choices you made that the piece, the design and your brief left
+     open, and that a player or a later piece would notice.
