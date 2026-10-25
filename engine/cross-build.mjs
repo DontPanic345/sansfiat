@@ -11,6 +11,8 @@ const [seed, radius, turns] = process.argv.slice(2).map(Number);
 const sim = new Sim(seed, radius);
 const lines = [`0 ${sim.digest()}`];
 for (let turn = 1; turn <= turns; turn++) {
+  // As native World::run does at the pick: watch.
+  if (sim.phase() === 'choose') sim.act('{"type":"chooseCiv","civ":null}');
   sim.act('{"type":"endTurn"}');
   lines.push(`${turn} ${sim.digest()}`);
 }

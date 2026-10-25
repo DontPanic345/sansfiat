@@ -8,7 +8,7 @@ actions. One engine, two front ends: a CLI and a wasm web page. The game's desig
 cargo test   # [profile.dev] opt-level = 3: the engine is too slow unoptimised for whole pre-games
 cargo fmt --check && cargo clippy --all-targets -- -D warnings
 cargo run -p sansfiat -- map [--seed N] [--size small|medium|large | --radius N]   # the map as ASCII, a legend and counts
-cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--every 25] [--save game.json] [--json | --events-json] [--no-events]  # stops at the pre-game's end; prints "turn  text" per event
+cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--every 25] [--save game.json] [--json | --events-json] [--no-events]  # stops at the pre-game's end (before the pick), then reports each civ; prints "turn  text" per event
 cargo run -p sansfiat -- sweep [seed ...] [--radius N | --size small|medium|large|all] [--turns N]   # seeds default 1..=10, size small; seeds run in parallel
 cargo run -p sansfiat -- replay game.json [--json | --events-json] [--no-events]
 cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
@@ -23,8 +23,8 @@ cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N]   # "turn di
 
 | Path | What |
 | --- | --- |
-| `core/src/world.rs` | `World`, `Action`, `TURN`, `act`, `save`, `replay`; `Event` and `EventKind` (`World.events`, pushed by the steps where things happen, not saved and not in the digest, rebuilt by replay; `Event::text` is the one wording). |
-| `core/src/data.rs` | Terrain, foods (the goods), `CLAN`, `TRAIL`, `TENDING`, `MARKET` and `PREGAME` rules, `Config`. Tune here first. |
+| `core/src/world.rs` | `World` (with `phase`: `Pregame`, `Choose` once founding has made the civs, `Main` after `ChooseCiv`; `player`; `civs`), `Action` (`EndTurn`, refused in `Choose`; `ChooseCiv { civ }`, only in `Choose`), `TURN`, `act`, `run` (watches at the pick), `save`, `replay`; `Event` and `EventKind` (`World.events`, pushed by the steps where things happen, not saved and not in the digest, rebuilt by replay; `Event::text` is the one wording). |
+| `core/src/data.rs` | Terrain, foods (the goods), `CLAN`, `TRAIL`, `TENDING`, `MARKET`, `PREGAME` and `CIV` rules (`CIVS` names and colours), `Config`. Tune here first. |
 | `core/src/map.rs` | The map: noise terrain in a hex, sea at the rim, inlets, inland seas and lakes, ridges, rain-shadow deserts, coast, patchy fertility, closed country (`close_country`: valleys behind a pass, sealed valleys, peninsulas on a neck, tagged by `Zone`) with `open_sites` and its re-rolls, rivers down a distance-to-water field (`carve_rivers`; lakes fed and drained), floodplains and deltas (`flood`); `finish_caps` turns terrain, river and fertility into food; hidden trail costs from their own rng stream; `ascii` draws it. |
 | `core/src/land.rs` | Neighbours, `passable`, move costs (`step_cost(from, to)`: entering a river off its course costs `RIVER.cross`, a trail bridges it), bounded Dijkstra (`cost_map`), the `regrow` step, and the `hold` step: held counters, trails, taming and hearths. |
 | `core/src/round.rs` | A clan's round: leg and loop costs (`Legs` caches them per home), cheapest insertion, free edge, middle, territory, what it can harvest. |
@@ -32,17 +32,18 @@ cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N]   # "turn di
 | `core/src/market.rs` | `clear(baskets, start_prices, params)`: barter exchange ratios by tâtonnement, no numeraire. A library `markets` calls. |
 | `core/src/markets.rs` | Markets: `reach`, the `go` (worth the walk?), `trade` (clearing) and `markets` (fade, then form one) steps. |
 | `core/src/pregame.rs` | The pre-game's end: centres (age, traders, a hearth in reach, far apart), land cover, and the `end` step. At the turn limit with fewer than three centres it tops up (`top_up`): existing markets, then the most tended land, then any grain land, all in one region of passable land (`End.topped_up` lists the ids added). |
+| `core/src/civs.rs` | Civs: `found` (called by `check_end` once: a civ and capital on each centre's market, in `End.centres` order named `CIVS`; clans with a round tile in the market's reach join the cheapest, a civ with none takes the nearest unaligned clan; phase `Choose`), the `civs` step (`upkeep`, after `eat`: spoil, levy from fed civ clans, cap at `CIV.store_cap`), `territory`/`tile_civ`/`land`/`work_tiles` (the capital's land within `CIV.territory`, else the civ of the clan holding the tile), and `cards` for the pick. `Clan.civ` is inherited by daughters. A civ's market never fades. |
 | `core/src/stats.rs` | `summary` (counts off the world), `centre_report` (fertility near each centre vs all land), `distances`: the evidence the CLI and the web page show; `digest` (FNV-1a of the world JSON) to compare builds. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
-| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `ended`, `layout`, `view`, `tile`, `events(from)`, `state`, `summary`, `save`, `digest`) and `terrain`, `goods`, `rules`, `sizes`. `layout()` is the static map as columns (once per map) and `view()` is what changes each turn (clans, markets, trails, tame, claims, summary, `end`); `state()` is the whole world, for save and debug. |
+| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `phase`, `ended`, `layout`, `view`, `tile`, `events(from)`, `state`, `summary`, `save`, `digest`) and `terrain`, `goods`, `rules`, `sizes`. `layout()` is the static map as columns (once per map) and `view()` is what changes each turn (clans, markets, trails, tame, claims, summary, `end`); `state()` is the whole world, for save and debug. |
 | `www/` | The full-screen page, plain ES modules, no bundler. `index.html` (top bar, map, event feed, legend, tooltip), `main.js` (controls, play loop, panel, URL parameters `?size=&seed=&play=1&speed=slow\|normal\|fast\|max&run=1`; `body.dataset.turn/phase/centres` for headless scripts), `map-view.js` (canvas: pan and zoom, picking, a cached terrain layer with rivers, floodplains, closed-country outlines and marks, the per-turn overlay), `feed.js` (events by cursor into `Sim.events`, filter, 300-line cap). `check.mjs` checks under Node the data the page relies on (not in CI yet: the engine job needs a `node www/check.mjs` step after `./cross-build.sh`). `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 
 1. Its state is a field (or a struct of fields) on `World`, built in `World::new`.
 2. Its per-turn work is one or more `Step`s in `TURN`, in the place the design puts them.
-3. Anything the player does is a variant of `Action`, checked in `validate` and applied in `act`.
+3. Anything the player does is a variant of `Action`, checked in `validate` and applied in `act`. `World::run` takes the player's pick itself (watching), so tests and the CLI that run past the end keep working; a front end that calls `act(EndTurn)` itself must send `ChooseCiv` when `phase` is `choose` (as `cross-build.mjs` does).
 4. A module of its own under `core/src/`, tests under `core/tests/`.
 
 ## Invariants

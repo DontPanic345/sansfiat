@@ -2,7 +2,9 @@ use std::{env, fs, io::Read, process::exit, time::Instant};
 
 use engine::data::{size_radius, DESERT, FOREST, HILLS, MARSH, MOUNTAIN, PREGAME, SEA, SIZES};
 use engine::map::{self, Zone};
-use engine::{clear, land, pregame, round, stats, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
+use engine::{
+    civs, clear, land, pregame, round, stats, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN,
+};
 
 const USAGE: &str = "\
 sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json | --events-json] [--no-events]
@@ -463,6 +465,21 @@ fn report(w: &World, out: &Output) {
     };
     println!("{what}: {}", ids.len());
     print!("{}", centres_text(w, &ids));
+    print!("{}", civs_text(w));
+}
+
+/// One line per civ: name, capital, market, clans, people, store and hearths on its land.
+fn civs_text(w: &World) -> String {
+    let mut out = String::new();
+    for c in civs::cards(w) {
+        let civ = &w.civs[&c.civ];
+        let store: f64 = civ.store.iter().sum();
+        out += &format!(
+            "  civ {} at ({}, {}), market {}: {} clans, {:.1} people, store {store:.1}, {} hearths on its land\n",
+            c.name, c.q, c.r, civ.market, c.clans, c.people, c.hearths
+        );
+    }
+    out
 }
 
 /// Times `turns` turns from a fresh world for each seed.

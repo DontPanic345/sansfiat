@@ -1,6 +1,6 @@
 use engine::data::{PREGAME, SIZES, TENDING};
 use engine::map::Tile;
-use engine::{stats, Action, Config, Save, World, FOODS, TERRAIN};
+use engine::{stats, Action, Config, Phase, Save, World, FOODS, TERRAIN};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -77,6 +77,16 @@ impl Sim {
             "claims": claims,
             "summary": stats::summary(w),
         })
+        .to_string()
+    }
+
+    /// The phase: `"pregame"`, `"choose"` (founding is done, the player has yet to pick) or `"main"`.
+    pub fn phase(&self) -> String {
+        match self.world.phase {
+            Phase::Pregame => "pregame",
+            Phase::Choose => "choose",
+            Phase::Main => "main",
+        }
         .to_string()
     }
 

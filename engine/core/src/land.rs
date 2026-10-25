@@ -134,6 +134,8 @@ pub fn hold(w: &mut World) {
                     clan: None,
                     market: None,
                     other: None,
+                    civ: None,
+                    unit: None,
                 });
             }
         } else if !held {

@@ -108,9 +108,10 @@ pub fn form_and_fade(w: &mut World) {
 }
 
 /// A market whose activity falls under `min_volume` goes, and its clans with it. A centre the
-/// pre-game ended on stays.
+/// pre-game ended on stays, and so does every civ's market.
 pub fn fade(w: &mut World) {
-    let kept = w.end.as_ref().map(|e| e.centres.clone()).unwrap_or_default();
+    let mut kept = w.end.as_ref().map(|e| e.centres.clone()).unwrap_or_default();
+    kept.extend(w.civs.values().map(|c| c.market));
     let gone: Vec<u32> =
         w.markets.values().filter(|m| m.activity < MARKET.min_volume && !kept.contains(&m.id)).map(|m| m.id).collect();
     for mid in gone {

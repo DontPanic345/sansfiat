@@ -23,8 +23,17 @@ fn kinds(w: &World) -> Vec<EventKind> {
 #[test]
 fn every_kind_fires_in_real_runs() {
     use EventKind::*;
-    let all =
-        [ClanDivided, ClanStarving, ClanMoved, MarketFormed, MarketFaded, HearthTamed, CentreFormed, PregameEnded];
+    let all = [
+        ClanDivided,
+        ClanStarving,
+        ClanMoved,
+        MarketFormed,
+        MarketFaded,
+        HearthTamed,
+        CentreFormed,
+        PregameEnded,
+        CivFounded,
+    ];
     let mut seen = vec![0usize; all.len()];
     // Seed 3 ends on the turn limit with a top-up; the others end on their own.
     for seed in [1, 3, 5] {
@@ -147,7 +156,16 @@ fn a_market_that_fades_is_an_event() {
     assert!(w.markets.is_empty());
     assert_eq!(
         w.events,
-        vec![Event { turn: 9, kind: EventKind::MarketFaded, tile: at(2, 1), clan: None, market: Some(m), other: None }]
+        vec![Event {
+            turn: 9,
+            kind: EventKind::MarketFaded,
+            tile: at(2, 1),
+            clan: None,
+            market: Some(m),
+            other: None,
+            civ: None,
+            unit: None
+        }]
     );
     assert_eq!(w.events[0].text(&w), format!("Market {m} fades"), "worded after the market is gone");
 }
@@ -169,16 +187,20 @@ fn a_top_up_is_a_centre_each_then_the_end() {
             (EventKind::CentreFormed, Some(a)),
             (EventKind::CentreFormed, Some(b)),
             (EventKind::CentreFormed, Some(c)),
-            (EventKind::PregameEnded, None)
+            (EventKind::PregameEnded, None),
+            // Founding follows the end, a civ on each centre.
+            (EventKind::CivFounded, Some(a)),
+            (EventKind::CivFounded, Some(b)),
+            (EventKind::CivFounded, Some(c))
         ]
     );
-    let last = w.events.last().unwrap();
+    let last = &w.events[3];
     assert_eq!((last.tile, last.turn), (at_big(8, 0), PREGAME.max_turns - 1));
     assert_eq!(last.text(&w), "The pre-game ends: 3 centres, 3 topped up");
     assert_eq!(w.events[0].text(&w), format!("Market {a} becomes a centre"));
     // Nothing more once it has ended.
     check_end(&mut w);
-    assert_eq!(w.events.len(), 4);
+    assert_eq!(w.events.len(), 7);
 }
 
 #[test]

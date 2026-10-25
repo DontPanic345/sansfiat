@@ -34,6 +34,8 @@ pub struct Clan {
     pub market: Option<u32>,
     /// Labour for the walk to market.
     pub trip: f64,
+    /// The civ it belongs to, once founding has made civs; its daughters belong too.
+    pub civ: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -104,6 +106,7 @@ pub fn new_clan(id: u32, home: usize, pop: f64) -> Clan {
         walk: 0.0,
         market: None,
         trip: 0.0,
+        civ: None,
     }
 }
 
@@ -524,6 +527,7 @@ fn divide(w: &mut World, id: u32) {
     d.store = c.store.map(|v| v / 2.0);
     d.since = c.since;
     d.fed_ratio = c.fed_ratio;
+    d.civ = c.civ;
     d.round = round;
     let m = w.clans.get_mut(&id).unwrap();
     m.round.retain(|t| keep.contains(t));
@@ -540,6 +544,7 @@ fn split(w: &mut World, id: u32) {
     let pop = c.pop.min(CLAN.split_at) / 2.0;
     let share = pop / c.pop;
     let mut d = new_clan(w.next_id, c.home, pop);
+    d.civ = c.civ;
     d.store = c.store.map(|v| v * share);
     let scored: Vec<(usize, f64)> =
         sites(w, &c, CLAN.scout_range).into_iter().map(|s| (s, site_value(w, &d, s, pop, &d.store))).collect();

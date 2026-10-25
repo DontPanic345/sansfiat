@@ -363,6 +363,22 @@ pub const CLAN: ClanRules = ClanRules {
     fetch_range: 3.0,
 };
 
+/// The civs founding makes, in the order of the centres: name and colour.
+pub const CIVS: [(&str, &str); 3] = [("Red", "#d64545"), ("Blue", "#3b6fd6"), ("Gold", "#d6a63b")];
+
+pub struct CivRules {
+    /// Hex steps from the capital that count as the capital's land.
+    pub territory: i32,
+    /// What a civ's store starts with, standing in for the boon year.
+    pub endowment: [f64; N],
+    /// The share of its store a fed civ clan hands the civ each turn.
+    pub levy: f64,
+    /// The most goods, in all, a civ's store holds; the excess is lost.
+    pub store_cap: f64,
+}
+
+pub const CIV: CivRules = CivRules { territory: 2, endowment: [0.0, 30.0, 0.0, 0.0, 0.0], levy: 0.5, store_cap: 50.0 };
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub seed: u32,
