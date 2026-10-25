@@ -21,4 +21,4 @@ pub use map::Tile;
 pub use market::{clear, utility, Basket, Clearing, Params};
 pub use markets::Market;
 pub use pregame::End;
-pub use world::{Action, Save, World, TURN};
+pub use world::{Action, Event, EventKind, Save, World, TURN};

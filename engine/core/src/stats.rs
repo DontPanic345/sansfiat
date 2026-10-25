@@ -41,7 +41,7 @@ pub fn summary(w: &World) -> Summary {
     for c in w.clans.values() {
         territory.extend(round::territory(w, &c.round));
     }
-    let centres = centres(w);
+    let centres = w.end.as_ref().map_or_else(|| centres(w), |e| e.centres.clone());
     let cover = land_cover(w, &centres);
     Summary {
         turn: w.turn,

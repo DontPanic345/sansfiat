@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BinaryHeap};
 
 use crate::data::*;
 use crate::map::{self, Tile};
-use crate::world::World;
+use crate::world::{Event, EventKind, World};
 
 /// On-map neighbours of tile `i`, in `DIRS` order.
 pub fn neighbours(w: &World, i: usize) -> impl Iterator<Item = usize> + '_ {
@@ -13,10 +13,20 @@ pub fn neighbours(w: &World, i: usize) -> impl Iterator<Item = usize> + '_ {
     w.tiles[i].hex().neighbors().filter_map(move |n| map::index(radius, n))
 }
 
-/// Labour to enter tile `i`; `None` is impassable. A trail caps it at `TRAIL.cost`.
-pub fn step_cost(w: &World, i: usize) -> Option<f64> {
-    let t = &w.tiles[i];
-    TERRAIN[t.terrain].move_cost.map(|c| if t.trail { c.min(TRAIL.cost) } else { c })
+/// Whether tile `i` can be entered at all.
+pub fn passable(w: &World, i: usize) -> bool {
+    TERRAIN[w.tiles[i].terrain].move_cost.is_some()
+}
+
+/// Labour to step from tile `from` into tile `to`; `None` is impassable. A trail caps the
+/// terrain's cost at `TRAIL.cost`. Entering a river tile costs `RIVER.cross` more, unless the
+/// step is along the river's course (either tile flows into the other) or a trail bridges it.
+pub fn step_cost(w: &World, from: usize, to: usize) -> Option<f64> {
+    let t = &w.tiles[to];
+    let along = w.tiles[from].flow == Some(to) || t.flow == Some(from);
+    let cross = if t.river > 0 && !t.trail && !along { RIVER.cross } else { 0.0 };
+    let terrain = TERRAIN[t.terrain].move_cost?;
+    Some(if t.trail { terrain.min(TRAIL.cost) } else { terrain } + cross)
 }
 
 struct Entry(f64, usize);
@@ -39,8 +49,8 @@ impl Ord for Entry {
     }
 }
 
-/// Path cost from the nearest of `from` to every tile within `max`: sources cost 0, entering a
-/// tile costs its `step_cost`, and only `allowed` tiles are entered.
+/// Path cost from the nearest of `from` to every tile within `max`: sources cost 0, each step
+/// costs its `step_cost`, and only `allowed` tiles are entered.
 pub fn cost_map(w: &World, from: &[usize], max: f64, allowed: impl Fn(usize) -> bool) -> BTreeMap<usize, f64> {
     let mut best: BTreeMap<usize, f64> = BTreeMap::new();
     let mut heap = BinaryHeap::new();
@@ -53,7 +63,7 @@ pub fn cost_map(w: &World, from: &[usize], max: f64, allowed: impl Fn(usize) -> 
             continue;
         }
         for j in neighbours(w, i) {
-            let Some(step) = step_cost(w, j) else { continue };
+            let Some(step) = step_cost(w, i, j) else { continue };
             let nc = c + step;
             if nc > max || !allowed(j) || best.get(&j).is_some_and(|&b| b <= nc) {
                 continue;
@@ -95,7 +105,8 @@ pub fn is_hearth(t: &Tile) -> bool {
 /// follows.
 pub fn hold(w: &mut World) {
     let round1 = |v: f64| (v * 10.0).round() / 10.0;
-    for t in &mut w.tiles {
+    let turn = w.turn;
+    for (i, t) in w.tiles.iter_mut().enumerate() {
         let held = t.claim.is_some();
         if held {
             t.held += 1;
@@ -113,7 +124,18 @@ pub fn hold(w: &mut World) {
             continue;
         }
         if held && t.held >= TENDING.after {
+            let before = t.tame;
             t.tame = (t.tame + 1).min(TENDING.tame_turns);
+            if before < TENDING.tame_turns && t.tame == TENDING.tame_turns {
+                w.events.push(Event {
+                    turn,
+                    kind: EventKind::HearthTamed,
+                    tile: i,
+                    clan: None,
+                    market: None,
+                    other: None,
+                });
+            }
         } else if !held {
             t.tame = t.tame.saturating_sub(1);
         }

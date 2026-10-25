@@ -4,12 +4,12 @@
 use serde::{Deserialize, Serialize};
 
 use crate::data::*;
-use crate::land::{neighbours, step_cost};
-use crate::map;
+use crate::land::{neighbours, passable};
+use crate::map::{self, Zone};
 use crate::market::Basket;
 use crate::rng::{rand, rand_index};
 use crate::round::{self, Legs};
-use crate::world::World;
+use crate::world::{EventKind, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Clan {
@@ -56,9 +56,10 @@ fn shuffled(w: &mut World) -> Vec<u32> {
 }
 
 /// Seed clans: one on a random land tile with food in each landmass of `min_landmass`+ tiles,
-/// then more on random free land tiles with food until there are `seeds`.
+/// then more on random free land tiles with food until there are `seeds`; never in a sealed valley.
 pub fn seed(w: &mut World) {
-    let has_food = |w: &World, i: usize| w.tiles[i].cap.iter().any(|&c| c > 0.0);
+    // Nobody starts in a sealed valley: it stays empty until a scout bridges its wall.
+    let has_food = |w: &World, i: usize| w.tiles[i].cap.iter().any(|&c| c > 0.0) && w.tiles[i].zone != Zone::Sealed;
     let mut homes: Vec<usize> = Vec::new();
     for mass in map::landmasses(&w.tiles, w.config.radius) {
         if mass.len() < CLAN.min_landmass {
@@ -207,7 +208,9 @@ pub fn harvest(w: &mut World) {
 /// holds or starves. A clan under one person dies and frees its tiles.
 pub fn eat(w: &mut World) {
     let mut dead = Vec::new();
+    let mut starving = Vec::new();
     for c in w.clans.values_mut() {
+        let was_starving = c.starving;
         let need = c.pop;
         let k = CLAN.diet_share * need;
         let mut got: f64 = c.basket.iter().map(|&v| v.min(k)).sum();
@@ -220,6 +223,9 @@ pub fn eat(w: &mut World) {
         c.fed_ratio = if need > 0.0 { got / need } else { 1.0 };
         c.fed = c.fed_ratio >= 0.999;
         c.starving = c.fed_ratio < CLAN.stable_at;
+        if c.starving && !was_starving {
+            starving.push((c.id, c.home));
+        }
         c.hungry = if c.starving { c.hungry + 1 } else { 0 };
         c.since += 1;
         if c.fed {
@@ -230,6 +236,9 @@ pub fn eat(w: &mut World) {
         if c.pop < 1.0 {
             dead.push(c.id);
         }
+    }
+    for (id, home) in starving {
+        w.event(EventKind::ClanStarving, home, Some(id), None, None);
     }
     for id in dead {
         let c = w.clans.remove(&id).unwrap();
@@ -276,7 +285,7 @@ pub fn site_value(w: &World, clan: &Clan, site: usize, pop: f64, store: &Basket)
 
 /// Tiles within `steps` steps of home over passable land, on no round, in tile order.
 fn sites(w: &World, clan: &Clan, steps: i32) -> Vec<usize> {
-    let passable = |i: usize| TERRAIN[w.tiles[i].terrain].land && step_cost(w, i).is_some();
+    let passable = |i: usize| TERRAIN[w.tiles[i].terrain].land && passable(w, i);
     let mut seen = vec![clan.home];
     let mut frontier = vec![clan.home];
     for _ in 0..steps {
@@ -351,6 +360,7 @@ fn move_on(w: &mut World, c: &Clan, now: f64) -> bool {
     m.round = vec![site];
     m.since = 0;
     m.hungry = 0;
+    w.event(EventKind::ClanMoved, site, Some(c.id), None, None);
     true
 }
 
@@ -520,6 +530,7 @@ fn divide(w: &mut World, id: u32) {
     m.pop -= d.pop;
     m.store = std::array::from_fn(|f| m.store[f] - d.store[f]);
     w.clans.insert(did, d);
+    w.event(EventKind::ClanDivided, home, Some(id), None, Some(did));
 }
 
 /// A clan with no land to divide, or a starving one, sends a daughter of `min(pop, split_at) / 2`
@@ -541,5 +552,6 @@ fn split(w: &mut World, id: u32) {
     m.pop -= pop;
     m.store = std::array::from_fn(|f| m.store[f] - d.store[f]);
     m.hungry = 0;
+    w.event(EventKind::ClanDivided, site, Some(id), None, Some(d.id));
     w.clans.insert(d.id, d);
 }

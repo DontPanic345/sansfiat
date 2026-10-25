@@ -1,6 +1,6 @@
 use engine::data::*;
 use engine::hex::Hex;
-use engine::land::{regrow, step_cost};
+use engine::land::{neighbours, regrow, step_cost};
 use engine::map::index;
 use engine::{Config, World, GOODS, TERRAIN};
 
@@ -16,11 +16,15 @@ fn caps_are_terrain_food_times_fertility() {
         let w = World::new(Config { seed, radius: 16 });
         for t in &w.tiles {
             let terrain = &TERRAIN[t.terrain];
-            for f in 0..N {
-                assert!((t.cap[f] - (terrain.food[f] * t.fertility * 10.0).round() / 10.0).abs() < 1e-9);
+            let river = if t.river > 0 { FEATURES.river } else { [0.0; N] };
+            for (f, extra) in river.into_iter().enumerate() {
+                let want = ((terrain.food[f] + extra) * t.fertility * 10.0).round() / 10.0;
+                assert!((t.cap[f] - want).abs() < 1e-9);
             }
             if t.terrain == SEA {
                 assert!(t.cap.iter().all(|&c| c == 0.0));
+            } else if t.flood {
+                assert_eq!(t.fertility, MAP.flood_fertility);
             } else {
                 assert!((FERTILITY.0..=FERTILITY.1).contains(&t.fertility), "{}", t.fertility);
             }
@@ -73,15 +77,17 @@ fn index_matches_within() {
 #[test]
 fn step_costs() {
     let mut w = World::new(Config { seed: 1, radius: 8 });
-    let find = |w: &World, t: usize| w.tiles.iter().position(|x| x.terrain == t).unwrap();
+    let find = |w: &World, t: usize| w.tiles.iter().position(|x| x.terrain == t && x.river == 0).unwrap();
     let sea = find(&w, SEA);
     let plains = find(&w, PLAINS);
-    assert_eq!(step_cost(&w, sea), None);
-    assert_eq!(step_cost(&w, plains), Some(1.0));
+    // Off any river, the tile left doesn't matter.
+    let from = neighbours(&w, plains).next().unwrap();
+    assert_eq!(step_cost(&w, from, sea), None);
+    assert_eq!(step_cost(&w, from, plains), Some(1.0));
     w.tiles[plains].terrain = FOREST;
-    assert_eq!(step_cost(&w, plains), Some(2.0));
+    assert_eq!(step_cost(&w, from, plains), Some(2.0));
     w.tiles[plains].trail = true;
-    assert_eq!(step_cost(&w, plains), Some(1.0));
+    assert_eq!(step_cost(&w, from, plains), Some(1.0));
 }
 
 #[test]

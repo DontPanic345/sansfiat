@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::clans::nutrition;
 use crate::data::*;
-use crate::land::{cost_map, step_cost};
+use crate::land::{cost_map, passable};
 use crate::market::{clear, demand, Basket, Params};
-use crate::world::World;
+use crate::world::{EventKind, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Market {
@@ -32,7 +32,7 @@ pub struct Market {
 
 /// Path cost from the market's tile over passable tiles, out to `MARKET.reach`.
 pub fn reach(w: &World, tile: usize) -> BTreeMap<usize, f64> {
-    cost_map(w, &[tile], MARKET.reach, |i| step_cost(w, i).is_some())
+    cost_map(w, &[tile], MARKET.reach, |i| passable(w, i))
 }
 
 /// For each clan with a round tile in some market's reach: that market's id and the least path
@@ -107,11 +107,15 @@ pub fn form_and_fade(w: &mut World) {
     form(w);
 }
 
-/// A market whose activity falls under `min_volume` goes, and its clans with it.
+/// A market whose activity falls under `min_volume` goes, and its clans with it. A centre the
+/// pre-game ended on stays.
 pub fn fade(w: &mut World) {
-    let gone: Vec<u32> = w.markets.values().filter(|m| m.activity < MARKET.min_volume).map(|m| m.id).collect();
+    let kept = w.end.as_ref().map(|e| e.centres.clone()).unwrap_or_default();
+    let gone: Vec<u32> =
+        w.markets.values().filter(|m| m.activity < MARKET.min_volume && !kept.contains(&m.id)).map(|m| m.id).collect();
     for mid in gone {
-        w.markets.remove(&mid);
+        let m = w.markets.remove(&mid).unwrap();
+        w.event(EventKind::MarketFaded, m.tile, None, Some(mid), None);
         for c in w.clans.values_mut() {
             if c.market == Some(mid) {
                 c.market = None;
@@ -150,6 +154,12 @@ pub fn form(w: &mut World) {
         }
     }
     let Some((tile, _)) = best else { return };
+    let id = raise(w, tile);
+    w.event(EventKind::MarketFormed, tile, None, Some(id), None);
+}
+
+/// Opens a market on `tile` this turn, with no traders yet; returns its id.
+pub fn raise(w: &mut World, tile: usize) -> u32 {
     let id = w.next_id;
     w.next_id += 1;
     let m = Market {
@@ -163,4 +173,5 @@ pub fn form(w: &mut World) {
         traders: 0,
     };
     w.markets.insert(id, m);
+    id
 }

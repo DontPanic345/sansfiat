@@ -4,7 +4,7 @@ use common::{at, check_rounds, flat, out, put, steps};
 use engine::clans::{adjust, eat, growth, harvest, nutrition, plan_harvest, site_value, value};
 use engine::data::*;
 use engine::land::neighbours;
-use engine::map::landmasses;
+use engine::map::{landmasses, Zone};
 use engine::{round, Basket, Config, World, CLAN, TERRAIN};
 
 const EPS: f64 = 1e-9;
@@ -34,8 +34,11 @@ fn total(b: &Basket) -> f64 {
 fn seeds_land_on_every_big_landmass() {
     for seed in 1..=8 {
         let w = World::new(Config { seed, radius: 16 });
-        let big: Vec<Vec<usize>> =
-            landmasses(&w.tiles, 16).into_iter().filter(|m| m.len() >= CLAN.min_landmass).collect();
+        // A sealed valley is a landmass of its own, and nobody is seeded there.
+        let big: Vec<Vec<usize>> = landmasses(&w.tiles, 16)
+            .into_iter()
+            .filter(|m| m.len() >= CLAN.min_landmass && m.iter().any(|&i| w.tiles[i].zone != Zone::Sealed))
+            .collect();
         assert_eq!(w.clans.len(), CLAN.seeds.max(big.len()), "seed {seed}");
         let mut homes: Vec<usize> = w.clans.values().map(|c| c.home).collect();
         homes.sort_unstable();
