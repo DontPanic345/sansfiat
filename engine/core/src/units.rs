@@ -87,12 +87,16 @@ pub fn make_first(w: &mut World, civ: u32) -> u32 {
     spawn(w, civ, clan)
 }
 
-/// Sends `unit`'s person back to the civ clan whose home is fewest hex steps from it (ties to the
-/// lower id), or loses it with no civ clan, and removes the unit. `starved` picks the event.
+/// Sends `unit`'s person back to the clan of its own civ whose home is fewest hex steps from it
+/// (ties to the lower id), or loses it with no such clan, and removes the unit. `starved` picks the event.
 pub fn disband(w: &mut World, unit: u32, starved: bool) {
     let Some(u) = w.units.remove(&unit) else { return };
-    let clan =
-        w.clans.values().filter(|c| c.civ.is_some()).min_by_key(|c| (steps(w, c.home, u.tile), c.id)).map(|c| c.id);
+    let clan = w
+        .clans
+        .values()
+        .filter(|c| c.civ == Some(u.civ))
+        .min_by_key(|c| (steps(w, c.home, u.tile), c.id))
+        .map(|c| c.id);
     if let Some(c) = clan.and_then(|id| w.clans.get_mut(&id)) {
         c.pop += 1.0;
     }

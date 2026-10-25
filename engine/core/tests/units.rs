@@ -233,17 +233,17 @@ fn a_fed_unit_starts_its_count_again() {
 fn disbanding_returns_the_person_to_the_nearest_civ_clan() {
     let (mut w, [red, blue, _]) = led();
     let tile = at_big(-5, 3);
-    // Homes 2 steps from the unit: ids tie, the lower wins. A closer clan of no civ and one of
-    // Blue's farther away don't count / lose.
+    // Homes 2 steps from the unit: ids tie, the lower wins. A closer clan of no civ doesn't count.
     let high = civ_clan(&mut w, red, &[at_big(-3, 3)], 5.0);
     let low = civ_clan(&mut w, red, &[at_big(-5, 5)], 5.0);
     let (low, high) = (low.min(high), low.max(high));
     put(&mut w, &[at_big(-5, 4)], 5.0);
-    civ_clan(&mut w, blue, &[at_big(-5, 6)], 5.0);
+    // Blue's clan is nearer than either of Red's, and still isn't the unit's own civ.
+    let rival = civ_clan(&mut w, blue, &[at_big(-4, 3)], 5.0);
     let u = unit(&mut w, red, tile);
     w.act(Action::DisbandUnit { unit: u }).unwrap();
     assert!(w.units.is_empty());
-    assert_eq!([w.clans[&low].pop, w.clans[&high].pop], [6.0, 5.0]);
+    assert_eq!([w.clans[&low].pop, w.clans[&high].pop, w.clans[&rival].pop], [6.0, 5.0, 5.0]);
     let ev = kinds(&w, EventKind::UnitDisbanded);
     assert_eq!((ev.len(), ev[0].clan, ev[0].civ, ev[0].unit, ev[0].tile), (1, Some(low), Some(red), Some(u), tile));
     assert_eq!(ev[0].text(&w), format!("Red's warrior {u} disbands; its person rejoins clan {low}"));

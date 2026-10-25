@@ -206,7 +206,7 @@ pub enum Action {
         unit: u32,
         to: usize,
     },
-    /// Disband a unit at once; its person rejoins the nearest civ clan.
+    /// Disband a unit at once; its person rejoins the nearest clan of its civ.
     DisbandUnit {
         unit: u32,
     },

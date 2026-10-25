@@ -90,6 +90,7 @@
   #feed { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; }
   #feed li button { display:flex; gap:6px; width:100%; text-align:left; background:none; border:0; border-bottom:1px solid #222a35; border-radius:0; padding:3px 12px; font-size:12px; align-items:baseline; }
   #feed li button:hover { background:#222c38; }
+  #feed li.mine button { border-left:3px solid var(--accent); padding-left:9px; font-weight:600; }
   #feed li.selected button { background:#2b3a4d; }
   #feed .turn { color:var(--dim); min-width:38px; text-align:right; font-variant-numeric:tabular-nums; flex:none; }
   #feed .icon { width:14px; text-align:center; flex:none; font-weight:bold; }
@@ -143,6 +144,7 @@
         <label><input id="v-territory" type="checkbox" checked> Territories</label>
         <label><input id="v-rounds" type="checkbox" checked> Rounds</label>
         <label><input id="v-markets" type="checkbox" checked> Markets</label>
+        <label><input id="v-civs" type="checkbox" checked> Civs (land, clan rings, units)</label>
         <label><input id="v-hidden" type="checkbox"> Hidden costs (debug)</label>
       </div>
     </details>

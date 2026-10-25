@@ -13,13 +13,19 @@ export const KINDS = {
   hearthTamed: { icon: '■', color: '#ffd400', label: 'Hearths' },
   centreFormed: { icon: '★', color: '#ffc800', label: 'Centres' },
   pregameEnded: { icon: '⚑', color: '#ffffff', label: 'End' },
+  civFounded: { icon: '♜', color: '#ffffff', label: 'Civs' },
+  unitMade: { icon: '+', color: '#8fd18f', label: 'Units made' },
+  unitHungry: { icon: '!', color: '#ffb347', label: 'Units hungry' },
+  unitDisbanded: { icon: '−', color: '#a8a8a8', label: 'Units disbanded' },
+  unitStarved: { icon: '✕', color: '#ff7b72', label: 'Units starved' },
 };
 /** Rare, important kinds: the last ones trimmed from the DOM. */
-const PINNED = new Set(['centreFormed', 'pregameEnded']);
+const PINNED = new Set(['centreFormed', 'pregameEnded', 'civFounded']);
 
 export class Feed {
-  /** @param {{list: HTMLElement, filters: HTMLElement, onClick(item: object): void}} o */
-  constructor({ list, filters, onClick }) {
+  /** @param {{list: HTMLElement, filters: HTMLElement, onClick(item: object): void, mine?(item: object): boolean}} o */
+  constructor({ list, filters, onClick, mine = () => false }) {
+    this.mine = mine;
     this.list = list;
     this.onClick = onClick;
     this.items = [];
@@ -104,6 +110,7 @@ export class Feed {
     li.dataset.kind = item.kind;
     li.dataset.turn = item.turn;
     if (item.id === this.selected) li.classList.add('selected');
+    if (this.mine(item)) li.classList.add('mine');
     const b = document.createElement('button');
     b.type = 'button';
     const turn = document.createElement('span');

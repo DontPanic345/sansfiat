@@ -35,7 +35,7 @@ const view = new MapView($('map'), {
   onHover: showTip,
   onHoverEnd: hideTip,
 });
-const feed = new Feed({ list: $('feed'), filters: $('filters'), onClick: onFeed });
+const feed = new Feed({ list: $('feed'), filters: $('filters'), onClick: onFeed, mine: (e) => v?.player != null && e.civ === v.player });
 new ResizeObserver(() => view.resize()).observe($('mapbox'));
 
 /** What the selection panel and the pick read the world through. */
@@ -116,6 +116,7 @@ function refresh() {
   }
   $('run').hidden = v.phase === 'main';
   civBar(mine);
+  routes();
   pickCard();
   if (selected && !alive(ctx(), selected)) {
     selected = null;
@@ -124,6 +125,17 @@ function refresh() {
   pullEvents();
   panel();
   view.drawNow();
+}
+
+/** Hands the map the player's units' routes (the selected one drawn firmly, the rest faint). */
+function routes() {
+  const out = [];
+  for (const u of Object.values(v.units)) {
+    if (u.civ !== v.player || u.dest == null) continue;
+    const r = JSON.parse(sim.route(u.id));
+    if (r) out.push({ unit: u.id, civ: u.civ, tiles: [u.tile, ...r.path], selected: selected?.kind === 'unit' && selected.id === u.id });
+  }
+  view.setRoutes(out);
 }
 
 /** The player's civ in the top bar: swatch, name, people, store, units; "Watching" when it leads none. */
@@ -305,7 +317,8 @@ function select(sel) {
 /** Puts the selection on the map and in `body.dataset.selected`. */
 function syncSelection() {
   const hl = selected && selected.kind === 'tile' && (selected.clan != null || selected.market != null);
-  view.setSelection(selected ? tileOf(ctx(), selected) : -1);
+  view.setSelection(selected ? tileOf(ctx(), selected) : -1, selected?.kind === 'unit' ? selected.id : -1);
+  if (v) routes();
   view.setHighlight(hl ? { clan: selected.clan, market: selected.market } : null);
   document.body.dataset.selected = keyOf(selected);
 }
@@ -333,9 +346,12 @@ function onCommand(i) {
 }
 
 function onFeed(item) {
-  selected = { kind: 'tile', tile: item.tile, clan: item.clan, market: item.market };
+  const alive = item.unit != null && item.unit in v.units;
+  if (alive) selected = { kind: 'unit', id: item.unit };
+  else if (item.kind === 'civFounded' && item.civ != null && item.civ in v.civs) selected = { kind: 'capital', civ: item.civ };
+  else selected = { kind: 'tile', tile: item.tile, clan: item.clan, market: item.market };
   syncSelection();
-  view.centreOn(item.tile, { minK: 24, smooth: true });
+  view.centreOn(alive ? v.units[item.unit].tile : item.tile, { minK: 24, smooth: true });
   panel();
 }
 
@@ -431,6 +447,20 @@ function fillTip(i) {
     lines.push(h ? `Held by clan ${h[0]} <span class="dim">(${h[1]})</span>` : 'Held by nobody');
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
   }
+  const civ = sim.tile_civ(i);
+  if (civ >= 0 && v.civs[civ]) {
+    const c = v.civs[civ];
+    const name = `<i class="sw" style="background:${c.color}"></i>${c.name}`;
+    if (c.capital === i) lines.push(`${name}'s capital`);
+    else if (c.territory.includes(i)) lines.push(`${name}'s land <span class="dim">(capital territory)</span>`);
+    else if (h) lines.push(`${name}, clan ${h[0]}'s ${h[1] === 'round' ? 'round' : 'territory'}`);
+    else lines.push(`${name}'s land`);
+  }
+  const here = Object.values(v.units).filter((u) => u.tile === i);
+  if (here.length) {
+    const names = here.map((u) => `${v.civs[u.civ]?.name ?? '?'} ${u.kind} ${u.id}${u.hungry ? ' (hungry)' : ''}`);
+    lines.push(names.slice(0, 4).join('<br>') + (names.length > 4 ? `<br>and ${names.length - 4} more` : ''));
+  }
   const m = marketOn(ctx(), i);
   if (m) lines.push(`Market ${m.id}${v.end && v.end.centres.includes(m.id) ? ' (centre)' : ''}`);
   if (isHearth(i)) lines.push('Hearth');
@@ -480,6 +510,12 @@ function legend() {
     [sw('background:transparent;border:2px solid #fff;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'market'],
     [sw('background:transparent;border:3px solid #ffc800;border-radius:50%;width:14px;height:14px;margin:0 2px'), 'centre'],
     [sw('background:hsl(120,70%,55%);border:2px solid #ff2a2a;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'clan (red ring: starving)'],
+    [sw('background:hsl(120,70%,55%);border:3px solid #d6a63b;border-radius:50%;width:10px;height:10px;margin:2px 3px;box-shadow:0 0 0 1px #000'), 'civ clan (ring in the civ colour)'],
+    [sw('background:#d64545;border:2px solid #fff;outline:2px solid #000;width:10px;height:10px;margin:2px 4px;clip-path:polygon(0 25%,50% 0,100% 25%,100% 100%,0 100%)'), 'capital'],
+    [sw('background:transparent;border:3px solid #3b6fd6;box-shadow:0 0 0 1px #000;width:12px;height:12px;margin:1px 3px'), 'civ land (capital territory)'],
+    [sw('background:#3b6fd6;border:2px solid #000;width:10px;height:12px;margin:0 4px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)'), 'warrior'],
+    [sw('background:#3b6fd6;border:2px solid #ff2a2a;width:10px;height:12px;margin:0 4px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)'), 'hungry warrior'],
+    [sw('background:transparent;border:0;border-top:3px dashed #fff;height:0;margin:5px 0'), 'route (selected unit)'],
   ];
   $('legenditems').innerHTML = items.map(([s, name]) => `<span class="item">${s}${name}</span>`).join('');
 }
@@ -508,7 +544,7 @@ $('dice').onclick = () => {
 $('seed').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') newMap();
 });
-for (const key of ['fertility', 'territory', 'rounds', 'markets', 'hidden']) {
+for (const key of ['fertility', 'territory', 'rounds', 'markets', 'hidden', 'civs']) {
   $(`v-${key}`).onchange = (e) => view.setOptions({ [key]: e.target.checked });
 }
 $('zin').onclick = () => view.zoomBy(1.4);

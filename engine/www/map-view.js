@@ -44,11 +44,14 @@ export class MapView {
     this.lctx = this.layer.getContext('2d');
     this.opts = opts;
     this.terrain = opts.terrain;
-    this.options = { fertility: false, territory: true, rounds: true, markets: true, hidden: false };
+    this.options = { fertility: false, territory: true, rounds: true, markets: true, hidden: false, civs: true };
+    this.routes = []; // [{unit, tiles: [from, ...path], selected}]: the player's units' routes
+    this.civShapes = [];
     this.cx = 0; this.cy = 0; this.k = 8;
     this.w = 1; this.h = 1; this.dpr = 1;
     this.n = 0;
     this.selected = -1;
+    this.selectedUnit = -1;
     this.highlight = null;
     this.dirty = true;
     this.frame = 0;
@@ -128,6 +131,7 @@ export class MapView {
       if (this.l.wild_grain[i] > 0 && (tame.get(i) || 0) >= tameTurns) this.hearths.push(i);
     }
     this.centres = new Set(v.end ? v.end.centres : v.summary.centres);
+    this.buildCivs(v);
     // A market's reach, approximated by hex steps over land (as the page always has).
     for (const m of Object.values(v.markets)) {
       const q0 = this.l.q[m.tile], r0 = this.l.r[m.tile];
@@ -138,6 +142,38 @@ export class MapView {
         }
       }
     }
+  }
+
+  /** The civ marks that change only with a turn: each civ's land outline (one path per civ, built
+   *  here and not per frame), and which clans belong to a civ. */
+  buildCivs(v) {
+    this.civShapes = [];
+    this.clanCiv = new Map(v.clan_civ || []);
+    for (const c of Object.values(v.civs || {})) {
+      const land = new Set(c.territory);
+      const edge = new Path2D();
+      for (const i of c.territory) {
+        for (let d = 0; d < 6; d++) {
+          const j = this.nb[i * 6 + d];
+          if (j >= 0 && land.has(j)) continue;
+          const e = (d + 1) % 6;
+          edge.moveTo(this.px[i] + CORNER[d][0], this.py[i] + CORNER[d][1]);
+          edge.lineTo(this.px[i] + CORNER[e][0], this.py[i] + CORNER[e][1]);
+        }
+      }
+      const work = new Path2D();
+      for (const i of c.work) {
+        work.moveTo(this.px[i] + 0.9, this.py[i]);
+        work.arc(this.px[i], this.py[i], 0.9, 0, 2 * Math.PI);
+      }
+      this.civShapes.push({ civ: c, edge, work });
+    }
+  }
+
+  /** The routes to draw: `[{unit, tiles, selected}]`, the tiles from where the unit stands to its destination. */
+  setRoutes(routes) {
+    this.routes = routes;
+    this.requestDraw();
   }
 
   /** The clan holding tile `i` through its round, or its territory, as `[clan, how]`. */
@@ -154,8 +190,9 @@ export class MapView {
     this.requestDraw();
   }
 
-  setSelection(i) {
+  setSelection(i, unit = -1) {
     this.selected = i;
+    this.selectedUnit = unit;
     this.requestDraw();
   }
 
@@ -650,6 +687,137 @@ export class MapView {
     }
   }
 
+  /** Civs, drawn over the clans with a dark casing: land outlines, work tiles, rings on civ clans,
+   *  routes, capitals, units. */
+  drawCivs(ctx, v, onScreen) {
+    const px = 1 / this.k;
+    const casing = 'rgba(0,0,0,0.8)';
+    for (const { civ, edge, work } of this.civShapes) {
+      ctx.lineWidth = Math.max(px * 1.6, 0.12);
+      ctx.strokeStyle = civ.color;
+      ctx.globalAlpha = 0.28;
+      ctx.stroke(work);
+      ctx.globalAlpha = 1;
+      for (const [col, extra] of [[casing, px * 3], [civ.color, 0]]) {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = Math.max(px * 2.2, 0.16) + extra;
+        ctx.stroke(edge);
+      }
+    }
+    // A ring in the civ's colour round each of its clans' circles.
+    for (const c of Object.values(v.clans)) {
+      const civId = this.clanCiv.get(c.id);
+      if (civId == null || !onScreen(c.home)) continue;
+      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.pop))) + px * 3.4;
+      const x = this.px[c.home], y = this.py[c.home];
+      for (const [col, w] of [[casing, 4.2], [v.civs[civId].color, 2.2]]) {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = Math.max(px * w, 0.08);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, 2 * Math.PI);
+        ctx.stroke();
+      }
+    }
+    // Routes: a line along the path, a flag at the end.
+    const flag = (x, y, col) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - 1.3);
+      ctx.lineTo(x + 0.8, y - 1);
+      ctx.lineTo(x, y - 0.7);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.stroke();
+    };
+    for (const sel of [false, true]) {
+      for (const r of this.routes) {
+        if (r.selected !== sel || r.tiles.length < 2) continue;
+        const col = v.civs[r.civ]?.color || '#fff';
+        ctx.setLineDash([Math.max(px * 6, 0.5), Math.max(px * 4, 0.35)]);
+        ctx.globalAlpha = sel ? 1 : 0.55;
+        for (const [c, w] of [[casing, sel ? 5 : 3.5], [sel ? '#fff' : col, sel ? 2.6 : 1.8]]) {
+          ctx.strokeStyle = c;
+          ctx.lineWidth = Math.max(px * w, 0.1);
+          ctx.beginPath();
+          r.tiles.forEach((i, n) => (n === 0 ? ctx.moveTo(this.px[i], this.py[i]) : ctx.lineTo(this.px[i], this.py[i])));
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        const end = r.tiles[r.tiles.length - 1];
+        ctx.lineWidth = Math.max(px * 1.4, 0.06);
+        ctx.strokeStyle = casing;
+        flag(this.px[end], this.py[end], sel ? '#fff' : col);
+        ctx.globalAlpha = 1;
+      }
+    }
+    // Capitals: a house in the civ's colour, at least 14 px wide so it shows zoomed out.
+    for (const { civ } of this.civShapes) {
+      if (!onScreen(civ.capital)) continue;
+      const x = this.px[civ.capital], y = this.py[civ.capital];
+      const s = Math.max(0.95, px * 8);
+      ctx.beginPath();
+      ctx.moveTo(x - s, y + s * 0.8);
+      ctx.lineTo(x - s, y - s * 0.1);
+      ctx.lineTo(x, y - s * 0.95);
+      ctx.lineTo(x + s, y - s * 0.1);
+      ctx.lineTo(x + s, y + s * 0.8);
+      ctx.closePath();
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = Math.max(px * 5, 0.3);
+      ctx.stroke();
+      ctx.fillStyle = civ.color;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = Math.max(px * 1.6, 0.1);
+      ctx.stroke();
+      // A door, so it reads as a city and not a pentagon.
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillRect(x - s * 0.22, y + s * 0.1, s * 0.44, s * 0.7);
+    }
+    // Units: a shield per civ per tile, a count when several; hungry ones edged red.
+    const byTile = new Map();
+    for (const u of Object.values(v.units)) {
+      if (!onScreen(u.tile)) continue;
+      const key = `${u.tile}:${u.civ}`;
+      let g = byTile.get(key);
+      if (!g) byTile.set(key, (g = { tile: u.tile, civ: u.civ, n: 0, hungry: false, selected: false }));
+      g.n++;
+      if (u.hungry > 0) g.hungry = true;
+      if (u.id === this.selectedUnit) g.selected = true;
+    }
+    const slot = new Map(); // shields on one tile sit side by side
+    for (const g of [...byTile.values()].sort((a, b) => a.tile - b.tile || a.civ - b.civ)) {
+      const k = slot.get(g.tile) || 0;
+      slot.set(g.tile, k + 1);
+      const s = Math.max(0.6, px * 6);
+      const x = this.px[g.tile] + k * s * 1.7 + s * 0.9, y = this.py[g.tile] + s * 1.1;
+      ctx.beginPath();
+      ctx.moveTo(x - s * 0.8, y - s);
+      ctx.lineTo(x + s * 0.8, y - s);
+      ctx.lineTo(x + s * 0.8, y + s * 0.1);
+      ctx.lineTo(x, y + s);
+      ctx.lineTo(x - s * 0.8, y + s * 0.1);
+      ctx.closePath();
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = g.hungry ? '#ff2a2a' : '#000';
+      ctx.lineWidth = Math.max(px * (g.hungry ? 4.5 : 4), 0.2);
+      ctx.stroke();
+      ctx.fillStyle = v.civs[g.civ]?.color || '#ccc';
+      ctx.fill();
+      ctx.strokeStyle = g.selected ? '#fff' : 'rgba(0,0,0,0.9)';
+      ctx.lineWidth = Math.max(px * (g.selected ? 2.4 : 1), 0.06);
+      ctx.stroke();
+      if (g.n > 1 && this.k >= 8) {
+        ctx.font = `bold ${s * 1.3}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#000';
+        ctx.fillText(String(g.n), x, y - s * 0.1);
+      }
+    }
+  }
+
   drawOverlay(ctx) {
     const v = this.v;
     if (!v) return;
@@ -797,6 +965,8 @@ export class MapView {
         ctx.stroke();
       }
     }
+
+    if (this.options.civs && v.civs) this.drawCivs(ctx, v, onScreen);
 
     // What an event or the panel points at.
     const hl = this.highlight;
