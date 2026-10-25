@@ -123,7 +123,7 @@ and `./build-web.sh` green (build-4 and build-5 also run `./cross-build.sh`).
 13. **The top-up** (`pregame::check_end`, at `w.turn + 1 >= max_turns` with fewer than
     `players` centres): keep the centres already chosen, then add sites until there are three
     in this order of preference, each at least `centre_spacing` steps from every taken site and
-    on passable land in an `Open`, `Valley` or `Neck` zone (never `Sealed`) and in the same passable region as the first centre: (a) existing markets, best first (traders, then older, then lower
+    on passable land in an `Open`, `Valley` or `Neck` zone (never `Sealed`) and in the same passable region as the first centre (with none: the region of the most populated clan's home, then the others by their people, the first that holds all three sites; build-4 found the clan's own region can be too small): (a) existing markets, best first (traders, then older, then lower
     id), whatever their age or hearths; (b) the most tended land: tiles by `tame` (highest
     first), a market raised on it; (c) any fertile land: tiles with grain by fertility, a
     market raised on it. A raised market is an ordinary `Market` (founded this turn, no
@@ -135,7 +135,7 @@ and `./build-web.sh` green (build-4 and build-5 also run `./cross-build.sh`).
     `Event::text()` is the one place a line is worded; the CLI and the page use it. Kinds:
     `ClanDivided` (clan, the daughter), `ClanStarving` (a clan starts starving), `ClanMoved`
     (moved on), `MarketFormed`, `MarketFaded`, `HearthTamed` (a tile reaches full tame),
-    `CentreFormed` (a market becomes one of the chosen centres), `PregameEnded`.
+    `CentreFormed` (a market becomes one of the chosen centres, announced once per market; build-4 keeps every market ever seen as a centre in `World.centres_seen` so the greedy set flickering doesn't repeat it), `PregameEnded`.
 15. **The wasm `Sim` gains** `events(from: usize) -> String` (JSON of events from that index;
     the page keeps a cursor), `sizes() -> String` and enough tile data in `state()` (it is the
     whole world JSON already). `Sim::new(seed, radius)` is unchanged.

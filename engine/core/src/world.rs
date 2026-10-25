@@ -31,6 +31,85 @@ pub struct World {
     pub end: Option<End>,
     /// Every action applied, in order.
     pub log: Vec<Action>,
+    /// What happened, in order: derived from the turns, so not saved; a replay rebuilds it.
+    #[serde(skip)]
+    pub events: Vec<Event>,
+    /// Every market that has been among the centres before the end, so each is announced once.
+    #[serde(skip)]
+    pub centres_seen: Vec<u32>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum EventKind {
+    ClanDivided,
+    ClanStarving,
+    ClanMoved,
+    MarketFormed,
+    MarketFaded,
+    HearthTamed,
+    CentreFormed,
+    PregameEnded,
+}
+
+/// Something that happened in a turn. `tile` is where; `other` is the daughter of a division.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Event {
+    pub turn: u32,
+    pub kind: EventKind,
+    pub tile: usize,
+    pub clan: Option<u32>,
+    pub market: Option<u32>,
+    pub other: Option<u32>,
+}
+
+impl Event {
+    /// The one wording of an event, for the CLI and the page.
+    pub fn text(&self, w: &World) -> String {
+        let h = w.tiles[self.tile].hex();
+        let at = format!("({}, {})", h.q, h.r);
+        let clan = self.clan.unwrap_or(0);
+        let market = self.market.unwrap_or(0);
+        match self.kind {
+            EventKind::ClanDivided => {
+                format!("Clan {clan} divides; clan {} settles at {at}", self.other.unwrap_or(0))
+            }
+            EventKind::ClanStarving => format!("Clan {clan} is starving"),
+            EventKind::ClanMoved => format!("Clan {clan} moves on to {at}"),
+            EventKind::MarketFormed => format!("A market forms at {at}"),
+            EventKind::MarketFaded => format!("Market {market} fades"),
+            EventKind::HearthTamed => format!("A hearth is tamed at {at}"),
+            EventKind::CentreFormed => format!("Market {market} becomes a centre"),
+            EventKind::PregameEnded => match &w.end {
+                Some(e) => {
+                    let n = e.centres.len();
+                    let centres = format!("{n} centre{}", if n == 1 { "" } else { "s" });
+                    if e.topped_up.is_empty() {
+                        format!("The pre-game ends: {centres}")
+                    } else {
+                        format!("The pre-game ends: {centres}, {} topped up", e.topped_up.len())
+                    }
+                }
+                None => "The pre-game ends".to_string(),
+            },
+        }
+    }
+}
+
+impl Event {
+    /// The event as JSON, with its wording in `text`.
+    pub fn json(&self, w: &World) -> serde_json::Value {
+        let mut v = serde_json::to_value(self).unwrap();
+        v["text"] = self.text(w).into();
+        v
+    }
+}
+
+impl World {
+    /// Records an event at the current turn.
+    pub fn event(&mut self, kind: EventKind, tile: usize, clan: Option<u32>, market: Option<u32>, other: Option<u32>) {
+        self.events.push(Event { turn: self.turn, kind, tile, clan, market, other });
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -78,6 +157,8 @@ impl World {
             next_id: 1,
             end: None,
             log: Vec::new(),
+            events: Vec::new(),
+            centres_seen: Vec::new(),
         };
         clans::seed(&mut w);
         w

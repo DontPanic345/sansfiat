@@ -13,11 +13,11 @@ cargo build --release -p sansfiat
 out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT
 
-turns=400
+# "seed radius turns": the medium map runs fewer turns so the check stays fast.
 failed=0
-for pair in "1 16" "7 16" "4 20"; do
+for pair in "1 16 400" "7 16 400" "4 20 400" "3 23 150"; do
   set -- $pair
-  seed=$1 radius=$2
+  seed=$1 radius=$2 turns=$3
   target/release/sansfiat digest --seed "$seed" --radius "$radius" --turns "$turns" > "$out/native.txt"
   node cross-build.mjs "$seed" "$radius" "$turns" > "$out/wasm.txt"
   if diff "$out/native.txt" "$out/wasm.txt" > "$out/diff.txt"; then

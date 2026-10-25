@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BinaryHeap};
 
 use crate::data::*;
 use crate::map::{self, Tile};
-use crate::world::World;
+use crate::world::{Event, EventKind, World};
 
 /// On-map neighbours of tile `i`, in `DIRS` order.
 pub fn neighbours(w: &World, i: usize) -> impl Iterator<Item = usize> + '_ {
@@ -105,7 +105,8 @@ pub fn is_hearth(t: &Tile) -> bool {
 /// follows.
 pub fn hold(w: &mut World) {
     let round1 = |v: f64| (v * 10.0).round() / 10.0;
-    for t in &mut w.tiles {
+    let turn = w.turn;
+    for (i, t) in w.tiles.iter_mut().enumerate() {
         let held = t.claim.is_some();
         if held {
             t.held += 1;
@@ -123,7 +124,18 @@ pub fn hold(w: &mut World) {
             continue;
         }
         if held && t.held >= TENDING.after {
+            let before = t.tame;
             t.tame = (t.tame + 1).min(TENDING.tame_turns);
+            if before < TENDING.tame_turns && t.tame == TENDING.tame_turns {
+                w.events.push(Event {
+                    turn,
+                    kind: EventKind::HearthTamed,
+                    tile: i,
+                    clan: None,
+                    market: None,
+                    other: None,
+                });
+            }
         } else if !held {
             t.tame = t.tame.saturating_sub(1);
         }

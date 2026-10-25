@@ -5,10 +5,10 @@ use engine::map::{self, Zone};
 use engine::{clear, land, pregame, round, stats, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN};
 
 const USAGE: &str = "\
-sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json]
+sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json | --events-json] [--no-events]
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
-sansfiat replay <file.json> [--json]
-sansfiat sweep [seed ...] [--turns N] [--radius N | --size NAME]   (seeds default 1..=10)
+sansfiat replay <file.json> [--json | --events-json] [--no-events]
+sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all]   (seeds default 1..=10, size small)
 sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
 sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N]   (prints turn and digest, from turn 0)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
@@ -26,7 +26,7 @@ fn main() {
     let result = match args.first().map(String::as_str) {
         Some("run") => run(&args[1..]),
         Some("replay") => match args.get(1) {
-            Some(path) => replay(path, args.iter().any(|a| a == "--json")),
+            Some(path) => replay(path, &args[2..]),
             None => Err(USAGE.to_string()),
         },
         Some("sweep") => sweep(&args[1..]),
@@ -48,11 +48,11 @@ fn main() {
 
 fn run(args: &[String]) -> Result<(), String> {
     let mut config = Config::default();
-    let (mut turns, mut json, mut save, mut every) = (PREGAME.max_turns, false, None, 0u32);
+    let (mut turns, mut save, mut every) = (PREGAME.max_turns, None, 0u32);
+    let mut out = Output::default();
     let mut it = args.iter();
     while let Some(flag) = it.next() {
-        if flag == "--json" {
-            json = true;
+        if out.flag(flag) {
             continue;
         }
         let value = it.next().ok_or(format!("{flag} needs a value\n{USAGE}"))?;
@@ -68,17 +68,60 @@ fn run(args: &[String]) -> Result<(), String> {
         }
     }
     let mut w = World::new(config);
+    let mut shown = 0;
     while w.turn < turns && w.end.is_none() {
         w.run(1);
-        if every > 0 && w.turn.is_multiple_of(every) && !json {
+        if out.events_text() {
+            print_events(&w, &mut shown);
+        }
+        if every > 0 && w.turn.is_multiple_of(every) && out.text() {
             println!("{}", line(&stats::summary(&w)));
         }
     }
     if let Some(path) = save {
         fs::write(&path, serde_json::to_string(&w.save()).unwrap()).map_err(|e| format!("{path}: {e}"))?;
     }
-    report(&w, json);
+    report(&w, &out);
     Ok(())
+}
+
+/// What `run` and `replay` print: the report, or the world as JSON, or the events as JSON; the
+/// events in text between the summary lines unless `--no-events`.
+#[derive(Default)]
+struct Output {
+    json: bool,
+    events_json: bool,
+    no_events: bool,
+}
+
+impl Output {
+    /// Takes the flag if it is one of ours.
+    fn flag(&mut self, flag: &str) -> bool {
+        match flag {
+            "--json" => self.json = true,
+            "--events-json" => self.events_json = true,
+            "--no-events" => self.no_events = true,
+            _ => return false,
+        }
+        true
+    }
+
+    /// Whether the plain-text lines (summaries, the report) are printed.
+    fn text(&self) -> bool {
+        !self.json && !self.events_json
+    }
+
+    fn events_text(&self) -> bool {
+        self.text() && !self.no_events
+    }
+}
+
+/// Prints the events from index `*shown` on as `turn  text`.
+fn print_events(w: &World, shown: &mut usize) {
+    for e in &w.events[*shown..] {
+        println!("{:>6}  {}", e.turn, e.text(w));
+    }
+    *shown = w.events.len();
 }
 
 /// Prints the map as text, a legend and counts.
@@ -188,76 +231,180 @@ fn centres_text(w: &World, ids: &[u32]) -> String {
     out
 }
 
-/// Runs seeds to their end (or `turns`), one line each, then totals.
+/// One run of the sweep.
+struct Run {
+    seed: u32,
+    ended: u32,
+    /// `centres`, `limit` or `limit+topup`; `none` if `--turns` stopped it first.
+    how: &'static str,
+    centres: usize,
+    topped_up: usize,
+    /// How many of those were existing markets, raised on tended land, raised on any grain land
+    /// (told apart by when the market was founded and whether its tile is tamed).
+    tiers: [usize; 3],
+    cover: f64,
+    clans: usize,
+    people: f64,
+    markets: usize,
+    hearths: usize,
+    /// Valleys, sealed valleys, necks.
+    closed: [usize; 3],
+    ms: f64,
+}
+
+fn sweep_run(seed: u32, radius: i32, turns: u32) -> Run {
+    let start = Instant::now();
+    let mut w = World::new(Config { seed, radius });
+    while w.turn < turns && w.end.is_none() {
+        w.run(1);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1e3 / w.turn.max(1) as f64;
+    let s = stats::summary(&w);
+    let (ended, how, topped_up) = match &w.end {
+        Some(e) => (
+            e.turn,
+            match (e.by_limit, e.topped_up.is_empty()) {
+                (false, _) => "centres",
+                (true, true) => "limit",
+                (true, false) => "limit+topup",
+            },
+            e.topped_up.len(),
+        ),
+        None => (w.turn, "none", 0),
+    };
+    let mut tiers = [0; 3];
+    if let Some(e) = &w.end {
+        for id in &e.topped_up {
+            let m = &w.markets[id];
+            tiers[if m.founded < e.turn {
+                0
+            } else if w.tiles[m.tile].tame > 0 {
+                1
+            } else {
+                2
+            }] += 1;
+        }
+    }
+    let zones = |zone: Zone| map::zone_groups(&w.tiles, radius, zone).len();
+    Run {
+        seed,
+        ended,
+        how,
+        centres: s.centres.len(),
+        topped_up,
+        tiers,
+        cover: s.cover,
+        clans: s.clans,
+        people: s.people,
+        markets: s.markets,
+        hearths: s.hearths,
+        closed: [zones(Zone::Valley), zones(Zone::Sealed), zones(Zone::Neck)],
+        ms,
+    }
+}
+
+/// Runs seeds to their end (or `turns`) on each size asked for, one line each, then a summary per
+/// size. Seeds run in parallel; the lines come out in seed order.
 fn sweep(args: &[String]) -> Result<(), String> {
     let mut turns = PREGAME.max_turns;
     let mut seeds: Vec<u32> = Vec::new();
-    let mut radius = Config::default().radius;
+    let mut sizes: Vec<(String, i32)> = vec![(SIZES[0].0.to_string(), SIZES[0].1)];
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--turns" => turns = it.next().and_then(|v| v.parse().ok()).ok_or("--turns needs a number")?,
-            "--radius" => radius = it.next().and_then(|v| v.parse().ok()).ok_or("--radius needs a number")?,
-            "--size" => radius = size(it.next().ok_or("--size needs a name")?)?,
+            "--radius" => {
+                let r = it.next().and_then(|v| v.parse().ok()).ok_or("--radius needs a number")?;
+                sizes = vec![(format!("radius {r}"), r)];
+            }
+            "--size" => match it.next().ok_or("--size needs a name")?.as_str() {
+                "all" => sizes = SIZES.iter().map(|&(n, r)| (n.to_string(), r)).collect(),
+                name => sizes = vec![(name.to_string(), size(name)?)],
+            },
             s => seeds.push(s.parse().map_err(|_| format!("not a seed: {s}\n{USAGE}"))?),
         }
     }
     if seeds.is_empty() {
         seeds = (1..=10).collect();
     }
-    let (mut by_centres, mut ends, mut ratios) = (0, Vec::new(), Vec::new());
-    for &seed in &seeds {
-        let start = Instant::now();
-        let mut w = World::new(Config { seed, radius });
-        while w.turn < turns && w.end.is_none() {
-            w.run(1);
+    let threads = std::thread::available_parallelism().map_or(1, |n| n.get());
+    for (name, radius) in sizes {
+        let next = std::sync::atomic::AtomicUsize::new(0);
+        let runs: Vec<Run> = std::thread::scope(|scope| {
+            let workers: Vec<_> = (0..threads.min(seeds.len()))
+                .map(|_| {
+                    scope.spawn(|| {
+                        let mut done = Vec::new();
+                        loop {
+                            let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            let Some(&seed) = seeds.get(k) else { break };
+                            done.push((k, sweep_run(seed, radius, turns)));
+                        }
+                        done
+                    })
+                })
+                .collect();
+            let mut all: Vec<(usize, Run)> = workers.into_iter().flat_map(|h| h.join().unwrap()).collect();
+            all.sort_by_key(|&(k, _)| k);
+            all.into_iter().map(|(_, r)| r).collect()
+        });
+        for r in &runs {
+            println!(
+                "{name:<6} seed {:>3}: ended {:>3} by {:<11} centres {} topped up {} ({}/{}/{})  cover {:.2}  clans {:>3}  people {:>6.1}  markets {:>2}  hearths {:>3}  closed {}/{}/{}  {:.1} ms a turn",
+                r.seed, r.ended, r.how, r.centres, r.topped_up, r.tiers[0], r.tiers[1], r.tiers[2], r.cover, r.clans, r.people, r.markets, r.hearths,
+                r.closed[0], r.closed[1], r.closed[2], r.ms
+            );
         }
-        let ms = start.elapsed().as_secs_f64() * 1e3 / w.turn.max(1) as f64;
-        let s = stats::summary(&w);
-        let (ended, how) = match &w.end {
-            Some(e) => (e.turn, if e.by_limit { "limit" } else { "centres" }),
-            None => (w.turn, "none"),
-        };
-        if how == "centres" {
-            by_centres += 1;
-        }
-        ends.push(ended);
-        let reports = stats::centre_report(&w, &s.centres);
-        let ratio = stats::mean_ratio(&reports);
-        ratios.extend(ratio);
+        let count = |how: &str| runs.iter().filter(|r| r.how == how).count();
+        let cover_short = runs.iter().filter(|r| r.how == "limit" && r.centres == PREGAME.players).count();
+        let short = runs.iter().filter(|r| r.centres < PREGAME.players).count();
+        let on_their_own = count("centres");
+        let topped = count("limit+topup");
+        let mut ends: Vec<u32> = runs.iter().map(|r| r.ended).collect();
+        ends.sort_unstable();
+        let tier = |k: usize| runs.iter().map(|r| r.tiers[k]).sum::<usize>();
         println!(
-            "seed {seed:>3}: ended {ended:>3} by {how:<7}  clans {:>3}  people {:>6.1}  markets {:>2}  hearths {:>3}  cover {:.2}  fertility ratio {}  {ms:.1} ms a turn",
-            s.clans,
-            s.people,
-            s.markets,
-            s.hearths,
-            s.cover,
-            ratio.map_or("-".to_string(), |r| format!("{r:.2}")),
+            "{name}: the top-up took {} existing markets, {} tended tiles, {} other grain tiles",
+            tier(0),
+            tier(1),
+            tier(2)
+        );
+        println!(
+            "{name}: {} of {} ended on their own, {} needed the top-up, {cover_short} ended on the limit with three centres already (cover short){}, median end turn {}",
+            on_their_own,
+            runs.len(),
+            topped,
+            if short > 0 { format!(", {short} with fewer than three centres") } else { String::new() },
+            ends[ends.len() / 2]
         );
     }
-    ends.sort_unstable();
-    let ratio = if ratios.is_empty() {
-        "-".to_string()
-    } else {
-        format!("{:.2}", ratios.iter().sum::<f64>() / ratios.len() as f64)
-    };
-    println!(
-        "{by_centres} of {} ended by centres, median end turn {}, mean fertility ratio {ratio}",
-        seeds.len(),
-        ends[ends.len() / 2]
-    );
     Ok(())
 }
 
-fn replay(path: &str, json: bool) -> Result<(), String> {
+fn replay(path: &str, args: &[String]) -> Result<(), String> {
+    let mut out = Output::default();
+    for a in args {
+        if !out.flag(a) {
+            return Err(format!("unknown flag {a}\n{USAGE}"));
+        }
+    }
     let text = fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
     let save: Save = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
-    report(&World::replay(&save)?, json);
+    let w = World::replay(&save)?;
+    if out.events_text() {
+        print_events(&w, &mut 0);
+    }
+    report(&w, &out);
     Ok(())
 }
 
-fn report(w: &World, json: bool) {
-    if json {
+fn report(w: &World, out: &Output) {
+    if out.events_json {
+        let events: Vec<_> = w.events.iter().map(|e| e.json(w)).collect();
+        println!("{}", serde_json::json!({ "events": events }));
+        return;
+    }
+    if out.json {
         println!("{}", serde_json::to_string(w).unwrap());
         return;
     }
@@ -284,7 +431,7 @@ fn report(w: &World, json: bool) {
     let trading = w.clans.values().filter(|c| c.market.is_some()).count();
     let hearths = w.tiles.iter().filter(|t| land::is_hearth(t)).count();
     let trails = w.tiles.iter().filter(|t| t.trail).count();
-    let cover = pregame::land_cover(w, &pregame::centres(w));
+    let cover = pregame::land_cover(w, &w.end.as_ref().map_or_else(|| pregame::centres(w), |e| e.centres.clone()));
     let end = match &w.end {
         Some(e) => {
             let tiles: Vec<String> = e
@@ -293,7 +440,15 @@ fn report(w: &World, json: bool) {
                 .map(|id| w.markets.get(id).map_or("gone".to_string(), |m| format!("{}", m.tile)))
                 .collect();
             let how = if e.by_limit { "by the turn limit" } else { "by its centres" };
-            format!("ended turn {} {how}, centres at tiles [{}]", e.turn, tiles.join(", "))
+            let up = match e.topped_up.len() {
+                0 => String::new(),
+                n => format!(
+                    ", {n} {} topped up (market {})",
+                    if n == 1 { "centre" } else { "centres" },
+                    e.topped_up.iter().map(u32::to_string).collect::<Vec<_>>().join(", market ")
+                ),
+            };
+            format!("ended turn {} {how}{up}, centres at tiles [{}]", e.turn, tiles.join(", "))
         }
         None => "not ended".to_string(),
     };
@@ -302,7 +457,7 @@ fn report(w: &World, json: bool) {
         w.markets.len()
     );
     let (ids, what) = match &w.end {
-        Some(e) if e.by_limit => (e.centres.clone(), "turn limit reached, centres it had"),
+        Some(e) if e.by_limit => (e.centres.clone(), "turn limit reached, centres (topped up included)"),
         Some(e) => (e.centres.clone(), "centres"),
         None => (pregame::centres(w), "not ended, centres so far"),
     };

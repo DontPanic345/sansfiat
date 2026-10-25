@@ -1,4 +1,4 @@
-use engine::data::TENDING;
+use engine::data::{SIZES, TENDING};
 use engine::{stats, Action, Config, Save, World, FOODS, TERRAIN};
 use wasm_bindgen::prelude::*;
 
@@ -41,6 +41,13 @@ impl Sim {
         stats::digest(&self.world)
     }
 
+    /// The events from index `from` on, as a JSON array; each has its wording in `text`.
+    pub fn events(&self, from: usize) -> String {
+        let w = &self.world;
+        let rows: Vec<_> = w.events.iter().skip(from).map(|e| e.json(w)).collect();
+        serde_json::to_string(&rows).unwrap()
+    }
+
     /// `{config, log}` as JSON: enough to replay this world.
     pub fn save(&self) -> String {
         serde_json::to_string(&self.world.save()).unwrap()
@@ -54,6 +61,14 @@ pub fn terrain() -> String {
         .iter()
         .map(|t| serde_json::json!({ "name": t.name, "color": t.color, "land": t.land, "move_cost": t.move_cost }))
         .collect();
+    serde_json::to_string(&rows).unwrap()
+}
+
+/// `[{name, radius}]` as JSON: the map sizes a player can pick.
+#[wasm_bindgen]
+pub fn sizes() -> String {
+    let rows: Vec<_> =
+        SIZES.iter().map(|(name, radius)| serde_json::json!({ "name": name, "radius": radius })).collect();
     serde_json::to_string(&rows).unwrap()
 }
 
