@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
 
+use crate::civs;
 use crate::data::*;
 use crate::land::{is_hearth, neighbours, passable};
 use crate::map::{Tile, Zone};
@@ -278,4 +279,5 @@ pub fn check_end(w: &mut World) {
     let first = centres.first().map_or(0, |id| w.markets[id].tile);
     w.end = Some(End { turn: w.turn, centres, cover, by_limit: !by_centres, topped_up });
     w.event(EventKind::PregameEnded, first, None, None, None);
+    civs::found(w);
 }

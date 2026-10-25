@@ -1,6 +1,8 @@
-use engine::data::{PREGAME, SIZES, TENDING};
+use engine::data::{CIV, PREGAME, SIZES, TENDING, UNIT};
 use engine::map::Tile;
-use engine::{stats, Action, Config, Save, World, FOODS, TERRAIN};
+use engine::{civs, stats, units, Action, Config, Phase, Save, World, FOODS, TERRAIN};
+use std::collections::BTreeMap;
+
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -57,9 +59,13 @@ impl Sim {
         .to_string()
     }
 
-    /// What changes each turn, as JSON: `{turn, end, clans, markets, trails, tame, claims, summary}`.
-    /// `trails` lists the tiles with one, `tame` is `[tile, turns]` where above zero, `claims` is
-    /// `[tile, clan]` for every tile on a round.
+    /// What changes each turn, as JSON: `{turn, end, phase, player, clans, markets, trails, tame, claims,
+    /// civs, units, clan_civ, summary}`. `trails` lists the tiles with one, `tame` is `[tile, turns]`
+    /// where above zero, `claims` is `[tile, clan]` for every tile on a round. `phase` is as `phase()`;
+    /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
+    /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, territory (the
+    /// capital's tiles), work (its work tiles)}}`; `units` is `{id: {id, civ, kind, tile, dest, banked,
+    /// hungry}}`; `clan_civ` is `[clan, civ]` for every clan with a civ.
     pub fn view(&self) -> String {
         let w = &self.world;
         let trails: Vec<usize> = (0..w.tiles.len()).filter(|&i| w.tiles[i].trail).collect();
@@ -67,16 +73,101 @@ impl Sim {
             w.tiles.iter().enumerate().filter(|(_, t)| t.tame > 0).map(|(i, t)| (i, t.tame)).collect();
         let claims: Vec<(usize, u32)> =
             w.tiles.iter().enumerate().filter_map(|(i, t)| t.claim.map(|c| (i, c))).collect();
+        let civ_rows: BTreeMap<u32, serde_json::Value> = w
+            .civs
+            .values()
+            .map(|c| {
+                let mine = w.clans.values().filter(|k| k.civ == Some(c.id));
+                let row = serde_json::json!({
+                    "id": c.id,
+                    "name": c.name,
+                    "color": c.color,
+                    "market": c.market,
+                    "capital": c.capital,
+                    "founded": c.founded,
+                    "store": c.store,
+                    "lost": c.lost,
+                    "people": mine.clone().map(|k| k.pop).sum::<f64>(),
+                    "clans": mine.count(),
+                    "territory": civs::territory(w, c.id),
+                    "work": civs::work_tiles(w, c.id),
+                });
+                (c.id, row)
+            })
+            .collect();
+        let clan_civ: Vec<(u32, u32)> = w.clans.values().filter_map(|c| c.civ.map(|civ| (c.id, civ))).collect();
         serde_json::json!({
             "turn": w.turn,
             "end": w.end,
+            "phase": self.phase(),
+            "player": w.player,
             "clans": w.clans,
             "markets": w.markets,
             "trails": trails,
             "tame": tame,
             "claims": claims,
+            "civs": civ_rows,
+            "units": w.units,
+            "clan_civ": clan_civ,
             "summary": stats::summary(w),
         })
+        .to_string()
+    }
+
+    /// Whether `action` (JSON, as for `act`) would go through, without applying it: `""` if so,
+    /// else why not.
+    pub fn check(&self, action: &str) -> String {
+        match serde_json::from_str::<Action>(action) {
+            Ok(action) => self.world.validate(&action).err().unwrap_or_default(),
+            Err(e) => e.to_string(),
+        }
+    }
+
+    /// The cards for the pick, one per civ, as JSON: `[{civ, name, color, capital, q, r, clans, people,
+    /// hearths, terrain: [[name, share]], rival_steps (null with one civ), rival_by_land}]`.
+    pub fn pick(&self) -> String {
+        serde_json::to_string(&civs::cards(&self.world)).unwrap()
+    }
+
+    /// A unit's route to its `dest`, as JSON `{path: [tiles after its own], cost, turns}`; `null` when
+    /// it has no destination (or no route).
+    pub fn route(&self, unit: u32) -> String {
+        let w = &self.world;
+        let json = units::route(w, unit).map(|(path, cost)| {
+            let u = &w.units[&unit];
+            let turns = units::turns(w, &path, u.tile, u.banked);
+            serde_json::json!({ "path": path, "cost": cost, "turns": turns })
+        });
+        serde_json::to_string(&json).unwrap()
+    }
+
+    /// The cheapest route a unit could take from tile `from` to tile `to`, for a hover preview, as
+    /// `route` gives it; `null` when there is none.
+    pub fn path(&self, from: usize, to: usize) -> String {
+        let w = &self.world;
+        let n = w.tiles.len();
+        let json = if from < n && to < n { units::path_between(w, from, to) } else { None }.map(|(path, cost)| {
+            let turns = units::turns(w, &path, from, 0.0);
+            serde_json::json!({ "path": path, "cost": cost, "turns": turns })
+        });
+        serde_json::to_string(&json).unwrap()
+    }
+
+    /// The civ whose land tile `i` is (see `civs::tile_civ`), or -1 for none.
+    pub fn tile_civ(&self, i: usize) -> i32 {
+        if i >= self.world.tiles.len() {
+            return -1;
+        }
+        civs::tile_civ(&self.world, i).map_or(-1, |c| c as i32)
+    }
+
+    /// The phase: `"pregame"`, `"choose"` (founding is done, the player has yet to pick) or `"main"`.
+    pub fn phase(&self) -> String {
+        match self.world.phase {
+            Phase::Pregame => "pregame",
+            Phase::Choose => "choose",
+            Phase::Main => "main",
+        }
         .to_string()
     }
 
@@ -137,8 +228,18 @@ pub fn goods() -> String {
     serde_json::to_string(&FOODS).unwrap()
 }
 
-/// Rules the page needs to read the world, as JSON: `{tame_turns, players}`.
+/// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
+/// hungry_turns, store_cap, territory}`.
 #[wasm_bindgen]
 pub fn rules() -> String {
-    serde_json::json!({ "tame_turns": TENDING.tame_turns, "players": PREGAME.players }).to_string()
+    serde_json::json!({
+        "tame_turns": TENDING.tame_turns,
+        "players": PREGAME.players,
+        "unit_labour": UNIT.labour,
+        "unit_food": UNIT.food,
+        "hungry_turns": UNIT.hungry_turns,
+        "store_cap": CIV.store_cap,
+        "territory": CIV.territory,
+    })
+    .to_string()
 }
