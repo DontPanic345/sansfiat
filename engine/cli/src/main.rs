@@ -3,7 +3,8 @@ use std::{env, fs, io::Read, process::exit, time::Instant};
 use engine::data::{size_radius, DESERT, FOREST, HILLS, MARSH, MOUNTAIN, PREGAME, SEA, SIZES};
 use engine::map::{self, Zone};
 use engine::{
-    civs, clear, land, pregame, round, stats, utility, Basket, Config, Params, Save, World, GOODS, N, TERRAIN,
+    civs, clear, land, pregame, round, stats, utility, Action, Basket, Config, Params, Phase, Save, World, GOODS, N,
+    TERRAIN,
 };
 
 const USAGE: &str = "\
@@ -12,7 +13,7 @@ sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as t
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all]   (seeds default 1..=10, size small)
 sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
-sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N]   (prints turn and digest, from turn 0)
+sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead]   (prints turn and digest, from turn 0; --lead plays the scripted game: picks the first civ and gives orders)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
 sansfiat goods";
 
@@ -187,8 +188,13 @@ fn map(args: &[String]) -> Result<(), String> {
 fn digest(args: &[String]) -> Result<(), String> {
     let mut config = Config::default();
     let mut turns = 400u32;
+    let mut lead = false;
     let mut it = args.iter();
     while let Some(flag) = it.next() {
+        if flag == "--lead" {
+            lead = true;
+            continue;
+        }
         let value = it.next().ok_or(format!("{flag} needs a value\n{USAGE}"))?;
         let bad = |_| format!("{flag}: not a number: {value}");
         match flag.as_str() {
@@ -201,11 +207,58 @@ fn digest(args: &[String]) -> Result<(), String> {
     }
     let mut w = World::new(config);
     println!("{} {}", w.turn, stats::digest(&w));
+    let mut pick = None;
     for _ in 0..turns {
-        w.run(1);
+        if lead {
+            lead_orders(&mut w, &mut pick);
+            w.act(Action::EndTurn).expect("ending a turn is allowed once the orders are given");
+        } else {
+            w.run(1);
+        }
         println!("{} {}", w.turn, stats::digest(&w));
     }
     Ok(())
+}
+
+/// The scripted game of `digest --lead`, between turns and before each `EndTurn`; `cross-build.mjs`
+/// plays the same rule. `pick` is the turn `ChooseCiv` was acted, and `n` the turns since.
+/// 1. At `Choose`: lead the lowest civ id.
+/// 2. In `Main`, when `n > 0 && n.is_multiple_of(20)`: `MakeUnit` (a refusal is ignored).
+/// 3. Each of the player's units with no `dest`, in id order: `MoveUnit` to the first accepted of
+///    the other civs' capitals in civ id order, then its own capital.
+/// 4. When `n == 60`: `DisbandUnit` the player's lowest unit id, if any.
+fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
+    if w.phase == Phase::Choose {
+        let first = w.civs.keys().next().copied();
+        w.act(Action::ChooseCiv { civ: first }).expect("a civ can be chosen at the pick");
+        *pick = Some(w.turn);
+    }
+    let (Some(pick), Some(me)) = (*pick, w.player) else { return };
+    if w.phase != Phase::Main {
+        return;
+    }
+    let n = w.turn - pick;
+    if n > 0 && n.is_multiple_of(20) {
+        let _ = w.act(Action::MakeUnit);
+    }
+    let mine = |w: &World| -> Vec<u32> { w.units.values().filter(|u| u.civ == me).map(|u| u.id).collect() };
+    let targets: Vec<usize> =
+        w.civs.values().filter(|c| c.id != me).map(|c| c.capital).chain(std::iter::once(w.civs[&me].capital)).collect();
+    for unit in mine(w) {
+        if w.units[&unit].dest.is_some() {
+            continue;
+        }
+        for &to in &targets {
+            if w.act(Action::MoveUnit { unit, to }).is_ok() {
+                break;
+            }
+        }
+    }
+    if n == 60 {
+        if let Some(&unit) = mine(w).first() {
+            w.act(Action::DisbandUnit { unit }).expect("the player's own unit can be disbanded");
+        }
+    }
 }
 
 /// One summary line.
@@ -468,15 +521,22 @@ fn report(w: &World, out: &Output) {
     print!("{}", civs_text(w));
 }
 
-/// One line per civ: name, capital, market, clans, people, store and hearths on its land.
+/// One line per civ: name, capital, market, clans, people, store, hearths on its land and units.
 fn civs_text(w: &World) -> String {
     let mut out = String::new();
     for c in civs::cards(w) {
         let civ = &w.civs[&c.civ];
         let store: f64 = civ.store.iter().sum();
         out += &format!(
-            "  civ {} at ({}, {}), market {}: {} clans, {:.1} people, store {store:.1}, {} hearths on its land\n",
-            c.name, c.q, c.r, civ.market, c.clans, c.people, c.hearths
+            "  civ {} at ({}, {}), market {}: {} clans, {:.1} people, store {store:.1}, {} hearths on its land, {} units\n",
+            c.name,
+            c.q,
+            c.r,
+            civ.market,
+            c.clans,
+            c.people,
+            c.hearths,
+            w.units.values().filter(|u| u.civ == c.civ).count()
         );
     }
     out

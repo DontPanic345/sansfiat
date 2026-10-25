@@ -33,13 +33,18 @@ fn every_kind_fires_in_real_runs() {
         CentreFormed,
         PregameEnded,
         CivFounded,
+        // The others (hungry, disbanded, starved) are held in units.rs.
+        UnitMade,
     ];
     let mut seen = vec![0usize; all.len()];
     // Seed 3 ends on the turn limit with a top-up; the others end on their own.
     for seed in [1, 3, 5] {
         let w = run(seed, 500);
         for k in kinds(&w) {
-            seen[all.iter().position(|&a| a == k).unwrap()] += 1;
+            // Hungry and starved warriors also show up in these runs; units.rs holds those.
+            if let Some(p) = all.iter().position(|&a| a == k) {
+                seen[p] += 1;
+            }
         }
         assert_eq!(kinds(&w).iter().filter(|&&k| k == PregameEnded).count(), 1, "seed {seed}: one end");
     }
@@ -191,7 +196,11 @@ fn a_top_up_is_a_centre_each_then_the_end() {
             // Founding follows the end, a civ on each centre.
             (EventKind::CivFounded, Some(a)),
             (EventKind::CivFounded, Some(b)),
-            (EventKind::CivFounded, Some(c))
+            (EventKind::CivFounded, Some(c)),
+            // And each civ's starting warrior.
+            (EventKind::UnitMade, None),
+            (EventKind::UnitMade, None),
+            (EventKind::UnitMade, None)
         ]
     );
     let last = &w.events[3];
@@ -200,7 +209,7 @@ fn a_top_up_is_a_centre_each_then_the_end() {
     assert_eq!(w.events[0].text(&w), format!("Market {a} becomes a centre"));
     // Nothing more once it has ended.
     check_end(&mut w);
-    assert_eq!(w.events.len(), 7);
+    assert_eq!(w.events.len(), 10);
 }
 
 #[test]

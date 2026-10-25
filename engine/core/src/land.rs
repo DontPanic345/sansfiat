@@ -75,6 +75,49 @@ pub fn cost_map(w: &World, from: &[usize], max: f64, allowed: impl Fn(usize) -> 
     best
 }
 
+/// The cheapest path from `from` to `to` by `step_cost`, over `allowed` tiles: the tiles after
+/// `from`, ending at `to`, and its cost. Dijkstra as `cost_map` is, with the same tie-breaks
+/// (cheapest, then lowest tile); on an equal cost a tile keeps the predecessor found first.
+/// `from == to` is `([], 0)`; `None` when `to` can't be reached.
+pub fn path(w: &World, from: usize, to: usize, allowed: impl Fn(usize) -> bool) -> Option<(Vec<usize>, f64)> {
+    if from == to {
+        return Some((Vec::new(), 0.0));
+    }
+    let mut best: BTreeMap<usize, f64> = BTreeMap::new();
+    let mut before: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut heap = BinaryHeap::new();
+    best.insert(from, 0.0);
+    heap.push(Entry(0.0, from));
+    while let Some(Entry(c, i)) = heap.pop() {
+        if best.get(&i).is_some_and(|&b| c > b) {
+            continue;
+        }
+        if i == to {
+            break;
+        }
+        for j in neighbours(w, i) {
+            let Some(step) = step_cost(w, i, j) else { continue };
+            let nc = c + step;
+            if !allowed(j) || best.get(&j).is_some_and(|&b| b <= nc) {
+                continue;
+            }
+            best.insert(j, nc);
+            before.insert(j, i);
+            heap.push(Entry(nc, j));
+        }
+    }
+    let cost = *best.get(&to)?;
+    let mut tiles = vec![to];
+    while let Some(&p) = before.get(tiles.last()?) {
+        if p == from {
+            break;
+        }
+        tiles.push(p);
+    }
+    tiles.reverse();
+    Some((tiles, cost))
+}
+
 /// The `regrow` step: every food on every tile moves towards its cap. Game breeds, so a
 /// hunted-out tile recovers slowly.
 pub fn regrow(w: &mut World) {

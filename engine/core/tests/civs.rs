@@ -191,6 +191,7 @@ fn a_daughter_belongs_to_her_mothers_civ() {
 #[test]
 fn the_store_spoils_takes_the_levy_and_is_capped() {
     let (mut w, ids) = founded();
+    w.units.clear(); // the starting warriors eat from the store; see units.rs
     let red = ids[0];
     civs::upkeep(&mut w);
     let kept = 30.0 * (1.0 - CLAN.spoilage);
@@ -232,6 +233,7 @@ fn the_store_spoils_takes_the_levy_and_is_capped() {
 #[test]
 fn a_cut_store_says_how_much_was_lost() {
     let (mut w, ids) = founded();
+    w.units.clear();
     w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 60.0, 0.0, 0.0, 0.0];
     civs::upkeep(&mut w);
     let c = &w.civs[&ids[0]];
@@ -308,7 +310,8 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     assert_eq!(cs.len(), 3);
     let red = &cs[0];
     assert_eq!((red.name.as_str(), red.capital, red.q, red.r), ("Red", at_big(-5, 0), -5, 0));
-    assert_eq!((red.clans, red.people, red.hearths), (2, 7.5, 2));
+    // 7.5 people, less the one the starting warrior took from the bigger clan.
+    assert_eq!((red.clans, red.people, red.hearths), (2, 6.5, 2));
     let names: Vec<&str> = red.terrain.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(names, ["plains", "forest", "hills"], "ties by terrain index");
     assert!((red.terrain[0].1 - 14.0 / 19.0).abs() < 1e-12 && (red.terrain[1].1 - 2.0 / 19.0).abs() < 1e-12);

@@ -379,6 +379,19 @@ pub struct CivRules {
 
 pub const CIV: CivRules = CivRules { territory: 2, endowment: [0.0, 30.0, 0.0, 0.0, 0.0], levy: 0.5, store_cap: 50.0 };
 
+pub struct UnitRules {
+    /// One person's work a turn: what a unit spends on its steps (`CLAN.work`).
+    pub labour: f64,
+    /// What a unit eats a turn from its civ's store: one person's need.
+    pub food: f64,
+    /// Hungry turns in a row before a unit disbands.
+    pub hungry_turns: u32,
+    /// The fewest people a clan must have to give one to a unit.
+    pub min_clan: f64,
+}
+
+pub const UNIT: UnitRules = UnitRules { labour: 3.5, food: 1.0, hungry_turns: 3, min_clan: 2.0 };
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub seed: u32,

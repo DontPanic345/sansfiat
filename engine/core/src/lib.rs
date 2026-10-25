@@ -14,6 +14,7 @@ pub mod pregame;
 pub mod rng;
 pub mod round;
 pub mod stats;
+pub mod units;
 pub mod world;
 
 pub use civs::Civ;
@@ -23,4 +24,5 @@ pub use map::Tile;
 pub use market::{clear, utility, Basket, Clearing, Params};
 pub use markets::Market;
 pub use pregame::End;
+pub use units::{Unit, UnitKind};
 pub use world::{Action, Event, EventKind, Phase, Save, World, TURN};

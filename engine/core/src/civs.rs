@@ -11,6 +11,7 @@ use crate::land::{cost_map, is_hearth, neighbours, passable};
 use crate::map;
 use crate::market::Basket;
 use crate::markets::reach;
+use crate::units;
 use crate::world::{EventKind, Phase, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -97,6 +98,11 @@ pub fn found(w: &mut World) {
             w.clans.get_mut(&clan).unwrap().civ = Some(id);
         }
     }
+    // Each civ's starting warrior.
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    for id in ids {
+        units::make_first(w, id);
+    }
     w.phase = Phase::Choose;
 }
 
@@ -148,6 +154,7 @@ pub fn upkeep(w: &mut World) {
                 *held += give;
             }
         }
+        units::feed(w, id, &mut store);
         let total: f64 = store.iter().sum();
         let mut lost = 0.0;
         if total > CIV.store_cap {
