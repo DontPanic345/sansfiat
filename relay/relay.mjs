@@ -53,8 +53,8 @@ export const EFFORTS = ["low", "medium", "high"];
 export const pace = ({ session, weekly, weeklyResetsAt }, now) => {
     const cycleStart = weeklyResetsAt.getTime() - 7 * 86400_000;
     const day = Math.min(7, Math.max(1, Math.floor((now.getTime() - cycleStart) / 86400_000) + 1));
-    const weeklyLimit = (day / 7) * 95;
-    if (session >= 50) return { ok: false, reason: `5-hour usage ${session}% ≥ 50%` };
+    const weeklyLimit = 90;
+    if (session >= 90) return { ok: false, reason: `5-hour usage ${session}% ≥ 90%` };
     if (weekly >= weeklyLimit) {
         return { ok: false, reason: `weekly usage ${weekly}% ≥ ${weeklyLimit.toFixed(1)}% (day ${day})` };
     }
