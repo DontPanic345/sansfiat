@@ -16,6 +16,7 @@ cargo run -p sansfiat -- clear baskets.json     # or - for stdin
 cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N]   # "turn digest" lines, to compare builds
 ./build-web.sh && python3 -m http.server -d www  # http://localhost:8000
 ./build-web.sh && ./cross-build.sh              # native and wasm (under Node) give the same digests (small and medium maps)
+./build-web.sh && node www/check.mjs            # the data the page relies on, from the wasm build
 ```
 
 ## Layout
@@ -34,7 +35,8 @@ cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N]   # "turn di
 | `core/src/stats.rs` | `summary` (counts off the world), `centre_report` (fertility near each centre vs all land), `distances`: the evidence the CLI and the web page show; `digest` (FNV-1a of the world JSON) to compare builds. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
-| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `state`, `summary`, `events(from)`, `save`, `digest`) and `terrain`, `goods`, `rules`, `sizes`; `www/main.js` draws the map (fertility view, territories, rounds, trails, hearths, markets, centres) and a Run to end button. `www/pkg` is built, not committed. |
+| `web/` | wasm-bindgen `Sim` (`new`, `load`, `act`, `ended`, `layout`, `view`, `tile`, `events(from)`, `state`, `summary`, `save`, `digest`) and `terrain`, `goods`, `rules`, `sizes`. `layout()` is the static map as columns (once per map) and `view()` is what changes each turn (clans, markets, trails, tame, claims, summary, `end`); `state()` is the whole world, for save and debug. |
+| `www/` | The full-screen page, plain ES modules, no bundler. `index.html` (top bar, map, event feed, legend, tooltip), `main.js` (controls, play loop, panel, URL parameters `?size=&seed=&play=1&speed=slow\|normal\|fast\|max&run=1`; `body.dataset.turn/phase/centres` for headless scripts), `map-view.js` (canvas: pan and zoom, picking, a cached terrain layer with rivers, floodplains, closed-country outlines and marks, the per-turn overlay), `feed.js` (events by cursor into `Sim.events`, filter, 300-line cap). `check.mjs` checks under Node the data the page relies on (CI runs it). `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 
