@@ -33,7 +33,8 @@ AI civs give no orders: their warrior sits and eats.
   documented: `labour` is one person's work a turn (`CLAN.work`), `food` one person's need,
   `hungry_turns` the hungry turns in a row before it disbands, `min_clan` the fewest people a
   clan must have to give one.
-- New module `core/src/units.rs`:
+- New module `core/src/units.rs` (`pub mod units;` in `core/src/lib.rs`; `Unit` derives
+  `Clone, Debug, PartialEq, Serialize, Deserialize`):
 
   ```rust
   #[serde(rename_all = "camelCase")] pub enum UnitKind { Warrior }
@@ -102,6 +103,10 @@ Refusals: not the main game; watching; no such unit; "that unit isn't yours".
   turn after.
 - `units::route(w, unit) -> Option<(Vec<usize>, f64)>`: its route from where it stands to
   `dest`, for the page.
+- `units::turns(w, path: &[usize], from: usize, banked: f64) -> u32`: how many `units` steps
+  (turns) it takes to walk `path` from `from` with `banked` already banked. `march` stops
+  and starts by the same stepping code (one shared helper), so the page's "2 turns" is what
+  `march` does. Build-3's wasm `route`/`path` call it. Test it against a real `march` run.
 
 ### Validation and actions
 
@@ -124,16 +129,29 @@ be gone):
 - `run`'s founding report adds each civ's units.
 - `digest --lead`: a scripted game so native and wasm compare through orders. Rule, applied
   between turns, before each `EndTurn`:
-  1. At `Choose`: `ChooseCiv` the lowest civ id.
-  2. In `Main`, every 20 turns since the pick (counting from the pick's turn): `MakeUnit`
-     (ignore a refusal).
+  Let `pick` be `w.turn` when `ChooseCiv` was acted, and `n = w.turn - pick`.
+  1. At `Choose` (before the turn's `EndTurn`): `ChooseCiv` the lowest civ id.
+  2. In `Main`, when `n > 0 && n % 20 == 0`: `MakeUnit` (ignore a refusal).
   3. Each of the player's units with no `dest`, in id order: `MoveUnit` to the first that's
      accepted of: the other civs' capitals in civ id order, then its own capital.
-  4. 60 turns after the pick: `DisbandUnit` the player's lowest unit id, if any.
-  Write the same rule into `cross-build.mjs` as an optional fourth argument `lead`, and add a
+  4. When `n == 60`: `DisbandUnit` the player's lowest unit id, if any (after step 3's
+     orders for that turn; a disband never fails to find its unit).
+  The order inside one turn is 1, 2, 3, 4, then `EndTurn`; the digest line is printed after it.
+  Native uses `w.act` for each; the JS version uses `sim.act`. A refusal of `MoveUnit` just
+  tries the next target. Units are the player's units in id order.
+  The JS side has no civ or unit API yet (build-3 adds one), so `cross-build.mjs` reads
+  `JSON.parse(sim.state())` (`civs`, `units`, `player`, `phase`, `turn`) when it needs them; keep
+  that to turns that need an order (units with no `dest`, the make and disband turns) and the
+  pick turn so it stays fast. It writes the same rule as an optional fourth argument `lead`, and add a
   line `"2 16 400 lead"` to `cross-build.sh` (small seed 2 ends at 276). Without `lead` both
-  watch at the pick (build-1).
+  watch at the pick (build-1). Check in your result that `lead` really gives orders: print the
+  native units' count or positions once and see them change.
 - `bench` runs through the pick (watching), as `digest` does.
+
+### Page data
+
+`www/check.mjs`'s event loop asserts every kind is in a `KINDS` set; the starting warriors
+make `unitMade` events in the end turn, so add `unitMade` there (and the other three new kinds).
 
 ### Docs
 

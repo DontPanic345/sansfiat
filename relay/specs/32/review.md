@@ -27,7 +27,7 @@ and the diff. Checks, in `engine/`: `cargo test`, `cargo fmt --check`,
    really gives orders (its digests change after the pick, units move).
 4. **Play it through the page only.** Serve `engine/www` (`python3 -m http.server -d www`)
    and drive `/usr/bin/google-chrome --headless=new` over the DevTools protocol with a small
-   Node script under `/tmp`, as build-3 did. Order only by clicking: mouse events on buttons
+   Node script under `/tmp`, as build-3 and build-4 did. Order only by clicking: mouse events on buttons
    and the canvas (`Input.dispatchMouseEvent`, `button: "right"` for moves). You may read
    `window.game.map.screenOf(i)`, the page's text and `document.body.dataset` to find where
    to click and to know when a turn is done; never order through a script call or read the

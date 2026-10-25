@@ -45,11 +45,14 @@ This piece asks no question; the review checks it against the design and plays i
 |---|---|---|
 | build-1 | Civs, phases and the pick in the engine: founding, joining, the store and its levy, `ChooseCiv`, daughters' civ, the tile's civ, pick cards, `CivFounded`, CLI | sonnet high |
 | build-2 | Units in the engine: the warrior, making, feeding and hunger, disbanding, paths and moving, the starting warrior, unit events, replay and cross-build with orders | sonnet high |
-| build-3 | The page: wasm API, the pick, the top bar, the selection panel, right-click moves, drawing civs and units, feed and tooltip, `check.mjs`, headless screenshots | sonnet high |
+| build-3 | The page's logic: wasm API, phases and the pick card, the top bar, the selection panel with its buttons, right-click moves, `window.game` without `act`, `check.mjs` | sonnet high |
+| build-4 | The page's look: drawing civs, capitals, units and routes, the feed's new kinds, the tooltip, the legend, and playing it in headless Chrome with screenshots | sonnet high |
 | review | The whole piece against the design; plays founding and a unit's life through the page only | sonnet high |
 
 Each step leaves `cargo test`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
 `./build-web.sh`, `./cross-build.sh` and `node www/check.mjs` green (in `engine/`).
+
+(The page is two steps because one session is cut at 90 minutes and the page work is wide.)
 
 ## The shape
 
@@ -196,6 +199,12 @@ New events (`EventKind`): `CivFounded`, `UnitMade`, `UnitHungry`, `UnitDisbanded
     lead the first civ and give the same orders from the same rule, so native and wasm are
     compared through orders as well as turns (build-2 writes the rule).
 
+20. **Saves from before this piece** that ran past the pre-game's end (EndTurn after the end)
+    no longer replay: they fail at the pick. The page stopped at the end, so none are expected;
+    recorded as an idea.
+21. **Fewer than three centres** (hand-built worlds, a backstop with no room) found one civ per
+    centre, none if none; the game still goes to `Choose`.
+
 ## Folded in from #31
 
 - `node www/check.mjs` is still not in CI (the runner can't push workflow files). Build-3
@@ -227,7 +236,7 @@ New events (`EventKind`): `CivFounded`, `UnitMade`, `UnitHungry`, `UnitDisbanded
 - Real maps: a small seed run to the end, led, and run 100 more turns: stores within the cap,
   every civ clan's civ exists, no unit off land.
 - Native and wasm digests agree through the pick (watching) and through orders (`lead`).
-- The page: `check.mjs` covers the pick and orders from the wasm build; build-3's headless
+- The page: `check.mjs` covers the pick and orders from the wasm build; build-4's headless
   screenshots show the pick, the top bar, a selected unit with its route, and the tooltip.
 
 ## What the later steps need to know

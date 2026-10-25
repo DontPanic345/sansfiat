@@ -1,7 +1,11 @@
-# Build 3: the page
+# Build 3: the page's logic
 
 Piece #32, Founding. Builds 1 and 2 put civs, the pick, the store and units in the engine.
 You give the player all of it through the page, with every order a button or a right-click.
+This step is the page's logic: the wasm API, the phases, the pick, the top bar, the selection
+panel and its orders, and `check.mjs`. Build-4 does the drawing (capitals, civ land, units,
+routes), the feed's new kinds, the tooltip and the legend; leave those to it, but keep the data
+they need available (`view()`, `route`, `path`, `tile_civ`, `screenOf`).
 Work in `engine/web/src/lib.rs` and `engine/www/`. Read `engine/CLAUDE.md`, builds 1 and 2's
 results, and the page as #31 left it (`www/main.js`, `map-view.js`, `feed.js`,
 `index.html`) first. `relay/specs/32/spec.md` has the plan. Plain JS, ES modules, no
@@ -31,11 +35,12 @@ Add, each with a doc comment saying its JSON shape:
   why not. The page greys buttons with it and shows the reason.
 - `pick() -> String`: `civs::cards` as JSON.
 - `view()` adds `phase`, `player`, `civs` (each with `id, name, color, market, capital,
-  store, lost`, plus `people` and `clans` counted from its clans, and `land`: its capital
-  territory's tiles) and `units` (as stored).
+  store, lost`, plus `people` and `clans` counted from its clans, and `territory`:
+  `civs::territory`, its capital territory's tiles; `work`: `civs::work_tiles`), `units` (as
+  stored) and `clan_civ` (`[clan, civ]` for every clan with a civ, so the page can ring civ
+  clans). Phase and civ names are the engine's serialised ones.
 - `route(unit) -> String`: `{path: [tiles], cost, turns}` for a unit with a `dest`, else
-  `null`; `turns` is how many `units` steps it takes at `UNIT.labour` a turn with its banked
-  labour (count it by walking the path, as `march` does).
+  `null`; `turns` is `units::turns` (build-2), the one counting `march` uses.
 - `path(from, to) -> String`: the same for a hover preview: `{path, cost, turns}` or `null`.
 - `tile_civ(i) -> i32`: `civs::tile_civ`, `-1` for none.
 - `rules()` adds `unit_labour`, `unit_food`, `hungry_turns`, `store_cap`, `territory`.
@@ -88,7 +93,13 @@ Clicking an enabled button acts, refreshes and shows any error in `#error`.
   selects it.
 
 Left-click picks, in order: the player's units on the tile (the lowest id), any civ's
-capital, any other units, then the tile. Escape clears the selection.
+capital, any other units, then the tile. Clicking the same tile again cycles to the next thing
+on it in that order (units one by one, then the capital, then other civs' units, then the bare
+tile, then round again), so a player can select their capital under their own warrior, and each
+of several units on a tile. The pick selects the capital first. Escape clears the selection. Starting or loading a
+game (`start`, the Load button) in any phase must work: a save in `choose` shows the pick card,
+one in `main` shows the top bar with nothing selected. The selection is dropped if its unit
+disbands.
 
 ### Right-click
 
@@ -98,30 +109,6 @@ in `#error`. The canvas never opens the browser's context menu. Right-click does
 `map-view.js` today calls `onPick` for any button's release: route button 2 to a new
 `onCommand(i)` instead. While one of the player's units is selected, the tooltip adds "Move
 here: cost 7, 2 turns" from `Sim.path`, or "No route".
-
-### Drawing
-
-Drawn after clans, each with a dark casing, as #31's review did for centres so they read on
-a busy map:
-
-- Each civ's capital: a city mark in its colour on the capital tile; its land (the capital
-  territory) outlined in its colour; its work tiles faintly marked.
-- Civ clans: their clan circle gets a ring in the civ's colour.
-- Units: a small shield or pennant in the civ's colour per tile, with a count when there are
-  several; hungry units marked (red edge); the selected unit highlighted.
-- The selected unit's route: a line along the path to its destination, with a flag at the
-  end. The player's other routes faint.
-- A "Civs" toggle in the View menu (on) for land outlines and clan rings.
-- The legend gains capital, civ land, civ clan, warrior, hungry, route.
-
-### Feed and tooltip
-
-- `feed.js` `KINDS` adds `civFounded`, `unitMade`, `unitHungry`, `unitDisbanded`,
-  `unitStarved`, with icons, colours and a "Civs" and "Units" filter. Events about the
-  player's civ are emphasised. Clicking a unit event selects the unit if it still exists,
-  else its tile; clicking `civFounded` selects the capital.
-- The tooltip adds the tile's civ: "Red's land" (capital territory), "Red, clan 40's round",
-  or nothing; and "Red's capital" on a capital tile; and units on the tile.
 
 ### No debug orders
 
@@ -145,10 +132,13 @@ new event kinds appear with text; `tile_civ` of a capital is its civ. Keep it fa
 - You've driven the page in headless Chrome (as #31 did: `/usr/bin/google-chrome --headless=new
   --remote-debugging-port=…`, driven by a small Node script over the DevTools protocol, with
   right-clicks as `Input.dispatchMouseEvent` with `button: "right"`; keep the script outside
-  the repo or under `/tmp`) through clicks only: Run to end on small seed
-  2 (`?size=small&seed=2`), the pick card, Lead, the top bar, the capital selected with Make
-  warrior, a warrior selected from the feed, a right-click move with its route drawn, End
-  turn a few times, Disband. Read your screenshots, fix what reads badly, and say in the
-  result what you saw. Don't commit screenshots.
-- `engine/CLAUDE.md`'s `web/` and `www/` rows say what's new (the API, the modules, the
-  dataset keys, `screenOf`, no `act`).
+  the repo or under `/tmp`) through clicks only: Run to end on small seed 2
+  (`?size=small&seed=2`), the pick card (read its numbers), Lead, the top bar, the capital
+  selected with **Make warrior**, a click on the capital tile cycling to a warrior, a
+  right-click move (the panel shows the destination, cost and turns), End turn a few times (the
+  unit moves about a turn's labour a turn), **Disband**, then a second game with **Watch all
+  three**. Nothing is drawn for units yet (build-4), so find tiles with `map.screenOf` and read
+  the panel and `body.dataset`. Screenshot the pick card, the top bar and the panel, Read them,
+  fix what reads badly, and say in the result what you saw. Don't commit screenshots.
+- `engine/CLAUDE.md`'s `web/` and `www/` rows say what's new (the API, `select.js`, the dataset
+  keys, `screenOf`, no `act`).

@@ -46,6 +46,9 @@ merge4's founding is the starting point (read, never edit): `merge4/src/clans.js
   ```
 
   (`lost`: goods cut by the cap last turn.)
+- Register `pub mod civs;` in `core/src/lib.rs` (and re-export `Civ`, `Phase` there if tests
+  want them). `Civ` derives `Clone, Debug, PartialEq, Serialize, Deserialize` (`World` derives
+  them all); `Civ` and `Phase` serialise with `camelCase` names as the spec shows.
 - `world.rs`: `World` gains `phase: Phase`, `player: Option<u32>`, `civs: BTreeMap<u32, Civ>`,
   all serialised. `Phase` is `enum Phase { Pregame, Choose, Main }`, `#[serde(rename_all = "camelCase")]`.
   Build-2 adds `units: BTreeMap<u32, Unit>`; don't add it now.
@@ -56,6 +59,11 @@ merge4's founding is the starting point (read, never edit): `merge4/src/clans.js
 
 Called from `pregame::check_end` once, right after it sets `w.end` and pushes
 `PregameEnded`. It reads `w.end.centres` and draws no random numbers.
+
+Fewer than three centres can happen on hand-built worlds and when the top-up finds no room
+(e.g. a large map's `--turns` backstop): found one civ per centre there is, `CIVS[k]` for the
+k-th, and with none found no civ and still go to `Choose`. `found` must never panic on a world
+with no clans, no centres or no passable neighbours.
 
 1. For each centre market, in `End.centres` order (the k-th takes `CIVS[k]`): a civ with id
    from `w.next_id`, `market` the centre, `capital` its tile, `founded` `w.turn`, store
@@ -86,8 +94,11 @@ Called from `pregame::check_end` once, right after it sets `w.end` and pushes
 
 ### The tile's civ and the civ's land
 
+- `civs::territory(w, civ) -> Vec<usize>`: the tiles within `CIV.territory` hex steps of the
+  civ's capital (on the map, sorted). The page draws this as the capital's land.
 - `civs::tile_civ(w, i) -> Option<u32>`: the civ whose capital is within `CIV.territory` hex
-  steps of tile `i`; else the civ of the clan whose round holds it (`tiles[i].claim`); else
+  steps of tile `i` (civs in id order; capitals are at least `centre_spacing` apart, so two never
+  claim a tile); else the civ of the clan whose round holds it (`tiles[i].claim`); else
   `None`. A civ's land is every tile whose civ it is (`civs::land(w, civ)`, sorted).
 - `civs::work_tiles(w, civ)`: the capital's tile and its on-map neighbours. Nothing harvests
   them in this piece (the spec's decision 7); the page draws them.
@@ -114,7 +125,9 @@ With no civs the step does nothing, so the pre-game is unchanged.
 
 - `Event` gains `civ: Option<u32>` and `unit: Option<u32>` (`unit` is for build-2; it stays
   `None` here). Keep `World::event`'s signature for the existing callers (they set the new
-  fields to `None`) and add a helper for civ events. Fix the struct literal in `land::hold`.
+  fields to `None`) and add a helper for civ events. Fix the struct literals in `land::hold` and in
+  `core/tests/events.rs` (`a_market_that_fades_is_an_event` builds an `Event` by hand): add
+  `civ: None, unit: None`.
 - `EventKind::CivFounded`, worded in `Event::text` as `"Red is founded at (q, r), on market 271"`.
   Event text stays the one wording, used by the CLI and the page.
 
@@ -166,6 +179,24 @@ end at the limit (`w.turn = PREGAME.max_turns - 1; w.run(1)`).
 - Replay: the existing `replaying_a_save_rebuilds_the_world` style, through the pick: a save
   with `ChooseCiv` replays to an equal world with equal events.
 
+## Tests that run past the end
+
+Existing tests that call `w.run(n)` past the end (`pregame.rs`'s `pregame_ends_with_three` runs
+`PREGAME.max_turns` = 500 turns, so up to ~250 main-game turns on each of 7 seeds, and
+`topped_up_markets_survive_the_turns_after_the_end`) now watch at the pick and run on. That is
+fine for their assertions, but if it adds more than ~20 s to `cargo test`, change
+`pregame_ends_with_three` to loop `while w.end.is_none() { w.run(1) }` (name the change in your
+result). Tests that hand-build a world and set `w.end` (or end it at the limit) now also found
+civs; they must still pass.
+
+## Page and `check.mjs` in this step
+
+Founding happens inside the end turn, so `CivFounded` events (and in build-2 `UnitMade`) arrive
+in the same turn as `PregameEnded`. `www/check.mjs`'s event loop asserts every kind is in its
+`KINDS` set: add `civFounded` there now (build-2 adds `unitMade`). `feed.js` shows an unknown
+kind with a fallback icon but its filter hides it; that is fine until build-3/4. The page's
+**End turn** after the end shows the engine's refusal in `#error`; leave that for build-3.
+
 ## Constraints
 
 - **The pre-game must not change.** No new random draws and no change to the arithmetic of
@@ -184,5 +215,5 @@ end at the limit (`w.turn = PREGAME.max_turns - 1; w.run(1)`).
 it would hit the refusal. Add `Sim.phase()` to `web/src/lib.rs` (`"pregame" | "choose" |
 "main"`) and have `cross-build.mjs`, before each `endTurn`, act
 `{"type":"chooseCiv","civ":null}` when the phase is `"choose"`: the same as native `digest`,
-whose `World::run(1)` watches at the pick. `check.mjs` stops at the end and needs nothing yet. In your result, name any existing test you changed and why, and
+whose `World::run(1)` watches at the pick. `check.mjs` needs only the `civFounded` kind (above). In your result, name any existing test you changed and why, and
 give `cargo test`'s time.
