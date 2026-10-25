@@ -1,24 +1,24 @@
 import init, { Sim, terrain, goods, rules, sizes } from './pkg/web.js';
 import { MapView, hue } from './map-view.js';
 import { Feed } from './feed.js';
+import { f2, keyOf, tileOf, alive, candidates, describe, tileKind, marketOn } from './select.js';
 
 await init();
 const TERRAIN = JSON.parse(terrain());
 const GOODS = JSON.parse(goods());
 const RULES = JSON.parse(rules());
 const SIZES = JSON.parse(sizes());
-const ZONES = ['', 'valley', 'sealed valley', 'neck'];
 const RATES = { slow: 1, normal: 4, fast: 20 };
 
 const $ = (id) => document.getElementById(id);
-const f2 = (x) => (Math.round(x * 100) / 100).toString();
 const params = new URLSearchParams(location.search);
 
 let sim = null;
 let layout = null;
 let v = null; // the last Sim.view()
 let cursor = 0; // into Sim.events
-let selected = null; // {tile, clan, market}
+let selected = null; // {kind: 'unit', id} | {kind: 'capital', civ} | {kind: 'tile', tile, clan, market}
+let pickFor = null; // the Sim the pick card was built for
 let playing = false;
 let running = false;
 let loopTimer = null;
@@ -30,12 +30,16 @@ let acc = 0;
 const view = new MapView($('map'), {
   terrain: TERRAIN,
   rules: RULES,
-  onPick: (i) => select(i < 0 ? null : { tile: i, clan: null, market: null }),
+  onPick,
+  onCommand,
   onHover: showTip,
   onHoverEnd: hideTip,
 });
 const feed = new Feed({ list: $('feed'), filters: $('filters'), onClick: onFeed });
 new ResizeObserver(() => view.resize()).observe($('mapbox'));
+
+/** What the selection panel and the pick read the world through. */
+const ctx = () => ({ v, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view });
 
 // ---- starting a map --------------------------------------------------------------------------
 
@@ -47,9 +51,11 @@ function start(next, seedShown) {
   sim = next;
   layout = JSON.parse(sim.layout());
   selected = null;
+  pickFor = null;
   view.setLayout(layout);
   view.setHighlight(null);
   view.setSelection(-1);
+  document.body.dataset.selected = '';
   cursor = 0;
   feed.reset();
   $('seed').value = seedShown;
@@ -86,20 +92,125 @@ function refresh() {
   $('markets').textContent = sum.markets;
   $('hearths').textContent = sum.hearths;
   $('centres').textContent = `${centres} / ${RULES.players}`;
-  if (v.end) {
-    $('phasetext').textContent = 'Pre-game over';
-    const up = v.end.topped_up.length;
-    $('phasenote').textContent = `turn ${v.end.turn}, by ${v.end.by_limit ? 'the limit' : 'centres'}${up ? `, +${up} topped up` : ''}`;
-  } else {
+  const over = `turn ${v.end?.turn}, by ${v.end?.by_limit ? 'the limit' : 'centres'}${v.end?.topped_up.length ? `, +${v.end.topped_up.length} topped up` : ''}`;
+  if (v.phase === 'pregame') {
     $('phasetext').textContent = 'Pre-game';
     $('phasenote').textContent = 'Phase';
+  } else if (v.phase === 'choose') {
+    $('phasetext').textContent = 'Pre-game over';
+    $('phasenote').textContent = over;
+  } else {
+    $('phasetext').textContent = 'Main game';
+    $('phasenote').textContent = `pre-game ${over}`;
   }
+  const mine = v.player != null ? Object.values(v.units).filter((u) => u.civ === v.player).length : 0;
   document.body.dataset.turn = v.turn;
-  document.body.dataset.phase = v.end ? 'ended' : 'pregame';
+  document.body.dataset.phase = v.phase;
   document.body.dataset.centres = centres;
+  document.body.dataset.civ = v.player ?? '';
+  document.body.dataset.units = mine;
+  const choose = v.phase === 'choose';
+  for (const id of ['end', 'play', 'run']) {
+    $(id).disabled = choose;
+    $(id).title = choose ? 'Choose a civ first' : '';
+  }
+  $('run').hidden = v.phase === 'main';
+  civBar(mine);
+  pickCard();
+  if (selected && !alive(ctx(), selected)) {
+    selected = null;
+    syncSelection();
+  }
   pullEvents();
   panel();
   view.drawNow();
+}
+
+/** The player's civ in the top bar: swatch, name, people, store, units; "Watching" when it leads none. */
+function civBar(units) {
+  const bar = $('civbar');
+  bar.hidden = v.phase !== 'main';
+  if (bar.hidden) return;
+  const c = v.civs[v.player];
+  $('civstats').hidden = !c;
+  $('civsw').hidden = !c;
+  $('civname').textContent = c ? c.name : 'Watching';
+  if (!c) return;
+  $('civsw').style.background = c.color;
+  const total = c.store.reduce((a, b) => a + b, 0);
+  $('civpeople').textContent = Math.round(c.people);
+  $('civinunits').textContent = units ? `+${units} in units` : '';
+  $('civstore').textContent = `${Math.round(total)} / ${RULES.store_cap}`;
+  const lines = GOODS.map((g, f) => [g, c.store[f]]).filter(([, x]) => x > 0.005).map(([g, x]) => `${g} ${f2(x)}`);
+  $('st-store').title = `${lines.join(', ') || 'empty'}${c.lost > 0.005 ? `; ${f2(c.lost)} lost to the cap last turn` : ''}`;
+  $('civunits').textContent = units;
+}
+
+/** The pick: a card over the map while the phase is `choose`, built once per game. */
+function pickCard() {
+  const el = $('pick');
+  el.hidden = v.phase !== 'choose';
+  if (el.hidden) {
+    pickFor = null;
+    return;
+  }
+  if (pickFor === sim) return;
+  pickFor = sim;
+  $('legend').open = false;
+  const cards = JSON.parse(sim.pick());
+  const rows = cards.map((c) => {
+    const terrain = c.terrain.map(([name, share]) => `${name} ${Math.round(share * 100)}%`).join(', ');
+    const rival = c.rival_steps == null ? 'no rival' : `${c.rival_steps} steps to the nearest rival`;
+    return `<div class="card" data-civ="${c.civ}"><div class="head"><i class="sw" style="background:${c.color}"></i><b>${c.name}</b> <span class="dim">capital at ${c.q}, ${c.r}</span></div>
+<div>${c.clans} clan${c.clans === 1 ? '' : 's'} · ${Math.round(c.people * 10) / 10} people · ${c.hearths} hearth${c.hearths === 1 ? '' : 's'}</div>
+<div class="dim">${terrain || 'no land'}</div>
+<div class="dim">${rival}${c.rival_by_land ? '' : ' · no land route to a rival'}</div>
+<div class="buttons"><button type="button" data-lead="${c.civ}">Lead ${c.name}</button><button type="button" data-show="${c.civ}">Show</button></div></div>`;
+  });
+  el.innerHTML = `<h2>Choose your civ</h2>${rows.join('')}<div class="buttons"><button type="button" data-watch="1">Watch all three</button></div>`;
+}
+
+$('pick').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.lead) chooseCiv(Number(b.dataset.lead));
+  else if (b.dataset.show) showCiv(Number(b.dataset.show));
+  else if (b.dataset.watch) chooseCiv(null);
+});
+
+/** "Show": centres the map on a civ's capital and highlights its land. */
+function showCiv(civ) {
+  const c = v.civs[civ];
+  if (!c) return;
+  const tiles = [];
+  for (let i = 0; i < layout.q.length; i++) if (sim.tile_civ(i) === civ) tiles.push(i);
+  view.setHighlight({ tiles, tile: c.capital });
+  view.centreOn(c.capital, { minK: 12, smooth: true });
+}
+
+/** The pick itself: lead a civ (selecting its capital) or watch all three (`null`). */
+function chooseCiv(civ) {
+  if (!order({ type: 'chooseCiv', civ })) return;
+  view.setHighlight(null);
+  const c = civ != null && v.civs[civ];
+  if (c) {
+    select({ kind: 'capital', civ });
+    view.centreOn(c.capital, { minK: 20, smooth: true });
+  }
+}
+
+/** Gives the engine an order; shows why not in #error. Returns whether it went through. */
+function order(action) {
+  let ok = true;
+  try {
+    sim.act(JSON.stringify(action));
+    $('error').textContent = '';
+  } catch (e) {
+    $('error').textContent = String(e);
+    ok = false;
+  }
+  refresh();
+  return ok;
 }
 
 function pullEvents() {
@@ -111,7 +222,7 @@ function pullEvents() {
 /** Ends `n` turns; shows why if refused. Returns whether it all went through. */
 function turns(n) {
   try {
-    for (let i = 0; i < n; i++) sim.act('{"type":"endTurn"}');
+    for (let i = 0; i < n && sim.phase() !== 'choose'; i++) sim.act('{"type":"endTurn"}');
     $('error').textContent = '';
     return true;
   } catch (e) {
@@ -142,7 +253,7 @@ function stop() {
   $('run').textContent = 'Run to end';
 }
 
-/** The play loop: as many turns as the speed asks for, one refresh per pass; stops when the pre-game ends. */
+/** The play loop: as many turns as the speed asks for, one refresh per pass; stops at the pick. */
 function loop() {
   loopTimer = null;
   if (!playing && !running) return;
@@ -153,7 +264,7 @@ function loop() {
   if (running || speed === 'max') {
     // As many turns as fit in a frame's worth of time.
     const until = now + 18;
-    do ok = turns(1); while (ok && performance.now() < until && !sim.ended());
+    do ok = turns(1); while (ok && performance.now() < until && sim.phase() !== 'choose');
   } else {
     acc = Math.min(acc + ((now - last) / 1000) * RATES[speed], 4);
     last = now;
@@ -163,7 +274,7 @@ function loop() {
   }
   if (sim !== mine) return;
   refresh();
-  if (!ok || (v.end && (running || playing))) {
+  if (!ok || v.phase === 'choose') {
     stop();
     return;
   }
@@ -175,100 +286,105 @@ function runToEnd() {
     stop();
     return;
   }
-  if (v.end) return;
+  if (v.phase !== 'pregame') return;
   stop();
   running = true;
   $('run').textContent = 'Stop';
   loopTimer = setTimeout(loop, 0);
 }
 
-// ---- selecting and the detail panel ----------------------------------------------------------
+// ---- selecting and the selection panel -------------------------------------------------------
 
 function select(sel) {
   selected = sel;
-  view.setSelection(sel ? sel.tile : -1);
-  view.setHighlight(sel && (sel.clan != null || sel.market != null) ? { clan: sel.clan, market: sel.market } : null);
   feed.select(null);
+  syncSelection();
   panel();
 }
 
+/** Puts the selection on the map and in `body.dataset.selected`. */
+function syncSelection() {
+  const hl = selected && selected.kind === 'tile' && (selected.clan != null || selected.market != null);
+  view.setSelection(selected ? tileOf(ctx(), selected) : -1);
+  view.setHighlight(hl ? { clan: selected.clan, market: selected.market } : null);
+  document.body.dataset.selected = keyOf(selected);
+}
+
+/** A left-click: the first thing on the tile, or the next one if something there is already selected. */
+function onPick(i) {
+  if (i < 0) {
+    select(null);
+    return;
+  }
+  const things = candidates(ctx(), i);
+  let next = things[0];
+  if (selected && tileOf(ctx(), selected) === i) {
+    const at = things.findIndex((t) => keyOf(t) === keyOf(selected));
+    next = things[(at + 1) % things.length];
+  }
+  select(next);
+}
+
+/** A right-click: the selected unit of the player's goes to the tile. */
+function onCommand(i) {
+  const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
+  if (i < 0 || !u || u.civ !== v.player) return;
+  order({ type: 'moveUnit', unit: u.id, to: i });
+}
+
 function onFeed(item) {
-  selected = { tile: item.tile, clan: item.clan, market: item.market };
-  view.setSelection(item.tile);
-  view.setHighlight(item.clan != null || item.market != null ? { clan: item.clan, market: item.market } : null);
+  selected = { kind: 'tile', tile: item.tile, clan: item.clan, market: item.market };
+  syncSelection();
   view.centreOn(item.tile, { minK: 24, smooth: true });
   panel();
 }
 
-function terrainLabel(i) {
-  const l = layout;
-  const t = TERRAIN[l.terrain[i]];
-  if (l.terrain[i] === 0) return l.lake[i] ? 'lake' : 'ocean';
-  if (t.name === 'marsh') return 'marsh (delta)';
-  return t.name;
+/** The selection panel: what is selected and its actions as buttons, greyed with the reason when refused. */
+function panel() {
+  const el = $('detail');
+  const d = selected ? describe(ctx(), selected) : null;
+  if (!d) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = `<h2><span>${d.title}</span><button type="button" id="closedetail" aria-label="Close details">×</button></h2>${d.html}`;
+  if (d.actions.length) {
+    const box = document.createElement('div');
+    box.className = 'actions';
+    for (const a of d.actions) {
+      const json = JSON.stringify(a.action);
+      const why = sim.check(json);
+      const row = document.createElement('div');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = a.label;
+      b.disabled = why !== '';
+      b.onclick = () => order(a.action);
+      row.append(b);
+      if (why) {
+        const note = document.createElement('span');
+        note.className = 'dim';
+        note.textContent = ` ${why}`;
+        row.append(note);
+      }
+      box.append(row);
+    }
+    el.append(box);
+  }
+  $('closedetail').onclick = () => select(null);
 }
 
-/** The terrain name and what's on it: river, floodplain, pass, zone. */
-function tileKind(i) {
-  const l = layout;
-  const bits = [terrainLabel(i)];
-  if (l.river[i] > 0) bits.push(`river (${l.river[i]} upstream)`);
-  if (l.flood[i]) bits.push('floodplain');
-  if (l.pass[i]) bits.push('pass');
-  if (l.zone[i]) bits.push(ZONES[l.zone[i]]);
-  return bits.join(', ');
-}
+$('detail').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-select]');
+  if (!b) return;
+  const [kind, id] = b.dataset.select.split(':');
+  if (kind === 'unit' && Number(id) in v.units) select({ kind: 'unit', id: Number(id) });
+});
 
-const marketOn = (i) => Object.values(v.markets).find((m) => m.tile === i);
 const isHearth = (i) => {
   const tame = v.tame.find(([t]) => t === i);
   return layout.wild_grain[i] > 0 && tame && tame[1] >= RULES.tame_turns;
 };
-
-function clanHtml(c, how) {
-  const m = c.market != null ? `market ${c.market}, trip ${f2(c.trip)}` : 'no market';
-  return `<p><b style="color:${hue(c.id)}">Clan ${c.id}</b> <span class="dim">(${how})</span><br>${f2(c.pop)} people · fed ${f2(c.fed_ratio)}${c.starving ? ' · <b style="color:#ff7b72">starving</b>' : ''}<br>store ${f2(c.store.reduce((a, b) => a + b, 0))} · round ${c.round.length} tiles, walk ${f2(c.walk)} · ${m}</p>`;
-}
-
-function marketHtml(m, how) {
-  const prices = GOODS.map((g, f) => `${g} ${f2(m.prices[f])}`).join(', ');
-  return `<p><b>Market ${m.id}</b> <span class="dim">(${how})</span>${v.end && v.end.centres.includes(m.id) ? ' · <b style="color:#ffc800">centre</b>' : ''}<br>age ${v.turn - m.founded} · ${m.traders} traders · activity ${f2(m.activity)}<br><span class="dim">prices ${prices}</span></p>`;
-}
-
-function panel() {
-  const el = $('detail');
-  if (!selected) {
-    el.innerHTML = '';
-    return;
-  }
-  const i = selected.tile;
-  const t = JSON.parse(sim.tile(i));
-  const land = TERRAIN[t.terrain].land;
-  let html = `<h2><span>Tile ${t.q}, ${t.r}</span><button type="button" id="closedetail" aria-label="Close details">×</button></h2>`;
-  html += `<p class="dim">${tileKind(i)}${land ? ` · fertility ${f2(t.fertility)} · trail ${t.trail ? 'yes' : 'no'}` : ''}</p>`;
-  if (land) {
-    html += '<table>';
-    GOODS.forEach((g, f) => {
-      if (t.cap[f] > 0) html += `<tr><td>${g}</td><td>${f2(t.stock[f])} / ${f2(t.cap[f])}</td></tr>`;
-    });
-    if (t.wild_grain > 0) html += `<tr><td>tame</td><td>${Math.round((100 * t.tame) / RULES.tame_turns)}%</td></tr>`;
-    html += '</table>';
-  }
-  const shown = new Set();
-  const addClan = (id, how) => {
-    if (id == null || shown.has(id) || !v.clans[id]) return;
-    shown.add(id);
-    html += clanHtml(v.clans[id], how);
-  };
-  addClan(selected.clan, 'chosen');
-  const h = view.holder(i);
-  if (h) addClan(h[0], h[1] === 'round' ? 'on its round' : 'in its territory');
-  const m = selected.market != null ? v.markets[selected.market] : marketOn(i);
-  if (m) html += marketHtml(m, 'here');
-  else if (selected.market != null) html += `<p class="dim">Market ${selected.market} is gone.</p>`;
-  el.innerHTML = html;
-  $('closedetail').onclick = () => select(null);
-}
 
 // ---- the tooltip -----------------------------------------------------------------------------
 
@@ -310,14 +426,19 @@ function showTip(i, x, y) {
 function fillTip(i) {
   tipTile = i;
   const h = view.holder(i);
-  const lines = [`<b>${tileKind(i)}</b>`];
+  const lines = [`<b>${tileKind(ctx(), i)}</b>`];
   if (layout.terrain[i] !== 0 && TERRAIN[layout.terrain[i]].land) {
     lines.push(h ? `Held by clan ${h[0]} <span class="dim">(${h[1]})</span>` : 'Held by nobody');
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
   }
-  const m = marketOn(i);
+  const m = marketOn(ctx(), i);
   if (m) lines.push(`Market ${m.id}${v.end && v.end.centres.includes(m.id) ? ' (centre)' : ''}`);
   if (isHearth(i)) lines.push('Hearth');
+  const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
+  if (u && u.civ === v.player) {
+    const r = JSON.parse(sim.path(u.tile, i));
+    lines.push(r ? `Move here: cost ${f2(r.cost)}, ${r.turns} turn${r.turns === 1 ? '' : 's'}` : 'No route');
+  }
   $('tip').innerHTML = lines.join('<br>');
 }
 
@@ -463,7 +584,6 @@ legend();
 window.game = {
   view: () => v,
   layout: () => layout,
-  act: (a) => { sim.act(JSON.stringify(a)); refresh(); },
   save: () => JSON.parse(sim.save()),
   map: view,
   feed,

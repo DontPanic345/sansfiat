@@ -59,6 +59,25 @@
 
   #side { width:340px; max-width:45vw; flex:none; display:flex; flex-direction:column; background:var(--panel); border-left:1px solid var(--line); min-height:0; }
   #side.collapsed { display:none; }
+  .sw { display:inline-block; width:12px; height:12px; border-radius:3px; border:1px solid rgba(0,0,0,.5); vertical-align:-1px; margin-right:5px; }
+  #civbar { gap:6px 12px; align-items:center; padding-left:14px; border-left:1px solid var(--line); }
+  #civbar[hidden], #civbar [hidden] { display:none; }
+  #civbar > b { font-size:14px; }
+  #civbar .stat em { font-style:normal; text-transform:none; }
+  #civbar .stat[title] { cursor:help; }
+
+  #pick { position:absolute; left:10px; top:44px; width:min(380px, calc(100% - 20px)); max-height:calc(100% - 56px); overflow:auto; background:rgba(18,22,28,.96); border:1px solid var(--accent); border-radius:8px; padding:8px 12px 12px; box-shadow:0 8px 28px rgba(0,0,0,.6); z-index:5; }
+  #pick[hidden] { display:none; }
+  #pick h2 { margin:0 0 6px; font-size:16px; }
+  #pick .card { border-top:1px solid var(--line); padding:7px 0; }
+  #pick .card .head { font-size:14px; }
+  #pick .buttons { display:flex; gap:8px; margin-top:6px; }
+  #pick > .buttons { border-top:1px solid var(--line); padding-top:8px; }
+  button.link { background:none; border:0; padding:0 8px 0 0; color:var(--accent); text-decoration:underline; }
+  button.link:hover { background:none; }
+  #detail .actions { margin-top:8px; display:flex; flex-direction:column; gap:4px; }
+  #detail .units { margin:6px 0; }
+
   #detail { max-height:46%; overflow:auto; padding:8px 12px; border-bottom:1px solid var(--line); flex:none; }
   #detail:empty { display:none; }
   #detail h2 { font-size:14px; margin:0 0 4px; display:flex; justify-content:space-between; align-items:center; }
@@ -90,6 +109,14 @@
     <div class="stat"><b id="markets">0</b><span>Markets</span></div>
     <div class="stat"><b id="hearths">0</b><span>Hearths</span></div>
     <div class="stat"><b id="centres">0 / 3</b><span>Centres</span></div>
+  </div>
+  <div class="group" id="civbar" hidden>
+    <span><i class="sw" id="civsw"></i><b id="civname"></b></span>
+    <span class="group" id="civstats">
+      <div class="stat"><b id="civpeople">0</b><span>People <em id="civinunits"></em></span></div>
+      <div class="stat" id="st-store"><b id="civstore">0 / 50</b><span>Store</span></div>
+      <div class="stat"><b id="civunits">0</b><span>Units</span></div>
+    </span>
   </div>
   <div class="group controls">
     <button id="end" type="button">End turn</button>
@@ -144,6 +171,7 @@
       <div class="items" id="legenditems"></div>
     </details>
     <button id="showfeed" type="button" hidden>Show feed</button>
+    <div id="pick" role="dialog" aria-label="Choose your civ" hidden></div>
     <div id="tip" role="tooltip" hidden></div>
   </div>
   <aside id="side" aria-label="Details and events">

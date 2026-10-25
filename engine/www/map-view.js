@@ -35,7 +35,7 @@ const fertBucket = (f) => Math.max(0, Math.min(FERT_BUCKETS - 1, Math.floor(((f 
 export class MapView {
   /**
    * @param {HTMLCanvasElement} canvas
-   * @param {{terrain: object[], rules: object, onPick(i: number): void, onHover(i: number, x: number, y: number): void, onHoverEnd(): void}} opts
+   * @param {{terrain: object[], rules: object, onPick(i: number): void, onCommand?(i: number): void, onHover(i: number, x: number, y: number): void, onHoverEnd(): void}} opts
    */
   constructor(canvas, opts) {
     this.canvas = canvas;
@@ -284,6 +284,15 @@ export class MapView {
     return this.at(q, r);
   }
 
+  /** The client coordinates of tile `i`'s centre, for headless scripts that click on it. */
+  screenOf(i) {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: rect.left + this.w / 2 + (this.px[i] - this.cx) * this.k,
+      y: rect.top + this.h / 2 + (this.py[i] - this.cy) * this.k,
+    };
+  }
+
   // ---- input -----------------------------------------------------------------------------
 
   attach() {
@@ -328,13 +337,17 @@ export class MapView {
       if (this.pointers.size === 0) {
         if (this.drag.moved <= 4 && e.type === 'pointerup') {
           const rect = c.getBoundingClientRect();
-          this.opts.onPick(this.tileAt(e.clientX - rect.left, e.clientY - rect.top));
+          const i = this.tileAt(e.clientX - rect.left, e.clientY - rect.top);
+          // Left picks, right commands; other buttons do neither.
+          if (this.drag.button === 0) this.opts.onPick(i);
+          else if (this.drag.button === 2) this.opts.onCommand?.(i);
         }
         this.drag = null;
       } else {
         this.drag.pinch = null;
       }
     };
+    c.addEventListener('contextmenu', (e) => e.preventDefault());
     c.addEventListener('pointerup', up);
     c.addEventListener('pointercancel', up);
     c.addEventListener('pointerleave', (e) => {
@@ -789,6 +802,20 @@ export class MapView {
     const hl = this.highlight;
     if (hl) {
       let tile = -1;
+      if (hl.tiles) {
+        // A set of tiles (the pick's "Show": a civ's land).
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = Math.max(px * 1.5, 0.08);
+        for (const i of hl.tiles) {
+          if (!onScreen(i)) continue;
+          ctx.beginPath();
+          this.hexAt(ctx, i, 0.96);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+      if (hl.tile != null) tile = hl.tile;
       if (hl.clan != null && v.clans[hl.clan]) {
         const c = v.clans[hl.clan];
         tile = c.home;
