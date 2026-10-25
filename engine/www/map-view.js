@@ -745,16 +745,6 @@ export class MapView {
           ctx.stroke();
         }
       }
-      ctx.strokeStyle = '#ffc800';
-      ctx.lineWidth = Math.max(px * 3.2, 0.3);
-      ctx.beginPath();
-      for (const id of this.centres) {
-        const m = v.markets[id];
-        if (!m || !onScreen(m.tile)) continue;
-        ctx.moveTo(this.px[m.tile] + 1.5, this.py[m.tile]);
-        ctx.arc(this.px[m.tile], this.py[m.tile], 1.5, 0, 2 * Math.PI);
-      }
-      ctx.stroke();
     }
 
     // Clans: a circle at home, its area by people; a red ring when starving.
@@ -774,6 +764,23 @@ export class MapView {
         ctx.arc(x, y, r + px * 1.6, 0, 2 * Math.PI);
         ctx.lineWidth = Math.max(px * 2.2, 0.1);
         ctx.strokeStyle = '#ff2a2a';
+        ctx.stroke();
+      }
+    }
+
+    // Centres last, over the clans, so the three can be found on a crowded map.
+    if (this.options.markets) {
+      for (const [col, wide] of [['rgba(0,0,0,0.7)', 2], ['#ffc800', 0]]) {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = Math.max(px * 3.2, 0.3) + px * wide * 2;
+        ctx.beginPath();
+        const ring = 1.7;
+        for (const id of this.centres) {
+          const m = v.markets[id];
+          if (!m || !onScreen(m.tile)) continue;
+          ctx.moveTo(this.px[m.tile] + ring, this.py[m.tile]);
+          ctx.arc(this.px[m.tile], this.py[m.tile], ring, 0, 2 * Math.PI);
+        }
         ctx.stroke();
       }
     }

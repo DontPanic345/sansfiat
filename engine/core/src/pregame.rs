@@ -267,8 +267,12 @@ pub fn check_end(w: &mut World) {
     }
     let topped_up = if !by_centres && centres.len() < PREGAME.players { top_up(w, &mut centres) } else { Vec::new() };
     for &id in &topped_up {
-        let tile = w.markets[&id].tile;
-        w.event(EventKind::CentreFormed, tile, None, Some(id), None);
+        // A market that was a centre before and dropped out of the greedy set was announced then.
+        if !w.centres_seen.contains(&id) {
+            let tile = w.markets[&id].tile;
+            w.event(EventKind::CentreFormed, tile, None, Some(id), None);
+            w.centres_seen.push(id);
+        }
     }
     let cover = land_cover(w, &centres);
     let first = centres.first().map_or(0, |id| w.markets[id].tile);

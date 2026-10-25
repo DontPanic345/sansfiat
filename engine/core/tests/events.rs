@@ -203,3 +203,25 @@ fn a_market_that_becomes_a_centre_is_announced_once() {
     // Cover short: it carries on, with the end not yet reached.
     assert!(w.end.is_none());
 }
+
+#[test]
+fn a_centre_that_dropped_out_and_is_topped_up_is_announced_once() {
+    let mut w = big();
+    let a = open(&mut w, at_big(8, 0));
+    let b = open(&mut w, at_big(-8, 8));
+    let c = open(&mut w, at_big(0, -8));
+    hearth(&mut w, at_big(8, 0), 4.0);
+    w.turn = 40;
+    w.markets.get_mut(&a).unwrap().traders = 4;
+    check_end(&mut w);
+    assert!(w.end.is_none(), "one centre, not the end");
+    // It loses its traders and is no longer a centre; the limit tops it up.
+    w.markets.get_mut(&a).unwrap().traders = 0;
+    w.turn = PREGAME.max_turns - 1;
+    check_end(&mut w);
+    assert_eq!(w.end.as_ref().unwrap().centres.len(), 3);
+    let formed: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::CentreFormed).collect();
+    for id in [a, b, c] {
+        assert_eq!(formed.iter().filter(|e| e.market == Some(id)).count(), 1, "market {id} announced once");
+    }
+}
