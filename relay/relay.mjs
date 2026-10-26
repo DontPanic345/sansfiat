@@ -49,16 +49,28 @@ export const EFFORTS = ["low", "medium", "high"];
 // ---- Pure logic (covered by relay.test.mjs) ----
 
 // Continue while the 5-hour window is under 50% and the weekly window is under
-// day-of-cycle / 7 × 95%.
-export const pace = ({ session, weekly, weeklyResetsAt }, now) => {
+// day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`, where that's known.
+export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now) => {
     const cycleStart = weeklyResetsAt.getTime() - 7 * 86400_000;
     const day = Math.min(7, Math.max(1, Math.floor((now.getTime() - cycleStart) / 86400_000) + 1));
     const weeklyLimit = (day / 7) * 95;
-    if (session >= 50) return { ok: false, reason: `5-hour usage ${session}% ≥ 50%` };
+    if (session >= 50) return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${session}% ≥ 50%` };
     if (weekly >= weeklyLimit) {
-        return { ok: false, reason: `weekly usage ${weekly}% ≥ ${weeklyLimit.toFixed(1)}% (day ${day})` };
+        const lifts = Math.floor((weekly * 7) / 95) + 1;
+        const until = lifts > 7 ? weeklyResetsAt : new Date(cycleStart + (lifts - 1) * 86400_000);
+        return { ok: false, window: "weekly", until, reason: `weekly usage ${weekly}% ≥ ${weeklyLimit.toFixed(1)}% (day ${day})` };
     }
     return { ok: true, reason: `5-hour ${session}%, weekly ${weekly}% < ${weeklyLimit.toFixed(1)}% (day ${day})` };
+};
+
+// The board's "Waiting on" for a budget stop, in the owner's time: "5-hour usage, until
+// 14:20" or "weekly usage, until Thu 09:00".
+export const waitingOn = (verdict, timeZone = "Pacific/Auckland") => {
+    if (verdict.ok) return "";
+    if (!verdict.until) return `${verdict.window} usage`;
+    const day = verdict.window === "weekly" ? { weekday: "short" } : {};
+    const when = new Intl.DateTimeFormat("en-GB", { ...day, hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(verdict.until);
+    return `${verdict.window} usage, until ${when}`;
 };
 
 // The `<!-- relay {...} -->` block in a step issue's body.
@@ -73,20 +85,30 @@ export const writeMeta = (body, meta) => {
     return META.test(body ?? "") ? body.replace(META, () => block) : `${(body ?? "").trimEnd()}\n\n${block}\n`;
 };
 
-// A `**Name:** value` line in a piece's body (bold, list marker and colon placement vary), or null.
+// A `**Name:** value` field in a piece's body (bold, list marker and colon placement vary), or
+// null. A hard-wrapped value carries on to a blank line, a list item or the next field.
 export const pieceField = (body, name) => {
-    const m = new RegExp(`^[\\s>*-]*${name}[*\\s]*:[*\\s]*(.+)$`, "im").exec(body ?? "");
-    return m ? m[1].trim() : null;
+    const lines = (body ?? "").split(/\r?\n/);
+    const start = new RegExp(`^[\\s>*-]*${name}[*\\s]*:[*\\s]*(.+)$`, "i");
+    const i = lines.findIndex((l) => start.test(l));
+    if (i < 0) return null;
+    const value = [start.exec(lines[i])[1]];
+    for (const l of lines.slice(i + 1)) {
+        if (!l.trim() || /^\s*([-*>#]|\d+\.)\s/.test(l) || /^\s*\*\*[^*]+:/.test(l)) break;
+        value.push(l.trim());
+    }
+    return value.join(" ").trim();
 };
 
-// `**Spec:** opus high, because …`: the spec step's model, effort and why, or null.
-export const specChoice = (body) => {
-    const line = pieceField(body, "Spec");
+// `sonnet high, 9 points …: why`: a model, effort and why, or null.
+export const readChoice = (line) => {
     const words = (line ?? "").toLowerCase().split(/[^a-z]+/);
     const model = words.find((w) => MODELS.includes(w));
     const effort = words.find((w) => EFFORTS.includes(w));
     return model && effort ? { model, effort, why: line } : null;
 };
+export const specChoice = (body) => readChoice(pieceField(body, "Spec"));
+export const specReviewChoice = (body) => readChoice(pieceField(body, "Spec-review"));
 
 // `**After:** #31, #32`: the pieces this one waits to see merged.
 export const afterOf = (body) => [...(pieceField(body, "After") ?? "").matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
@@ -112,8 +134,8 @@ const sortSteps = (steps) => [...steps].sort((a, b) => stepRank(a.meta.id) - ste
 export const branchOf = (piece) => `relay/${piece.number}`;
 export const specDir = (piece) => `relay/specs/${piece.number}`;
 
-// The steps a spec session wrote to `relay/specs/<n>/steps.json`, checked. Returns
-// { steps } or { error }.
+// The steps the spec wrote to `relay/specs/<n>/steps.json`, as spec-review left them,
+// checked. Returns { steps } or { error }.
 export const checkSteps = (text) => {
     let steps;
     try {
@@ -122,16 +144,16 @@ export const checkSteps = (text) => {
         return { error: `steps.json isn't JSON: ${e.message}` };
     }
     const ids = Array.isArray(steps) ? steps.map((s) => s?.id) : [];
-    if (ids[0] !== "spec-review" || ids.at(-1) !== "review" || ids.length < 3) {
-        return { error: "steps.json must list `spec-review`, the build steps, then `review`" };
+    if (ids.at(-1) !== "review" || ids.length < 2) {
+        return { error: "steps.json must list the build steps, then `review`" };
     }
-    const builds = steps.slice(1, -1);
-    for (const [i, s] of builds.entries()) {
+    for (const [i, s] of steps.slice(0, -1).entries()) {
         if (s.id !== `build-${i + 1}`) return { error: `build step ${i + 1} in steps.json must be \`build-${i + 1}\`, not \`${s.id}\`` };
     }
     for (const s of steps) {
         if (!MODELS.includes(s.model)) return { error: `${s.id}: model must be one of ${MODELS.join(", ")}` };
         if (!EFFORTS.includes(s.effort)) return { error: `${s.id}: effort must be one of ${EFFORTS.join(", ")}` };
+        if (!Number.isInteger(s.points) || s.points < 0 || s.points > 15) return { error: `${s.id}: points must be a whole number from 0 to 15` };
         if (!s.title) return { error: `${s.id}: no title` };
         if (!s.why) return { error: `${s.id}: no why for its model and effort` };
     }
@@ -147,18 +169,21 @@ export const holdReason = (piece) => {
     if (piece.labels.includes("waiting")) return "waiting on the owner";
     const unmerged = (piece.after ?? []).filter((a) => !a.merged).map((a) => `#${a.number}`);
     if (unmerged.length) return `after ${unmerged.join(", ")}, not merged yet`;
-    if (piece.steps.length === 0 && !specChoice(piece.body)) return "the body has no `Spec:` model and effort";
+    if (piece.steps.length === 0) {
+        if (!specChoice(piece.body)) return "the body has no `Spec:` model and effort";
+        if (!specReviewChoice(piece.body)) return "the body has no `Spec-review:` model and effort";
+    }
     return null;
 };
 
 // What the crew does next for one piece: "start" (it has no steps yet), "step" (run
-// `step`), "plan" (the spec is done but its steps aren't made), or null.
+// `step`), "plan" (the spec or spec-review is done and the next steps aren't made), or null.
 export const pieceAction = (piece) => {
     if (piece.steps.length === 0) return { action: "start" };
     const steps = sortSteps(piece.steps);
     const open = steps.find((s) => s.state === "open");
     if (open) return open.meta.status === "blocked" ? null : { action: "step", step: open };
-    if (steps.every((s) => s.meta.id === "spec")) return { action: "plan" };
+    if (steps.every((s) => s.meta.id === "spec" || s.meta.id === "spec-review")) return { action: "plan" };
     return null;
 };
 
@@ -203,8 +228,8 @@ export const PROMPTS_FOR = {
 };
 
 // A session's whole prompt: its step first, then only the material that serves it, then
-// the rules for its kind of step. Throws when a build or review step has no brief; the
-// crew blocks the step on that.
+// the rules for its kind of step. Throws when a build step has no brief; the crew blocks
+// the step on that.
 // `files` holds `prompts` (name → text), `brief` and `spec` (null when missing), `design`
 // (path → text, null for a named file that doesn't exist), `designFiles` (every path in
 // docs/design/), and `diffStat` (review only).
@@ -216,12 +241,16 @@ export const sessionPrompt = (piece, step, files) => {
             `\`${branchOf(piece)}\`, and its spec lives in \`${specDir(piece)}/\`. This prompt holds how Relay ` +
             `works; the design and the code hold the rest.`,
     ];
-    if (kind === "build" || kind === "review") {
+    if (kind === "build") {
         if (!files.brief) throw new Error(`${specDir(piece)}/${step.meta.id}.md is missing`);
         parts.push(atLevel(files.brief.trim(), 1));
     } else {
-        const what = kind === "spec" ? "Write the spec, the briefs and steps.json" : "Review the spec, the briefs and steps.json";
-        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what} for this piece, as agreed with the owner:`);
+        const what = {
+            spec: "Write the spec, the briefs and steps.json for this piece",
+            "spec-review": "Review the spec, the briefs and steps.json for this piece",
+            review: "Review this piece as built",
+        }[kind];
+        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what}, as agreed with the owner:`);
         parts.push(atLevel(`# The piece\n\n${piece.body.trim()}`));
     }
     if (step.meta.note) parts.push(`# The last attempt didn't finish\n\nPick up from here.\n\n${step.meta.note}`);
@@ -238,13 +267,13 @@ export const sessionPrompt = (piece, step, files) => {
     if (kind === "review") {
         parts.push(`# The diff to review\n\nThe piece's changes against \`main\`:\n\n\`\`\`\n${(files.diffStat ?? "").trim()}\n\`\`\``);
         if (files.spec) parts.push(`# The whole spec\n\n${atLevel(files.spec.trim())}`);
+        parts.push(`# The steps\n\nPut this table at the top of the PR description, under "Closes #${piece.number}", with your own row added:\n\n${stepsTable(piece.steps)}`);
     }
     const done = sortSteps(piece.steps).filter((s) => s.state === "closed" && s.meta.summary);
     if (done.length) parts.push(`# This piece so far\n\n${done.map(soFar).join("\n")}`);
     for (const name of [...PROMPTS_FOR[kind], "session"]) {
         if (files.prompts[name]) parts.push(atLevel(files.prompts[name].trim(), 1));
     }
-    parts.push(`Do this one step, then finish as "Finishing" says.`);
     return parts.join("\n\n") + "\n";
 };
 
@@ -270,22 +299,51 @@ export const initProblem = (frame, model) => {
     return null;
 };
 
-// What a session used: every token across its models, what they'd cost at list price (the
-// CLI's own figure), the context its last turn held as a share of the step model's window,
-// and how many times it compacted. A count above 0 says the step was too big.
+// What a session used: its cost at list price (the CLI's own figure), the context its last
+// turn held as a share of the step model's window, and how many times it compacted. A count
+// above 0 says the step was too big.
 export const sessionStats = (lastAssistant, result, model, compactions = 0) => {
     const usage = result?.modelUsage ?? {};
-    const tokens = Object.values(usage).reduce(
-        (n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0) + (u.cacheReadInputTokens ?? 0) + (u.cacheCreationInputTokens ?? 0),
-        0,
-    );
     const u = lastAssistant?.message?.usage;
     const held = u ? (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.output_tokens ?? 0) : 0;
     const window = Object.entries(usage).find(([k]) => k.includes(model))?.[1]?.contextWindow ?? 200_000;
-    return { tokens, cost: result?.total_cost_usd ?? 0, context: Math.round((held / window) * 100), compactions };
+    return { cost: result?.total_cost_usd ?? 0, context: Math.round((held / window) * 100), compactions };
 };
 
 export const dollars = (n) => `$${(n ?? 0).toFixed(2)}`;
+export const cents = (n) => Math.round((n ?? 0) * 100) / 100;
+
+// The usage points a step took: the rise in each window from before the session to after.
+// A window that reset in between gives null, since its rise can't be known.
+export const usagePoints = (before, after) => {
+    const rise = (a, b) => (a == null || b == null || b < a ? null : Math.round(b - a));
+    return { fiveHour: rise(before?.session, after?.session), weekly: rise(before?.weekly, after?.weekly) };
+};
+
+// A finished or stopped step's one-line status, at the top of its issue's body.
+export const statusLine = (meta, outcome, note) => {
+    const spent = `${dollars(meta.cost)}, ${Math.round(meta.minutes ?? 0)} minutes`;
+    if (outcome === "done") return `done, ${spent}`;
+    if (outcome === "blocked") return `blocked: ${note}`;
+    return `not finished (attempt ${meta.attempts} of ${MAX_ATTEMPTS}), ${spent}: ${note}`;
+};
+const STATUS = /^\*\*Status:\*\*.*$/m;
+export const withStatus = (body, line) => (STATUS.test(body ?? "") ? body.replace(STATUS, () => `**Status:** ${line}`) : `**Status:** ${line}\n\n${body ?? ""}`);
+
+// A step issue's body: its status, what it runs on and why, its links, and its brief as it
+// was when the step was made.
+export const stepBody = (piece, s, { brief, pr } = {}) => {
+    const blob = `https://github.com/${GH_REPO}/blob/${branchOf(piece)}/${specDir(piece)}`;
+    const on = `**${s.model} ${s.effort}**${s.points != null ? `, ${s.points} points` : ""}${s.coin ? ", by coin" : ""}`;
+    const links = [`Piece #${piece.number}`, ...(pr ? [`PR #${pr}`] : []), `[spec.md](${blob}/spec.md)`, ...(brief ? [`[the brief](${blob}/${s.id}.md)`] : [])];
+    const parts = [`**Status:** ready`, `Step \`${s.id}\` on ${on}. ${s.why ?? ""}`.trim(), links.join(" · ")];
+    if (brief) {
+        const text = brief.trim();
+        const cut = text.length > 55_000 ? `${text.slice(0, 55_000)}\n\n…cut here; the rest is in the brief on the branch.` : text;
+        parts.push(`---\n\nThe brief as it was when this step was made. The file on the branch is the one builds keep up.\n\n${atLevel(cut, 2)}`);
+    }
+    return parts.join("\n\n");
+};
 
 // How a session ended: what it wrote to result.json, or null when it wrote nothing usable.
 export const readResult = (text) => {
@@ -352,20 +410,19 @@ export const applyModel = (meta, args) => {
     return { ...meta, model: model ?? meta.model, effort: effort ?? meta.effort };
 };
 
-// The steps table for `/relay status`, with the piece's total cost.
+// The steps table for `/relay status` and the PR description, with the piece's total cost.
 export const stepsTable = (steps) => {
     const sorted = sortSteps(steps);
     const total = sorted.reduce((n, s) => n + (s.meta.cost ?? 0), 0);
+    const num = (n, f = String) => (n != null ? f(n) : "");
     return [
-        "| Step | State | Model | Effort | Attempts | Tokens | List $ | Context | Compactions | Why |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| Step | State | Model | Effort | Points | Estimate | Attempts | List $ | Minutes | 5-hour | Weekly |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
         ...sorted.map((s) => {
-            const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : "done") : s.meta.status ?? "pending";
-            const why = (s.meta.why ?? "").replaceAll("|", "\\|");
-            const tokens = s.meta.tokens ? s.meta.tokens.toLocaleString("en-NZ") : "";
-            const cost = s.meta.cost != null ? dollars(s.meta.cost) : "";
-            const context = s.meta.context != null ? `${s.meta.context}%` : "";
-            return `| ${s.meta.id} | ${state} | ${s.meta.model} | ${s.meta.effort} | ${s.meta.attempts ?? 0} | ${tokens} | ${cost} | ${context} | ${s.meta.compactions ?? ""} | ${why} |`;
+            const m = s.meta;
+            const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : "done") : m.status ?? "pending";
+            const model = `${m.model}${m.coin ? " (coin)" : ""}`;
+            return `| #${s.number} ${m.id} | ${state} | ${model} | ${m.effort} | ${num(m.points)} | ${num(m.estimate, dollars)} | ${m.attempts ?? 0} | ${num(m.cost, dollars)} | ${num(m.minutes, Math.round)} | ${num(m.fiveHour)} | ${num(m.weekly)} |`;
         }),
         "",
         `${dollars(total)} at list price so far.`,
@@ -481,6 +538,12 @@ const saveMeta = async (step, meta) => {
 
 const closeStep = (step, reason = "completed") => github("PATCH", `/issues/${step.number}`, { state: "closed", state_reason: reason });
 
+// Step issues carry no comments: how a step stands is the line at the top of its body.
+const setStepStatus = async (step, line) => {
+    step.body = withStatus(step.body, line);
+    await github("PATCH", `/issues/${step.number}`, { body: step.body });
+};
+
 // ---- The board (best effort: the crew works without it) ----
 
 let board;
@@ -512,20 +575,36 @@ const loadBoard = async () => {
 };
 
 // Sets fields on an issue's board item, adding the item first. `values` maps a field name to
-// an option name or a number.
+// an option name, a number or text; "" clears the field. Each field is set on its own, Status
+// first, so one that fails doesn't stop the rest.
 const setBoard = async (nodeId, values) => {
     const b = await loadBoard();
     if (!b) return;
+    let item;
     try {
         const added = await graphql(
             `mutation($p: ID!, $c: ID!) { addProjectV2ItemById(input: { projectId: $p, contentId: $c }) { item { id } } }`,
             { p: b.id, c: nodeId },
             BOARD_TOKEN,
         );
-        const item = added.addProjectV2ItemById.item.id;
-        for (const [name, value] of Object.entries(values)) {
-            const field = b.fields[name];
-            if (!field || value == null) continue;
+        item = added.addProjectV2ItemById.item.id;
+    } catch (e) {
+        return log(`couldn't add an item to the board: ${e.message}`);
+    }
+    const names = Object.keys(values).sort((x, y) => (y === "Status") - (x === "Status"));
+    for (const name of names) {
+        const field = b.fields[name];
+        const value = values[name];
+        if (!field || value == null) continue;
+        try {
+            if (value === "") {
+                await graphql(
+                    `mutation($p: ID!, $i: ID!, $f: ID!) { clearProjectV2ItemFieldValue(input: { projectId: $p, itemId: $i, fieldId: $f }) { projectV2Item { id } } }`,
+                    { p: b.id, i: item, f: field.id },
+                    BOARD_TOKEN,
+                );
+                continue;
+            }
             let v;
             if (field.options) {
                 const option = field.options.find((o) => o.name.toLowerCase() === String(value).toLowerCase());
@@ -533,6 +612,8 @@ const setBoard = async (nodeId, values) => {
                 v = { singleSelectOptionId: option.id };
             } else if (field.dataType === "NUMBER") {
                 v = { number: Number(value) };
+            } else if (field.dataType === "TEXT") {
+                v = { text: String(value) };
             } else continue;
             await graphql(
                 `mutation($p: ID!, $i: ID!, $f: ID!, $v: ProjectV2FieldValue!) {
@@ -540,13 +621,13 @@ const setBoard = async (nodeId, values) => {
                 { p: b.id, i: item, f: field.id, v },
                 BOARD_TOKEN,
             );
+        } catch (e) {
+            log(`couldn't set ${name} on the board: ${e.message}`);
         }
-    } catch (e) {
-        log(`couldn't update the board: ${e.message}`);
     }
 };
 
-const setStatus = (piece, status) => setBoard(piece.nodeId, { Status: status });
+const setStatus = (piece, status, waiting = "") => setBoard(piece.nodeId, { Status: status, "Waiting on": waiting });
 
 // ---- Git ----
 
@@ -655,6 +736,7 @@ const runSession = (piece, step, prompt) =>
             { cwd: REPO, env, shell: false, stdio: ["pipe", "pipe", "pipe"] },
         );
         child.stdin.end(prompt);
+        const began = Date.now();
         let model = null;
         let refused = null;
         let timedOut = false;
@@ -700,7 +782,8 @@ const runSession = (piece, step, prompt) =>
             out.end(redact(buf, hidden));
             // A session that never said how it started costs no attempt: the CLI changed, not the step.
             if (!model && !refused && !timedOut) refused = initProblem(null, step.meta.model);
-            resolve({ code, model, refused, timedOut, stats: sessionStats(lastAssistant, result, step.meta.model, compactions) });
+            const stats = { ...sessionStats(lastAssistant, result, step.meta.model, compactions), minutes: (Date.now() - began) / 60_000 };
+            resolve({ code, model, refused, timedOut, stats });
         });
     });
 
@@ -727,15 +810,19 @@ const findPr = async (piece) => {
     return prs[0] ?? null;
 };
 
+// A step's issue, with its brief as it is on the branch now.
 const createStep = async (piece, s) => {
     const meta = { id: s.id, model: s.model, effort: s.effort, why: s.why ?? "", attempts: 0, status: "pending" };
+    for (const k of ["points", "estimate", "coin"]) if (s[k] != null) meta[k] = s[k];
+    const brief = stepKind(s.id) === "build" ? readRepo(`${specDir(piece)}/${s.id}.md`) : null;
+    const pr = (await findPr(piece))?.number;
     const issue = await github("POST", "/issues", {
         title: `#${piece.number} ${s.id}: ${s.title}`,
-        body: writeMeta(`Step \`${s.id}\` of #${piece.number}.${s.why ? `\n\n${s.why}` : ""}`, meta),
+        body: writeMeta(stepBody(piece, s, { brief, pr }), meta),
         labels: ["kind:step"],
     });
     await github("POST", `/issues/${piece.number}/sub_issues`, { sub_issue_id: issue.id });
-    await setBoard(issue.node_id, { Step: stepKind(s.id), Model: s.model, Effort: s.effort, Status: "Ready", Attempts: 0 });
+    await setBoard(issue.node_id, { Status: "Ready", Step: stepKind(s.id), Model: s.model, Effort: s.effort, Attempts: 0, Points: s.points });
     log(`#${piece.number}: made step ${s.id} (#${issue.number})`);
 };
 
@@ -748,20 +835,27 @@ const startPiece = async (piece) => {
 
 const readSteps = (piece) => checkSteps(readRepo(`${specDir(piece)}/steps.json`) ?? "");
 
-// After the spec: every later step, from steps.json. The spec step checked it before it
-// closed, so an error here means the branch changed since; the spec runs again to fix it.
+// After the spec, spec-review on the model the piece's body chose. After spec-review, every
+// later step from steps.json as spec-review left it. Spec-review checked it before it closed,
+// so an error here means the branch changed since; spec-review runs again to fix it.
 const plan = async (piece) => {
     checkoutPiece(piece);
+    const review = piece.steps.find((s) => s.meta.id === "spec-review");
+    if (!review) {
+        const choice = specReviewChoice(piece.body) ?? { model: "sonnet", effort: "medium", why: "The piece names no spec-review, so the datum." };
+        await createStep(piece, { id: "spec-review", title: "Review the spec", ...choice });
+        await setStatus(piece, "Spec");
+        return;
+    }
     const { steps, error } = readSteps(piece);
     if (error) {
-        const spec = piece.steps.find((s) => s.meta.id === "spec");
-        await github("PATCH", `/issues/${spec.number}`, { state: "open" });
-        await saveMeta(spec, { ...spec.meta, status: "pending", note: `steps.json can't be read: ${error}` });
-        log(`#${piece.number}: ${error}; the spec runs again`);
+        await github("PATCH", `/issues/${review.number}`, { state: "open" });
+        await saveMeta(review, { ...review.meta, status: "pending", note: `steps.json can't be read: ${error}` });
+        log(`#${piece.number}: ${error}; spec-review runs again`);
         return;
     }
     for (const s of steps) await createStep(piece, s);
-    await setStatus(piece, "Spec");
+    await setStatus(piece, "Building");
 };
 
 const blockStep = async (piece, step, why) => {
@@ -770,11 +864,9 @@ const blockStep = async (piece, step, why) => {
         piece.number,
         `⛔ **${step.meta.id}** is blocked: ${why}\n\nReply here to unblock it (your reply goes to the next session), or \`/relay retry\`, or \`/relay skip ${step.meta.id}\`.`,
     );
-    await setStatus(piece, "Waiting");
+    await setStatus(piece, "Waiting", "your answer");
 };
 
-// What follows a finished step: a draft PR and the later steps after the spec, and the owner's
-// turn after the piece's review.
 // Merges the PR when the review says merge and CI is green. Returns why it didn't, or null.
 const autoMerge = async (piece, pr, result) => {
     if (!pr) return "there's no PR";
@@ -791,26 +883,29 @@ const autoMerge = async (piece, pr, result) => {
     return null;
 };
 
+// The PR comment for a finished step: its summary, decisions and ideas, with what it took.
+export const stepComment = (step, result) => {
+    const m = step.meta;
+    const took = [`${m.model} ${m.effort}${m.coin ? " (coin)" : ""}`, ...(m.points != null ? [`${m.points} points`] : []), dollars(m.cost), `${Math.round(m.minutes ?? 0)} min`, `#${step.number}`];
+    const decided = m.decisions?.length ? `\n\n🧭 Decided:\n${m.decisions.map((d) => `- ${d.decision}${d.why ? `: ${d.why}` : ""}`).join("\n")}` : "";
+    const list = ideaList(result.ideas);
+    const ideas = list ? `\n\n💡 Ideas, not built:\n${list}` : "";
+    return `**${m.id}** (${took.join(", ")}): ${result.summary}${decided}${ideas}`;
+};
+
+// What follows a finished step: the PR once the branch has commits, the next steps after the
+// spec and spec-review, and the owner's turn after the piece's review.
 const afterStep = async (piece, step, result) => {
     const kind = stepKind(step.meta.id);
     let pr = await findPr(piece);
     if (!pr && git("rev-list", `origin/main..origin/${branchOf(piece)}`)) {
-        pr = await github("POST", "/pulls", {
-            title: piece.title,
-            head: branchOf(piece),
-            base: "main",
-            draft: true,
-            body: `Closes #${piece.number}.`,
-        });
-        log(`#${piece.number}: draft PR #${pr.number}`);
+        pr = await github("POST", "/pulls", { title: piece.title, head: branchOf(piece), base: "main", body: `Closes #${piece.number}.` });
+        log(`#${piece.number}: PR #${pr.number}`);
+        const tree = `https://github.com/${GH_REPO}/tree/${branchOf(piece)}/${specDir(piece)}`;
+        await comment(piece.number, `📎 The PR is #${pr.number}, and the spec is in [\`${specDir(piece)}/\`](${tree}).`);
     }
-    if (pr && result.summary) {
-        const decided = step.meta.decisions?.length ? `\n\n🧭 Decided:\n${step.meta.decisions.map((d) => `- ${d.decision}${d.why ? `: ${d.why}` : ""}`).join("\n")}` : "";
-        const list = ideaList(result.ideas);
-        const ideas = list ? `\n\n💡 Ideas, not built:\n${list}` : "";
-        await comment(pr.number, `**${step.meta.id}** (${step.meta.model}/${step.meta.effort}): ${result.summary}${decided}${ideas}`);
-    }
-    if (kind === "spec") await plan(await loadPiece(piece.number));
+    if (pr && result.summary) await comment(pr.number, stepComment(step, result));
+    if (kind === "spec" || kind === "spec-review") await plan(await loadPiece(piece.number));
     else if (kind === "build") await setStatus(piece, "Building");
     else if (kind === "review") {
         const why = await autoMerge(piece, pr, result);
@@ -819,30 +914,24 @@ const afterStep = async (piece, step, result) => {
                 piece.number,
                 `🔍 The review is done on ${pr?.html_url ?? "the PR"}, but ${why}. Its description ends with the review's verdict. Merge it, which closes this piece, or close this piece to keep the branch as \`proof/${piece.number}\`.`,
             );
-            await setStatus(piece, "Review");
+            await setStatus(piece, "Review", "your merge");
         }
     }
 };
 
 // Runs one step and records how it went. Returns a line for the run report, or throws
 // `refused` when the session couldn't start as asked.
-const runStep = async (piece, step) => {
+// `before` is the usage the crew paced on, so the step's points are the rise from it.
+const runStep = async (piece, step, before) => {
     const branch = checkoutPiece(piece);
-    if (step.meta.id === "review") {
-        const pr = await findPr(piece);
-        // CI runs on the whole piece once the PR is ready.
-        if (pr?.draft) {
-            await graphql(`mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { clientMutationId } }`, { id: pr.node_id });
-        }
-        await setStatus(piece, "Review");
-    } else if (stepKind(step.meta.id) === "build") {
-        await setStatus(piece, "Building");
-    }
+    const kind = stepKind(step.meta.id);
+    await setStatus(piece, { review: "Review", build: "Building" }[kind] ?? "Spec");
     let prompt;
     try {
         prompt = stepPrompt(piece, step);
     } catch (e) {
         // The spec can't brief the session; only a spec edit fixes that.
+        step.body = withStatus(step.body, `blocked: ${e.message} (see #${piece.number})`);
         await saveMeta(step, { ...step.meta, status: "blocked" });
         await blockStep(piece, step, e.message);
         return `#${piece.number} ${step.meta.id}: blocked (${e.message})`;
@@ -856,31 +945,48 @@ const runStep = async (piece, step) => {
     }
     const exitOk = code === 0 && !timedOut && model !== null;
     let result = readResult(fs.existsSync(RESULT) ? fs.readFileSync(RESULT, "utf8") : null);
-    log(`end #${piece.number} ${step.meta.id}: exit ${code}, model ${model}, ${stats.tokens} tokens, ${dollars(stats.cost)}, ${stats.context}% context, ${stats.compactions} compactions, result ${JSON.stringify(result)}`);
+    log(`end #${piece.number} ${step.meta.id}: exit ${code}, model ${model}, ${dollars(stats.cost)}, ${stats.minutes.toFixed(1)} minutes, ${stats.context}% context, ${stats.compactions} compactions, result ${JSON.stringify(result)}`);
     tidyUp(branch);
-    // A spec isn't done until the crew can make its steps.
-    if (step.meta.id === "spec" && result?.status === "done") {
+    // Spec-review isn't done until the crew can make the steps.
+    if (step.meta.id === "spec-review" && result?.status === "done") {
         const { error } = readSteps(piece);
         if (error) result = { status: "pending", note: `You reported done, but steps.json can't be read: ${error}` };
+    }
+    let after = null;
+    try {
+        after = await usage();
+    } catch (e) {
+        log(`couldn't read usage after the step: ${e.message}`);
     }
 
     const applied = applyResult(step.meta, result, exitOk);
     const { outcome, why } = applied;
     const { meta } = applied;
-    meta.tokens = (step.meta.tokens ?? 0) + stats.tokens;
-    meta.cost = (step.meta.cost ?? 0) + stats.cost;
+    const points = usagePoints(before, after);
+    const add = (was, n) => (n == null ? was ?? null : (was ?? 0) + n);
+    meta.cost = cents((step.meta.cost ?? 0) + stats.cost);
+    meta.minutes = Math.round(((step.meta.minutes ?? 0) + stats.minutes) * 10) / 10;
+    meta.fiveHour = add(step.meta.fiveHour, points.fiveHour);
+    meta.weekly = add(step.meta.weekly, points.weekly);
+    meta.usage = [...(step.meta.usage ?? []), { before: before && { session: before.session, weekly: before.weekly }, after: after && { session: after.session, weekly: after.weekly } }];
     meta.context = stats.context;
     meta.compactions = (step.meta.compactions ?? 0) + stats.compactions;
+    meta.cli = cliVersion();
+    step.body = withStatus(step.body, statusLine(meta, outcome, outcome === "blocked" ? `${why} (see #${piece.number})` : meta.note));
     await saveMeta(step, meta);
-    await setBoard(step.nodeId, { Attempts: meta.attempts ?? 0, Tokens: meta.tokens, "List $": meta.cost, Context: meta.context, Compactions: meta.compactions, Status: outcome === "done" ? "Done" : outcome === "blocked" ? "Waiting" : "Building" });
+    await setBoard(step.nodeId, {
+        Status: outcome === "done" ? "Done" : outcome === "blocked" ? "Waiting" : "Building",
+        Attempts: meta.attempts ?? 0,
+        "List $": meta.cost,
+        Minutes: Math.round(meta.minutes),
+        "5-hour points": meta.fiveHour,
+        "Weekly points": meta.weekly,
+    });
     if (outcome === "done") {
-        await comment(step.number, `✅ ${result.summary ?? "Done."}\n\n${stats.tokens.toLocaleString("en-NZ")} tokens, ${dollars(stats.cost)} at list price, ${stats.context}% context, ${stats.compactions} compactions. ${model}, Claude Code ${cliVersion()}.`);
         await closeStep(step);
         await afterStep(piece, step, result);
     } else if (outcome === "blocked") {
         await blockStep(piece, step, why);
-    } else {
-        await comment(step.number, `↩️ Not finished (attempt ${meta.attempts} of ${MAX_ATTEMPTS}): ${meta.note}`);
     }
     return `#${piece.number} ${step.meta.id}: ${outcome}`;
 };
@@ -926,10 +1032,14 @@ const runSteps = async (ran) => {
             ran.push(`#${next.piece.number}: steps made`);
             continue;
         }
-        const verdict = pace(await usage(), new Date());
-        if (!verdict.ok) return `budget stop: ${verdict.reason}`;
+        const before = await usage();
+        const verdict = pace(before, new Date());
+        if (!verdict.ok) {
+            await setBoard(next.piece.nodeId, { "Waiting on": waitingOn(verdict) });
+            return `budget stop: ${verdict.reason}`;
+        }
         log(verdict.reason);
-        ran.push(await runStep(next.piece, next.step));
+        ran.push(await runStep(next.piece, next.step, before));
     }
 };
 
@@ -972,6 +1082,7 @@ const unblock = async (piece, step, reply) => {
     const meta = { ...step.meta, status: "pending", attempts: 0 };
     if (reply) meta.reply = reply;
     delete meta.note;
+    step.body = withStatus(step.body, reply ? "ready, with your reply" : "ready, retrying");
     await saveMeta(step, meta);
     if (!piece.steps.some((s) => s !== step && s.state === "open" && s.meta.status === "blocked")) await removeLabel(piece.number, "waiting");
     await setStatus(piece, "Building");
@@ -998,7 +1109,7 @@ const COMMANDS = {
     skip: async (piece, [id]) => {
         const step = findStep(piece, id);
         if (!step) return `No open step \`${id}\`.`;
-        await comment(step.number, "Skipped by the owner.");
+        await setStepStatus(step, "skipped by the owner");
         await closeStep(step, "not_planned");
         step.state = "closed";
         if (!piece.steps.some((s) => s.state === "open" && s.meta.status === "blocked")) await removeLabel(piece.number, "waiting");
@@ -1030,7 +1141,7 @@ export const HELP = "Commands: `run`, `retry [step]`, `skip <step>`, `model <ste
 const closePiece = async (number) => {
     const piece = await loadPiece(number);
     for (const s of piece.steps.filter((s) => s.state === "open")) {
-        await comment(s.number, `Closed with #${number}.`);
+        await setStepStatus(s, `closed with #${number}`);
         await closeStep(s, "not_planned");
     }
     const pr = await findPr(piece);

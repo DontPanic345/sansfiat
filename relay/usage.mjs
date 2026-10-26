@@ -11,19 +11,23 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Either route's payload as { session, weekly, weeklyResetsAt }: percentages and a Date.
+// Either route's payload as { session, weekly, weeklyResetsAt, sessionResetsAt }: percentages
+// and Dates (sessionResetsAt null when the payload doesn't say).
+const when = (t) => (t ? new Date(t) : null);
+
 export const parseUsage = (raw) => {
     const limits = raw.limits ?? [];
     const session = limits.find((l) => l.kind === "session");
     const weekly = limits.find((l) => l.kind === "weekly_all");
     if (session && weekly) {
-        return { session: session.percent, weekly: weekly.percent, weeklyResetsAt: new Date(weekly.resets_at) };
+        return { session: session.percent, weekly: weekly.percent, weeklyResetsAt: new Date(weekly.resets_at), sessionResetsAt: when(session.resets_at) };
     }
     if (raw.five_hour && raw.seven_day) {
         return {
             session: raw.five_hour.utilization,
             weekly: raw.seven_day.utilization,
             weeklyResetsAt: new Date(raw.seven_day.resets_at),
+            sessionResetsAt: when(raw.five_hour.resets_at),
         };
     }
     const uw = raw.unifiedWindows;
@@ -32,6 +36,7 @@ export const parseUsage = (raw) => {
             session: uw.five_hour.utilization * 100,
             weekly: uw.seven_day.utilization * 100,
             weeklyResetsAt: new Date(uw.seven_day.resetsAt * 1000),
+            sessionResetsAt: when(uw.five_hour.resetsAt && uw.five_hour.resetsAt * 1000),
         };
     }
     throw new Error("no session/weekly windows in the usage payload");

@@ -23,7 +23,14 @@ import {
     sessionPrompt,
     sessionStats,
     specChoice,
+    specReviewChoice,
+    statusLine,
+    stepBody,
+    stepComment,
     stepsTable,
+    usagePoints,
+    waitingOn,
+    withStatus,
     writeMeta,
 } from "./relay.mjs";
 
@@ -40,6 +47,18 @@ test("pace spreads the weekly budget across the cycle", () => {
     assert.equal(pace({ session: 0, weekly: 14, weeklyResetsAt: resets }, day(1)).ok, false);
     assert.equal(pace({ session: 0, weekly: 94, weeklyResetsAt: resets }, day(7)).ok, true);
     assert.equal(pace({ session: 0, weekly: 95, weeklyResetsAt: resets }, day(7)).ok, false);
+});
+
+test("a stop says when it lifts", () => {
+    const at = new Date("2026-10-11T02:20:00Z");
+    const five = pace({ session: 60, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: at }, day(1));
+    assert.equal(waitingOn(five), "5-hour usage, until 15:20");
+    // 14% on day 1 lifts on day 2, when the ramp reaches 27.1%.
+    const weekly = pace({ session: 0, weekly: 14, weeklyResetsAt: resets }, day(1));
+    assert.equal(weekly.until.getTime(), resets.getTime() - 6 * 86400_000);
+    assert.equal(waitingOn(weekly), "weekly usage, until Sun 22:00");
+    assert.equal(pace({ session: 0, weekly: 96, weeklyResetsAt: resets }, day(7)).until, resets);
+    assert.equal(waitingOn(pace({ session: 0, weekly: 0, weeklyResetsAt: resets }, day(1))), "");
 });
 
 test("a step's meta block round-trips and replaces itself", () => {
@@ -61,25 +80,36 @@ test("a piece's body says the spec's model and its design files", () => {
     assert.deepEqual(designPaths(body), ["docs/design/map.md"]);
 });
 
-test("checkSteps wants the spec-review, builds in order, then the review, each with a why", () => {
-    const s = (id, extra = {}) => ({ id, title: "t", model: "sonnet", effort: "medium", why: "w", ...extra });
+test("a hard-wrapped field reads to the next field, and spec-review has its own", () => {
+    const body = "**Spec:** sonnet high, 9 points (Open 2,\nNew 1): the store meets the clans.\n\n**Spec-review:** haiku high: it reads cold.\n**Design:** docs/design/founding.md\n- **Decided:** x";
+    assert.equal(pieceField(body, "Spec"), "sonnet high, 9 points (Open 2, New 1): the store meets the clans.");
+    assert.deepEqual(specReviewChoice(body), { model: "haiku", effort: "high", why: "haiku high: it reads cold." });
+    assert.equal(pieceField("**Spec-review:** sonnet low\n**Design:** a", "Spec-review"), "sonnet low");
+    assert.equal(specReviewChoice("**Spec:** opus low"), null);
+});
+
+test("checkSteps wants builds in order, then the review, each with points and a why", () => {
+    const s = (id, extra = {}) => ({ id, title: "t", model: "sonnet", effort: "medium", points: 7, why: "w", ...extra });
     const ok = (...ids) => JSON.stringify(ids.map((id) => (typeof id === "string" ? s(id) : id)));
-    assert.ok(checkSteps(ok("spec-review", "build-1", "review")).steps);
+    assert.ok(checkSteps(ok("build-1", "review")).steps);
+    assert.ok(checkSteps(ok(s("build-1", { model: "opus", effort: "low", coin: true }), "review")).steps);
     assert.match(checkSteps("nope").error, /JSON/);
-    assert.match(checkSteps(ok("build-1", "review")).error, /spec-review/);
-    assert.match(checkSteps(ok("spec-review", "review")).error, /spec-review/);
-    assert.match(checkSteps(ok("spec-review", "build-1", "build-3", "review")).error, /build-2/);
-    assert.match(checkSteps(ok("spec-review", "build-1", "build-2")).error, /review/);
-    assert.match(checkSteps(ok("spec-review", s("build-1", { model: "gpt" }), "review")).error, /model/);
-    assert.match(checkSteps(ok("spec-review", s("build-1", { effort: "max" }), "review")).error, /effort/);
-    assert.match(checkSteps(ok("spec-review", s("build-1", { why: "" }), "review")).error, /no why/);
+    assert.match(checkSteps(ok("review")).error, /build steps/);
+    assert.match(checkSteps(ok("spec-review", "build-1", "review")).error, /build-1/);
+    assert.match(checkSteps(ok("build-1", "build-3", "review")).error, /build-2/);
+    assert.match(checkSteps(ok("build-1", "build-2")).error, /review/);
+    assert.match(checkSteps(ok(s("build-1", { model: "gpt" }), "review")).error, /model/);
+    assert.match(checkSteps(ok(s("build-1", { effort: "max" }), "review")).error, /effort/);
+    assert.match(checkSteps(ok(s("build-1", { points: 16 }), "review")).error, /points/);
+    assert.match(checkSteps(ok("build-1", s("review", { points: undefined }))).error, /points/);
+    assert.match(checkSteps(ok(s("build-1", { why: "" }), "review")).error, /no why/);
 });
 
 const step = (id, state = "open", meta = {}) => ({ number: 100, state, meta: { id, model: "sonnet", effort: "medium", ...meta } });
 const piece = (number, labels, steps = [], extra = {}) => ({
     number,
     title: `Piece ${number}`,
-    body: "**Goal:** rivers.\n**Spec:** sonnet high, because it's one module.\n**Design:** docs/design/map.md\n\n**In scope**\n\n- rivers",
+    body: "**Goal:** rivers.\n**Spec:** sonnet high, because it's one module.\n**Spec-review:** sonnet medium, to read it cold.\n**Design:** docs/design/map.md\n\n**In scope**\n\n- rivers",
     labels: ["kind:piece", "relay:ready", ...labels],
     author: "DontPanic345",
     milestone: null,
@@ -87,12 +117,14 @@ const piece = (number, labels, steps = [], extra = {}) => ({
     ...extra,
 });
 
-test("pieceAction starts, plans after the spec, then runs each open step in order", () => {
+test("pieceAction starts, plans after the spec and after spec-review, then runs each open step in order", () => {
     assert.deepEqual(pieceAction(piece(1, [])), { action: "start" });
     assert.equal(pieceAction(piece(1, [], [step("spec")])).step.meta.id, "spec");
     assert.deepEqual(pieceAction(piece(1, [], [step("spec", "closed")])), { action: "plan" });
-    const planned = piece(1, [], [step("spec", "closed"), step("review"), step("build-1"), step("spec-review")]);
-    assert.equal(pieceAction(planned).step.meta.id, "spec-review");
+    assert.equal(pieceAction(piece(1, [], [step("spec", "closed"), step("spec-review")])).step.meta.id, "spec-review");
+    assert.deepEqual(pieceAction(piece(1, [], [step("spec", "closed"), step("spec-review", "closed")])), { action: "plan" });
+    const planned = piece(1, [], [step("spec", "closed"), step("review"), step("build-1"), step("spec-review", "closed")]);
+    assert.equal(pieceAction(planned).step.meta.id, "build-1");
     const building = piece(1, [], [step("spec", "closed"), step("spec-review", "closed"), step("review"), step("build-2"), step("build-1", "closed")]);
     assert.equal(pieceAction(building).step.meta.id, "build-2");
     const blocked = piece(1, [], [step("spec", "closed"), step("spec-review", "closed"), step("build-1", "open", { status: "blocked" })]);
@@ -108,6 +140,7 @@ test("holdReason needs a ready piece from the owner with the spec's model", () =
     assert.equal(holdReason({ ...piece(9, []), labels: ["kind:piece"] }), "not ready");
     assert.equal(holdReason({ ...piece(9, []), author: "someone" }), "not opened by the owner");
     assert.match(holdReason(piece(9, [], [], { body: "**Goal:** rivers" })), /Spec/);
+    assert.match(holdReason(piece(9, [], [], { body: "**Spec:** opus low" })), /Spec-review/);
     // Once the spec step exists, its model is on the step, not the body.
     assert.equal(holdReason(piece(9, [], [step("spec")], { body: "**Goal:** rivers" })), null);
 });
@@ -162,7 +195,7 @@ test("readResult accepts only a known status, and a blocker with its reason", ()
     assert.equal(readResult(null), null);
 });
 
-test("sessionStats sums every model's tokens and measures the last turn's context", () => {
+test("sessionStats measures the last turn's context", () => {
     const last = { message: { usage: { input_tokens: 10, cache_creation_input_tokens: 990, cache_read_input_tokens: 49_000, output_tokens: 0 } } };
     const result = {
         total_cost_usd: 1.25,
@@ -171,9 +204,37 @@ test("sessionStats sums every model's tokens and measures the last turn's contex
             "claude-haiku-x": { inputTokens: 5, outputTokens: 5, contextWindow: 200_000 },
         },
     };
-    assert.deepEqual(sessionStats(last, result, "sonnet", 1), { tokens: 1010, cost: 1.25, context: 25, compactions: 1 });
-    assert.deepEqual(sessionStats(null, null, "sonnet"), { tokens: 0, cost: 0, context: 0, compactions: 0 });
+    assert.deepEqual(sessionStats(last, result, "sonnet", 1), { cost: 1.25, context: 25, compactions: 1 });
+    assert.deepEqual(sessionStats(null, null, "sonnet"), { cost: 0, context: 0, compactions: 0 });
     assert.equal(dollars(2.143), "$2.14");
+});
+
+test("usagePoints is each window's rise, unknown across a reset", () => {
+    assert.deepEqual(usagePoints({ session: 20, weekly: 9 }, { session: 38.4, weekly: 11 }), { fiveHour: 18, weekly: 2 });
+    assert.deepEqual(usagePoints({ session: 45, weekly: 9 }, { session: 3, weekly: 10 }), { fiveHour: null, weekly: 1 });
+    assert.deepEqual(usagePoints(null, { session: 3, weekly: 10 }), { fiveHour: null, weekly: null });
+});
+
+test("a step's body is its status, its choice, its links and its brief as made", () => {
+    const s = { id: "build-1", model: "opus", effort: "low", points: 10, coin: true, why: "Rivers are open." };
+    const body = stepBody(piece(4, []), s, { brief: "# build-1: Rivers\n\nBuild rivers.", pr: 7 });
+    assert.match(body, /^\*\*Status:\*\* ready\n\nStep `build-1` on \*\*opus low\*\*, 10 points, by coin\. Rivers are open\./);
+    assert.match(body, /Piece #4 · PR #7 · \[spec\.md\]\(https:\/\/github\.com\/DontPanic345\/sansfiat\/blob\/relay\/4\/relay\/specs\/4\/spec\.md\)/);
+    assert.match(body, /^## build-1: Rivers/m);
+    assert.doesNotMatch(stepBody(piece(4, []), { id: "review", model: "sonnet", effort: "high", why: "w" }), /brief/);
+    const done = withStatus(body, statusLine({ cost: 1.3, minutes: 12.6, attempts: 0 }, "done"));
+    assert.match(done, /^\*\*Status:\*\* done, \$1\.30, 13 minutes\n/);
+    assert.equal(done.match(/\*\*Status:\*\*/g).length, 1);
+    assert.equal(statusLine({ cost: 0.5, minutes: 3, attempts: 1 }, "pending", "half way"), "not finished (attempt 1 of 2), $0.50, 3 minutes: half way");
+    assert.equal(withStatus("old body", "skipped"), "**Status:** skipped\n\nold body");
+});
+
+test("a step's PR comment carries what it took", () => {
+    const s = { number: 50, meta: { id: "build-2", model: "sonnet", effort: "high", points: 9, cost: 1.3, minutes: 12.4, decisions: [{ decision: "Rivers flow east", why: "" }] } };
+    assert.equal(
+        stepComment(s, { summary: "Rivers.", ideas: [{ title: "Ports" }] }),
+        "**build-2** (sonnet high, 9 points, $1.30, 12 min, #50): Rivers.\n\n🧭 Decided:\n- Rivers flow east\n\n💡 Ideas, not built:\n- **Ports**",
+    );
 });
 
 test("initProblem refuses the wrong model and anything but auto mode", () => {
@@ -231,21 +292,24 @@ test("a build session gets its brief, not the design, and the owner's reply", ()
     assert.throws(() => sessionPrompt(p, step("build-2"), files({ brief: null })), /build-2\.md is missing/);
 });
 
-test("a review session gets the diff and the whole spec", () => {
-    const text = sessionPrompt(piece(4, []), step("review"), files());
+test("a review session gets the piece, the diff, the whole spec and the steps, with no brief", () => {
+    const text = sessionPrompt(piece(4, [], [step("build-1", "closed", { cost: 1 })]), step("review"), files({ brief: null }));
+    assert.match(text, /Review this piece as built/);
+    assert.match(text, /- rivers/);
     assert.match(text, /world\.rs \| 10/);
     assert.match(text, /# The whole spec/);
+    assert.match(text, /# The steps\n\nPut this table .*\n\n\| Step \|/);
 });
 
 test("stepsTable shows each step's state and spend", () => {
     const table = stepsTable([
         step("review"),
-        { ...step("build-1", "closed", { tokens: 12345, cost: 1.5, context: 40, compactions: 0, attempts: 1 }), stateReason: "completed" },
+        { ...step("build-1", "closed", { model: "opus", effort: "low", coin: true, points: 10, estimate: 2, cost: 1.5, minutes: 12.6, fiveHour: 8, weekly: 1, attempts: 1 }), stateReason: "completed" },
         { ...step("spec", "closed", { cost: 2 }), stateReason: "completed" },
     ]);
     const rows = table.split("\n");
-    assert.match(rows[3], /\| build-1 \| done \| sonnet \| medium \| 1 \| 12,345 \| \$1\.50 \| 40% \| 0 \|/);
-    assert.match(rows[4], /\| review \| pending \|/);
+    assert.equal(rows[3], "| #100 build-1 | done | opus (coin) | low | 10 | $2.00 | 1 | $1.50 | 13 | 8 | 1 |");
+    assert.match(rows[4], /\| #100 review \| pending \|/);
     assert.equal(rows.at(-1), "$3.50 at list price so far.");
 });
 

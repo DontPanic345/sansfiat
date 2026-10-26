@@ -10,6 +10,7 @@ test("parseUsage reads the direct route's rows and the probe's fractions", () =>
         ],
     });
     assert.deepEqual([direct.session, direct.weekly], [2, 9]);
+    assert.equal(direct.sessionResetsAt.toISOString(), "2026-10-12T08:09:59.000Z");
     const probe = parseUsage({
         unifiedWindows: { five_hour: { utilization: 0.3, resetsAt: 1 }, seven_day: { utilization: 0.5, resetsAt: 2 } },
     });
