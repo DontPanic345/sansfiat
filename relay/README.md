@@ -105,6 +105,11 @@ money spent; it makes steps, models and pieces comparable. A crashed attempt has
 frame and records nothing. Usage is paced as in Jogging: no step starts once the 5-hour
 window passes 50% or the weekly window passes its share of the week.
 
+The 50% stop is checked between steps, so a step can run past it: an Opus build can take
+about 20% of the 5-hour window in one session, which still leaves room. The weekly window is
+the real limit on how much Relay gets done. Raising the 5-hour stop for a run is an exception
+for getting a piece over a line, not a setting to keep.
+
 ## The board
 
 The crew updates "Sans Fiat Work", a project on the owner's account, when it can. A GitHub App

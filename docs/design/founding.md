@@ -37,10 +37,10 @@ They don't have to be able to reach each other.
 A unit is people, so it costs people and food.
 
 - **Making one** takes a person from a civ clan near the capital, whose people drop by one.
-  It's made at the capital.
-- **Keeping one** costs its food each turn, taken from the store. A unit the store can't
-  feed goes hungry; hungry for a few turns, it disbands.
-- **Disbanding** sends its person back to the nearest civ clan.
+  It's made at the capital, with a full pack of food from the store (`supply.md`).
+- **Keeping one** costs its food each turn, eaten from its pack. A unit with an empty pack
+  goes hungry; hungry for a few turns, it disbands.
+- **Disbanding** sends its person back to the nearest clan of its civ.
 - **Moving.** Select a unit, right-click a tile, and it paths there over the cheapest route
   it knows, a turn's labour at a time.
 

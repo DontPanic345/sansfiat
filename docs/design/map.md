@@ -38,7 +38,7 @@ tended land, then any fertile land, raising a market where there isn't one.
 - Inland seas and lakes break up the interior. A lake is a small inland sea that a river can
   feed or drain.
 
-## Closed country
+## Hidden country
 
 The map isn't all open. Ridges and water close off some regions, so getting in is a choice:
 
@@ -71,7 +71,7 @@ The page fills the window, and the map takes the space. It pans and zooms, since
 won't fit on screen.
 
 - A new map control with the size and the seed.
-- Rivers, deserts, floodplains, deltas and closed country are drawn so you can tell them
+- Rivers, deserts, floodplains, deltas and hidden country are drawn so you can tell them
   apart at a glance.
 - A top bar: turn, phase, people, clans, markets, hearths, centres, with end turn and speed.
 - An event feed beside the map, newest first: a clan divides, starves or moves on, a market
