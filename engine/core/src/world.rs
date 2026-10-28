@@ -29,6 +29,10 @@ pub struct World {
     pub markets: BTreeMap<u32, Market>,
     /// People moved between clans at festivals, over the whole run.
     pub moved: f64,
+    /// People in all clans at the end of each of the last `PREGAME.settle_turns` pre-game turns,
+    /// oldest first: whether the pre-game has settled.
+    #[serde(default)]
+    pub people_seen: Vec<f64>,
     /// The next id for a clan, a market or a civ, from 1.
     pub next_id: u32,
     /// Set once, when the pre-game ends.
@@ -257,6 +261,7 @@ impl World {
             clans: BTreeMap::new(),
             markets: BTreeMap::new(),
             moved: 0.0,
+            people_seen: Vec::new(),
             next_id: 1,
             end: None,
             phase: Phase::Pregame,

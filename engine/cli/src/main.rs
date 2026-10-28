@@ -492,7 +492,7 @@ fn sweep(args: &[String]) -> Result<(), String> {
             tier(2)
         );
         println!(
-            "{name}: {} of {} ended on their own, {} needed the top-up, {cover_short} ended on the limit with three centres already (cover short){}, median end turn {}",
+            "{name}: {} of {} ended on their own, {} needed the top-up, {cover_short} ended on the limit with three centres already (cover short or people not levelled off){}, median end turn {}",
             on_their_own,
             runs.len(),
             topped,

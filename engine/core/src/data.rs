@@ -225,7 +225,7 @@ pub struct DepletionRules {
     pub depleted_at: f64,
 }
 
-pub const DEPLETION: DepletionRules = DepletionRules { rate: 0.5, recover: 0.02, max: 0.6, depleted_at: 0.1 };
+pub const DEPLETION: DepletionRules = DepletionRules { rate: 0.2, recover: 0.05, max: 0.6, depleted_at: 0.1 };
 
 pub struct TendingRules {
     /// Turns in a row held before its grain starts to tame.
@@ -239,7 +239,7 @@ pub struct TendingRules {
     pub beyond: f64,
 }
 
-pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5, beyond: 0.25 };
+pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5, beyond: 0.1 };
 
 pub struct MarketRules {
     /// Turns a home must have been held for a market to form there.
@@ -278,14 +278,14 @@ pub const MARKET: MarketRules = MarketRules {
     form_after: 20,
     spacing: 8,
     reach: 3.0,
-    reach_walk: 12.0,
+    reach_walk: 20.0,
     fade: 0.9,
     min_attendance: 0.5,
     carry: 0.2,
     shed: 1.0,
-    gather_bonus: 6.0,
-    desire: 1.0,
-    company: 0.5,
+    gather_bonus: 8.0,
+    desire: 3.0,
+    company: 1.0,
     company_cap: 6,
     switch_margin: 1.0,
     surplus_at: 0.1,
@@ -304,6 +304,10 @@ pub struct PregameRules {
     pub cover: f64,
     /// …within this many hex steps.
     pub cover_steps: i32,
+    /// People must have changed by under this share…
+    pub settled: f64,
+    /// …over this many turns.
+    pub settle_turns: usize,
     /// The backstop.
     pub max_turns: u32,
 }
@@ -315,6 +319,8 @@ pub const PREGAME: PregameRules = PregameRules {
     centre_spacing: 10,
     cover: 0.8,
     cover_steps: 3,
+    settled: 0.05,
+    settle_turns: 100,
     max_turns: 500,
 };
 
@@ -382,23 +388,23 @@ pub const CLAN: ClanRules = ClanRules {
     work: 3.5,
     harvest_labour: 1.0,
     take_rate: 0.5,
-    surplus_target: 1.5,
+    surplus_target: 2.0,
     diet_share: 0.4,
     excess_value: 0.3,
-    growth: (0.03, 0.07),
-    grow_full: 0.3,
+    growth: (0.05, 0.15),
+    grow_full: 0.05,
     settle_turns: 30,
     stable_at: 0.8,
     starve: 0.5,
     spoilage: 0.1,
-    split_at: 12.0,
-    hungry_split: 8.0,
+    split_at: 8.0,
+    hungry_split: 5.0,
     min_pop: 2.0,
     settle_fed: 0.9,
     patience: 3,
     move_range: 4,
     move_margin: 0.1,
-    scout_range: 6,
+    scout_range: 14,
     choice_spread: 0.05,
     land_margin: 0.02,
     territory_radius: 2,

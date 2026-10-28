@@ -38,7 +38,7 @@ fn a_food_taken_past_its_yield_wears_its_cap_down_never_past_max() {
     wear(&mut w);
     let tile = &w.tiles[t];
     assert!((tile.wear[FRUIT] - DEPLETION.rate * 2.0 / 10.0).abs() < EPS);
-    assert!((tile.cap[FRUIT] - 10.0 * (1.0 - 0.1)).abs() < EPS);
+    assert!((tile.cap[FRUIT] - 10.0 * (1.0 - tile.wear[FRUIT])).abs() < EPS);
     assert!(tile.stock[FRUIT] <= tile.cap[FRUIT] + EPS, "stock above the fallen cap is cut to it");
 
     let mut last = tile.wear[FRUIT];

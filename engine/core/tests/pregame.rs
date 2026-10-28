@@ -84,7 +84,7 @@ fn land_cover_is_the_share_near_some_territory() {
 }
 
 #[test]
-fn the_pregame_ends_with_three_centres_and_the_land_covered() {
+fn the_pregame_ends_with_three_centres_the_land_covered_and_people_levelled_off() {
     let (mut w, ids) = three([4, 4, 4]);
     check_end(&mut w);
     assert_eq!(w.end, None, "nobody lives on the land");
@@ -97,6 +97,13 @@ fn the_pregame_ends_with_three_centres_and_the_land_covered() {
     for d in 0..6 {
         put(&mut w, &[out(d, 4)], 3.0);
     }
+    // Still growing: people were a tenth fewer `settle_turns` ago.
+    let people: f64 = w.clans.values().map(|c| c.people).sum();
+    w.people_seen = vec![people * 0.9; PREGAME.settle_turns];
+    check_end(&mut w);
+    assert_eq!(w.end, None, "people have not levelled off");
+    // Levelled off.
+    w.people_seen = vec![people; PREGAME.settle_turns];
     check_end(&mut w);
     let end = w.end.clone().expect("ended");
     assert_eq!((end.turn, end.centres, end.cover, end.by_limit), (40, ids.to_vec(), 1.0, false));

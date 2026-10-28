@@ -192,6 +192,12 @@ works and record it as a decision.
 Builds 1–4 pick starting numbers that run (the pre-game ends, by the backstop if need be) and
 say so; they don't tune.
 
+Build-5 tuned them (`relay/specs/54/sweep.md`) and changed one rule's form: the pre-game ends by
+centres only once people have also levelled off, changing by under `PREGAME.settled` (5%) over
+the last `PREGAME.settle_turns` (100) turns (`pregame::settled`, counted each turn in
+`World.people_seen`). The design's pre-game "settles on a light population the land carries";
+before this, three centres and the cover came while people were still spreading.
+
 Today's sweep (main, small, seeds 1–10): 8 of 10 end by centres on their own, 2 by the limit
 and top-up, median end turn 382, 87–149 clans, 440–749 people, 3–5 ms a turn. Medium: 9 of 10, median
 257, 5–9 ms. Large: 10 of 10, median 305, 8–14 ms.

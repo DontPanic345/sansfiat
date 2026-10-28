@@ -91,7 +91,7 @@ fn held_grain_tames_into_a_hearth_and_left_grain_goes_wild() {
         hold(&mut w);
     }
     assert_eq!(w.tiles[o].tame, 2 * TENDING.tame_turns, "taming has no ceiling");
-    assert_eq!(w.tiles[o].cap[GRAIN], 11.0);
+    assert!((w.tiles[o].cap[GRAIN] - 4.0 * (TENDING.domestic + TENDING.beyond)).abs() < 1e-9);
 
     free(&mut w, id);
     for _ in 0..TENDING.tame_turns {
@@ -177,9 +177,10 @@ fn a_clan_goes_where_the_trade_beats_the_walk_and_its_route_is_its_trip() {
     assert!(w.tiles[out(0, 1)].walked, "the route is walked");
 
     // Nothing to gain (only grain ever traded there), no surplus, and the walk beats the desire.
-    let (mut w, id, mid) = grain_clan(1, 0.0, 0.4);
+    let k = (MARKET.desire / 2.0).floor() as i32 + 1;
+    let (mut w, id, mid) = grain_clan(k, 0.0, 0.4);
+    assert!(k < R);
     w.markets.get_mut(&mid).unwrap().goods = vec![GRAIN];
-    const { assert!(MARKET.desire < 2.0) };
     go(&mut w);
     assert_eq!(w.clans[&id].market, None);
 }

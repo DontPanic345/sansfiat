@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use common::*;
 use engine::actors::{best_drop, change, connected, divide, edge, middle, recentre, walk_cost, Route, Walks};
-use engine::clans::{adjust, value, Clan};
+use engine::clans::{adjust, at_target, value, Clan};
 use engine::data::*;
 use engine::{Config, World, TURN};
 
@@ -190,6 +190,9 @@ fn a_clan_at_its_target_drops_land_it_cannot_use() {
     w.tiles[o].stock = [20.0, 20.0, 20.0, 0.0, 0.0];
     w.tiles[n].terrain = FOREST;
     let id = put(&mut w, &[o, n], 5.0);
+    // A store that leaves half its labour enough to reach its target.
+    w.clans.get_mut(&id).unwrap().store = [CLAN.surplus_target * 5.0 - CLAN.work * 5.0 / 2.0, 0.0, 0.0, 0.0, 0.0];
+    assert!(at_target(&w, &w.clans[&id], &[o, n]));
     adjust(&mut w);
     let c = &w.clans[&id];
     assert_eq!(c.territory, vec![o]);

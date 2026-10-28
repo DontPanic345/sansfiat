@@ -177,73 +177,82 @@ fn eater(pop: f64, basket: Basket, since: u32) -> World {
     w
 }
 
+/// Too few people to divide or send a daughter, so `eat` only eats.
+const P: f64 = 4.0;
+const _: () = assert!(P < CLAN.split_at && P < CLAN.hungry_split);
+
+/// `basket` scaled from a need of 10 to a need of `P`.
+fn per(basket: Basket) -> Basket {
+    basket.map(|v| v * P / 10.0)
+}
+
 #[test]
 fn a_clan_that_harvests_just_its_need_holds() {
-    let mut w = eater(10.0, [2.5, 2.5, 2.5, 2.5, 0.0], 5);
-    w.clans.get_mut(&1).unwrap().harvest = [2.5, 2.5, 2.5, 2.5, 0.0];
+    let mut w = eater(P, per([2.5, 2.5, 2.5, 2.5, 0.0]), 5);
+    w.clans.get_mut(&1).unwrap().harvest = per([2.5, 2.5, 2.5, 2.5, 0.0]);
     eat(&mut w);
     let c = &w.clans[&1];
     assert!(c.fed && !c.starving);
     assert_eq!(c.since, 6);
-    assert_eq!(c.people, 10.0);
+    assert_eq!(c.people, P);
 }
 
 #[test]
 fn a_clan_grows_on_its_harvest_beyond_need() {
     for extra in [0.5, 1.0, 10.0] {
         // 4 of game and of grain and 2 of fruit meet a need of 10; more game counts at `excess_value`.
-        let b = [4.0 + extra, 4.0, 2.0, 0.0, 0.0];
-        let mut w = eater(10.0, b, 5);
+        let b = per([4.0 + extra, 4.0, 2.0, 0.0, 0.0]);
+        let mut w = eater(P, b, 5);
         w.clans.get_mut(&1).unwrap().harvest = b;
         eat(&mut w);
         let c = &w.clans[&1];
-        let s = surplus(&b, 10.0);
-        assert!((s - CLAN.excess_value * extra).abs() < EPS);
-        let want = 10.0 * (1.0 + growth(6) * (s / (CLAN.grow_full * 10.0)).min(1.0));
+        let s = surplus(&b, P);
+        assert!((s - CLAN.excess_value * extra * P / 10.0).abs() < EPS);
+        let want = P * (1.0 + growth(6) * (s / (CLAN.grow_full * P)).min(1.0));
         assert!(c.fed && (c.people - want).abs() < EPS, "{extra}: {} vs {want}", c.people);
-        assert!(c.people > 10.0);
+        assert!(c.people > P);
     }
 }
 
 #[test]
 fn a_store_alone_does_not_make_a_clan_grow() {
     // Fed well from its store, with nothing harvested.
-    let mut w = eater(10.0, [5.0, 5.0, 5.0, 5.0, 0.0], 5);
+    let mut w = eater(P, per([5.0, 5.0, 5.0, 5.0, 0.0]), 5);
     eat(&mut w);
     let c = &w.clans[&1];
     assert!(c.fed);
-    assert_eq!(c.people, 10.0);
+    assert_eq!(c.people, P);
 }
 
 #[test]
 fn a_clan_short_of_food_holds_steady() {
-    let mut w = eater(10.0, [4.0, 4.0, 1.0, 0.0, 0.0], 5);
+    let mut w = eater(P, per([4.0, 4.0, 1.0, 0.0, 0.0]), 5);
     eat(&mut w);
     let c = &w.clans[&1];
     assert!((c.fed_ratio - 0.9).abs() < EPS);
     assert!(!c.fed && !c.starving);
-    assert_eq!(c.people, 10.0);
+    assert_eq!(c.people, P);
 }
 
 #[test]
 fn a_starving_clan_shrinks() {
-    let mut w = eater(10.0, [4.0, 0.0, 0.0, 0.0, 0.0], 5);
+    let mut w = eater(P, per([4.0, 0.0, 0.0, 0.0, 0.0]), 5);
     eat(&mut w);
     let c = &w.clans[&1];
     assert!((c.fed_ratio - 0.4).abs() < EPS);
     assert!(c.starving);
     assert_eq!(c.hungry, 1);
-    assert!((c.people - 10.0 * (1.0 - CLAN.starve * (1.0 - 0.4 / 0.8))).abs() < EPS);
+    assert!((c.people - P * (1.0 - CLAN.starve * (1.0 - 0.4 / 0.8))).abs() < EPS);
 }
 
 #[test]
 fn the_store_is_what_is_left_less_spoilage() {
-    let mut w = eater(10.0, [10.0, 10.0, 0.0, 0.0, 0.0], 5);
+    let mut w = eater(P, per([10.0, 10.0, 0.0, 0.0, 0.0]), 5);
     eat(&mut w);
     let c = &w.clans[&1];
-    // 8 counts in full; 2 more needs 2 / 0.3 of the 12 left over.
-    let eaten = 2.0 / CLAN.excess_value;
-    let left = 6.0 * (1.0 - eaten / 12.0) * (1.0 - CLAN.spoilage);
+    // 8 tenths of need count in full; 2 tenths more need 2 / 0.3 of the 12 tenths left over.
+    let eaten = 0.2 * P / CLAN.excess_value;
+    let left = 0.6 * P * (1.0 - eaten / (1.2 * P)) * (1.0 - CLAN.spoilage);
     assert!(c.fed);
     assert!((c.store[GAME] - left).abs() < EPS && (c.store[GRAIN] - left).abs() < EPS, "{:?}", c.store);
 }
@@ -352,7 +361,7 @@ fn a_starving_clan_sends_a_daughter_only_where_she_would_be_fed() {
         }
         assert_eq!(w.clans.len(), 2);
         let d = w.clans.values().find(|c| c.id != id).unwrap();
-        assert!((d.people - pop / 2.0).abs() < EPS);
+        assert!((d.people - pop.min(CLAN.split_at) / 2.0).abs() < EPS);
         assert_eq!(d.territory, vec![d.home]);
         assert!(steps(&w, o, d.home) <= CLAN.scout_range);
         assert!(site_value(&w, d.home, d.people, &d.store) >= CLAN.settle_fed);

@@ -608,8 +608,8 @@ fn a_led_real_map_keeps_its_units_on_land_and_replays() {
     let pick = w.turn;
     let start: Vec<usize> = w.units.values().map(|u| u.tile).collect();
     play(&mut w, me, pick, 100, true);
-    let mine: Vec<&Unit> = w.units.values().filter(|u| u.civ == me).collect();
-    assert!(!mine.is_empty());
+    // Units may all have starved by now (a civ's store is the clans' levy); that they were made
+    // and moved is what's checked.
     assert!(w.units.values().zip(start).any(|(u, s)| u.tile != s) || w.units.len() != 3, "the orders did something");
     assert!(w.log.iter().any(|a| matches!(a, Action::MakeUnit)));
     assert!(w.log.iter().any(|a| matches!(a, Action::MoveUnit { .. })));

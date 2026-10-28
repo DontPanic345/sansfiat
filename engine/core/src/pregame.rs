@@ -241,7 +241,20 @@ fn top_up(w: &mut World, centres: &mut Vec<u32>) -> Vec<u32> {
     added
 }
 
-/// The `end` step: the pre-game ends with `players` centres and the land covered, or at
+/// Whether people have levelled off: counted every turn, they changed by under `settled` over
+/// the last `settle_turns` turns. Records this turn's count.
+fn settled(w: &mut World) -> bool {
+    let people: f64 = w.clans.values().map(|c| c.people).sum();
+    w.people_seen.push(people);
+    if w.people_seen.len() > PREGAME.settle_turns + 1 {
+        w.people_seen.remove(0);
+    }
+    let first = w.people_seen[0];
+    w.people_seen.len() > PREGAME.settle_turns && first > 0.0 && ((people - first) / first).abs() < PREGAME.settled
+}
+
+/// The `end` step: the pre-game ends with `players` centres, the land covered and people
+/// levelled off (`settled`), or at
 /// `max_turns`, topping up to `players` centres if it got there with fewer. Only the first end
 /// is kept; turns may run on after it.
 pub fn check_end(w: &mut World) {
@@ -261,7 +274,8 @@ pub fn check_end(w: &mut World) {
             w.centres_seen.push(id);
         }
     }
-    let by_centres = centres.len() == PREGAME.players && land_cover(w, &centres) >= PREGAME.cover;
+    let settled = settled(w);
+    let by_centres = settled && centres.len() == PREGAME.players && land_cover(w, &centres) >= PREGAME.cover;
     if !by_centres && w.turn + 1 < PREGAME.max_turns {
         return;
     }
