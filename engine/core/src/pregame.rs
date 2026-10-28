@@ -10,7 +10,6 @@ use crate::data::*;
 use crate::land::{is_hearth, neighbours, passable};
 use crate::map::{Tile, Zone};
 use crate::markets::{raise, reach, Market};
-use crate::round;
 use crate::world::{EventKind, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -86,7 +85,7 @@ pub fn land_cover(w: &World, centres: &[u32]) -> f64 {
     let mut dist: Vec<Option<i32>> = vec![None; n];
     let mut queue = VecDeque::new();
     for c in w.clans.values() {
-        for t in round::territory(w, &c.round) {
+        for &t in &c.territory {
             if dist[t].is_none() {
                 dist[t] = Some(0);
                 queue.push_back(t);
@@ -206,12 +205,12 @@ fn top_up(w: &mut World, centres: &mut Vec<u32>) -> Vec<u32> {
                 size[r] += 1;
             }
             for c in w.clans.values().filter(|c| label[c.home] != usize::MAX) {
-                people[label[c.home]] += c.pop;
+                people[label[c.home]] += c.people;
             }
             let lead = w
                 .clans
                 .values()
-                .max_by(|a, b| a.pop.total_cmp(&b.pop).then(b.id.cmp(&a.id)))
+                .max_by(|a, b| a.people.total_cmp(&b.people).then(b.id.cmp(&a.id)))
                 .map(|c| label[c.home])
                 .filter(|&r| r != usize::MAX);
             let mut rest: Vec<usize> = (0..count).filter(|&r| Some(r) != lead).collect();

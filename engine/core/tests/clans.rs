@@ -1,11 +1,11 @@
 mod common;
 
-use common::{at, check_rounds, flat, out, put, steps};
-use engine::clans::{adjust, eat, growth, harvest, nutrition, plan_harvest, site_value, value};
+use common::{at, check_territories, flat, out, put, steps};
+use engine::clans::{adjust, eat, growth, harvest, nutrition, reap, site_value, surplus, value, walks};
 use engine::data::*;
 use engine::land::neighbours;
 use engine::map::{landmasses, Zone};
-use engine::{round, Basket, Config, World, CLAN, TERRAIN};
+use engine::{Basket, Config, World, CLAN, TERRAIN};
 
 const EPS: f64 = 1e-9;
 
@@ -46,8 +46,8 @@ fn seeds_land_on_every_big_landmass() {
         assert_eq!(homes.len(), w.clans.len());
         for c in w.clans.values() {
             assert!(land(&w, c.home));
-            assert_eq!(c.pop, CLAN.start_pop);
-            assert_eq!(c.round, vec![c.home]);
+            assert_eq!(c.people, CLAN.start_pop);
+            assert_eq!(c.territory, vec![c.home]);
             assert_eq!(w.tiles[c.home].claim, Some(c.id));
         }
         for m in &big {
@@ -62,48 +62,62 @@ fn nutrition_rewards_variety() {
     assert!((nutrition(&[2.5, 2.5, 2.5, 2.5, 0.0], 10.0) - 10.0).abs() < EPS);
 }
 
+/// What `pop` people with no store or route would reap from `territory` held from its first tile.
+fn reaped(w: &World, territory: &[usize], pop: f64) -> Vec<(usize, Basket)> {
+    let mut t = territory.to_vec();
+    t.sort_unstable();
+    let (_, yearly) = walks(w, territory[0], &t);
+    t.iter().copied().zip(reap(w, pop, &[0.0; N], &[], &t, &yearly)).collect()
+}
+
 #[test]
-fn the_round_tile_comes_first() {
+fn work_takes_a_tiles_foods_in_proportion_to_stock() {
+    let (mut w, i, _) = bare();
+    w.tiles[i].stock[GRAIN] = 30.0;
+    w.tiles[i].stock[GAME] = 10.0;
+    // One person stops at the target: three parts grain to one of game.
+    let t = reaped(&w, &[i], 1.0)[0].1;
+    let food = CLAN.surplus_target;
+    assert!((t[GRAIN] - 0.75 * food).abs() < EPS && (t[GAME] - 0.25 * food).abs() < EPS, "{t:?}");
+    // Many people could take more than `take_rate` of the stock, and don't.
+    let pop = CLAN.take_rate * 40.0;
+    let t = reaped(&w, &[i], pop)[0].1;
+    assert!((total(&t) - CLAN.take_rate * 40.0).abs() < EPS, "{t:?}");
+    assert!((t[GRAIN] - 3.0 * t[GAME]).abs() < EPS);
+}
+
+#[test]
+fn walking_comes_off_each_tiles_share_first() {
     let (mut w, i, j) = bare();
-    w.tiles[i].stock[GRAIN] = 10.0;
-    w.tiles[j].stock[GRAIN] = 10.0;
-    let options = round::options(&w, 1, &[i]);
-    assert!(options.contains(&(i, 0.0)));
-    assert!(options.iter().any(|&(t, c)| t == j && c > 0.0));
-    let plan = plan_harvest(&w, 5.0, &[0.0; N], 2.0, &options);
-    assert_eq!(plan.take.len(), 1);
-    assert_eq!(plan.take[0].0, i);
-    assert!((plan.food[GRAIN] - 2.0).abs() < EPS);
+    w.tiles[i].stock[GRAIN] = 40.0;
+    w.tiles[j].stock[GRAIN] = 40.0;
+    w.tiles[j].terrain = FOREST;
+    let pop = 1.0;
+    let takes = reaped(&w, &[i, j], pop);
+    let share = pop * CLAN.work / 2.0;
+    let walk = 2.0 * 2.0 * CLAN.inside;
+    let at = |t: usize| takes.iter().find(|x| x.0 == t).unwrap().1[GRAIN];
+    // Both scaled to the target by one factor: in proportion to their work.
+    assert!((at(j) / at(i) - (share - walk) / share).abs() < EPS);
+    assert!((at(i) + at(j) - CLAN.surplus_target * pop).abs() < EPS);
 }
 
 #[test]
-fn setup_is_paid_once() {
-    let (mut w, _, j) = bare();
-    w.tiles[j].stock[GRAIN] = 10.0;
-    w.tiles[j].stock[GAME] = 10.0;
-    let plan = plan_harvest(&w, 5.0, &[0.0; N], 100.0, &[(j, 2.0)]);
-    let food = total(&plan.food);
-    assert!((food - 7.5).abs() < EPS, "{food}");
-    assert!((plan.labour - (2.0 + CLAN.harvest_labour * food)).abs() < EPS, "{}", plan.labour);
-}
-
-#[test]
-fn plans_keep_to_labour_and_budget() {
+fn reaping_keeps_to_labour_stock_and_target_on_real_maps() {
     for seed in 1..=3 {
         let mut w = World::new(Config { seed, radius: 16 });
-        w.run(20);
+        w.run(60);
         for c in w.clans.values() {
-            let opts = round::options(&w, c.id, &c.round);
-            for (pop, labour) in [(c.pop, 3.0), (c.pop, 50.0), (2.0, 100.0), (40.0, 7.0)] {
-                for store in [[0.0; N], c.store, [9.0, 0.0, 0.0, 0.0, 0.0]] {
-                    let plan = plan_harvest(&w, pop, &store, labour, &opts);
-                    let budget = (CLAN.surplus_target * pop - total(&store)).max(0.0);
-                    assert!(plan.labour <= labour + EPS);
-                    assert!(total(&plan.food) <= budget + EPS);
-                    for (i, t) in &plan.take {
-                        for (x, s) in t.iter().zip(&w.tiles[*i].stock) {
-                            assert!(*x <= CLAN.take_rate * s + EPS);
-                        }
+            let (_, yearly) = walks(&w, c.home, &c.territory);
+            for (pop, store) in [(c.people, c.store), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0])] {
+                let takes = reap(&w, pop, &store, &c.routes, &c.territory, &yearly);
+                let food = total(&std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum()));
+                let labour = (pop * CLAN.work - c.trip()).max(0.0);
+                assert!(CLAN.harvest_labour * food <= labour + EPS);
+                assert!(food <= (CLAN.surplus_target * pop - total(&store)).max(0.0) + EPS);
+                for (&i, t) in c.territory.iter().zip(&takes) {
+                    for (x, s) in t.iter().zip(&w.tiles[i].stock) {
+                        assert!(*x <= CLAN.take_rate * s + EPS);
                     }
                 }
             }
@@ -112,54 +126,93 @@ fn plans_keep_to_labour_and_budget() {
 }
 
 #[test]
-fn a_missing_food_comes_before_more_grain() {
-    let (mut w, i, j) = bare();
-    w.tiles[i].stock[GRAIN] = 10.0;
-    w.tiles[j].stock[GAME] = 10.0;
-    let store = [0.0, 20.0, 0.0, 0.0, 0.0];
-    let plan = plan_harvest(&w, 20.0, &store, 5.0, &[(i, 0.0), (j, 2.0)]);
-    assert!((plan.food[GAME] - 3.0).abs() < EPS, "{:?}", plan.food);
-    assert_eq!(plan.food[GRAIN], 0.0);
+fn a_clan_harvests_nothing_off_its_territory() {
+    let mut w = flat();
+    let o = at(0, 0);
+    w.tiles[o].stock[GRAIN] = 2.0;
+    for d in 0..6 {
+        w.tiles[out(d, 1)].stock = [20.0, 20.0, 20.0, 0.0, 0.0];
+    }
+    let id = put(&mut w, &[o], 5.0);
+    let before: Vec<Basket> = w.tiles.iter().map(|t| t.stock).collect();
+    harvest(&mut w);
+    let c = &w.clans[&id];
+    assert!((total(&c.harvest) - CLAN.take_rate * 2.0).abs() < EPS);
+    for (i, t) in w.tiles.iter().enumerate() {
+        if i != o {
+            assert_eq!(t.stock, before[i], "tile {i}");
+        }
+    }
+    assert!(!w.tiles.iter().any(|t| t.walked), "a home-only clan walks nowhere");
 }
 
 #[test]
-fn walking_comes_off_first() {
-    let mut w = World::new(Config { seed: 1, radius: 16 });
-    let id = *w.clans.keys().next().unwrap();
-    let home = w.clans[&id].home;
-    // The farthest tile within reach of home makes a round that costs more than one person's work.
-    let far = (0..w.tiles.len())
-        .filter(|&i| land(&w, i) && w.tiles[i].hex().distance(w.tiles[home].hex()) == 2)
-        .find(|&i| round::leg(&w, home, home, i).is_some())
-        .unwrap();
-    let c = w.clans.get_mut(&id).unwrap();
-    c.pop = 1.0;
-    c.round = vec![home, far];
-    let cost = round::cost(&w, &[home, far]);
-    assert!(cost > CLAN.work, "{cost}");
+fn a_far_tile_costs_its_walk_and_its_tiles_are_walked() {
+    let mut w = flat();
+    let (o, a, b) = (at(0, 0), out(0, 1), out(0, 2));
+    w.tiles[a].terrain = FOREST;
+    w.tiles[b].terrain = MARSH;
+    for t in [o, a, b] {
+        w.tiles[t].stock[GRAIN] = 40.0;
+    }
+    let id = put(&mut w, &[o, a, b], 1.0);
     harvest(&mut w);
     let c = &w.clans[&id];
-    assert_eq!(c.walk, cost);
-    assert_eq!(c.harvest, [0.0; N]);
+    // b is 5 away, through forest into marsh: its walk eats its third of one person's labour.
+    assert_eq!(c.walk, 2.0 * CLAN.inside * (2.0 + 5.0));
+    const { assert!(CLAN.work / 3.0 < 2.0 * CLAN.inside * 5.0) };
+    assert!(w.tiles[a].walked && w.tiles[b].walked && !w.tiles[o].walked);
+    let got = total(&c.harvest);
+    let share = CLAN.work / 3.0;
+    let want = (share + (share - 2.0 * CLAN.inside * 2.0)) / CLAN.harvest_labour;
+    assert!((got - want).abs() < EPS, "{got} vs {want}");
 }
 
 fn eater(pop: f64, basket: Basket, since: u32) -> World {
     let mut w = World::new(Config { seed: 1, radius: 6 });
     let c = w.clans.get_mut(&1).unwrap();
-    c.pop = pop;
+    c.people = pop;
     c.basket = basket;
     c.since = since;
     w
 }
 
 #[test]
-fn a_fed_clan_grows() {
+fn a_clan_that_harvests_just_its_need_holds() {
     let mut w = eater(10.0, [2.5, 2.5, 2.5, 2.5, 0.0], 5);
+    w.clans.get_mut(&1).unwrap().harvest = [2.5, 2.5, 2.5, 2.5, 0.0];
     eat(&mut w);
     let c = &w.clans[&1];
     assert!(c.fed && !c.starving);
     assert_eq!(c.since, 6);
-    assert!((c.pop - 10.0 * (1.0 + growth(6))).abs() < EPS);
+    assert_eq!(c.people, 10.0);
+}
+
+#[test]
+fn a_clan_grows_on_its_harvest_beyond_need() {
+    for extra in [0.5, 1.0, 10.0] {
+        // 4 of game and of grain and 2 of fruit meet a need of 10; more game counts at `excess_value`.
+        let b = [4.0 + extra, 4.0, 2.0, 0.0, 0.0];
+        let mut w = eater(10.0, b, 5);
+        w.clans.get_mut(&1).unwrap().harvest = b;
+        eat(&mut w);
+        let c = &w.clans[&1];
+        let s = surplus(&b, 10.0);
+        assert!((s - CLAN.excess_value * extra).abs() < EPS);
+        let want = 10.0 * (1.0 + growth(6) * (s / (CLAN.grow_full * 10.0)).min(1.0));
+        assert!(c.fed && (c.people - want).abs() < EPS, "{extra}: {} vs {want}", c.people);
+        assert!(c.people > 10.0);
+    }
+}
+
+#[test]
+fn a_store_alone_does_not_make_a_clan_grow() {
+    // Fed well from its store, with nothing harvested.
+    let mut w = eater(10.0, [5.0, 5.0, 5.0, 5.0, 0.0], 5);
+    eat(&mut w);
+    let c = &w.clans[&1];
+    assert!(c.fed);
+    assert_eq!(c.people, 10.0);
 }
 
 #[test]
@@ -169,7 +222,7 @@ fn a_clan_short_of_food_holds_steady() {
     let c = &w.clans[&1];
     assert!((c.fed_ratio - 0.9).abs() < EPS);
     assert!(!c.fed && !c.starving);
-    assert_eq!(c.pop, 10.0);
+    assert_eq!(c.people, 10.0);
 }
 
 #[test]
@@ -180,7 +233,7 @@ fn a_starving_clan_shrinks() {
     assert!((c.fed_ratio - 0.4).abs() < EPS);
     assert!(c.starving);
     assert_eq!(c.hungry, 1);
-    assert!((c.pop - 10.0 * (1.0 - CLAN.starve * (1.0 - 0.4 / 0.8))).abs() < EPS);
+    assert!((c.people - 10.0 * (1.0 - CLAN.starve * (1.0 - 0.4 / 0.8))).abs() < EPS);
 }
 
 #[test]
@@ -211,7 +264,7 @@ fn clans_live_for_fifty_turns() {
         w.run(50);
         assert!(!w.clans.is_empty(), "seed {seed}");
         for c in w.clans.values() {
-            assert!(c.pop > 0.0);
+            assert!(c.people > 0.0);
         }
         for t in &w.tiles {
             for f in 0..N {
@@ -232,21 +285,21 @@ fn a_clan_starving_too_long_moves_on() {
         let c = w.clans.get_mut(&id).unwrap();
         (c.fed, c.starving, c.hungry, c.since) = (false, true, hungry, 9);
         let c = c.clone();
-        let now = value(&w, &c, &c.round);
+        let now = value(&w, &c, &c.territory);
         adjust(&mut w);
         let after = &w.clans[&id];
         if hungry < CLAN.patience {
-            assert!(after.round.contains(&o), "moved before its patience ran out");
+            assert!(after.territory.contains(&o), "moved before its patience ran out");
             continue;
         }
         assert_ne!(after.home, o);
-        assert_eq!(after.round, vec![after.home]);
+        assert_eq!(after.territory, vec![after.home]);
         assert!(steps(&w, o, after.home) <= CLAN.move_range);
-        assert!(site_value(&w, &c, after.home, c.pop, &c.store) > now + CLAN.move_margin);
+        assert!(site_value(&w, after.home, c.people, &c.store) > now + CLAN.move_margin);
         assert_eq!((after.since, after.hungry), (0, 0));
         assert_eq!(w.tiles[o].claim, None);
         assert_eq!(w.tiles[out(3, 1)].claim, None);
-        check_rounds(&w);
+        check_territories(&w);
     }
 }
 
@@ -257,21 +310,23 @@ fn a_big_clan_divides_its_land() {
     let id = put(&mut w, &round, CLAN.split_at);
     let c = w.clans.get_mut(&id).unwrap();
     c.basket = [10.0, 10.0, 10.0, 0.0, 0.0];
+    c.harvest = c.basket;
     c.since = 5;
-    let pop = CLAN.split_at * (1.0 + growth(6));
+    let s = surplus(&c.harvest, CLAN.split_at);
+    let pop = CLAN.split_at * (1.0 + growth(6) * (s / (CLAN.grow_full * CLAN.split_at)).min(1.0));
     let store: f64 = 3.0 * (10.0 - CLAN.diet_share * CLAN.split_at) * (1.0 - CLAN.spoilage);
     eat(&mut w);
     assert_eq!(w.clans.len(), 2);
     let (m, d) = (&w.clans[&id], w.clans.values().find(|c| c.id != id).unwrap());
     assert_eq!(m.home, at(0, 0));
-    assert!(!m.round.is_empty() && !d.round.is_empty());
-    assert!(m.round.iter().all(|t| !d.round.contains(t)));
-    assert!(m.round.len() + d.round.len() <= round.len());
-    assert!((m.pop + d.pop - pop).abs() < EPS && (m.pop - d.pop).abs() < EPS);
+    assert!(!m.territory.is_empty() && !d.territory.is_empty());
+    assert!(m.territory.iter().all(|t| !d.territory.contains(t)));
+    assert!(m.territory.len() + d.territory.len() <= round.len());
+    assert!((m.people + d.people - pop).abs() < EPS && (m.people - d.people).abs() < EPS);
     assert!((total(&m.store) + total(&d.store) - store).abs() < EPS);
     assert_eq!(d.since, m.since);
     assert!(d.fed);
-    check_rounds(&w);
+    check_territories(&w);
 }
 
 #[test]
@@ -289,7 +344,7 @@ fn a_starving_clan_sends_a_daughter_only_where_she_would_be_fed() {
         let pop = 9.0 * (1.0 - CLAN.starve * (1.0 - 0.7 / CLAN.stable_at));
         assert!(pop >= CLAN.hungry_split);
         eat(&mut w);
-        let total_pop: f64 = w.clans.values().map(|c| c.pop).sum();
+        let total_pop: f64 = w.clans.values().map(|c| c.people).sum();
         assert!((total_pop - pop).abs() < EPS);
         if !food {
             assert_eq!(w.clans.len(), 1, "a daughter with nowhere to go");
@@ -297,12 +352,12 @@ fn a_starving_clan_sends_a_daughter_only_where_she_would_be_fed() {
         }
         assert_eq!(w.clans.len(), 2);
         let d = w.clans.values().find(|c| c.id != id).unwrap();
-        assert!((d.pop - pop / 2.0).abs() < EPS);
-        assert_eq!(d.round, vec![d.home]);
+        assert!((d.people - pop / 2.0).abs() < EPS);
+        assert_eq!(d.territory, vec![d.home]);
         assert!(steps(&w, o, d.home) <= CLAN.scout_range);
-        assert!(site_value(&w, d, d.home, d.pop, &d.store) >= CLAN.settle_fed);
+        assert!(site_value(&w, d.home, d.people, &d.store) >= CLAN.settle_fed);
         assert_eq!(w.clans[&id].hungry, 0);
-        check_rounds(&w);
+        check_territories(&w);
     }
 }
 

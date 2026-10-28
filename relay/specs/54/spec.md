@@ -116,9 +116,13 @@ works and record it as a decision.
 - **Value** of a territory to a clan: the nutrition per person of its store plus what dividing
   its labour over that territory would harvest this turn from the current stock (the harvest
   above, with the target). This is `clans::value` on the new model.
-- **Holding land** (the `move` step): not fully fed, a clan adds the edge tile that raises its
-  value most if it rises by `land_margin`, else swaps its worst tile for it if that does;
-  fed, it drops the tile whose loss leaves the most value, if the value doesn't fall. At most
+- **Holding land** (the `move` step): short of its harvest target (`clans::at_target`: its
+  territory can't reap `surplus_target × need − store` this turn), a clan adds the edge tile
+  that raises its value most if it rises by `land_margin`, else swaps its worst tile for it if
+  that does; at its target, it drops the tile whose loss leaves the most value, if the value
+  doesn't fall. (Build-1: read as decision 2 says, "a fed clan's harvest is at its target".
+  Reading "fed" as `fed_ratio ≥ 1` locked clans that just meet their need: they never added
+  land, so never had a surplus to grow on.) At most
   one change a turn. Home then steps towards the territory's middle (`round::middle` as now),
   and tiles beyond `territory_radius` of home, or cut off from home, drop.
 - **Growth on surplus.** In `eat`, a fed clan grows by `growth(since) × min(1, surplus /

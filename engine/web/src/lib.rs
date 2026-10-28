@@ -61,7 +61,7 @@ impl Sim {
 
     /// What changes each turn, as JSON: `{turn, end, phase, player, clans, markets, trails, tame, claims,
     /// civs, units, clan_civ, summary}`. `trails` lists the tiles with one, `tame` is `[tile, turns]`
-    /// where above zero, `claims` is `[tile, clan]` for every tile on a round. `phase` is as `phase()`;
+    /// where above zero, `claims` is `[tile, clan]` for every tile in a territory. `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
     /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, territory (the
     /// capital's tiles), work (its work tiles)}}`; `units` is `{id: {id, civ, kind, tile, dest, banked,
@@ -87,7 +87,7 @@ impl Sim {
                     "founded": c.founded,
                     "store": c.store,
                     "lost": c.lost,
-                    "people": mine.clone().map(|k| k.pop).sum::<f64>(),
+                    "people": mine.clone().map(|k| k.people).sum::<f64>(),
                     "clans": mine.count(),
                     "territory": civs::territory(w, c.id),
                     "work": civs::work_tiles(w, c.id),

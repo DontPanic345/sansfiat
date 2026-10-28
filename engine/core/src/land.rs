@@ -142,8 +142,8 @@ pub fn is_hearth(t: &Tile) -> bool {
     t.wild_grain > 0.0 && t.tame >= TENDING.tame_turns
 }
 
-/// The `hold` step, after eating: each tile counts the turns it has been on some round, or on
-/// none. Held `TRAIL.after` turns it gets a trail, unheld `TRAIL.fade` it loses it. Grain held
+/// The `hold` step, after eating: each tile counts the turns it has been held, or held by
+/// nobody. Held `TRAIL.after` turns it gets a trail, unheld `TRAIL.fade` it loses it. Grain held
 /// `TENDING.after` turns tames a step a turn, unheld it goes wild a step a turn, and its cap
 /// follows.
 pub fn hold(w: &mut World) {

@@ -33,9 +33,12 @@ pub struct Tile {
     /// The grain cap before taming.
     pub wild_grain: f64,
     pub tame: u32,
-    /// The clan whose round the tile is on.
+    /// The clan whose territory holds the tile.
     pub claim: Option<u32>,
-    /// Turns in a row on a round, and on none.
+    /// Walked this turn, on a path inside a territory (not its home) or on a route: set in the
+    /// harvest step.
+    pub walked: bool,
+    /// Turns in a row held, and held by nobody.
     pub held: u32,
     pub unheld: u32,
     pub trail: bool,
@@ -303,6 +306,7 @@ fn finish(geo: &Geo, rng: &mut u32, base: &Base, mut terrain: Vec<usize>, zone: 
             wild_grain: 0.0,
             tame: 0,
             claim: None,
+            walked: false,
             held: 0,
             unheld: 0,
             trail: false,

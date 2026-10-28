@@ -300,7 +300,7 @@ fn a_sealed_valley_stays_empty_through_the_pregame() {
         while w.end.is_none() && w.turn < PREGAME.max_turns {
             w.run(1);
             for c in w.clans.values() {
-                for &t in c.round.iter().chain([&c.home]) {
+                for &t in c.territory.iter().chain([&c.home]) {
                     assert_ne!(w.tiles[t].zone, Zone::Sealed, "seed {seed} turn {}: clan {} at {t}", w.turn, c.id);
                 }
             }

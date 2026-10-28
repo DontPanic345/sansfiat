@@ -1,14 +1,16 @@
 //! Markets: where clans meet to trade, and in the pre-game a festival. A market forms where
-//! clans have lived a long time with enough of them in reach, clans go when it's worth the walk,
-//! it clears their baskets by barter, and it fades when nobody trades there.
+//! clans have lived a long time with enough of them in reach; each clan walks one route to the
+//! one worth most to it, if any is worth the walk; it clears their baskets by barter, and it
+//! fades when nobody trades there.
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::clans::nutrition;
+use crate::actors::{walk_cost, Route};
+use crate::clans::{nutrition, Clan};
 use crate::data::*;
-use crate::land::{cost_map, passable};
+use crate::land::{cost_map, passable, path};
 use crate::market::{clear, demand, Basket, Params};
 use crate::world::{EventKind, World};
 
@@ -30,25 +32,10 @@ pub struct Market {
     pub traders: usize,
 }
 
-/// Path cost from the market's tile over passable tiles, out to `MARKET.reach`.
+/// Path cost from the market's tile over passable tiles, out to `MARKET.reach`: the land around
+/// it, for a centre's hearths and a civ's clans.
 pub fn reach(w: &World, tile: usize) -> BTreeMap<usize, f64> {
     cost_map(w, &[tile], MARKET.reach, |i| passable(w, i))
-}
-
-/// For each clan with a round tile in some market's reach: that market's id and the least path
-/// cost, the nearest market, ties to the lower id. A tile's claim is the clan whose round it's on.
-fn nearest(w: &World) -> BTreeMap<u32, (u32, f64)> {
-    let mut best: BTreeMap<u32, (u32, f64)> = BTreeMap::new();
-    for m in w.markets.values() {
-        for (t, c) in reach(w, m.tile) {
-            let Some(clan) = w.tiles[t].claim else { continue };
-            // Markets come in id order, so only a strictly cheaper one replaces.
-            if best.get(&clan).is_none_or(|&(_, bc)| c < bc) {
-                best.insert(clan, (m.id, c));
-            }
-        }
-    }
-    best
 }
 
 /// What a clan bringing `b` would gain in food from trading at `m`'s last prices, over its own
@@ -59,24 +46,64 @@ pub fn gain(m: &Market, b: &Basket, pop: f64) -> f64 {
     (nutrition(&d, pop) - nutrition(b, pop)).max(0.0)
 }
 
-/// The `go` step, before harvest: each clan goes to the nearest market in reach of its round if
-/// what it would gain there, in labour, plus its desire to gather, beats the walk there and back.
+/// What a clan wants from going to `m` besides trade, in labour: `MARKET.desire`, plus
+/// `company` for each clan that came last turn up to `company_cap`, plus `gather_bonus` with a
+/// surplus.
+pub fn desire(m: &Market, surplus: bool) -> f64 {
+    let company = MARKET.company * m.traders.min(MARKET.company_cap) as f64;
+    MARKET.desire + company + if surplus { MARKET.gather_bonus } else { 0.0 }
+}
+
+/// What `clan` would make of going to each festival whose route from its home costs at most
+/// `MARKET.reach_walk`, in id order: the festival's id, its worth (`gain × harvest_labour +
+/// desire − route cost`) and the route's cost.
+pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
+    let most = MARKET.reach_walk / 2.0;
+    let home = w.tiles[clan.home].hex();
+    // Every step costs at least 1, so a festival further than the path can go is out of reach.
+    if !w.markets.values().any(|m| f64::from(w.tiles[m.tile].hex().distance(home)) <= most) {
+        return Vec::new();
+    }
+    let near = cost_map(w, &[clan.home], most, |i| passable(w, i));
+    let b: Basket = std::array::from_fn(|f| clan.store[f] + clan.harvest[f]);
+    let surplus = clan.store.iter().sum::<f64>() >= MARKET.surplus_at * clan.people;
+    w.markets
+        .values()
+        .filter_map(|m| {
+            let cost = walk_cost(*near.get(&m.tile)?, 1.0);
+            Some((m.id, gain(m, &b, clan.people) * CLAN.harvest_labour + desire(m, surplus) - cost, cost))
+        })
+        .collect()
+}
+
+/// The festival a clan goes to, from `worths`: the best worth above 0 (ties to the lower id), but
+/// its current one while that's still above 0 and no other beats it by `MARKET.switch_margin`.
+pub fn choose(worths: &[(u32, f64, f64)], current: Option<u32>) -> Option<u32> {
+    let best = worths.iter().filter(|w| w.1 > 0.0).fold(None, |b: Option<&(u32, f64, f64)>, w| match b {
+        Some(b) if b.1 >= w.1 => Some(b),
+        _ => Some(w),
+    })?;
+    match worths.iter().find(|w| Some(w.0) == current) {
+        Some(cur) if cur.1 > 0.0 && best.1 <= cur.1 + MARKET.switch_margin => Some(cur.0),
+        _ => Some(best.0),
+    }
+}
+
+/// The `go` step, before harvest: each clan picks the festival worth most to it (`choose`) and
+/// takes the cheapest path there from home as its one route; or stays home.
 pub fn go(w: &mut World) {
-    let near = nearest(w);
     let ids: Vec<u32> = w.clans.keys().copied().collect();
     for id in ids {
         let c = &w.clans[&id];
-        let choice = near.get(&id).and_then(|&(mid, cost)| {
-            let m = &w.markets[&mid];
-            let b: Basket = std::array::from_fn(|f| c.store[f] + c.harvest[f]);
-            let surplus = c.store.iter().sum::<f64>() >= MARKET.surplus_at * c.pop;
-            let bonus = if surplus { MARKET.gather_bonus } else { 0.0 };
-            let trip = 2.0 * cost;
-            (gain(m, &b, c.pop) * CLAN.harvest_labour + bonus > trip).then_some((mid, trip))
+        let choice = choose(&worths(w, c), c.market);
+        let route = choice.and_then(|mid| {
+            let to = w.markets[&mid].tile;
+            let (path, cost) = path(w, c.home, to, |i| passable(w, i))?;
+            Some(Route { to, path, cost: walk_cost(cost, 1.0) })
         });
         let c = w.clans.get_mut(&id).unwrap();
-        c.market = choice.map(|(mid, _)| mid);
-        c.trip = choice.map_or(0.0, |(_, trip)| trip);
+        c.market = route.as_ref().and(choice);
+        c.routes = route.into_iter().collect();
     }
 }
 
@@ -120,18 +147,23 @@ pub fn fade(w: &mut World) {
         for c in w.clans.values_mut() {
             if c.market == Some(mid) {
                 c.market = None;
-                c.trip = 0.0;
+                c.routes.clear();
             }
         }
     }
 }
 
-/// The clans with a round tile in `tile`'s reach, in id order, and their people.
+/// The clans whose route from home to `tile` would cost at most `MARKET.reach_walk`, in id
+/// order, and their people. Paths are found out from `tile`.
 pub fn in_reach(w: &World, tile: usize) -> (Vec<u32>, f64) {
-    let mut ids: Vec<u32> = reach(w, tile).keys().filter_map(|&t| w.tiles[t].claim).collect();
+    let near = cost_map(w, &[tile], MARKET.reach_walk / 2.0, |i| passable(w, i));
+    let mut ids: Vec<u32> = near
+        .keys()
+        .filter_map(|&t| w.tiles[t].claim.filter(|id| w.clans.get(id).is_some_and(|c| c.home == t)))
+        .collect();
     ids.sort_unstable();
     ids.dedup();
-    let people = ids.iter().map(|id| w.clans[id].pop).sum();
+    let people = ids.iter().map(|id| w.clans[id].people).sum();
     (ids, people)
 }
 

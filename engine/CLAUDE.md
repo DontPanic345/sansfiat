@@ -9,7 +9,7 @@ cargo test   # [profile.dev] opt-level = 3: the engine is too slow unoptimised f
 cargo fmt --check && cargo clippy --all-targets -- -D warnings
 cargo run -p sansfiat -- map [--seed N] [--size small|medium|large | --radius N]   # the map as ASCII, a legend and counts
 cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--every 25] [--save game.json] [--json | --events-json] [--no-events]  # stops at the pre-game's end (before the pick), then reports each civ; prints "turn  text" per event
-cargo run -p sansfiat -- sweep [seed ...] [--radius N | --size small|medium|large|all] [--turns N]   # seeds default 1..=10, size small; seeds run in parallel
+cargo run -p sansfiat -- sweep [seed ...] [--radius N | --size small|medium|large|all] [--turns N] [--every 50]   # seeds default 1..=10, size small; seeds run in parallel; each seed's line, its turn/clans/people every N turns, and per size whether people levelled off over the last 100 turns
 cargo run -p sansfiat -- replay game.json [--json | --events-json] [--no-events]
 cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
 cargo run -p sansfiat -- clear baskets.json     # or - for stdin
@@ -29,10 +29,10 @@ node www/play.mjs "?size=small&seed=2&run=1" --until "document.body.dataset.phas
 | `core/src/data.rs` | Every rule's numbers (`CLAN`, `TRAIL`, `MARKET`, `CIV`, `UNIT` …) and `Config`; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers and floods, foods, hidden trail costs, `ascii`. |
 | `core/src/land.rs` | Neighbours, move costs (`step_cost`), `cost_map` and `path`, and the `regrow` and `hold` steps. |
-| `core/src/round.rs` | A clan's round: leg and loop costs, insertion, territory and harvest. |
-| `core/src/clans.rs` | Clans: seeding, a round's `value`, the `move`, `harvest` and `eat` steps, dividing. |
+| `core/src/actors.rs` | Actors: `Actor`, `walk_cost`, `Walks` inside a territory, `divide` and the add/drop rule `change`. |
+| `core/src/clans.rs` | Clans on the actor: seeding, `reap` and `value`, the `move`, `harvest` and `eat` steps, dividing. |
 | `core/src/market.rs` | `clear`: barter exchange ratios by tâtonnement. |
-| `core/src/markets.rs` | Markets: reach, going, trading, forming and fading. |
+| `core/src/markets.rs` | Markets: reach, the `go` step (one festival route by worth), trading, forming and fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, the `end` step and `top_up`. |
 | `core/src/civs.rs` | Civs: `found`, the `civs` step (store upkeep), territory and the pick's `cards`. |
 | `core/src/units.rs` | Units: make, disband, `feed`, the `units` step `march`, and the `check_*` that `validate` calls. |

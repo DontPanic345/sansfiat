@@ -3,15 +3,14 @@ use std::{env, fs, io::Read, process::exit, time::Instant};
 use engine::data::{size_radius, DESERT, FOREST, HILLS, MARSH, MOUNTAIN, PREGAME, SEA, SIZES};
 use engine::map::{self, Zone};
 use engine::{
-    civs, clear, land, pregame, round, stats, utility, Action, Basket, Config, Params, Phase, Save, World, GOODS, N,
-    TERRAIN,
+    civs, clear, land, pregame, stats, utility, Action, Basket, Config, Params, Phase, Save, World, GOODS, N, TERRAIN,
 };
 
 const USAGE: &str = "\
 sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json | --events-json] [--no-events]
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
-sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all]   (seeds default 1..=10, size small)
+sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
 sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
 sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead]   (prints turn and digest, from turn 0; --lead plays the scripted game: picks the first civ and gives orders)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
@@ -305,14 +304,51 @@ struct Run {
     /// Valleys, sealed valleys, necks.
     closed: [usize; 3],
     ms: f64,
+    /// The series: a point every `--every` turns from turn 0, and the last turn.
+    series: Vec<Point>,
+    /// The change in people over the last `LEVEL_TURNS` turns before the end, as a share; `None`
+    /// on a run shorter than that.
+    level: Option<f64>,
 }
 
-fn sweep_run(seed: u32, radius: i32, turns: u32) -> Run {
+/// One point of a run's series. Later columns (depleted tiles, people moved) go here.
+struct Point {
+    turn: u32,
+    clans: usize,
+    people: f64,
+}
+
+impl Point {
+    fn of(w: &World) -> Point {
+        Point { turn: w.turn, clans: w.clans.len(), people: w.clans.values().map(|c| c.people).sum() }
+    }
+}
+
+/// Turns before the end over which people should have levelled off.
+const LEVEL_TURNS: usize = 100;
+
+fn sweep_run(seed: u32, radius: i32, turns: u32, every: u32) -> Run {
     let start = Instant::now();
     let mut w = World::new(Config { seed, radius });
+    let mut series = vec![Point::of(&w)];
+    // People after each turn, from turn 0.
+    let mut people = vec![series[0].people];
     while w.turn < turns && w.end.is_none() {
         w.run(1);
+        let p = Point::of(&w);
+        people.push(p.people);
+        if w.turn.is_multiple_of(every) || w.turn >= turns || w.end.is_some() {
+            series.push(p);
+        }
     }
+    let level = people.len().checked_sub(LEVEL_TURNS + 1).map(|k| {
+        let (then, now) = (people[k], people[people.len() - 1]);
+        if then > 0.0 {
+            (now - then) / then
+        } else {
+            0.0
+        }
+    });
     let ms = start.elapsed().as_secs_f64() * 1e3 / w.turn.max(1) as f64;
     let s = stats::summary(&w);
     let (ended, how, topped_up) = match &w.end {
@@ -355,6 +391,8 @@ fn sweep_run(seed: u32, radius: i32, turns: u32) -> Run {
         hearths: s.hearths,
         closed: [zones(Zone::Valley), zones(Zone::Sealed), zones(Zone::Neck)],
         ms,
+        series,
+        level,
     }
 }
 
@@ -362,12 +400,16 @@ fn sweep_run(seed: u32, radius: i32, turns: u32) -> Run {
 /// size. Seeds run in parallel; the lines come out in seed order.
 fn sweep(args: &[String]) -> Result<(), String> {
     let mut turns = PREGAME.max_turns;
+    let mut every = 50u32;
     let mut seeds: Vec<u32> = Vec::new();
     let mut sizes: Vec<(String, i32)> = vec![(SIZES[0].0.to_string(), SIZES[0].1)];
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--turns" => turns = it.next().and_then(|v| v.parse().ok()).ok_or("--turns needs a number")?,
+            "--every" => {
+                every = it.next().and_then(|v| v.parse().ok()).filter(|&n| n > 0).ok_or("--every needs a number")?
+            }
             "--radius" => {
                 let r = it.next().and_then(|v| v.parse().ok()).ok_or("--radius needs a number")?;
                 sizes = vec![(format!("radius {r}"), r)];
@@ -393,7 +435,7 @@ fn sweep(args: &[String]) -> Result<(), String> {
                         loop {
                             let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                             let Some(&seed) = seeds.get(k) else { break };
-                            done.push((k, sweep_run(seed, radius, turns)));
+                            done.push((k, sweep_run(seed, radius, turns, every)));
                         }
                         done
                     })
@@ -409,6 +451,9 @@ fn sweep(args: &[String]) -> Result<(), String> {
                 r.seed, r.ended, r.how, r.centres, r.topped_up, r.tiers[0], r.tiers[1], r.tiers[2], r.cover, r.clans, r.people, r.markets, r.hearths,
                 r.closed[0], r.closed[1], r.closed[2], r.ms
             );
+            for p in &r.series {
+                println!("{name:<6}          turn {:>4}  clans {:>3}  people {:>6.1}", p.turn, p.clans, p.people);
+            }
         }
         let count = |how: &str| runs.iter().filter(|r| r.how == how).count();
         let cover_short = runs.iter().filter(|r| r.how == "limit" && r.centres == PREGAME.players).count();
@@ -431,6 +476,13 @@ fn sweep(args: &[String]) -> Result<(), String> {
             topped,
             if short > 0 { format!(", {short} with fewer than three centres") } else { String::new() },
             ends[ends.len() / 2]
+        );
+        let levels: Vec<f64> = runs.iter().filter_map(|r| r.level).collect();
+        let flat = levels.iter().filter(|l| l.abs() < 0.1).count();
+        println!(
+            "{name}: people over the last {LEVEL_TURNS} turns before the end changed by {}: {flat} of {} levelled off (under 10%)",
+            levels.iter().map(|l| format!("{:+.0}%", l * 100.0)).collect::<Vec<_>>().join(" "),
+            levels.len()
         );
     }
     Ok(())
@@ -473,14 +525,15 @@ fn report(w: &World, out: &Output) {
         land,
         w.log.len()
     );
-    let people: f64 = w.clans.values().map(|c| c.pop).sum();
+    let people: f64 = w.clans.values().map(|c| c.people).sum();
     let fed = w.clans.values().map(|c| c.fed_ratio).sum::<f64>() / w.clans.len().max(1) as f64;
     let held = w.tiles.iter().filter(|t| t.claim.is_some()).count();
     let n = w.clans.len().max(1) as f64;
-    let tiles = w.clans.values().map(|c| c.round.len() as f64).sum::<f64>() / n;
-    let walk = w.clans.values().map(|c| round::cost(w, &c.round)).sum::<f64>() / n;
+    let tiles = w.clans.values().map(|c| c.territory.len() as f64).sum::<f64>() / n;
+    let walk = w.clans.values().map(|c| c.walk).sum::<f64>() / n;
+    let trip = w.clans.values().map(|c| c.trip()).sum::<f64>() / n;
     println!(
-        "{} clans, {people:.1} people, mean fed ratio {fed:.2}, {held} tiles held, mean round {tiles:.1} tiles costing {walk:.1}",
+        "{} clans, {people:.1} people, mean fed ratio {fed:.2}, {held} tiles held, mean territory {tiles:.1} tiles walked for {walk:.1}, mean route {trip:.1}",
         w.clans.len()
     );
     let trading = w.clans.values().filter(|c| c.market.is_some()).count();

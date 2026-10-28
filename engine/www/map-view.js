@@ -23,6 +23,9 @@ const CORNER = [0, 1, 2, 3, 4, 5].map((i) => [Math.cos((Math.PI / 3) * i - Math.
 const EDGE_DIR = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
 
 /** A colour from a clan's id. */
+/** A clan's festival route as tiles: home, then the path to the festival (just home with none). */
+const walkOf = (c) => [c.home, ...(c.routes.length ? c.routes[0].path : [])];
+
 export const hue = (id) => `hsl(${(id * 137.508) % 360} 70% 55%)`;
 
 const fertilityColor = (f) => {
@@ -116,7 +119,7 @@ export class MapView {
     this.reach.fill(0);
     for (const [i, c] of v.claims) this.claim[i] = c;
     for (const c of Object.values(v.clans)) {
-      for (const i of c.round) {
+      for (const i of c.territory) {
         if (this.owner[i] === 0) this.owner[i] = c.id;
         for (let d = 0; d < 6; d++) {
           const j = this.nb[i * 6 + d];
@@ -176,7 +179,7 @@ export class MapView {
     this.requestDraw();
   }
 
-  /** The clan holding tile `i` through its round, or its territory, as `[clan, how]`. */
+  /** The clan holding tile `i` in its territory (`'round'`), or next to it (`'territory'`), as `[clan, how]`. */
   holder(i) {
     if (this.claim[i]) return [this.claim[i], 'round'];
     if (this.owner[i]) return [this.owner[i], 'territory'];
@@ -708,7 +711,7 @@ export class MapView {
     for (const c of Object.values(v.clans)) {
       const civId = this.clanCiv.get(c.id);
       if (civId == null || !onScreen(c.home)) continue;
-      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.pop))) + px * 3.4;
+      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.people))) + px * 3.4;
       const x = this.px[c.home], y = this.py[c.home];
       for (const [col, w] of [[casing, 4.2], [v.civs[civId].color, 2.2]]) {
         ctx.strokeStyle = col;
@@ -892,19 +895,18 @@ export class MapView {
     ctx.fill();
     ctx.stroke();
 
-    // Rounds: a closed line through the tiles' centres, back to home.
+    // Festival routes: a line from home along the path to the festival.
     if (this.options.rounds) {
-      const clans = Object.values(v.clans).filter((c) => c.round.length >= 2);
+      const clans = Object.values(v.clans).filter((c) => walkOf(c).length >= 2);
       for (const casing of [true, false]) {
         ctx.lineWidth = casing ? Math.max(px * 3.4, 0.2) : Math.max(px * 1.8, 0.12);
         for (const c of clans) {
           ctx.strokeStyle = casing ? 'rgba(0,0,0,0.5)' : hue(c.id);
           ctx.beginPath();
-          c.round.forEach((i, n) => {
+          walkOf(c).forEach((i, n) => {
             if (n === 0) ctx.moveTo(this.px[i], this.py[i]);
             else ctx.lineTo(this.px[i], this.py[i]);
           });
-          ctx.closePath();
           ctx.stroke();
         }
       }
@@ -932,7 +934,7 @@ export class MapView {
     for (const c of Object.values(v.clans)) {
       if (!onScreen(c.home)) continue;
       const x = this.px[c.home], y = this.py[c.home];
-      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.pop)));
+      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.people)));
       ctx.beginPath();
       ctx.arc(x, y, r, 0, 2 * Math.PI);
       ctx.fillStyle = hue(c.id);
@@ -992,8 +994,7 @@ export class MapView {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = Math.max(px * 2.6, 0.2);
         ctx.beginPath();
-        c.round.forEach((i, n) => (n === 0 ? ctx.moveTo(this.px[i], this.py[i]) : ctx.lineTo(this.px[i], this.py[i])));
-        ctx.closePath();
+        walkOf(c).forEach((i, n) => (n === 0 ? ctx.moveTo(this.px[i], this.py[i]) : ctx.lineTo(this.px[i], this.py[i])));
         ctx.stroke();
       } else if (hl.market != null && v.markets[hl.market]) {
         tile = v.markets[hl.market].tile;

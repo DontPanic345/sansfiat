@@ -453,7 +453,7 @@ function fillTip(i) {
     const name = `<i class="sw" style="background:${c.color}"></i>${c.name}`;
     if (c.capital === i) lines.push(`${name}'s capital`);
     else if (c.territory.includes(i)) lines.push(`${name}'s land <span class="dim">(capital territory)</span>`);
-    else if (h) lines.push(`${name}, clan ${h[0]}'s ${h[1] === 'round' ? 'round' : 'territory'}`);
+    else if (h) lines.push(`${name}, clan ${h[0]}'s ${h[1] === 'round' ? 'territory' : 'edge'}`);
     else lines.push(`${name}'s land`);
   }
   const here = Object.values(v.units).filter((u) => u.tile === i);
@@ -504,7 +504,7 @@ function legend() {
     [sw('background:transparent;border:2px solid #b070e0'), 'neck'],
     [sw('background:#fff2b0;border-radius:50%;width:10px;height:10px;margin:2px 4px;border-color:#3a2c00'), 'pass'],
     [sw('background:hsla(200,70%,55%,.35);border:1px solid hsl(200,70%,55%)'), 'territory'],
-    [sw('background:transparent;border:0;border-top:2px solid hsl(40,70%,55%);height:0;margin:6px 0'), 'round'],
+    [sw('background:transparent;border:0;border-top:2px solid hsl(40,70%,55%);height:0;margin:6px 0'), 'festival route'],
     [sw('background:#f2dca4;border:0;height:3px;margin:5px 0'), 'trail'],
     [sw('background:#ffd400;width:9px;height:9px;margin:2px 4px;border-color:#3a2c00'), 'hearth'],
     [sw('background:transparent;border:2px solid #fff;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'market'],

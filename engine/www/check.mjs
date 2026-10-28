@@ -84,7 +84,7 @@ for (const id of v.end.centres) assert.ok(v.markets[id], `centre ${id} is a mark
 for (const [i, c] of v.claims) assert.ok(i >= 0 && i < n && v.clans[c], 'claims are tile, clan');
 for (const i of v.trails) assert.ok(layout.terrain[i] < TERRAIN.length);
 for (const [i, tame] of v.tame) assert.ok(i < n && tame > 0);
-for (const c of Object.values(v.clans)) assert.ok(c.home < n && c.round.every((i) => i < n));
+for (const c of Object.values(v.clans)) assert.ok(c.home < n && c.territory.includes(c.home) && c.territory.every((i) => i < n) && c.routes.every((r) => r.path.every((i) => i < n)));
 
 // ---- the pick, and a unit's life ----------------------------------------------------------------
 
