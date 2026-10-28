@@ -31,10 +31,12 @@ The civs don't have to be able to reach each other.
 
 ## Units
 
-A unit is people, and its people belong to the civ, not to a clan. Every unit works the same
-way: it carries a pack, eats from it, and fills it as `supply.md` says.
+A unit is people, and its people belong to the civ, not to a clan. The civ and each unit are
+actors (`actors.md`), and a unit carries a pack, eats from it, and fills it as `supply.md`
+says.
 
-- **The army** is a camp of warriors. The player moves the camp, not the warriors. A civ has
+- **The army** is a camp of warriors. The player moves the camp, not the warriors, and the
+  army divides its guarding over its zone. A civ has
   one camp, and starts with a small one, its pack stocked from the boon year.
 - **Raising** warriors takes people from the civ's clans, whose people drop by one each.
 - **Disbanding** sends warriors back to the civ's own clan.

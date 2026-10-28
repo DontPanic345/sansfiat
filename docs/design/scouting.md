@@ -10,8 +10,8 @@ numbers are a place to start tuning from.
 
 ## Who scouts
 
-Only a civ scouts, so scouting comes after founding. A scout is a civ's unit, made, fed,
-moved and disbanded like any unit (`founding.md`, `supply.md`); clans don't scout. Each civ
+Only a civ scouts, so scouting comes after founding. A scout is a civ's unit, an actor
+(`actors.md`), made, fed, moved and disbanded like any unit (`founding.md`, `supply.md`); clans don't scout. Each civ
 starts with one scout. It forages along its route, so it seldom draws on its line.
 
 ## Hidden costs

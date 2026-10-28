@@ -5,8 +5,9 @@ player could get to, people already live. As they settle, small centres grow up 
 fertile land on their own, with festivals where people gather. Once enough of those centres
 have formed, the game can start.
 
-merge4's clans are the starting point. Its rules for diet, growth and dividing are kept unless
-this file changes them.
+A clan is an actor (`actors.md`): its labour, territory, routes and market work as every
+actor's do. merge4's clans are the starting point. Its rules for diet, growth and dividing are
+kept unless this file changes them.
 
 ## Time
 
@@ -37,13 +38,9 @@ manageable.
 - Foods are spread unevenly. A clan's land seldom carries every food, so clans start out
   specialised by where they live.
 
-## Routes
+## Trails
 
-Every route is costed as a walk there and back, year on year, priced in the map's movement
-cost: a clan's walk to each tile it harvests, its walk to its festival, and a civ's supply
-line.
-
-A route walked year after year wears a trail. Trails belong to the tile, not to whoever wore
+A route walked year after year (`actors.md`) wears a trail. Trails belong to the tile, not to whoever wore
 them, so everyone uses them. A trail nobody walks wears away again.
 
 ## Clans
@@ -52,14 +49,12 @@ A clan is a group of people living off a territory.
 
 - **Seeds.** The world starts with a few small clans, and the population spreads from them.
 - **Territory.** A clan holds a connected patch of tiles around its home tile.
-- **Labour.** A clan's labour each turn is its people times the work each person can do. It
-  divides its harvesting labour over all its tiles, and each tile's share pays its walk from
-  home first, then the harvest. Walking inside its own territory costs a clan little, but
-  enough that trails still form.
-- **Holding land.** A clan adds a tile only if its total harvest rises with it. A poor tile
-  takes labour from better ones, so it can lower the harvest. A clan drops the tile whose loss
-  costs it least, and a hungry clan swaps its worst tile for a better one, so it drifts
-  towards better ground. Home follows the middle of the territory.
+- **Labour.** A clan divides its gathering evenly over its territory, as every actor divides
+  its labour. Walking inside its own territory costs a clan little, but enough that trails
+  still form.
+- **Holding land.** A clan holds land as every actor does: a poor tile takes labour from
+  better ones, so it can lower the harvest. A hungry clan swaps its worst tile for a better
+  one, so it drifts towards better ground. Home follows the middle of the territory.
 - **Diet.** A clan needs one food per person per turn. Variety counts: any one food counts in
   full only up to a share of what the clan needs, and is worth less beyond that.
 - **Growth.** A clan grows only on what it harvests beyond its need. One that just meets its
@@ -82,8 +77,7 @@ Tamed grain is what makes a fertile area a centre that can feed a civ.
 
 ## Festivals
 
-A market is where people meet to trade: the engine's market algorithm, with no money. A
-clan's market is a **festival**. Clans have little to trade there, since food is too heavy to
+A clan's market (`actors.md`) is a **festival**. Clans have little to trade there, since food is too heavy to
 carry far: they trade people, and later ideas and small goods such as obsidian.
 
 - **One route.** Each clan walks one route, to one festival, each turn. It changes festival

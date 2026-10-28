@@ -4,7 +4,8 @@ A unit's reach comes from the food it can get, not from a rule about distance. I
 pack, refills it along a supply line from its capital, and lives off the land past the
 line's end. The further from home, the more of its labour goes on staying fed.
 
-Every unit works this way: the army's camp, whose pack is the camp's stock, and the scout.
+Every unit is an actor (`actors.md`) and works this way: the army's camp, whose pack is the
+camp's stock, and the scout.
 The pack is also what a unit will post from and fill when units trade at markets, later.
 
 The idea is `docs/notes/Supply Line Mechanic.md`, and merge4's numbers are a place to start
@@ -20,8 +21,7 @@ tuning from.
 ## The line
 
 - A unit's supply line runs from its tile to the capital, where the store is, along the
-  cheapest path. Like every route (`clans.md`), it's costed as a walk there and back, year
-  on year.
+  cheapest path. It's costed as every route is (`actors.md`).
 - What a line carries each turn is the labour put on it over the line's cost. The unit pays
   the labour, so a long line takes most of a unit's turn, and past some length it's cut off.
 - The line can't pass through a rival civ's land, or ground a rival army holds.
