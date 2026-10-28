@@ -4,57 +4,59 @@ A unit's reach comes from the food it can get, not from a rule about distance. I
 pack, refills it along a supply line from its capital, and lives off the land past the
 line's end. The further from home, the more of its labour goes on staying fed.
 
-merge4 built this once (`merge4/docs/notes/Supply Line Mechanic.md`). The numbers are starting
-values to tune.
+Every unit works this way: the army's camp, whose pack is the camp's stock, and the scout.
+The pack is also what a unit will post from and fill when units trade at markets, later.
+
+The idea is `docs/notes/Supply Line Mechanic.md`, and merge4's numbers are a place to start
+tuning from.
 
 ## The pack
 
-- A unit carries its food in a pack and eats from it each turn, wherever it stands. It no
-  longer eats straight from the store.
-- A full pack holds **8** turns of food. A warrior eats **1** a turn.
-- A unit with an empty pack goes hungry; after **3** hungry turns it disbands, as `founding.md`
-  says.
+- A unit carries its food in a pack and eats from it each turn, wherever it stands.
+- A full pack holds several turns of food.
+- A unit with an empty pack goes hungry; hungry for a few turns, it disbands.
 - A unit is made with a full pack, taken from the store.
 
 ## The line
 
-- A unit's supply line runs from its tile to its capital along the cheapest path, priced in
-  the same movement cost the map already uses.
-- A **resupply** fills the pack from the store and costs **1** labour, plus **1** for every **3**
-  of line cost. A unit that can't pay it from a turn's labour is cut off.
-- The line can't pass through a rival civ's land.
+- A unit's supply line runs from its tile to the capital, where the store is, along the
+  cheapest path. Like every route (`clans.md`), it's costed as a walk there and back, year
+  on year.
+- What a line carries each turn is the labour put on it over the line's cost. The unit pays
+  the labour, so a long line takes most of a unit's turn, and past some length it's cut off.
+- The line can't pass through a rival civ's land, or ground a rival army holds.
 - Trails lower the line's cost like any path, so the scout's trails stretch a civ's reach.
 
 ## Past the line
 
-- **Forage**, on the civ's own or unclaimed land: **2** labour for up to **4** food from the tile.
-- **Pillage**, on a rival's land: **1** labour for up to **4** food.
-- Either way the tile yields nothing to anyone for **5** turns. Clans harvest those tiles too,
+- **Forage**, on the civ's own or unclaimed land: labour for food from the tile.
+- **Pillage**, on a rival's land: more food for less labour than foraging.
+- Either way the tile yields nothing to anyone for a while. Clans harvest those tiles too,
   so foraging near home takes food from the civ's own clans, and pillaging starves a rival's.
 
 ## Switches
 
 Every unit has two:
 
-- **Auto-supply**, on by default: resupplies along the line each turn when it can.
-- **Auto-forage**, off by default: when the line can't reach, forages or pillages the tile it
-  stands on.
+- **Auto-forage**, on by default: forages or pillages the tile it stands on. A scout forages
+  along its route, and seldom needs its line.
+- **Auto-supply**, on by default: resupplies along the line each turn for what foraging
+  didn't cover.
 
 Both run at the end of the turn on the labour left over. A move the player ordered always comes
 first, so there's no reserve to set.
 
 ## On the page
 
-- Selecting a unit draws its line home, coloured by what a resupply would cost.
+- Selecting a unit draws its line home, coloured by what it carries for its cost.
 - The selection panel shows the pack and any hunger, with buttons to resupply, forage or
   pillage, and the two switches.
 - The feed reports resupplied, cut off, went hungry, foraged and pillaged.
 
 ## Out of scope
 
-- Rival units cutting a line; only rival land blocks one. The army piece decides what units
-  do to lines.
 - Porters, caches, depots, roads and pack animals.
 - Rivers carrying supply.
 - Goods other than food on a line.
+- Units trading at markets.
 - Fighting.

@@ -5,29 +5,25 @@ trail could make it, and a mountain hides whether it can be crossed at all. Give
 points and it works out the best route between them, revealing only the tiles that could
 change the answer, then builds trails along it.
 
-`scout/` is the starting point. Its rules are kept unless this file changes them. The numbers
-are starting values to tune.
+`scout/` is the starting point. Its rules are kept unless this file changes them, and its
+numbers are a place to start tuning from.
 
 ## Who scouts
 
 Only a civ scouts, so scouting comes after founding. A scout is a civ's unit, made, fed,
-moved and disbanded like any unit (`founding.md`); clans don't scout. Each civ starts with
-one scout.
+moved and disbanded like any unit (`founding.md`, `supply.md`); clans don't scout. Each civ
+starts with one scout. It forages along its route, so it seldom draws on its line.
 
 ## Hidden costs
 
 Each forest, hills and mountain tile has a hidden trail cost, fixed when the map is made:
-what a trail brings its move cost down to.
+what a trail brings its move cost down to. A trail can bring forest and hills down a long way,
+and costs work to build, more on rougher ground. A mountain keeps a high cost even with a
+trail, and takes the most work.
 
-| Terrain | Trail cost | Work to build |
-|---|---|---|
-| Forest | 1 or 2, even odds | 2 |
-| Hills | 1 (1 in 3) or 2 | 3 |
-| Mountain | 3, if it can be crossed | 6 |
-
-A mountain can be crossed only where a bridge would span it, and about **1 in 5** can. Bridge
-span is a technology later; for now every civ has the shortest span. Flat land gains nothing
-from a trail.
+A mountain can be crossed only where a bridge would span it, and only a few can. Bridge span
+is a technology later; for now every civ has the shortest span. Flat land gains nothing from
+a trail.
 
 ## Trails
 
@@ -56,8 +52,8 @@ close the gap: impassable tiles first, since they decide whether a route exists,
 biggest saving. Once no reveal can help, it builds trails along the known route. A route with
 no way through ends with "no route can exist".
 
-Revealing a forest or hills tile takes 1 labour; revealing a mountain takes the scout's whole
-turn.
+Revealing a forest or hills tile takes a little labour; revealing a mountain takes the
+scout's whole turn.
 
 The scout should work outward from where it stands. Along a mountain range it checks the
 nearby mountains before crossing to try the far end, rather than walking back and forth
