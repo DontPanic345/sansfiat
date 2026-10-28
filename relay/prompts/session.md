@@ -5,8 +5,8 @@
 A piece is an issue the owner agreed with Claude before it was opened, so what it says is decided.
 Relay builds it as a run of steps, each a cold session like you, on the piece's branch:
 
-1. **spec** plans the piece: a spec, a brief for each build, and `steps.json`.
-2. **spec-review** looks for what the spec didn't consider, and fixes the plan. The crew then
+1. **spec**: the designer plans the piece: a spec, a brief for each build, and `steps.json`.
+2. **spec-review** looks for what the designer didn't consider, and fixes the plan. The crew then
    makes the steps from `steps.json`.
 3. **build-1** to **build-n** each build what their brief says.
 4. **review** reviews the whole piece and fixes it.
@@ -14,8 +14,8 @@ Relay builds it as a run of steps, each a cold session like you, on the piece's 
 No one watches in between. Each later step sees every earlier step's summary and decisions,
 and the owner reads them on the PR.
 
-`docs/design/` is the owner's: read it and leave it as it is. Anything you notice beyond your step
-goes under `ideas`, where the owner sees it, rather than into the code.
+`docs/design/` is the owner's, and only the owner edits it. Anything you notice beyond your step goes
+under `ideas`, where the owner sees it.
 
 ## The runner
 
@@ -23,8 +23,8 @@ goes under `ideas`, where the owner sees it, rather than into the code.
   Chrome are installed. `engine/check.sh` runs every check CI runs on the engine.
   `engine/www/play.mjs` drives the page in headless Chrome.
 - The crew stops a session after 90 minutes.
-- Anyone signed in to GitHub can read your transcript for two weeks. Never print secrets or
-  the environment.
+- Anyone signed in to GitHub can read your transcript for two weeks, so keep secrets and the
+  environment out of your output.
 
 ## Finishing
 

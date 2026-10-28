@@ -18,8 +18,9 @@ these lines from its body, in any order:
 
 ```
 **Goal:** what the piece delivers, and the question it answers if it has one
-**Spec:** sonnet high, 9 points (Open 2, …): why
-**Spec-review:** sonnet medium: why
+**Spec:** opus medium, by coin
+**Spec-review:** opus low, by coin
+**Shape:** Easel and Canvas: why
 **Design:** docs/design/clans.md
 **Decided:** …
 **In scope:** …
@@ -27,13 +28,14 @@ these lines from its body, in any order:
 **After:** #31
 ```
 
-`Spec` and `Spec-review` are required, each on its own line: a piece without them is held. A
+`Spec` and `Spec-review` are required, each on its own line: a piece without them is held.
+`Shape` is a suggestion the designer may change. A
 field's value carries on over hard-wrapped lines to a blank line or the next field. A piece is
 also held until every piece its `After` line names is merged. Every `docs/design/*.md` path in
 the body goes to the spec, spec-review and review sessions in full.
 
-Its **steps** are sub-issues. A step's body is its status line, its model, effort, points and
-why, links to the piece, the PR, `spec.md` and its brief, and the brief as it was when the
+Its **steps** are sub-issues. A step's body is its status line, its model, effort, points, part
+and why, links to the piece, the PR, `spec.md` and its brief, and the brief as it was when the
 step was made; the brief on the branch is the one builds keep up. A hidden
 `<!-- relay {...} -->` block carries its attempts, cost, minutes, usage, summary and
 decisions. Step issues get no comments: the status line says how the step stands. The spec,
@@ -42,8 +44,8 @@ the briefs and `steps.json` live on the piece's branch, `relay/<number>`, in
 
 | Step | What it does |
 |---|---|
-| `spec` | Writes the spec, a brief per build, and `steps.json` with each build's and the review's model, effort, points and why (`prompts/spec.md` has the scoring). Runs on the model the piece's `Spec` line names |
-| `spec-review` | Reads the piece, the design and the code first, then looks for what the spec didn't consider, and fixes the plan. Runs on the model the piece's `Spec-review` line names |
+| `spec` | The designer settles what it can, picks a shape, and writes the spec, a brief per build, and `steps.json` with each build's part and each step's model, effort, points and why (`prompts/spec.md` has the shapes and the ladder). Runs on the model the piece's `Spec` line names |
+| `spec-review` | Reads the piece, the design and the code first, then looks for what the designer didn't consider, and fixes the plan. Runs on the model the piece's `Spec-review` line names |
 | `build-N` | Builds what its brief says |
 | `review` | Merges `main` in, reviews the whole piece against the piece and its design, fixes what matters, writes the PR description with the steps table and a verdict (merge, or don't and why), and waits for CI to go green. On a merge verdict with CI green, the crew merges the PR |
 
@@ -111,7 +113,7 @@ points it rose by, the context its last turn held as a share of the window, and 
 times it compacted. On a subscription the cost isn't money spent; it makes steps, models and
 pieces comparable. The usage probe reads the whole account, so the owner's own sessions in
 the same hours land on Relay's steps. A crashed attempt has no result frame and records no
-cost. `rates.md` turns these into the rates the spec estimates from. Usage is paced as in Jogging: no step starts once the 5-hour
+cost. Usage is paced as in Jogging: no step starts once the 5-hour
 window passes 50% or the weekly window passes its share of the week.
 
 The 50% stop is checked between steps, so a step can run past it: an Opus build can take
@@ -149,7 +151,6 @@ table grouped by parent issue, summing List $ and the points.
 |---|---|
 | `relay.mjs`, `token.mjs`, `usage.mjs`, tests | Claude Code sessions, by hand |
 | `prompts/*.md` | The owner. How the flow works, for the sessions in it |
-| `rates.md` | The retro, after each milestone. What a step costs, and the milestone's challenge |
 | `specs/<n>/` | Spec and spec-review sessions, on the piece's branch |
 | `runs/` | The crew and sessions: prompts, transcripts, `result.json`. Not committed |
 

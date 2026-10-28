@@ -89,10 +89,11 @@ test("a hard-wrapped field reads to the next field, and spec-review has its own"
 });
 
 test("checkSteps wants builds in order, then the review, each with points and a why", () => {
-    const s = (id, extra = {}) => ({ id, title: "t", model: "sonnet", effort: "medium", points: 7, why: "w", ...extra });
+    const s = (id, extra = {}) => ({ id, title: "t", model: "sonnet", effort: "medium", points: 7, why: "w", ...(id === "review" ? {} : { part: "ford" }), ...extra });
     const ok = (...ids) => JSON.stringify(ids.map((id) => (typeof id === "string" ? s(id) : id)));
     assert.ok(checkSteps(ok("build-1", "review")).steps);
-    assert.ok(checkSteps(ok(s("build-1", { model: "opus", effort: "low", coin: true }), "review")).steps);
+    assert.ok(checkSteps(ok(s("build-1", { model: "opus", effort: "low", part: "clay" }), "review")).steps);
+    assert.match(checkSteps(ok(s("build-1", { part: "freestyle" }), "review")).error, /part must be/);
     assert.match(checkSteps("nope").error, /JSON/);
     assert.match(checkSteps(ok("review")).error, /build steps/);
     assert.match(checkSteps(ok("spec-review", "build-1", "review")).error, /build-1/);
@@ -216,9 +217,9 @@ test("usagePoints is each window's rise, unknown across a reset", () => {
 });
 
 test("a step's body is its status, its choice, its links and its brief as made", () => {
-    const s = { id: "build-1", model: "opus", effort: "low", points: 10, coin: true, why: "Rivers are open." };
+    const s = { id: "build-1", model: "opus", effort: "low", points: 10, part: "canvas", why: "Rivers are open." };
     const body = stepBody(piece(4, []), s, { brief: "# build-1: Rivers\n\nBuild rivers.", pr: 7 });
-    assert.match(body, /^\*\*Status:\*\* ready\n\nStep `build-1` on \*\*opus low\*\*, 10 points, by coin\. Rivers are open\./);
+    assert.match(body, /^\*\*Status:\*\* ready\n\nStep `build-1` on \*\*opus low\*\*, 10 points, canvas\. Rivers are open\./);
     assert.match(body, /Piece #4 · PR #7 · \[spec\.md\]\(https:\/\/github\.com\/DontPanic345\/sansfiat\/blob\/relay\/4\/relay\/specs\/4\/spec\.md\)/);
     assert.match(body, /^## build-1: Rivers/m);
     assert.doesNotMatch(stepBody(piece(4, []), { id: "review", model: "sonnet", effort: "high", why: "w" }), /brief/);
@@ -304,11 +305,11 @@ test("a review session gets the piece, the diff, the whole spec and the steps, w
 test("stepsTable shows each step's state and spend", () => {
     const table = stepsTable([
         step("review"),
-        { ...step("build-1", "closed", { model: "opus", effort: "low", coin: true, points: 10, estimate: 2, cost: 1.5, minutes: 12.6, fiveHour: 8, weekly: 1, attempts: 1 }), stateReason: "completed" },
+        { ...step("build-1", "closed", { model: "opus", effort: "low", part: "canvas", points: 10, cost: 1.5, minutes: 12.6, fiveHour: 8, weekly: 1, attempts: 1 }), stateReason: "completed" },
         { ...step("spec", "closed", { cost: 2 }), stateReason: "completed" },
     ]);
     const rows = table.split("\n");
-    assert.equal(rows[3], "| #100 build-1 | done | opus (coin) | low | 10 | $2.00 | 1 | $1.50 | 13 | 8 | 1 |");
+    assert.equal(rows[3], "| #100 build-1 | done | canvas | opus | low | 10 | 1 | $1.50 | 13 | 8 | 1 |");
     assert.match(rows[4], /\| #100 review \| pending \|/);
     assert.equal(rows.at(-1), "$3.50 at list price so far.");
 });

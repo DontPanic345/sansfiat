@@ -45,6 +45,8 @@ export const SECRETS = ["CLAUDE_CODE_OAUTH_TOKEN", "RELAY_APP_KEY", "DISPATCH_TO
 
 export const MODELS = ["haiku", "sonnet", "opus"];
 export const EFFORTS = ["low", "medium", "high"];
+// A build step's part in its piece's shape (prompts/spec.md).
+export const PARTS = ["ford", "easel", "canvas", "clay", "kiln", "magnum"];
 
 // ---- Pure logic (covered by relay.test.mjs) ----
 
@@ -154,6 +156,7 @@ export const checkSteps = (text) => {
         if (!MODELS.includes(s.model)) return { error: `${s.id}: model must be one of ${MODELS.join(", ")}` };
         if (!EFFORTS.includes(s.effort)) return { error: `${s.id}: effort must be one of ${EFFORTS.join(", ")}` };
         if (!Number.isInteger(s.points) || s.points < 0 || s.points > 15) return { error: `${s.id}: points must be a whole number from 0 to 15` };
+        if (s.id !== "review" && !PARTS.includes(s.part)) return { error: `${s.id}: part must be one of ${PARTS.join(", ")}` };
         if (!s.title) return { error: `${s.id}: no title` };
         if (!s.why) return { error: `${s.id}: no why for its model and effort` };
     }
@@ -334,7 +337,7 @@ export const withStatus = (body, line) => (STATUS.test(body ?? "") ? body.replac
 // was when the step was made.
 export const stepBody = (piece, s, { brief, pr } = {}) => {
     const blob = `https://github.com/${GH_REPO}/blob/${branchOf(piece)}/${specDir(piece)}`;
-    const on = `**${s.model} ${s.effort}**${s.points != null ? `, ${s.points} points` : ""}${s.coin ? ", by coin" : ""}`;
+    const on = `**${s.model} ${s.effort}**${s.points != null ? `, ${s.points} points` : ""}${s.part ? `, ${s.part}` : ""}`;
     const links = [`Piece #${piece.number}`, ...(pr ? [`PR #${pr}`] : []), `[spec.md](${blob}/spec.md)`, ...(brief ? [`[the brief](${blob}/${s.id}.md)`] : [])];
     const parts = [`**Status:** ready`, `Step \`${s.id}\` on ${on}. ${s.why ?? ""}`.trim(), links.join(" · ")];
     if (brief) {
@@ -416,13 +419,12 @@ export const stepsTable = (steps) => {
     const total = sorted.reduce((n, s) => n + (s.meta.cost ?? 0), 0);
     const num = (n, f = String) => (n != null ? f(n) : "");
     return [
-        "| Step | State | Model | Effort | Points | Estimate | Attempts | List $ | Minutes | 5-hour | Weekly |",
+        "| Step | State | Part | Model | Effort | Points | Attempts | List $ | Minutes | 5-hour | Weekly |",
         "|---|---|---|---|---|---|---|---|---|---|---|",
         ...sorted.map((s) => {
             const m = s.meta;
             const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : "done") : m.status ?? "pending";
-            const model = `${m.model}${m.coin ? " (coin)" : ""}`;
-            return `| #${s.number} ${m.id} | ${state} | ${model} | ${m.effort} | ${num(m.points)} | ${num(m.estimate, dollars)} | ${m.attempts ?? 0} | ${num(m.cost, dollars)} | ${num(m.minutes, Math.round)} | ${num(m.fiveHour)} | ${num(m.weekly)} |`;
+            return `| #${s.number} ${m.id} | ${state} | ${m.part ?? ""} | ${m.model} | ${m.effort} | ${num(m.points)} | ${m.attempts ?? 0} | ${num(m.cost, dollars)} | ${num(m.minutes, Math.round)} | ${num(m.fiveHour)} | ${num(m.weekly)} |`;
         }),
         "",
         `${dollars(total)} at list price so far.`,
@@ -813,7 +815,7 @@ const findPr = async (piece) => {
 // A step's issue, with its brief as it is on the branch now.
 const createStep = async (piece, s) => {
     const meta = { id: s.id, model: s.model, effort: s.effort, why: s.why ?? "", attempts: 0, status: "pending" };
-    for (const k of ["points", "estimate", "coin"]) if (s[k] != null) meta[k] = s[k];
+    for (const k of ["points", "part"]) if (s[k] != null) meta[k] = s[k];
     const brief = stepKind(s.id) === "build" ? readRepo(`${specDir(piece)}/${s.id}.md`) : null;
     const pr = (await findPr(piece))?.number;
     const issue = await github("POST", "/issues", {
@@ -886,7 +888,7 @@ const autoMerge = async (piece, pr, result) => {
 // The PR comment for a finished step: its summary, decisions and ideas, with what it took.
 export const stepComment = (step, result) => {
     const m = step.meta;
-    const took = [`${m.model} ${m.effort}${m.coin ? " (coin)" : ""}`, ...(m.points != null ? [`${m.points} points`] : []), dollars(m.cost), `${Math.round(m.minutes ?? 0)} min`, `#${step.number}`];
+    const took = [`${m.model} ${m.effort}`, ...(m.part ? [m.part] : []), ...(m.points != null ? [`${m.points} points`] : []), dollars(m.cost), `${Math.round(m.minutes ?? 0)} min`, `#${step.number}`];
     const decided = m.decisions?.length ? `\n\n🧭 Decided:\n${m.decisions.map((d) => `- ${d.decision}${d.why ? `: ${d.why}` : ""}`).join("\n")}` : "";
     const list = ideaList(result.ideas);
     const ideas = list ? `\n\n💡 Ideas, not built:\n${list}` : "";
