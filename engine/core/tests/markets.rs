@@ -22,7 +22,7 @@ fn free(w: &mut World, id: u32) {
 }
 
 #[test]
-fn a_held_tile_wears_a_trail_and_an_unheld_one_wears_away() {
+fn a_walked_tile_wears_a_trail_and_an_unwalked_one_wears_away() {
     let mut w = flat();
     let (o, f) = (at(0, 0), out(0, 1));
     w.tiles[f].terrain = FOREST;
@@ -33,22 +33,29 @@ fn a_held_tile_wears_a_trail_and_an_unheld_one_wears_away() {
         walks.cost[c.territory.iter().position(|&t| t == f).unwrap()]
     };
     assert_eq!(cost(&w, id), 2.0);
+    // The clan walks its territory each turn: the harvest marks the walk, `hold` counts it.
     for _ in 1..TRAIL.after {
+        harvest(&mut w);
         hold(&mut w);
     }
     assert!(!w.tiles[f].trail);
+    harvest(&mut w);
     hold(&mut w);
-    assert!(w.tiles[f].trail, "held {} turns", w.tiles[f].held);
+    assert!(w.tiles[f].trail, "walked {} turns", w.tiles[f].walk_run);
+    assert!(!w.tiles[o].trail, "home is held but never walked");
     assert_eq!(step_cost(&w, o, f), Some(TRAIL.cost));
     assert_eq!(cost(&w, id), TRAIL.cost);
 
+    // Freed, the clan no longer walks: each turn's harvest clears the walks, and nothing walks.
     free(&mut w, id);
     for _ in 1..TRAIL.fade {
+        harvest(&mut w);
         hold(&mut w);
     }
     assert!(w.tiles[f].trail);
+    harvest(&mut w);
     hold(&mut w);
-    assert!(!w.tiles[f].trail, "unheld {} turns", w.tiles[f].unheld);
+    assert!(!w.tiles[f].trail, "unwalked {} turns", w.tiles[f].rest_run);
     assert_eq!(step_cost(&w, o, f), Some(2.0));
 }
 
@@ -79,15 +86,23 @@ fn held_grain_tames_into_a_hearth_and_left_grain_goes_wild() {
     }
     assert!(is_hearth(&w.tiles[o]));
     assert_eq!(w.tiles[o].cap[GRAIN], 10.0);
-    hold(&mut w);
-    assert_eq!(w.tiles[o].tame, TENDING.tame_turns, "tame stops at a hearth");
+    // Past a hearth taming goes on, and the grain keeps rising, more slowly.
+    for _ in 0..TENDING.tame_turns {
+        hold(&mut w);
+    }
+    assert_eq!(w.tiles[o].tame, 2 * TENDING.tame_turns, "taming has no ceiling");
+    assert_eq!(w.tiles[o].cap[GRAIN], 11.0);
 
     free(&mut w, id);
+    for _ in 0..TENDING.tame_turns {
+        hold(&mut w);
+    }
+    assert_eq!(w.tiles[o].tame, TENDING.tame_turns, "unheld, it tames back a step a turn");
+    assert!(is_hearth(&w.tiles[o]));
     hold(&mut w);
-    assert_eq!(w.tiles[o].tame, TENDING.tame_turns - 1);
-    assert!(!is_hearth(&w.tiles[o]));
     hold(&mut w);
     assert_eq!(w.tiles[o].tame, TENDING.tame_turns - 2);
+    assert!(!is_hearth(&w.tiles[o]));
     assert!(w.tiles[o].cap[GRAIN] < 10.0);
 }
 

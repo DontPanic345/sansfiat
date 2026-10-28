@@ -138,6 +138,7 @@ fn market(w: &mut World, tile: usize, traders: usize) -> u32 {
 fn grain(w: &mut World, tile: usize, tame: u32, fertility: f64) {
     let t = &mut w.tiles[tile];
     t.wild_grain = 4.0;
+    t.unworn[GRAIN] = 4.0;
     t.cap[GRAIN] = 4.0;
     t.tame = tame;
     t.fertility = fertility;

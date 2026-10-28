@@ -4,7 +4,7 @@
 use serde::Serialize;
 
 use crate::data::*;
-use crate::land::is_hearth;
+use crate::land::{is_depleted, is_hearth};
 use crate::markets::reach;
 use crate::pregame::{centres, land_cover, End};
 use crate::world::World;
@@ -23,6 +23,8 @@ pub struct Summary {
     /// Mean labour a clan's walks inside its territory cost this turn.
     pub walk_cost: f64,
     pub trails: usize,
+    /// Tiles depleted: some food's wear is at least `DEPLETION.depleted_at`.
+    pub depleted: usize,
     pub hearths: usize,
     pub markets: usize,
     /// Clans with a market.
@@ -46,6 +48,7 @@ pub fn summary(w: &World) -> Summary {
         territory: w.clans.values().map(|c| c.territory.len() as f64).sum::<f64>() / n,
         walk_cost: w.clans.values().map(|c| c.walk).sum::<f64>() / n,
         trails: w.tiles.iter().filter(|t| t.trail).count(),
+        depleted: w.tiles.iter().filter(|t| is_depleted(t)).count(),
         hearths: w.tiles.iter().filter(|t| is_hearth(t)).count(),
         markets: w.markets.len(),
         trading: w.clans.values().filter(|c| c.market.is_some()).count(),

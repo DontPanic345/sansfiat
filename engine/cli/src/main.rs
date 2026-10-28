@@ -1,6 +1,7 @@
 use std::{env, fs, io::Read, process::exit, time::Instant};
 
 use engine::data::{size_radius, DESERT, FOREST, HILLS, MARSH, MOUNTAIN, PREGAME, SEA, SIZES};
+use engine::land::is_depleted;
 use engine::map::{self, Zone};
 use engine::{
     civs, clear, land, pregame, stats, utility, Action, Basket, Config, Params, Phase, Save, World, GOODS, N, TERRAIN,
@@ -299,6 +300,8 @@ struct Run {
     cover: f64,
     clans: usize,
     people: f64,
+    /// Tiles depleted at the end.
+    depleted: usize,
     markets: usize,
     hearths: usize,
     /// Valleys, sealed valleys, necks.
@@ -311,16 +314,22 @@ struct Run {
     level: Option<f64>,
 }
 
-/// One point of a run's series. Later columns (depleted tiles, people moved) go here.
+/// One point of a run's series. Later columns (people moved) go here.
 struct Point {
     turn: u32,
     clans: usize,
     people: f64,
+    depleted: usize,
 }
 
 impl Point {
     fn of(w: &World) -> Point {
-        Point { turn: w.turn, clans: w.clans.len(), people: w.clans.values().map(|c| c.people).sum() }
+        Point {
+            turn: w.turn,
+            clans: w.clans.len(),
+            people: w.clans.values().map(|c| c.people).sum(),
+            depleted: w.tiles.iter().filter(|t| is_depleted(t)).count(),
+        }
     }
 }
 
@@ -387,6 +396,7 @@ fn sweep_run(seed: u32, radius: i32, turns: u32, every: u32) -> Run {
         cover: s.cover,
         clans: s.clans,
         people: s.people,
+        depleted: s.depleted,
         markets: s.markets,
         hearths: s.hearths,
         closed: [zones(Zone::Valley), zones(Zone::Sealed), zones(Zone::Neck)],
@@ -447,12 +457,15 @@ fn sweep(args: &[String]) -> Result<(), String> {
         });
         for r in &runs {
             println!(
-                "{name:<6} seed {:>3}: ended {:>3} by {:<11} centres {} topped up {} ({}/{}/{})  cover {:.2}  clans {:>3}  people {:>6.1}  markets {:>2}  hearths {:>3}  closed {}/{}/{}  {:.1} ms a turn",
-                r.seed, r.ended, r.how, r.centres, r.topped_up, r.tiers[0], r.tiers[1], r.tiers[2], r.cover, r.clans, r.people, r.markets, r.hearths,
+                "{name:<6} seed {:>3}: ended {:>3} by {:<11} centres {} topped up {} ({}/{}/{})  cover {:.2}  clans {:>3}  people {:>6.1}  depleted {:>4}  markets {:>2}  hearths {:>3}  closed {}/{}/{}  {:.1} ms a turn",
+                r.seed, r.ended, r.how, r.centres, r.topped_up, r.tiers[0], r.tiers[1], r.tiers[2], r.cover, r.clans, r.people, r.depleted, r.markets, r.hearths,
                 r.closed[0], r.closed[1], r.closed[2], r.ms
             );
             for p in &r.series {
-                println!("{name:<6}          turn {:>4}  clans {:>3}  people {:>6.1}", p.turn, p.clans, p.people);
+                println!(
+                    "{name:<6}          turn {:>4}  clans {:>3}  people {:>6.1}  depleted {:>4}",
+                    p.turn, p.clans, p.people, p.depleted
+                );
             }
         }
         let count = |how: &str| runs.iter().filter(|r| r.how == how).count();

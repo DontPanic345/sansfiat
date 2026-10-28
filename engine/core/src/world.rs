@@ -225,6 +225,7 @@ pub const TURN: &[Step] = &[
     Step { name: "harvest", run: clans::harvest },
     Step { name: "trade", run: markets::trade },
     Step { name: "eat", run: clans::eat },
+    Step { name: "wear", run: land::wear },
     Step { name: "civs", run: civs::upkeep },
     Step { name: "units", run: units::march },
     Step { name: "hold", run: land::hold },

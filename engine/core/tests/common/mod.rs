@@ -41,10 +41,15 @@ fn flat_radius(radius: i32) -> World {
         }
         t.cap = [0.0; N];
         t.stock = [0.0; N];
+        t.unworn = [0.0; N];
+        t.wear = [0.0; N];
+        t.take = [0.0; N];
         t.wild_grain = 0.0;
         t.tame = 0;
         t.claim = None;
         t.walked = false;
+        t.walk_run = 0;
+        t.rest_run = 0;
         t.held = 0;
         t.unheld = 0;
         t.trail = false;
@@ -143,5 +148,6 @@ pub fn hearth(w: &mut World, tile: usize, wild: f64) {
     let t = &mut w.tiles[tile];
     t.wild_grain = wild;
     t.tame = TENDING.tame_turns;
-    t.cap[GRAIN] = wild * TENDING.domestic;
+    t.unworn[GRAIN] = wild * TENDING.domestic;
+    t.cap[GRAIN] = t.unworn[GRAIN];
 }

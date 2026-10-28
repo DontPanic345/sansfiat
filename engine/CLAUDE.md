@@ -28,7 +28,7 @@ node www/play.mjs "?size=small&seed=2&run=1" --until "document.body.dataset.phas
 | `core/src/world.rs` | `World`, its `phase`, `Action`, the `TURN` steps, `act`/`run`/`save`/`replay`, and `Event`s. |
 | `core/src/data.rs` | Every rule's numbers (`CLAN`, `TRAIL`, `MARKET`, `CIV`, `UNIT` …) and `Config`; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers and floods, foods, hidden trail costs, `ascii`. |
-| `core/src/land.rs` | Neighbours, move costs (`step_cost`), `cost_map` and `path`, and the `regrow` and `hold` steps. |
+| `core/src/land.rs` | Neighbours, move costs (`step_cost`), `cost_map` and `path`, and the `regrow`, `wear` (depletion) and `hold` (trails, tame grain) steps. |
 | `core/src/actors.rs` | Actors: `Actor`, `walk_cost`, `Walks` inside a territory, `divide` and the add/drop rule `change`. |
 | `core/src/clans.rs` | Clans on the actor: seeding, `reap` and `value`, the `move`, `harvest` and `eat` steps, dividing. |
 | `core/src/market.rs` | `clear`: barter exchange ratios by tâtonnement. |

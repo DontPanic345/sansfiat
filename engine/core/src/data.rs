@@ -204,15 +204,28 @@ pub const FOOD: [Food; N] = [
 pub const FERTILITY: (f64, f64) = (0.4, 2.0);
 
 pub struct TrailRules {
-    /// Turns in a row held before a tile gets a trail.
+    /// Turns in a row walked (inside a territory or on a route) before a tile gets a trail.
     pub after: u32,
-    /// Turns held by nobody before it wears away.
+    /// Turns in a row unwalked before its trail wears away.
     pub fade: u32,
     /// Move cost on a trail.
     pub cost: f64,
 }
 
 pub const TRAIL: TrailRules = TrailRules { after: 10, fade: 30, cost: 1.0 };
+
+pub struct DepletionRules {
+    /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
+    pub rate: f64,
+    /// Wear a food loses a turn it is taken at or under its yield (or not at all).
+    pub recover: f64,
+    /// The most wear a food takes: its cap never falls below `1 - max` of its unworn cap.
+    pub max: f64,
+    /// A tile is depleted when some food's wear is at least this.
+    pub depleted_at: f64,
+}
+
+pub const DEPLETION: DepletionRules = DepletionRules { rate: 0.5, recover: 0.02, max: 0.6, depleted_at: 0.1 };
 
 pub struct TendingRules {
     /// Turns in a row held before its grain starts to tame.
@@ -221,9 +234,12 @@ pub struct TendingRules {
     pub tame_turns: u32,
     /// A hearth's grain cap as a multiple of its wild grain.
     pub domestic: f64,
+    /// Past a hearth, the grain cap rises by this multiple of its wild grain for each further
+    /// `tame_turns` of taming: slower than the way to a hearth, and never capped.
+    pub beyond: f64,
 }
 
-pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5 };
+pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5, beyond: 0.25 };
 
 pub struct MarketRules {
     /// Turns a home must have been held for a market to form there.

@@ -187,10 +187,12 @@ pub fn site_value(w: &World, site: usize, people: f64, store: &Basket) -> f64 {
 
 /// The `harvest` step: each clan in a shuffled order walks to every tile of its territory and
 /// harvests what its labour divided over them reaps, first come first served. Every tile walked
-/// this turn, inside a territory or on a route, is marked `walked`.
+/// this turn, inside a territory or on a route, is marked `walked`; each tile's take is recorded
+/// for `land::wear`.
 pub fn harvest(w: &mut World) {
     for t in &mut w.tiles {
         t.walked = false;
+        t.take = [0.0; N];
     }
     for id in shuffled(w) {
         let c = &w.clans[&id];
@@ -198,8 +200,10 @@ pub fn harvest(w: &mut World) {
         let takes = reap(w, c.people, &c.store, &c.routes, &c.territory, &yearly);
         let routes = c.routes.clone();
         for (&i, t) in walks.tiles.iter().zip(&takes) {
-            for (s, x) in w.tiles[i].stock.iter_mut().zip(t) {
-                *s = (*s - x).max(0.0);
+            let tile = &mut w.tiles[i];
+            for (f, x) in t.iter().enumerate() {
+                tile.stock[f] = (tile.stock[f] - x).max(0.0);
+                tile.take[f] += x;
             }
         }
         actors::mark_walked(w, &walks, &routes);
