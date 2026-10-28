@@ -25,6 +25,6 @@ Nothing else has run, so these are guesses; an estimate that uses one says so.
 
 ## M2's challenge
 
-- Each piece runs at least one step on Haiku.
+- Each piece runs at least one step on Haiku, except a Magnum piece.
 - Each piece runs at least one step off what its points give, and its `why` says what it
   expects to happen.
