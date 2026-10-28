@@ -1,6 +1,6 @@
 // The map canvas: pan, zoom, picking, and the drawing. Terrain, rivers and closed country go to an
 // offscreen layer redrawn only when the view or a toggle changes; what a turn changes (territory,
-// rounds, markets, clans) is drawn over it. World units: a hex has circumradius 1, so tile (q, r)
+// routes, markets, clans) is drawn over it. World units: a hex has circumradius 1, so tile (q, r)
 // is centred at (sqrt3 (q + r/2), 1.5 r).
 
 const SQRT3 = Math.sqrt(3);
@@ -23,6 +23,9 @@ const CORNER = [0, 1, 2, 3, 4, 5].map((i) => [Math.cos((Math.PI / 3) * i - Math.
 const EDGE_DIR = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
 
 /** A colour from a clan's id. */
+/** A clan's festival route as tiles: home, then the path to the festival (just home with none). */
+const walkOf = (c) => [c.home, ...(c.routes.length ? c.routes[0].path : [])];
+
 export const hue = (id) => `hsl(${(id * 137.508) % 360} 70% 55%)`;
 
 const fertilityColor = (f) => {
@@ -44,7 +47,7 @@ export class MapView {
     this.lctx = this.layer.getContext('2d');
     this.opts = opts;
     this.terrain = opts.terrain;
-    this.options = { fertility: false, territory: true, rounds: true, markets: true, hidden: false, civs: true };
+    this.options = { fertility: false, territory: true, routes: true, wear: true, markets: true, hidden: false, civs: true };
     this.routes = []; // [{unit, tiles: [from, ...path], selected}]: the player's units' routes
     this.civShapes = [];
     this.cx = 0; this.cy = 0; this.k = 8;
@@ -89,8 +92,8 @@ export class MapView {
     this.byName = Object.fromEntries(this.names.map((nm, i) => [nm, i]));
     this.vis = new Int32Array(n);
     this.nvis = 0;
-    this.owner = new Int32Array(n);
     this.claim = new Int32Array(n);
+    this.worn = new Float64Array(n);
     this.reach = new Uint8Array(n);
     this.v = null;
     this.selected = -1;
@@ -107,23 +110,16 @@ export class MapView {
     return this.grid[(q + R) * this.side + (r + R)];
   }
 
-  /** Takes `Sim.view()` (already parsed) and works out territory, claims, hearths and reach. */
+  /** Takes `Sim.view()` (already parsed) and works out territory, wear, hearths and reach. */
   setDynamic(v) {
     this.v = v;
     const n = this.n;
-    this.owner.fill(0);
     this.claim.fill(0);
+    this.worn.fill(0);
     this.reach.fill(0);
     for (const [i, c] of v.claims) this.claim[i] = c;
-    for (const c of Object.values(v.clans)) {
-      for (const i of c.round) {
-        if (this.owner[i] === 0) this.owner[i] = c.id;
-        for (let d = 0; d < 6; d++) {
-          const j = this.nb[i * 6 + d];
-          if (j >= 0 && this.land[j] && this.owner[j] === 0) this.owner[j] = c.id;
-        }
-      }
-    }
+    // A tile's wear is its most worn food's share.
+    for (const [i, worn] of v.wear) this.worn[i] = Math.max(...worn);
     const tameTurns = this.opts.rules.tame_turns;
     const tame = new Map(v.tame);
     this.hearths = [];
@@ -176,11 +172,9 @@ export class MapView {
     this.requestDraw();
   }
 
-  /** The clan holding tile `i` through its round, or its territory, as `[clan, how]`. */
-  holder(i) {
-    if (this.claim[i]) return [this.claim[i], 'round'];
-    if (this.owner[i]) return [this.owner[i], 'territory'];
-    return null;
+  /** The clan whose territory holds tile `i`, or null. */
+  clanAt(i) {
+    return this.claim[i] || null;
   }
 
   setOptions(o) {
@@ -708,7 +702,7 @@ export class MapView {
     for (const c of Object.values(v.clans)) {
       const civId = this.clanCiv.get(c.id);
       if (civId == null || !onScreen(c.home)) continue;
-      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.pop))) + px * 3.4;
+      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.people))) + px * 3.4;
       const x = this.px[c.home], y = this.py[c.home];
       for (const [col, w] of [[casing, 4.2], [v.civs[civId].color, 2.2]]) {
         ctx.strokeStyle = col;
@@ -835,7 +829,7 @@ export class MapView {
       const byClan = new Map();
       for (let a = 0; a < this.nvis; a++) {
         const i = this.vis[a];
-        const o = this.owner[i];
+        const o = this.claim[i];
         if (!o) continue;
         let list = byClan.get(o);
         if (!list) byClan.set(o, (list = []));
@@ -856,13 +850,27 @@ export class MapView {
         for (const i of list) {
           for (let d = 0; d < 6; d++) {
             const j = this.nb[i * 6 + d];
-            if (j >= 0 && this.owner[j] === id) continue;
+            if (j >= 0 && this.claim[j] === id) continue;
             const e = (d + 1) % 6;
             ctx.moveTo(this.px[i] + CORNER[d][0], this.py[i] + CORNER[d][1]);
             ctx.lineTo(this.px[i] + CORNER[e][0], this.py[i] + CORNER[e][1]);
           }
         }
         ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Worn land: a dark wash, darker the more its most worn food is worn (dark, so it shows on hills too).
+    if (this.options.wear) {
+      ctx.fillStyle = '#1a0f07';
+      for (let a = 0; a < this.nvis; a++) {
+        const i = this.vis[a];
+        if (this.worn[i] <= 0) continue;
+        ctx.globalAlpha = Math.min(0.6, this.worn[i]);
+        ctx.beginPath();
+        this.hexAt(ctx, i, 0.98);
+        ctx.fill();
       }
       ctx.globalAlpha = 1;
     }
@@ -892,22 +900,24 @@ export class MapView {
     ctx.fill();
     ctx.stroke();
 
-    // Rounds: a closed line through the tiles' centres, back to home.
-    if (this.options.rounds) {
-      const clans = Object.values(v.clans).filter((c) => c.round.length >= 2);
+    // Festival routes: a dashed line from home along the path to the festival, in the clan's colour
+    // (dashed, so a route does not read as a river).
+    if (this.options.routes) {
+      const clans = Object.values(v.clans).filter((c) => walkOf(c).length >= 2);
+      ctx.setLineDash([Math.max(px * 6, 0.5), Math.max(px * 4, 0.35)]);
       for (const casing of [true, false]) {
-        ctx.lineWidth = casing ? Math.max(px * 3.4, 0.2) : Math.max(px * 1.8, 0.12);
+        ctx.lineWidth = casing ? Math.max(px * 5, 0.25) : Math.max(px * 2.6, 0.14);
         for (const c of clans) {
           ctx.strokeStyle = casing ? 'rgba(0,0,0,0.5)' : hue(c.id);
           ctx.beginPath();
-          c.round.forEach((i, n) => {
+          walkOf(c).forEach((i, n) => {
             if (n === 0) ctx.moveTo(this.px[i], this.py[i]);
             else ctx.lineTo(this.px[i], this.py[i]);
           });
-          ctx.closePath();
           ctx.stroke();
         }
       }
+      ctx.setLineDash([]);
     }
 
     // Markets: a ring with the reach outlined; centres picked out.
@@ -932,7 +942,7 @@ export class MapView {
     for (const c of Object.values(v.clans)) {
       if (!onScreen(c.home)) continue;
       const x = this.px[c.home], y = this.py[c.home];
-      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.pop)));
+      const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.people)));
       ctx.beginPath();
       ctx.arc(x, y, r, 0, 2 * Math.PI);
       ctx.fillStyle = hue(c.id);
@@ -992,8 +1002,7 @@ export class MapView {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = Math.max(px * 2.6, 0.2);
         ctx.beginPath();
-        c.round.forEach((i, n) => (n === 0 ? ctx.moveTo(this.px[i], this.py[i]) : ctx.lineTo(this.px[i], this.py[i])));
-        ctx.closePath();
+        walkOf(c).forEach((i, n) => (n === 0 ? ctx.moveTo(this.px[i], this.py[i]) : ctx.lineTo(this.px[i], this.py[i])));
         ctx.stroke();
       } else if (hl.market != null && v.markets[hl.market]) {
         tile = v.markets[hl.market].tile;

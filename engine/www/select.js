@@ -74,8 +74,9 @@ export function tileKind(ctx, i) {
 export const marketOn = (ctx, i) => Object.values(ctx.v.markets).find((m) => m.tile === i);
 
 function clanHtml(c, how) {
-  const m = c.market != null ? `market ${c.market}, trip ${f2(c.trip)}` : 'no market';
-  return `<p><b style="color:${clanHue(c.id)}">Clan ${c.id}</b> <span class="dim">(${how})</span><br>${f2(c.pop)} people · fed ${f2(c.fed_ratio)}${c.starving ? ' · <b style="color:#ff7b72">starving</b>' : ''}<br>store ${f2(c.store.reduce((a, b) => a + b, 0))} · round ${c.round.length} tiles, walk ${f2(c.walk)} · ${m}</p>`;
+  const cost = c.routes.reduce((a, r) => a + r.cost, 0);
+  const festival = c.market != null ? `festival ${c.market}, route ${f2(cost)} labour a year` : 'no festival in reach';
+  return `<p><b style="color:${clanHue(c.id)}">Clan ${c.id}</b> <span class="dim">(${how})</span><br>${f2(c.people)} people · territory ${c.territory.length} tiles<br>${festival}<br>fed ${f2(c.fed_ratio)}${c.starving ? ' · <b style="color:#ff7b72">starving</b>' : ''}</p>`;
 }
 
 function marketHtml(ctx, m, how) {
@@ -167,8 +168,7 @@ function tilePanel(ctx, sel) {
     html += clanHtml(v.clans[id], how);
   };
   addClan(sel.clan, 'chosen');
-  const h = view.holder(i);
-  if (h) addClan(h[0], h[1] === 'round' ? 'on its round' : 'in its territory');
+  addClan(view.clanAt(i), 'in its territory');
   const m = sel.market != null ? v.markets[sel.market] : marketOn(ctx, i);
   if (m) html += marketHtml(ctx, m, 'here');
   else if (sel.market != null) html += `<p class="dim">Market ${sel.market} is gone.</p>`;

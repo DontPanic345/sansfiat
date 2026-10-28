@@ -74,29 +74,36 @@ fn land_cover_is_the_share_near_some_territory() {
     let row: Vec<usize> = (-5..5).map(|q| at(q, 0)).collect();
     let isle = [at(0, 3), at(1, 3)];
     let mut w = island(&[row.clone(), isle.to_vec()].concat());
-    // Its territory is q = −5 and −4; within 3 steps of that is q = −5..=−1.
+    // Its territory is q = −5; within 3 steps of that is q = −5..=−2.
     put(&mut w, &[row[0]], 3.0);
-    assert!((land_cover(&w, &[]) - 5.0 / 12.0).abs() < 1e-12);
+    assert!((land_cover(&w, &[]) - 4.0 / 12.0).abs() < 1e-12);
     let m = open(&mut w, row[9]);
-    assert!((land_cover(&w, &[m]) - 0.5).abs() < 1e-12);
+    assert!((land_cover(&w, &[m]) - 0.4).abs() < 1e-12);
     let m2 = open(&mut w, isle[0]);
     assert_eq!(land_cover(&w, &[m2]), 0.0);
 }
 
 #[test]
-fn the_pregame_ends_with_three_centres_and_the_land_covered() {
+fn the_pregame_ends_with_three_centres_the_land_covered_and_people_levelled_off() {
     let (mut w, ids) = three([4, 4, 4]);
     check_end(&mut w);
     assert_eq!(w.end, None, "nobody lives on the land");
-    // A clan in the middle covers 4 steps out, short of the rim.
+    // A clan in the middle covers 3 steps out, short of the rim.
     put(&mut w, &[at(0, 0)], 3.0);
     check_end(&mut w);
     assert_eq!(w.end, None);
-    assert!((land_cover(&w, &ids) - 61.0 / 91.0).abs() < 1e-12);
+    assert!((land_cover(&w, &ids) - 37.0 / 91.0).abs() < 1e-12);
     // Six more, 4 out, cover it all.
     for d in 0..6 {
         put(&mut w, &[out(d, 4)], 3.0);
     }
+    // Still growing: people were a tenth fewer `settle_turns` ago.
+    let people: f64 = w.clans.values().map(|c| c.people).sum();
+    w.people_seen = vec![people * 0.9; PREGAME.settle_turns];
+    check_end(&mut w);
+    assert_eq!(w.end, None, "people have not levelled off");
+    // Levelled off.
+    w.people_seen = vec![people; PREGAME.settle_turns];
     check_end(&mut w);
     let end = w.end.clone().expect("ended");
     assert_eq!((end.turn, end.centres, end.cover, end.by_limit), (40, ids.to_vec(), 1.0, false));
@@ -138,6 +145,7 @@ fn market(w: &mut World, tile: usize, traders: usize) -> u32 {
 fn grain(w: &mut World, tile: usize, tame: u32, fertility: f64) {
     let t = &mut w.tiles[tile];
     t.wild_grain = 4.0;
+    t.unworn[GRAIN] = 4.0;
     t.cap[GRAIN] = 4.0;
     t.tame = tame;
     t.fertility = fertility;
@@ -196,7 +204,7 @@ fn two_centres_and_no_more_markets_raise_one_on_the_most_tended_tile() {
     let m = &w.markets[&end.topped_up[0]];
     assert_eq!(m.tile, at_big(0, -9));
     assert_eq!((m.founded, m.traders, m.volume), (PREGAME.max_turns - 1, 0, 0.0));
-    assert_eq!((m.activity, &m.goods[..], m.prices), (2.0 * MARKET.min_volume, &[][..], [1.0; N]));
+    assert_eq!((m.activity, &m.goods[..], m.prices), (2.0 * MARKET.min_attendance, &[][..], [1.0; N]));
     assert!(end.by_limit);
     assert_spaced(&w, &end.centres);
 }

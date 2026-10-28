@@ -8,6 +8,7 @@ export const KINDS = {
   clanDivided: { icon: '÷', color: '#8fd18f', label: 'Divisions' },
   clanStarving: { icon: '!', color: '#ff7b72', label: 'Starving' },
   clanMoved: { icon: '→', color: '#9ecbff', label: 'Moves' },
+  clanMerged: { icon: '⇉', color: '#9ecbff', label: 'Merges' },
   marketFormed: { icon: '◉', color: '#ffd479', label: 'Markets formed' },
   marketFaded: { icon: '○', color: '#a8a8a8', label: 'Markets faded' },
   hearthTamed: { icon: '■', color: '#ffd400', label: 'Hearths' },

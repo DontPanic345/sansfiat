@@ -5,11 +5,11 @@ mod common;
 use std::collections::VecDeque;
 
 use common::*;
+use engine::actors::Walks;
 use engine::data::*;
 use engine::land::{cost_map, step_cost};
 use engine::map::{generate, index, Tile};
 use engine::markets::reach;
-use engine::round::{cost, leg};
 use engine::World;
 
 const SEEDS: std::ops::RangeInclusive<u32> = 1..=15;
@@ -289,45 +289,36 @@ fn a_path_across_costs_more_and_a_path_along_does_not() {
     assert_eq!(out[&at(-2, 0)], 1.0);
 }
 
-#[test]
-fn a_round_costs_the_same_either_way_round() {
-    let w = river_world();
-    let reversed = |round: &[usize]| -> Vec<usize> {
-        let mut r = round.to_vec();
-        r[1..].reverse();
-        r
-    };
-    let rounds = [
-        // Over the river and back.
-        vec![at(-1, 0), at(1, 0), at(1, -1)],
-        // Onto the river from the bank, down it a step, off to the same bank: crossed once.
-        vec![at(-1, 0), at(0, 0), at(0, 1), at(-1, 1)],
-        // Along the river from a home on it.
-        vec![at(0, 0), at(0, 1), at(0, 2), at(1, 1)],
-        vec![at(0, 0), at(0, -1), at(-1, 0), at(-1, 1)],
-        // Through the river from one bank to the other.
-        vec![at(-1, 0), at(0, 0), at(1, 0), at(1, -1), at(0, -1)],
-    ];
-    for round in rounds {
-        let (there, back) = (cost(&w, &round), cost(&w, &reversed(&round)));
-        assert_eq!(there, back, "{round:?}");
-        assert!(there.is_finite());
-    }
-    // A single leg differs by direction only at a river endpoint.
-    assert_eq!(leg(&w, at(-1, 0), at(-1, 0), at(0, 0)), Some(1.0 + RIVER.cross));
-    assert_eq!(leg(&w, at(-1, 0), at(0, 0), at(-1, 0)), Some(1.0));
-    assert_eq!(leg(&w, at(-1, 0), at(-1, 0), at(1, 0)), leg(&w, at(-1, 0), at(1, 0), at(-1, 0)));
+/// The path cost from `home` to `to` over `territory`, as a clan walks it.
+fn walk(w: &World, home: usize, territory: &[usize], to: usize) -> f64 {
+    let mut t = territory.to_vec();
+    t.sort_unstable();
+    let walks = Walks::new(w, home, &t);
+    walks.cost[t.iter().position(|&i| i == to).unwrap()]
 }
 
 #[test]
-fn a_trail_on_the_river_bridges_rounds_and_market_reach() {
+fn a_walk_inside_a_territory_crosses_the_river_once() {
+    let w = river_world();
+    let (west, ford, east, down) = (at(-1, 0), at(0, 0), at(1, 0), at(0, 1));
+    assert_eq!(walk(&w, west, &[west, ford, east], east), 2.0 + RIVER.cross);
+    // Onto the river and along it: the crossing once.
+    assert_eq!(walk(&w, west, &[west, ford, down], down), 2.0 + RIVER.cross);
+    // From a home on the river, along it and off: no crossing.
+    assert_eq!(walk(&w, ford, &[ford, down, at(1, 0)], down), 1.0);
+    // Only the territory's own tiles are walked.
+    assert_eq!(walk(&w, west, &[west, east], east), f64::INFINITY);
+}
+
+#[test]
+fn a_trail_on_the_river_bridges_walks_and_market_reach() {
     let mut w = river_world();
     let (west, ford, east) = (at(-1, 0), at(0, 0), at(1, 0));
-    let round = [west, east];
-    assert_eq!(cost(&w, &round), 2.0 * (2.0 + RIVER.cross));
+    let territory = [west, ford, east];
+    assert_eq!(walk(&w, west, &territory, east), 2.0 + RIVER.cross);
     assert!(!reach(&w, west).contains_key(&east), "across the river is out of reach");
     w.tiles[ford].trail = true;
-    assert_eq!(cost(&w, &round), 4.0);
+    assert_eq!(walk(&w, west, &territory, east), 2.0);
     assert_eq!(reach(&w, west)[&east], 2.0);
     // A trail at the course changes nothing along it.
     w.tiles[at(0, 1)].trail = true;

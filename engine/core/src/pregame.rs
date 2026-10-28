@@ -10,7 +10,6 @@ use crate::data::*;
 use crate::land::{is_hearth, neighbours, passable};
 use crate::map::{Tile, Zone};
 use crate::markets::{raise, reach, Market};
-use crate::round;
 use crate::world::{EventKind, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -86,7 +85,7 @@ pub fn land_cover(w: &World, centres: &[u32]) -> f64 {
     let mut dist: Vec<Option<i32>> = vec![None; n];
     let mut queue = VecDeque::new();
     for c in w.clans.values() {
-        for t in round::territory(w, &c.round) {
+        for &t in &c.territory {
             if dist[t].is_none() {
                 dist[t] = Some(0);
                 queue.push_back(t);
@@ -206,12 +205,12 @@ fn top_up(w: &mut World, centres: &mut Vec<u32>) -> Vec<u32> {
                 size[r] += 1;
             }
             for c in w.clans.values().filter(|c| label[c.home] != usize::MAX) {
-                people[label[c.home]] += c.pop;
+                people[label[c.home]] += c.people;
             }
             let lead = w
                 .clans
                 .values()
-                .max_by(|a, b| a.pop.total_cmp(&b.pop).then(b.id.cmp(&a.id)))
+                .max_by(|a, b| a.people.total_cmp(&b.people).then(b.id.cmp(&a.id)))
                 .map(|c| label[c.home])
                 .filter(|&r| r != usize::MAX);
             let mut rest: Vec<usize> = (0..count).filter(|&r| Some(r) != lead).collect();
@@ -242,7 +241,20 @@ fn top_up(w: &mut World, centres: &mut Vec<u32>) -> Vec<u32> {
     added
 }
 
-/// The `end` step: the pre-game ends with `players` centres and the land covered, or at
+/// Whether people have levelled off: counted every turn, they changed by under `settled` over
+/// the last `settle_turns` turns. Records this turn's count.
+fn settled(w: &mut World) -> bool {
+    let people: f64 = w.clans.values().map(|c| c.people).sum();
+    w.people_seen.push(people);
+    if w.people_seen.len() > PREGAME.settle_turns + 1 {
+        w.people_seen.remove(0);
+    }
+    let first = w.people_seen[0];
+    w.people_seen.len() > PREGAME.settle_turns && first > 0.0 && ((people - first) / first).abs() < PREGAME.settled
+}
+
+/// The `end` step: the pre-game ends with `players` centres, the land covered and people
+/// levelled off (`settled`), or at
 /// `max_turns`, topping up to `players` centres if it got there with fewer. Only the first end
 /// is kept; turns may run on after it.
 pub fn check_end(w: &mut World) {
@@ -262,7 +274,8 @@ pub fn check_end(w: &mut World) {
             w.centres_seen.push(id);
         }
     }
-    let by_centres = centres.len() == PREGAME.players && land_cover(w, &centres) >= PREGAME.cover;
+    let settled = settled(w);
+    let by_centres = settled && centres.len() == PREGAME.players && land_cover(w, &centres) >= PREGAME.cover;
     if !by_centres && w.turn + 1 < PREGAME.max_turns {
         return;
     }

@@ -1,6 +1,6 @@
 use engine::data::{CIV, PREGAME, SIZES, TENDING, UNIT};
 use engine::map::Tile;
-use engine::{civs, stats, units, Action, Config, Phase, Save, World, FOODS, TERRAIN};
+use engine::{civs, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
 use std::collections::BTreeMap;
 
 use wasm_bindgen::prelude::*;
@@ -60,8 +60,10 @@ impl Sim {
     }
 
     /// What changes each turn, as JSON: `{turn, end, phase, player, clans, markets, trails, tame, claims,
-    /// civs, units, clan_civ, summary}`. `trails` lists the tiles with one, `tame` is `[tile, turns]`
-    /// where above zero, `claims` is `[tile, clan]` for every tile on a round. `phase` is as `phase()`;
+    /// wear, civs, units, clan_civ, summary}`. `trails` lists the tiles with one, `tame` is `[tile, turns]`
+    /// where above zero, `claims` is `[tile, clan]` for every tile in a territory, `wear` is `[tile, worn,
+    /// unworn]` for every tile with some food worn (each food's wear as a share, `0..=1`, and its cap before
+    /// wear, in `goods()` order). `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
     /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, territory (the
     /// capital's tiles), work (its work tiles)}}`; `units` is `{id: {id, civ, kind, tile, dest, banked,
@@ -73,6 +75,13 @@ impl Sim {
             w.tiles.iter().enumerate().filter(|(_, t)| t.tame > 0).map(|(i, t)| (i, t.tame)).collect();
         let claims: Vec<(usize, u32)> =
             w.tiles.iter().enumerate().filter_map(|(i, t)| t.claim.map(|c| (i, c))).collect();
+        let wear: Vec<(usize, Basket, Basket)> = w
+            .tiles
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.wear.iter().any(|&x| x > 0.0))
+            .map(|(i, t)| (i, t.wear, t.unworn))
+            .collect();
         let civ_rows: BTreeMap<u32, serde_json::Value> = w
             .civs
             .values()
@@ -87,7 +96,7 @@ impl Sim {
                     "founded": c.founded,
                     "store": c.store,
                     "lost": c.lost,
-                    "people": mine.clone().map(|k| k.pop).sum::<f64>(),
+                    "people": mine.clone().map(|k| k.people).sum::<f64>(),
                     "clans": mine.count(),
                     "territory": civs::territory(w, c.id),
                     "work": civs::work_tiles(w, c.id),
@@ -106,6 +115,7 @@ impl Sim {
             "trails": trails,
             "tame": tame,
             "claims": claims,
+            "wear": wear,
             "civs": civ_rows,
             "units": w.units,
             "clan_civ": clan_civ,

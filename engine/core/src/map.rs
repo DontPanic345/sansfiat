@@ -28,14 +28,27 @@ pub struct Tile {
     pub terrain: usize,
     /// Scales the terrain's food caps, `FERTILITY.0..=FERTILITY.1`.
     pub fertility: f64,
+    /// Each food's cap now: `unworn × (1 − wear)`.
     pub cap: Basket,
     pub stock: Basket,
+    /// Each food's cap before wear: the generated cap, and for grain the tamed cap.
+    pub unworn: Basket,
+    /// Each food's wear, `0..=DEPLETION.max`.
+    pub wear: Basket,
+    /// What clans took of each food this turn: set in the harvest step, read by `wear`.
+    pub take: Basket,
     /// The grain cap before taming.
     pub wild_grain: f64,
     pub tame: u32,
-    /// The clan whose round the tile is on.
+    /// The clan whose territory holds the tile.
     pub claim: Option<u32>,
-    /// Turns in a row on a round, and on none.
+    /// Walked this turn, on a path inside a territory (not its home) or on a route: set in the
+    /// harvest step.
+    pub walked: bool,
+    /// Turns in a row walked, and in a row not.
+    pub walk_run: u32,
+    pub rest_run: u32,
+    /// Turns in a row held, and held by nobody.
     pub held: u32,
     pub unheld: u32,
     pub trail: bool,
@@ -300,9 +313,15 @@ fn finish(geo: &Geo, rng: &mut u32, base: &Base, mut terrain: Vec<usize>, zone: 
             fertility: fertility[i],
             cap: [0.0; N],
             stock: [0.0; N],
+            unworn: [0.0; N],
+            wear: [0.0; N],
+            take: [0.0; N],
             wild_grain: 0.0,
             tame: 0,
             claim: None,
+            walked: false,
+            walk_run: 0,
+            rest_run: 0,
             held: 0,
             unheld: 0,
             trail: false,
@@ -746,12 +765,14 @@ fn round1(v: f64) -> f64 {
     (v * 10.0).round() / 10.0
 }
 
-/// Every tile's food caps from its terrain, its river and its fertility, and its stock full.
-/// Floodplains and deltas set the tile's terrain and fertility before this runs.
+/// Every tile's food caps from its terrain, its river and its fertility (unworn, as they are
+/// first made), and its stock full. Floodplains and deltas set the tile's terrain and fertility
+/// before this runs.
 pub fn finish_caps(tiles: &mut [Tile]) {
     for t in tiles {
         let river = if t.river > 0 { FEATURES.river } else { [0.0; N] };
         t.cap = std::array::from_fn(|f| round1((TERRAIN[t.terrain].food[f] + river[f]) * t.fertility));
+        t.unworn = t.cap;
         t.stock = t.cap;
         t.wild_grain = t.cap[GRAIN];
     }

@@ -1,4 +1,5 @@
-//! Moving over the land, food growing back on it, and what holding it does: trails and tame grain.
+//! Moving over the land, food growing back on it, what taking it wears down, and what walking and
+//! holding it do: trails and tame grain.
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap};
@@ -137,15 +138,64 @@ pub fn regrow(w: &mut World) {
     }
 }
 
+/// A tile's grain cap as a multiple of its wild grain after `tame` turns of taming: from 1 up to
+/// `TENDING.domestic` at a hearth (`tame_turns`), then up by `TENDING.beyond` for each further
+/// `tame_turns`.
+pub fn domestic(tame: u32) -> f64 {
+    let turns = TENDING.tame_turns as f64;
+    let tame = tame as f64;
+    if tame <= turns {
+        1.0 + (TENDING.domestic - 1.0) * tame / turns
+    } else {
+        TENDING.domestic + TENDING.beyond * (tame - turns) / turns
+    }
+}
+
 /// A fully tamed tile: its grain cap is `TENDING.domestic` times its wild grain.
 pub fn is_hearth(t: &Tile) -> bool {
     t.wild_grain > 0.0 && t.tame >= TENDING.tame_turns
 }
 
-/// The `hold` step, after eating: each tile counts the turns it has been on some round, or on
-/// none. Held `TRAIL.after` turns it gets a trail, unheld `TRAIL.fade` it loses it. Grain held
-/// `TENDING.after` turns tames a step a turn, unheld it goes wild a step a turn, and its cap
-/// follows.
+/// A depleted tile: some food's wear is at least `DEPLETION.depleted_at`.
+pub fn is_depleted(t: &Tile) -> bool {
+    t.wear.iter().any(|&v| v >= DEPLETION.depleted_at)
+}
+
+/// Sets each food's cap to its unworn cap less its wear; stock above a fallen cap is cut to it.
+fn settle_caps(t: &mut Tile) {
+    for f in 0..N {
+        t.cap[f] = t.unworn[f] * (1.0 - t.wear[f]);
+        t.stock[f] = t.stock[f].min(t.cap[f]);
+    }
+}
+
+/// The `wear` step, after eating: each food on each tile takes its wear from this turn's take
+/// against its sustainable yield at its cap, the yield `regen × cap` (game breeds, so its most,
+/// `(regen / 4 + restock) × cap`). A take above the yield wears the food by `DEPLETION.rate` times
+/// the excess as a share of the cap; a take at or under it, or none, rests it by
+/// `DEPLETION.recover`. Wear stays in `0..=DEPLETION.max`, and the caps follow it.
+pub fn wear(w: &mut World) {
+    for t in &mut w.tiles {
+        for (f, food) in FOOD.iter().enumerate() {
+            let cap = t.cap[f];
+            let take = t.take[f];
+            let yielded = if food.breeds { (food.regen / 4.0 + food.restock) * cap } else { food.regen * cap };
+            let wear = if cap > 0.0 && take > yielded {
+                t.wear[f] + DEPLETION.rate * (take - yielded) / cap
+            } else {
+                t.wear[f] - DEPLETION.recover
+            };
+            t.wear[f] = wear.clamp(0.0, DEPLETION.max);
+        }
+        settle_caps(t);
+    }
+}
+
+/// The `hold` step, after eating: each tile counts the turns in a row it was walked, and the turns
+/// in a row it wasn't. Walked `TRAIL.after` turns in a row it gets a trail; unwalked `TRAIL.fade`
+/// turns in a row the trail wears away. Holding a tile makes no trail. Each tile also counts the
+/// turns it has been held, or held by nobody: grain held `TENDING.after` turns tames a step a turn
+/// with no ceiling, unheld it goes wild a step a turn; its unworn grain cap follows `domestic`.
 pub fn hold(w: &mut World) {
     let round1 = |v: f64| (v * 10.0).round() / 10.0;
     let turn = w.turn;
@@ -158,9 +208,16 @@ pub fn hold(w: &mut World) {
             t.held = 0;
             t.unheld += 1;
         }
-        if t.held >= TRAIL.after {
+        if t.walked {
+            t.walk_run += 1;
+            t.rest_run = 0;
+        } else {
+            t.rest_run += 1;
+            t.walk_run = 0;
+        }
+        if t.walk_run >= TRAIL.after {
             t.trail = true;
-        } else if t.trail && t.unheld >= TRAIL.fade {
+        } else if t.trail && t.rest_run >= TRAIL.fade {
             t.trail = false;
         }
         if t.wild_grain <= 0.0 {
@@ -168,7 +225,7 @@ pub fn hold(w: &mut World) {
         }
         if held && t.held >= TENDING.after {
             let before = t.tame;
-            t.tame = (t.tame + 1).min(TENDING.tame_turns);
+            t.tame += 1;
             if before < TENDING.tame_turns && t.tame == TENDING.tame_turns {
                 w.events.push(Event {
                     turn,
@@ -184,7 +241,7 @@ pub fn hold(w: &mut World) {
         } else if !held {
             t.tame = t.tame.saturating_sub(1);
         }
-        let tame = t.tame as f64 / TENDING.tame_turns as f64;
-        t.cap[GRAIN] = round1(t.wild_grain * (1.0 + (TENDING.domestic - 1.0) * tame));
+        t.unworn[GRAIN] = round1(t.wild_grain * domestic(t.tame));
+        settle_caps(t);
     }
 }

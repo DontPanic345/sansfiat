@@ -45,16 +45,16 @@ fn steps(w: &World, a: usize, b: usize) -> i32 {
 }
 
 /// The clan of `civ` with the most people (ties to the lower id) among those with at least
-/// `UNIT.min_clan`, from `near` (a round tile within `CIV.territory` of the capital) or from all.
+/// `UNIT.min_clan`, from `near` (a territory tile within `CIV.territory` of the capital) or from all.
 fn giver(w: &World, civ: u32, near: bool) -> Option<u32> {
     let capital = w.civs.get(&civ)?.capital;
     let mut best: Option<(u32, f64)> = None;
-    for c in w.clans.values().filter(|c| c.civ == Some(civ) && c.pop >= UNIT.min_clan) {
-        if near && !c.round.iter().any(|&t| steps(w, t, capital) <= CIV.territory) {
+    for c in w.clans.values().filter(|c| c.civ == Some(civ) && c.people >= UNIT.min_clan) {
+        if near && !c.territory.iter().any(|&t| steps(w, t, capital) <= CIV.territory) {
             continue;
         }
-        if best.is_none_or(|(_, p)| c.pop > p) {
-            best = Some((c.id, c.pop));
+        if best.is_none_or(|(_, p)| c.people > p) {
+            best = Some((c.id, c.people));
         }
     }
     best.map(|(id, _)| id)
@@ -64,7 +64,7 @@ fn giver(w: &World, civ: u32, near: bool) -> Option<u32> {
 fn spawn(w: &mut World, civ: u32, clan: Option<u32>) -> u32 {
     let capital = w.civs[&civ].capital;
     if let Some(c) = clan.and_then(|id| w.clans.get_mut(&id)) {
-        c.pop -= 1.0;
+        c.people -= 1.0;
     }
     let id = w.next_id;
     w.next_id += 1;
@@ -98,7 +98,7 @@ pub fn disband(w: &mut World, unit: u32, starved: bool) {
         .min_by_key(|c| (steps(w, c.home, u.tile), c.id))
         .map(|c| c.id);
     if let Some(c) = clan.and_then(|id| w.clans.get_mut(&id)) {
-        c.pop += 1.0;
+        c.people += 1.0;
     }
     let kind = if starved { EventKind::UnitStarved } else { EventKind::UnitDisbanded };
     w.unit_event(kind, u.tile, u.civ, unit, clan);

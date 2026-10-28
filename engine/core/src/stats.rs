@@ -1,15 +1,12 @@
 //! Numbers read off a world: a summary line, and the evidence that centres form around fertile
 //! land. Nothing here changes the world.
 
-use std::collections::BTreeSet;
-
 use serde::Serialize;
 
 use crate::data::*;
-use crate::land::is_hearth;
+use crate::land::{is_depleted, is_hearth};
 use crate::markets::reach;
 use crate::pregame::{centres, land_cover, End};
-use crate::round;
 use crate::world::World;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -19,13 +16,18 @@ pub struct Summary {
     pub people: f64,
     pub mean_fed: f64,
     pub starving: usize,
-    /// Tiles on some clan's round.
-    pub held: usize,
     /// Tiles in some clan's territory.
-    pub territory: usize,
-    pub round_len: f64,
-    pub round_cost: f64,
+    pub held: usize,
+    /// Mean tiles in a clan's territory.
+    pub territory: f64,
+    /// Mean labour a clan's walks inside its territory cost this turn.
+    pub walk_cost: f64,
+    /// People moved between clans at festivals last turn, and over the whole run.
+    pub moved: f64,
+    pub moved_total: f64,
     pub trails: usize,
+    /// Tiles depleted: some food's wear is at least `DEPLETION.depleted_at`.
+    pub depleted: usize,
     pub hearths: usize,
     pub markets: usize,
     /// Clans with a market.
@@ -37,23 +39,21 @@ pub struct Summary {
 
 pub fn summary(w: &World) -> Summary {
     let n = w.clans.len().max(1) as f64;
-    let mut territory = BTreeSet::new();
-    for c in w.clans.values() {
-        territory.extend(round::territory(w, &c.round));
-    }
     let centres = w.end.as_ref().map_or_else(|| centres(w), |e| e.centres.clone());
     let cover = land_cover(w, &centres);
     Summary {
         turn: w.turn,
         clans: w.clans.len(),
-        people: w.clans.values().map(|c| c.pop).sum(),
+        people: w.clans.values().map(|c| c.people).sum(),
         mean_fed: w.clans.values().map(|c| c.fed_ratio).sum::<f64>() / n,
         starving: w.clans.values().filter(|c| c.starving).count(),
         held: w.tiles.iter().filter(|t| t.claim.is_some()).count(),
-        territory: territory.len(),
-        round_len: w.clans.values().map(|c| c.round.len() as f64).sum::<f64>() / n,
-        round_cost: w.clans.values().map(|c| round::cost(w, &c.round)).sum::<f64>() / n,
+        territory: w.clans.values().map(|c| c.territory.len() as f64).sum::<f64>() / n,
+        walk_cost: w.clans.values().map(|c| c.walk).sum::<f64>() / n,
+        moved: w.markets.values().map(|m| m.moved).sum(),
+        moved_total: w.moved,
         trails: w.tiles.iter().filter(|t| t.trail).count(),
+        depleted: w.tiles.iter().filter(|t| is_depleted(t)).count(),
         hearths: w.tiles.iter().filter(|t| is_hearth(t)).count(),
         markets: w.markets.len(),
         trading: w.clans.values().filter(|c| c.market.is_some()).count(),

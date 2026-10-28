@@ -67,7 +67,7 @@ pub fn found(w: &mut World) {
         .filter_map(|c| {
             let mut best: Option<(u32, f64)> = None;
             for (id, r) in &reaches {
-                let cost = c.round.iter().filter_map(|t| r.get(t)).copied().min_by(f64::total_cmp);
+                let cost = c.territory.iter().filter_map(|t| r.get(t)).copied().min_by(f64::total_cmp);
                 // Civs come in id order, so only a strictly cheaper one replaces.
                 if let Some(cost) = cost {
                     if best.is_none_or(|(_, b)| cost < b) {
@@ -121,7 +121,7 @@ pub fn territory(w: &World, civ: u32) -> Vec<usize> {
 }
 
 /// The civ whose capital is within `CIV.territory` hex steps of tile `i` (capitals are far enough
-/// apart that two never claim a tile); else the civ of the clan whose round holds it; else none.
+/// apart that two never claim a tile); else the civ of the clan whose territory holds it; else none.
 pub fn tile_civ(w: &World, i: usize) -> Option<u32> {
     w.civs
         .values()
@@ -221,7 +221,7 @@ pub fn cards(w: &World) -> Vec<Card> {
                 q: h.q,
                 r: h.r,
                 clans: mine_clans.clone().count(),
-                people: mine_clans.map(|k| k.pop).sum(),
+                people: mine_clans.map(|k| k.people).sum(),
                 hearths: mine.iter().filter(|&&i| is_hearth(&w.tiles[i])).count(),
                 terrain,
                 rival_steps: rivals.iter().map(|&t| steps(w, c.capital, t)).min(),

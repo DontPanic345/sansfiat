@@ -182,6 +182,11 @@ export const open = async (query = '', { width = 1280, height = 800 } = {}) => {
     },
     /** Right-clicks tile `i`: the selected unit's order. */
     command: (i) => mouse(i, 'right'),
+    /** Moves the pointer onto tile `i`: its tooltip shows after a moment. */
+    hover: async (i) => {
+      const { x, y } = await tile(i);
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+    },
     /** Clicks the first enabled visible button whose text starts with `label`. */
     button: async (label) => {
       const seen = await evaluate(`(() => {

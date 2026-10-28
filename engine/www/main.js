@@ -439,13 +439,34 @@ function showTip(i, x, y) {
   }
 }
 
+/** What a held tile says of its clan: a home names the festival its clan walks to. */
+function clanTip(i, id) {
+  const c = v.clans[id];
+  if (c.home !== i) return `Clan ${id}'s territory`;
+  if (c.market == null) return `Clan ${id}'s home, no festival in reach`;
+  const here = c.routes.length === 0 || c.routes[0].path.length === 0;
+  return `Clan ${id}'s home, ${here ? `its festival ${c.market} is here` : `walks to festival ${c.market}`}`;
+}
+
+/** A worn tile's foods as shares, each with the cap it would have unworn. */
+function wearTip(i) {
+  const w = v.wear.find(([t]) => t === i);
+  if (!w) return [];
+  const [, worn, unworn] = w;
+  return GOODS.flatMap((g, f) => {
+    const pct = Math.round(100 * worn[f]);
+    return pct > 0 ? [`${g} worn ${pct}%, unworn cap ${f2(unworn[f])}`] : [];
+  });
+}
+
 function fillTip(i) {
   tipTile = i;
-  const h = view.holder(i);
+  const h = view.clanAt(i);
   const lines = [`<b>${tileKind(ctx(), i)}</b>`];
   if (layout.terrain[i] !== 0 && TERRAIN[layout.terrain[i]].land) {
-    lines.push(h ? `Held by clan ${h[0]} <span class="dim">(${h[1]})</span>` : 'Held by nobody');
+    lines.push(h ? clanTip(i, h) : 'Held by nobody');
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
+    lines.push(...wearTip(i));
   }
   const civ = sim.tile_civ(i);
   if (civ >= 0 && v.civs[civ]) {
@@ -453,7 +474,7 @@ function fillTip(i) {
     const name = `<i class="sw" style="background:${c.color}"></i>${c.name}`;
     if (c.capital === i) lines.push(`${name}'s capital`);
     else if (c.territory.includes(i)) lines.push(`${name}'s land <span class="dim">(capital territory)</span>`);
-    else if (h) lines.push(`${name}, clan ${h[0]}'s ${h[1] === 'round' ? 'round' : 'territory'}`);
+    else if (h) lines.push(`${name}, clan ${h}'s territory`);
     else lines.push(`${name}'s land`);
   }
   const here = Object.values(v.units).filter((u) => u.tile === i);
@@ -504,7 +525,8 @@ function legend() {
     [sw('background:transparent;border:2px solid #b070e0'), 'neck'],
     [sw('background:#fff2b0;border-radius:50%;width:10px;height:10px;margin:2px 4px;border-color:#3a2c00'), 'pass'],
     [sw('background:hsla(200,70%,55%,.35);border:1px solid hsl(200,70%,55%)'), 'territory'],
-    [sw('background:transparent;border:0;border-top:2px solid hsl(40,70%,55%);height:0;margin:6px 0'), 'round'],
+    [sw('background:rgba(26,15,7,.6)'), 'worn land'],
+    [sw('background:transparent;border:0;border-top:3px dashed hsl(120,70%,55%);height:0;margin:5px 0'), 'festival route'],
     [sw('background:#f2dca4;border:0;height:3px;margin:5px 0'), 'trail'],
     [sw('background:#ffd400;width:9px;height:9px;margin:2px 4px;border-color:#3a2c00'), 'hearth'],
     [sw('background:transparent;border:2px solid #fff;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'market'],
@@ -544,7 +566,7 @@ $('dice').onclick = () => {
 $('seed').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') newMap();
 });
-for (const key of ['fertility', 'territory', 'rounds', 'markets', 'hidden', 'civs']) {
+for (const key of ['fertility', 'territory', 'wear', 'routes', 'markets', 'hidden', 'civs']) {
   $(`v-${key}`).onchange = (e) => view.setOptions({ [key]: e.target.checked });
 }
 $('zin').onclick = () => view.zoomBy(1.4);

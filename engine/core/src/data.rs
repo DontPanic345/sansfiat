@@ -204,9 +204,9 @@ pub const FOOD: [Food; N] = [
 pub const FERTILITY: (f64, f64) = (0.4, 2.0);
 
 pub struct TrailRules {
-    /// Turns in a row on a round before a tile gets a trail.
+    /// Turns in a row walked (inside a territory or on a route) before a tile gets a trail.
     pub after: u32,
-    /// Turns on nobody's round before it wears away.
+    /// Turns in a row unwalked before its trail wears away.
     pub fade: u32,
     /// Move cost on a trail.
     pub cost: f64,
@@ -214,32 +214,62 @@ pub struct TrailRules {
 
 pub const TRAIL: TrailRules = TrailRules { after: 10, fade: 30, cost: 1.0 };
 
+pub struct DepletionRules {
+    /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
+    pub rate: f64,
+    /// Wear a food loses a turn it is taken at or under its yield (or not at all).
+    pub recover: f64,
+    /// The most wear a food takes: its cap never falls below `1 - max` of its unworn cap.
+    pub max: f64,
+    /// A tile is depleted when some food's wear is at least this.
+    pub depleted_at: f64,
+}
+
+pub const DEPLETION: DepletionRules = DepletionRules { rate: 0.2, recover: 0.05, max: 0.6, depleted_at: 0.1 };
+
 pub struct TendingRules {
-    /// Turns in a row on a round before its grain starts to tame.
+    /// Turns in a row held before its grain starts to tame.
     pub after: u32,
     /// Steps of `tame` to a hearth: one a turn held, one back a turn unheld.
     pub tame_turns: u32,
     /// A hearth's grain cap as a multiple of its wild grain.
     pub domestic: f64,
+    /// Past a hearth, the grain cap rises by this multiple of its wild grain for each further
+    /// `tame_turns` of taming: slower than the way to a hearth, and never capped.
+    pub beyond: f64,
 }
 
-pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5 };
+pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5, beyond: 0.1 };
 
 pub struct MarketRules {
     /// Turns a home must have been held for a market to form there.
     pub form_after: u32,
     /// Hex steps from every other market.
     pub spacing: i32,
-    /// Path cost from the market a clan's round must come within.
+    /// Path cost from a market's tile that counts as its land: for a centre's hearths and the
+    /// clans a civ founded there takes in.
     pub reach: f64,
-    /// Clans in reach for a market to form.
-    pub min_clans: usize,
+    /// The most a festival route may cost a turn (`walk_cost`, there and back) for a clan to
+    /// weigh going, and for a clan to count as in reach of a home where a market might form.
+    pub reach_walk: f64,
     /// How much of last turn's activity is kept.
     pub fade: f64,
-    /// A market whose activity falls under this goes.
-    pub min_volume: f64,
-    /// Labour a clan with a surplus is willing to walk to gather.
+    /// A market whose activity (clans that came, smoothed) falls under this goes.
+    pub min_attendance: f64,
+    /// The most food a clan brings to a festival, a person.
+    pub carry: f64,
+    /// A starving clan offers this × people × (1 − fed_ratio) people at a festival.
+    pub shed: f64,
+    /// Labour a clan with a surplus is willing to walk to gather, on top of `desire`.
     pub gather_bonus: f64,
+    /// Labour any clan is willing to walk to gather.
+    pub desire: f64,
+    /// More labour for each clan that came to the festival last turn ("to see others")…
+    pub company: f64,
+    /// …counting at most this many.
+    pub company_cap: usize,
+    /// How much more another festival must be worth, in labour, for a clan to change to it.
+    pub switch_margin: f64,
     /// A store of at least this × people is a surplus.
     pub surplus_at: f64,
 }
@@ -248,10 +278,16 @@ pub const MARKET: MarketRules = MarketRules {
     form_after: 20,
     spacing: 8,
     reach: 3.0,
-    min_clans: 4,
+    reach_walk: 20.0,
     fade: 0.9,
-    min_volume: 1.0,
-    gather_bonus: 6.0,
+    min_attendance: 0.5,
+    carry: 0.2,
+    shed: 1.0,
+    gather_bonus: 8.0,
+    desire: 3.0,
+    company: 1.0,
+    company_cap: 6,
+    switch_margin: 1.0,
     surplus_at: 0.1,
 };
 
@@ -268,6 +304,10 @@ pub struct PregameRules {
     pub cover: f64,
     /// …within this many hex steps.
     pub cover_steps: i32,
+    /// People must have changed by under this share…
+    pub settled: f64,
+    /// …over this many turns.
+    pub settle_turns: usize,
     /// The backstop.
     pub max_turns: u32,
 }
@@ -279,6 +319,8 @@ pub const PREGAME: PregameRules = PregameRules {
     centre_spacing: 10,
     cover: 0.8,
     cover_steps: 3,
+    settled: 0.05,
+    settle_turns: 100,
     max_turns: 500,
 };
 
@@ -295,14 +337,16 @@ pub struct ClanRules {
     pub harvest_labour: f64,
     /// Most of a tile's stock a clan takes in a turn.
     pub take_rate: f64,
-    /// A clan plans to harvest up to this × need, less its store.
+    /// A clan harvests up to this × need, less its store.
     pub surplus_target: f64,
     /// A food counts in full up to this share of need…
     pub diet_share: f64,
     /// …and at this beyond it.
     pub excess_value: f64,
-    /// Growth when fed: just moved → settled.
+    /// The most a fed clan grows a turn: just moved → settled.
     pub growth: (f64, f64),
+    /// It grows that much when this turn's harvest beyond need is this × need, less in proportion.
+    pub grow_full: f64,
     /// Turns to reach the settled growth rate.
     pub settle_turns: u32,
     /// Fed below this share, a clan starves.
@@ -315,6 +359,8 @@ pub struct ClanRules {
     pub split_at: f64,
     /// A starving clan this big sends a daughter.
     pub hungry_split: f64,
+    /// A clan under this many people at a festival merges into another there.
+    pub min_pop: f64,
     /// A daughter's site must feed her this well.
     pub settle_fed: f64,
     /// Starving turns before a clan moves on.
@@ -327,12 +373,12 @@ pub struct ClanRules {
     pub scout_range: i32,
     /// Softness of site choice.
     pub choice_spread: f64,
-    /// Gain a round change must make.
+    /// Gain in value (food per person) a hungry clan's change of territory must make.
     pub land_margin: f64,
-    /// No round tile is further than this from home.
+    /// No territory tile is further than this from home, in hex steps.
     pub territory_radius: i32,
-    /// Path cost from the round a clan will fetch food.
-    pub fetch_range: f64,
+    /// The weight of a clan's walks to its own tiles (`actors::walk_cost`): little, but not nothing.
+    pub inside: f64,
 }
 
 pub const CLAN: ClanRules = ClanRules {
@@ -342,25 +388,27 @@ pub const CLAN: ClanRules = ClanRules {
     work: 3.5,
     harvest_labour: 1.0,
     take_rate: 0.5,
-    surplus_target: 1.5,
+    surplus_target: 2.0,
     diet_share: 0.4,
     excess_value: 0.3,
-    growth: (0.03, 0.07),
+    growth: (0.05, 0.15),
+    grow_full: 0.05,
     settle_turns: 30,
     stable_at: 0.8,
     starve: 0.5,
     spoilage: 0.1,
-    split_at: 12.0,
-    hungry_split: 8.0,
+    split_at: 8.0,
+    hungry_split: 5.0,
+    min_pop: 2.0,
     settle_fed: 0.9,
     patience: 3,
     move_range: 4,
     move_margin: 0.1,
-    scout_range: 6,
+    scout_range: 14,
     choice_spread: 0.05,
     land_margin: 0.02,
     territory_radius: 2,
-    fetch_range: 3.0,
+    inside: 0.25,
 };
 
 /// The civs founding makes, in the order of the centres: name and colour.

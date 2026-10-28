@@ -10,7 +10,7 @@ fn summary_counts_match_the_world() {
     let s = summary(&w);
     assert_eq!(s.turn, w.turn);
     assert_eq!(s.clans, w.clans.len());
-    let people: f64 = w.clans.values().map(|c| c.pop).sum();
+    let people: f64 = w.clans.values().map(|c| c.people).sum();
     assert!((s.people - people).abs() < 1e-9);
     assert_eq!(s.markets, w.markets.len());
     assert_eq!(s.trails, w.tiles.iter().filter(|t| t.trail).count());
@@ -18,7 +18,9 @@ fn summary_counts_match_the_world() {
     assert_eq!(s.held, w.tiles.iter().filter(|t| t.claim.is_some()).count());
     assert_eq!(s.trading, w.clans.values().filter(|c| c.market.is_some()).count());
     assert_eq!(s.starving, w.clans.values().filter(|c| c.starving).count());
-    assert!(s.territory >= s.held);
+    let n = w.clans.len().max(1) as f64;
+    assert!((s.territory * n - s.held as f64).abs() < 1e-9, "territories are disjoint");
+    assert!((s.walk_cost - w.clans.values().map(|c| c.walk).sum::<f64>() / n).abs() < 1e-9);
     assert_eq!(s.end, w.end);
 }
 
@@ -40,6 +42,7 @@ fn centre_report_compares_with_the_mean_over_land() {
             activity: 0.0,
             volume: 0.0,
             traders: 0,
+            moved: 0.0,
         },
     );
     let ids: Vec<u32> = w.markets.keys().copied().collect();
