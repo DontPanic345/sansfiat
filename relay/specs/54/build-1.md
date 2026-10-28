@@ -175,6 +175,6 @@ or counts: build-5 retunes everything. At least:
 
 - `engine/check.sh` passes (cross-build's native and wasm digests agree).
 - `cargo build --release -p sansfiat && ./target/release/sansfiat sweep --size all` runs;
-  put its output, and `bench` against today's 3–5 ms a turn on small, in
+  put its output, and `bench` against today's 3–5 ms a turn on small (medium 5–9, large 8–14 in the sweep); the add/drop rule re-divides labour for each candidate, so keep each evaluation cheap (cache each tile's walk) rather than leave build-5 a slow turn, in
   `relay/specs/54/clay-sweep.md`, and say in your summary how the pre-game runs now.
 - Your summary names the actor's types and functions as they are, for the kiln.

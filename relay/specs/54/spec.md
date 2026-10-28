@@ -182,14 +182,15 @@ works and record it as a decision.
 | Unsettled | Proof | Step |
 |---|---|---|
 | The actor's Rust: how `Clan` embeds `Actor`, the route type, how walks are computed and cached | the invariants above, its tests, the kiln builds on it without new machinery | build-1 |
-| Every number: `CLAN.inside`, `grow_full`, `territory_radius`, `land_margin`, `min_pop`; `DEPLETION.*`; `TRAIL.*`, `TENDING.beyond`; `MARKET.desire`, `company`, `company_cap`, `switch_margin`, `reach_walk`, `spacing`, `form_after`, `min_attendance`, `carry`, `shed`; `PREGAME.*` if needed | the sweep (`relay/specs/54/sweep.md`): on small, medium and large, seeds 1–10, most end by centres on their own (as many as now: 8 of 10 small); people level off (change over the last 100 turns before the end under 10%); some tiles depleted, some people moved; ms a turn within 2× today's (3–5 ms on small) | build-5 |
+| Every number: `CLAN.inside`, `grow_full`, `territory_radius`, `land_margin`, `min_pop`; `DEPLETION.*`; `TRAIL.*`, `TENDING.beyond`; `MARKET.desire`, `company`, `company_cap`, `switch_margin`, `reach_walk`, `spacing`, `form_after`, `min_attendance`, `carry`, `shed`; `PREGAME.*` if needed | the sweep (`relay/specs/54/sweep.md`): on small, medium and large, seeds 1–10, most end by centres on their own (as many as now: 8 of 10 small); people level off (change over the last 100 turns before the end under 10%); some tiles depleted, some people moved; ms a turn on each size within 2× today's (small 3–5, medium 5–9, large 8–14) | build-5 |
 | Whether a rule's form (not just its number) must change for the pre-game to work | the same sweep; each change recorded as a decision | build-5 |
 
 Builds 1–4 pick starting numbers that run (the pre-game ends, by the backstop if need be) and
 say so; they don't tune.
 
 Today's sweep (main, small, seeds 1–10): 8 of 10 end by centres on their own, 2 by the limit
-and top-up, median end turn 382, 87–149 clans, 440–749 people, 3–5 ms a turn.
+and top-up, median end turn 382, 87–149 clans, 440–749 people, 3–5 ms a turn. Medium: 9 of 10, median
+257, 5–9 ms. Large: 10 of 10, median 305, 8–14 ms.
 
 ## Decisions the piece left open
 

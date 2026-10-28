@@ -29,8 +29,9 @@ And what the design wants it to look like:
 `cargo build --release -p sansfiat && ./target/release/sansfiat sweep --size all` (seeds
 1–10 on small, medium and large), with these as the bar:
 
-- **Centres on their own**: on each size, at least as many seeds end by centres (not the limit
-  and top-up) as main does today on small: 8 of 10. Today's small: median end turn 382.
+- **Centres on their own**: on each size, at least 8 of 10 seeds end by centres (not the limit
+  and top-up). Main today (spec-review's sweep): small 8 of 10, median end turn 382; medium
+  9 of 10, median 257; large 10 of 10, median 305.
 - **People level off**: in most runs, people change by under 10% over the last 100 turns
   before the end (the sweep's levelled-off line). Not growing until the end, not collapsing.
 - **Light and spread**: the land cover reached (`cover` ≥ `PREGAME.cover`), clans everywhere
@@ -40,7 +41,9 @@ And what the design wants it to look like:
   some festivals held by one clan and some by many; trails along festival routes.
 - **Centres around fertile land**: `centre_report`'s `fertility_near / fertility_land` above 1
   on average (the evidence #13 and #31 used; `sansfiat run` reports it).
-- **Speed**: ms a turn on small within 2× today's 3–5 ms (`sansfiat bench`).
+- **Speed**: ms a turn on each size within 2× main's today, as the sweep prints it: small
+  3–5 ms, medium 5–9 ms, large 8–14 ms. A turn's work per clan must not grow with the number
+  of clans (clans.md's Scale), so large mustn't slow more than small does.
 
 Where a bar can't be met, say how near you got and why, rather than bending a rule out of the
 design.
