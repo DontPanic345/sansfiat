@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::actors::{walk_cost, Route};
-use crate::clans::{nutrition, Clan};
+use crate::clans::{nutrition, surplus, Clan};
 use crate::data::*;
 use crate::land::{cost_map, passable, path};
 use crate::market::{clear, demand, Basket, Params};
@@ -24,12 +24,14 @@ pub struct Market {
     pub prices: Basket,
     /// The goods last traded there: what clans expect to find.
     pub goods: Vec<usize>,
-    /// Volume smoothed over turns.
+    /// Clans that came, smoothed over turns.
     pub activity: f64,
     /// Last turn's volume, summed over the goods.
     pub volume: f64,
     /// Clans that came last turn.
     pub traders: usize,
+    /// People moved between its clans this turn.
+    pub moved: f64,
 }
 
 /// Path cost from the market's tile over passable tiles, out to `MARKET.reach`: the land around
@@ -107,40 +109,128 @@ pub fn go(w: &mut World) {
     }
 }
 
-/// The `trade` step, after harvest: each market clears the baskets its clans brought.
+/// The `trade` step, after harvest: each market clears what its clans brought. A clan brings its
+/// basket scaled evenly down to at most `MARKET.carry × people` of food; the rest stays in its
+/// basket, and the cleared goods come back on top.
 pub fn trade(w: &mut World) {
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {
         let ids: Vec<u32> = w.clans.values().filter(|c| c.market == Some(mid)).map(|c| c.id).collect();
-        let baskets: Vec<Basket> = ids.iter().map(|id| w.clans[id].basket).collect();
+        let (brought, kept): (Vec<Basket>, Vec<Basket>) = ids
+            .iter()
+            .map(|id| {
+                let c = &w.clans[id];
+                let total: f64 = c.basket.iter().sum();
+                let most = MARKET.carry * c.people;
+                let share = if total > most { most / total } else { 1.0 };
+                (c.basket.map(|v| v * share), c.basket.map(|v| v - v * share))
+            })
+            .unzip();
         let m = w.markets.get_mut(&mid).unwrap();
-        let c = clear(&baskets, &m.prices, &Params::default());
+        let c = clear(&brought, &m.prices, &Params::default());
         if c.cleared {
             m.prices = c.prices;
             m.goods = c.goods.clone();
         }
         m.volume = c.volume.iter().sum();
         m.traders = ids.len();
-        m.activity = MARKET.fade * m.activity + (1.0 - MARKET.fade) * m.volume;
-        for (id, after) in ids.iter().zip(c.after) {
-            w.clans.get_mut(id).unwrap().basket = after;
+        m.activity = MARKET.fade * m.activity + (1.0 - MARKET.fade) * ids.len() as f64;
+        for ((id, after), kept) in ids.iter().zip(c.after).zip(kept) {
+            w.clans.get_mut(id).unwrap().basket = std::array::from_fn(|f| after[f] + kept[f]);
         }
     }
 }
 
-/// The `markets` step: markets nobody trades at go, then at most one forms.
+/// The `people` step, after eating: at each festival, in id order, the starving clans that came
+/// offer `MARKET.shed × people × (1 − fed_ratio)` people (never the last one), and the growing
+/// clans (a surplus, not starving) have room for their surplus in people. The offers go to the
+/// growing clans in proportion to their room, all scaled down to the room if they are more.
+pub fn people(w: &mut World) {
+    for m in w.markets.values_mut() {
+        m.moved = 0.0;
+    }
+    let mids: Vec<u32> = w.markets.keys().copied().collect();
+    for mid in mids {
+        let mut offers: Vec<(u32, f64)> = Vec::new();
+        let mut rooms: Vec<(u32, f64)> = Vec::new();
+        for c in w.clans.values().filter(|c| c.market == Some(mid)) {
+            if c.starving {
+                let offer = (MARKET.shed * c.people * (1.0 - c.fed_ratio)).min(c.people - 1.0);
+                if offer > 0.0 {
+                    offers.push((c.id, offer));
+                }
+            } else if surplus(&c.harvest, c.people) > 0.0 {
+                rooms.push((c.id, surplus(&c.harvest, c.people)));
+            }
+        }
+        let offered: f64 = offers.iter().map(|o| o.1).sum();
+        let room: f64 = rooms.iter().map(|r| r.1).sum();
+        if offered <= 0.0 || room <= 0.0 {
+            continue;
+        }
+        let moved = offered.min(room);
+        for (id, offer) in offers {
+            w.clans.get_mut(&id).unwrap().people -= offer * moved / offered;
+        }
+        for (id, r) in rooms {
+            w.clans.get_mut(&id).unwrap().people += moved * r / room;
+        }
+        w.markets.get_mut(&mid).unwrap().moved = moved;
+        w.moved += moved;
+    }
+    merge(w);
+}
+
+/// After people move: in id order, a clan under `CLAN.min_pop` at a festival
+/// where another clan came joins the clan there whose home is fewest hex steps from its own
+/// (ties to the lower id): its people and store go to that clan, its tiles are freed, it goes.
+fn merge(w: &mut World) {
+    let ids: Vec<u32> = w.clans.keys().copied().collect();
+    for id in ids {
+        let Some(c) = w.clans.get(&id) else { continue };
+        let Some(mid) = c.market.filter(|_| c.people < CLAN.min_pop) else { continue };
+        let home = w.tiles[c.home].hex();
+        let Some(into) = w
+            .clans
+            .values()
+            .filter(|o| o.id != id && o.market == Some(mid))
+            .min_by_key(|o| (w.tiles[o.home].hex().distance(home), o.id))
+            .map(|o| o.id)
+        else {
+            continue;
+        };
+        let c = w.clans.remove(&id).unwrap();
+        for &t in &c.territory {
+            if w.tiles[t].claim == Some(id) {
+                w.tiles[t].claim = None;
+            }
+        }
+        let o = w.clans.get_mut(&into).unwrap();
+        o.people += c.people;
+        for f in 0..N {
+            o.store[f] += c.store[f];
+        }
+        w.event(EventKind::ClanMerged, c.home, Some(id), None, Some(into));
+    }
+}
+
+/// The `markets` step: festivals nobody comes to fade, then clans raise new ones.
 pub fn form_and_fade(w: &mut World) {
     fade(w);
     form(w);
 }
 
-/// A market whose activity falls under `min_volume` goes, and its clans with it. A centre the
-/// pre-game ended on stays, and so does every civ's market.
+/// A festival whose activity falls under `min_attendance` goes, and its clans with it. A centre
+/// the pre-game ended on stays, and so does every civ's market.
 pub fn fade(w: &mut World) {
     let mut kept = w.end.as_ref().map(|e| e.centres.clone()).unwrap_or_default();
     kept.extend(w.civs.values().map(|c| c.market));
-    let gone: Vec<u32> =
-        w.markets.values().filter(|m| m.activity < MARKET.min_volume && !kept.contains(&m.id)).map(|m| m.id).collect();
+    let gone: Vec<u32> = w
+        .markets
+        .values()
+        .filter(|m| m.activity < MARKET.min_attendance && !kept.contains(&m.id))
+        .map(|m| m.id)
+        .collect();
     for mid in gone {
         let m = w.markets.remove(&mid).unwrap();
         w.event(EventKind::MarketFaded, m.tile, None, Some(mid), None);
@@ -167,28 +257,22 @@ pub fn in_reach(w: &World, tile: usize) -> (Vec<u32>, f64) {
     (ids, people)
 }
 
-/// A market forms on a clan's home held `form_after` turns, `spacing` steps from every market,
-/// with `min_clans` clans in reach: the one with the most people in reach, ties to the lower tile.
+/// Each clan with no festival that has been settled `form_after` turns raises one on its home,
+/// if none is within `spacing` hex steps. Clans go biggest first (then lower id), each checked
+/// against the festivals raised before it this turn.
 pub fn form(w: &mut World) {
-    let mut homes: Vec<usize> = w.clans.values().map(|c| c.home).collect();
-    homes.sort_unstable();
-    homes.dedup();
-    let mut best: Option<(usize, f64)> = None;
-    for tile in homes {
+    let mut ids: Vec<u32> =
+        w.clans.values().filter(|c| c.market.is_none() && c.since >= MARKET.form_after).map(|c| c.id).collect();
+    ids.sort_by(|a, b| w.clans[b].people.total_cmp(&w.clans[a].people).then(a.cmp(b)));
+    for id in ids {
+        let tile = w.clans[&id].home;
         let h = w.tiles[tile].hex();
-        if w.tiles[tile].held < MARKET.form_after
-            || w.markets.values().any(|m| w.tiles[m.tile].hex().distance(h) < MARKET.spacing)
-        {
+        if w.markets.values().any(|m| w.tiles[m.tile].hex().distance(h) < MARKET.spacing) {
             continue;
         }
-        let (ids, people) = in_reach(w, tile);
-        if ids.len() >= MARKET.min_clans && best.is_none_or(|(_, bp)| people > bp) {
-            best = Some((tile, people));
-        }
+        let mid = raise(w, tile);
+        w.event(EventKind::MarketFormed, tile, None, Some(mid), None);
     }
-    let Some((tile, _)) = best else { return };
-    let id = raise(w, tile);
-    w.event(EventKind::MarketFormed, tile, None, Some(id), None);
 }
 
 /// Opens a market on `tile` this turn, with no traders yet; returns its id.
@@ -201,9 +285,10 @@ pub fn raise(w: &mut World, tile: usize) -> u32 {
         founded: w.turn,
         prices: [1.0; N],
         goods: Vec::new(),
-        activity: 2.0 * MARKET.min_volume,
+        activity: 2.0 * MARKET.min_attendance,
         volume: 0.0,
         traders: 0,
+        moved: 0.0,
     };
     w.markets.insert(id, m);
     id

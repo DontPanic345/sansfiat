@@ -135,9 +135,10 @@ pub fn open(w: &mut World, tile: usize) -> u32 {
         founded: 0,
         prices: [1.0; N],
         goods: Vec::new(),
-        activity: 2.0 * MARKET.min_volume,
+        activity: 2.0 * MARKET.min_attendance,
         volume: 0.0,
         traders: 0,
+        moved: 0.0,
     };
     w.markets.insert(id, m);
     id

@@ -27,6 +27,8 @@ pub struct World {
     pub tiles: Vec<Tile>,
     pub clans: BTreeMap<u32, Clan>,
     pub markets: BTreeMap<u32, Market>,
+    /// People moved between clans at festivals, over the whole run.
+    pub moved: f64,
     /// The next id for a clan, a market or a civ, from 1.
     pub next_id: u32,
     /// Set once, when the pre-game ends.
@@ -61,6 +63,7 @@ pub enum EventKind {
     ClanDivided,
     ClanStarving,
     ClanMoved,
+    ClanMerged,
     MarketFormed,
     MarketFaded,
     HearthTamed,
@@ -99,6 +102,7 @@ impl Event {
                 format!("Clan {clan} divides; clan {} settles at {at}", self.other.unwrap_or(0))
             }
             EventKind::ClanStarving => format!("Clan {clan} is starving"),
+            EventKind::ClanMerged => format!("Clan {clan} merges into clan {}", self.other.unwrap_or(0)),
             EventKind::ClanMoved => format!("Clan {clan} moves on to {at}"),
             EventKind::MarketFormed => format!("A market forms at {at}"),
             EventKind::MarketFaded => format!("Market {market} fades"),
@@ -225,6 +229,7 @@ pub const TURN: &[Step] = &[
     Step { name: "harvest", run: clans::harvest },
     Step { name: "trade", run: markets::trade },
     Step { name: "eat", run: clans::eat },
+    Step { name: "people", run: markets::people },
     Step { name: "wear", run: land::wear },
     Step { name: "civs", run: civs::upkeep },
     Step { name: "units", run: units::march },
@@ -251,6 +256,7 @@ impl World {
             tiles,
             clans: BTreeMap::new(),
             markets: BTreeMap::new(),
+            moved: 0.0,
             next_id: 1,
             end: None,
             phase: Phase::Pregame,

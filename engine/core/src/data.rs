@@ -252,12 +252,14 @@ pub struct MarketRules {
     /// The most a festival route may cost a turn (`walk_cost`, there and back) for a clan to
     /// weigh going, and for a clan to count as in reach of a home where a market might form.
     pub reach_walk: f64,
-    /// Clans in reach for a market to form.
-    pub min_clans: usize,
     /// How much of last turn's activity is kept.
     pub fade: f64,
-    /// A market whose activity falls under this goes.
-    pub min_volume: f64,
+    /// A market whose activity (clans that came, smoothed) falls under this goes.
+    pub min_attendance: f64,
+    /// The most food a clan brings to a festival, a person.
+    pub carry: f64,
+    /// A starving clan offers this × people × (1 − fed_ratio) people at a festival.
+    pub shed: f64,
     /// Labour a clan with a surplus is willing to walk to gather, on top of `desire`.
     pub gather_bonus: f64,
     /// Labour any clan is willing to walk to gather.
@@ -277,9 +279,10 @@ pub const MARKET: MarketRules = MarketRules {
     spacing: 8,
     reach: 3.0,
     reach_walk: 12.0,
-    min_clans: 4,
     fade: 0.9,
-    min_volume: 1.0,
+    min_attendance: 0.5,
+    carry: 0.2,
+    shed: 1.0,
     gather_bonus: 6.0,
     desire: 1.0,
     company: 0.5,
@@ -350,6 +353,8 @@ pub struct ClanRules {
     pub split_at: f64,
     /// A starving clan this big sends a daughter.
     pub hungry_split: f64,
+    /// A clan under this many people at a festival merges into another there.
+    pub min_pop: f64,
     /// A daughter's site must feed her this well.
     pub settle_fed: f64,
     /// Starving turns before a clan moves on.
@@ -388,6 +393,7 @@ pub const CLAN: ClanRules = ClanRules {
     spoilage: 0.1,
     split_at: 12.0,
     hungry_split: 8.0,
+    min_pop: 2.0,
     settle_fed: 0.9,
     patience: 3,
     move_range: 4,

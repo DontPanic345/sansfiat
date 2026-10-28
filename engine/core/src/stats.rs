@@ -22,6 +22,9 @@ pub struct Summary {
     pub territory: f64,
     /// Mean labour a clan's walks inside its territory cost this turn.
     pub walk_cost: f64,
+    /// People moved between clans at festivals last turn, and over the whole run.
+    pub moved: f64,
+    pub moved_total: f64,
     pub trails: usize,
     /// Tiles depleted: some food's wear is at least `DEPLETION.depleted_at`.
     pub depleted: usize,
@@ -47,6 +50,8 @@ pub fn summary(w: &World) -> Summary {
         held: w.tiles.iter().filter(|t| t.claim.is_some()).count(),
         territory: w.clans.values().map(|c| c.territory.len() as f64).sum::<f64>() / n,
         walk_cost: w.clans.values().map(|c| c.walk).sum::<f64>() / n,
+        moved: w.markets.values().map(|m| m.moved).sum(),
+        moved_total: w.moved,
         trails: w.tiles.iter().filter(|t| t.trail).count(),
         depleted: w.tiles.iter().filter(|t| is_depleted(t)).count(),
         hearths: w.tiles.iter().filter(|t| is_hearth(t)).count(),

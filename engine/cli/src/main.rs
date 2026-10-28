@@ -320,6 +320,8 @@ struct Point {
     clans: usize,
     people: f64,
     depleted: usize,
+    /// People moved at festivals, running total.
+    moved: f64,
 }
 
 impl Point {
@@ -329,6 +331,7 @@ impl Point {
             clans: w.clans.len(),
             people: w.clans.values().map(|c| c.people).sum(),
             depleted: w.tiles.iter().filter(|t| is_depleted(t)).count(),
+            moved: w.moved,
         }
     }
 }
@@ -461,11 +464,17 @@ fn sweep(args: &[String]) -> Result<(), String> {
                 r.seed, r.ended, r.how, r.centres, r.topped_up, r.tiers[0], r.tiers[1], r.tiers[2], r.cover, r.clans, r.people, r.depleted, r.markets, r.hearths,
                 r.closed[0], r.closed[1], r.closed[2], r.ms
             );
+            let mut before = 0.0;
             for p in &r.series {
                 println!(
-                    "{name:<6}          turn {:>4}  clans {:>3}  people {:>6.1}  depleted {:>4}",
-                    p.turn, p.clans, p.people, p.depleted
+                    "{name:<6}          turn {:>4}  clans {:>3}  people {:>6.1}  depleted {:>4}  moved {:>6.1}",
+                    p.turn,
+                    p.clans,
+                    p.people,
+                    p.depleted,
+                    p.moved - before
                 );
+                before = p.moved;
             }
         }
         let count = |how: &str| runs.iter().filter(|r| r.how == how).count();

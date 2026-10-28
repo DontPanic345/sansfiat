@@ -197,7 +197,7 @@ fn two_centres_and_no_more_markets_raise_one_on_the_most_tended_tile() {
     let m = &w.markets[&end.topped_up[0]];
     assert_eq!(m.tile, at_big(0, -9));
     assert_eq!((m.founded, m.traders, m.volume), (PREGAME.max_turns - 1, 0, 0.0));
-    assert_eq!((m.activity, &m.goods[..], m.prices), (2.0 * MARKET.min_volume, &[][..], [1.0; N]));
+    assert_eq!((m.activity, &m.goods[..], m.prices), (2.0 * MARKET.min_attendance, &[][..], [1.0; N]));
     assert!(end.by_limit);
     assert_spaced(&w, &end.centres);
 }

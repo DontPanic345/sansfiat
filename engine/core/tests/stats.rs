@@ -42,6 +42,7 @@ fn centre_report_compares_with_the_mean_over_land() {
             activity: 0.0,
             volume: 0.0,
             traders: 0,
+            moved: 0.0,
         },
     );
     let ids: Vec<u32> = w.markets.keys().copied().collect();

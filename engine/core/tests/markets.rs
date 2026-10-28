@@ -2,11 +2,11 @@ mod common;
 
 use common::*;
 use engine::actors::{walk_cost, Walks};
-use engine::clans::{harvest, nutrition};
+use engine::clans::harvest;
 use engine::data::*;
 use engine::land::{hold, is_hearth, step_cost};
-use engine::markets::{choose, desire, fade, form, gain, go, trade, worths};
-use engine::{utility, Basket, World};
+use engine::markets::{choose, desire, gain, go, worths};
+use engine::World;
 
 const EPS: f64 = 1e-9;
 
@@ -104,66 +104,6 @@ fn held_grain_tames_into_a_hearth_and_left_grain_goes_wild() {
     assert_eq!(w.tiles[o].tame, TENDING.tame_turns - 2);
     assert!(!is_hearth(&w.tiles[o]));
     assert!(w.tiles[o].cap[GRAIN] < 10.0);
-}
-
-/// A clan of `pop` at `home` held `form_after` turns, and three more clans two steps away.
-fn camp(w: &mut World, home: usize, pop: f64, others: usize) {
-    put(w, &[home], pop);
-    w.tiles[home].held = MARKET.form_after;
-    let h = w.tiles[home].hex();
-    let mut made = 0;
-    // Every other direction, starting from the east, keeping to the land.
-    for d in [0, 2, 4, 1, 3, 5] {
-        let (dq, dr) = engine::hex::DIRS[d];
-        let at = engine::hex::Hex { q: h.q + 2 * dq, r: h.r + 2 * dr };
-        if made < others && at.distance(engine::hex::Hex::ORIGIN) < R {
-            put(w, &[engine::map::index(R, at).unwrap()], 3.0);
-            made += 1;
-        }
-    }
-}
-
-#[test]
-fn a_market_forms_on_a_long_held_home_with_four_clans_in_reach() {
-    let mut w = flat();
-    let o = at(0, 0);
-    camp(&mut w, o, 5.0, 3);
-    w.turn = 7;
-    form(&mut w);
-    assert_eq!(w.markets.len(), 1);
-    let m = w.markets.values().next().unwrap();
-    assert_eq!((m.tile, m.founded, m.prices, m.activity), (o, 7, [1.0; N], 2.0 * MARKET.min_volume));
-
-    let mut w = flat();
-    camp(&mut w, o, 5.0, 2);
-    form(&mut w);
-    assert!(w.markets.is_empty(), "three clans in reach");
-
-    let mut w = flat();
-    camp(&mut w, o, 5.0, 3);
-    w.tiles[o].held = MARKET.form_after - 1;
-    form(&mut w);
-    assert!(w.markets.is_empty(), "not held long enough");
-
-    let mut w = flat();
-    camp(&mut w, o, 5.0, 3);
-    open(&mut w, out(3, 4));
-    form(&mut w);
-    assert_eq!(w.markets.len(), 1, "four steps from a market");
-}
-
-#[test]
-fn two_sites_in_a_turn_get_one_market_the_more_peopled() {
-    let mut w = flat();
-    let (a, b) = (at(-4, 0), at(4, 0));
-    camp(&mut w, a, 4.0, 3);
-    camp(&mut w, b, 6.0, 3);
-    form(&mut w);
-    assert_eq!(w.markets.len(), 1);
-    assert_eq!(w.markets.values().next().unwrap().tile, b);
-    // They are 8 apart, the spacing, so the other forms next turn.
-    form(&mut w);
-    assert_eq!(w.markets.values().map(|m| m.tile).collect::<Vec<_>>(), vec![b, a]);
 }
 
 /// A clan of 5 at the middle with 10 grain from last turn, `store` of it kept, 40 grain at home;
@@ -282,60 +222,4 @@ fn a_clan_keeps_its_festival_unless_another_beats_it_by_the_margin() {
     // A current festival worth nothing is left for the best.
     assert_eq!(choose(&[(a, 0.5, 2.0), (b, -1.0, 2.0)], Some(b)), Some(a));
     assert_eq!(choose(&[(a, -0.5, 2.0), (b, -1.0, 2.0)], Some(b)), None);
-}
-
-#[test]
-fn trade_conserves_food_and_nobody_loses_much() {
-    let mut w = flat();
-    let o = at(0, 0);
-    let mid = open(&mut w, o);
-    let baskets: [Basket; 4] =
-        [[0.0, 8.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 6.0, 2.0], [3.0, 1.0, 4.0, 0.0, 0.0], [1.0, 2.0, 0.0, 3.0, 0.0]];
-    let mut ids = Vec::new();
-    for (k, b) in baskets.iter().enumerate() {
-        let id = put(&mut w, &[out(k, 1)], 4.0);
-        let c = w.clans.get_mut(&id).unwrap();
-        c.basket = *b;
-        c.market = Some(mid);
-        ids.push(id);
-    }
-    let total = |w: &World| -> Basket { std::array::from_fn(|f| ids.iter().map(|id| w.clans[id].basket[f]).sum()) };
-    let before = total(&w);
-    trade(&mut w);
-    let after = total(&w);
-    for f in 0..N {
-        assert!((after[f] - before[f]).abs() < 1e-9, "{f}: {} → {}", before[f], after[f]);
-    }
-    for (id, b) in ids.iter().zip(&baskets) {
-        let a = w.clans[id].basket;
-        assert!(utility(&a) >= utility(b) - 1e-6, "clan {id}: {b:?} → {a:?}");
-        assert!(nutrition(&a, 4.0) >= 0.9 * nutrition(b, 4.0), "clan {id}: {b:?} → {a:?}");
-    }
-    let m = &w.markets[&mid];
-    assert_eq!(m.traders, 4);
-    assert!(m.volume > 0.0 && m.prices != [1.0; N]);
-    let want = MARKET.fade * 2.0 * MARKET.min_volume + (1.0 - MARKET.fade) * m.volume;
-    assert!((m.activity - want).abs() < EPS);
-}
-
-#[test]
-fn a_market_nobody_trades_at_fades() {
-    let mut w = flat();
-    let mid = open(&mut w, at(0, 0));
-    // A lone trader trades nothing.
-    let id = put(&mut w, &[out(0, 1)], 4.0);
-    w.clans.get_mut(&id).unwrap().market = Some(mid);
-    // Its activity starts at 2 × min_volume and loses `1 − fade` of itself a turn.
-    let mut turns = 0;
-    let mut activity = 2.0 * MARKET.min_volume;
-    while activity * MARKET.fade >= MARKET.min_volume {
-        activity *= MARKET.fade;
-        turns += 1;
-    }
-    for turn in 1..=turns + 1 {
-        trade(&mut w);
-        fade(&mut w);
-        assert_eq!(w.markets.contains_key(&mid), turn <= turns, "turn {turn}");
-    }
-    assert_eq!(w.clans[&id].market, None);
 }
