@@ -1,10 +1,7 @@
 {
   "name": "hex4x",
   "private": true,
-  "type": "module",
   "scripts": {
-    "start": "node tools/serve.js",
-    "test": "node --test",
-    "sim": "node tools/sim.js"
+    "test": "echo archived"
   }
 }

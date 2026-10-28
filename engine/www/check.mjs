@@ -73,6 +73,10 @@ for (const e of all) {
 assert.equal(JSON.parse(sim.events(all.length)).length, 0, 'nothing past the cursor');
 assert.equal(all.filter((e) => e.kind === 'pregameEnded').length, 1, 'one end event');
 assert.ok(all.some((e) => e.kind === 'centreFormed'), 'a centre forms');
+for (const e of all.filter((e) => e.kind === 'clanMerged')) {
+  assert.ok(e.clan != null && e.other != null && e.clan !== e.other, 'a merge names two clans');
+  assert.equal(e.text, `Clan ${e.clan} merges into clan ${e.other}`, 'a merge says who joined whom');
+}
 
 // The per-turn view.
 const v = JSON.parse(sim.view());
@@ -85,6 +89,55 @@ for (const [i, c] of v.claims) assert.ok(i >= 0 && i < n && v.clans[c], 'claims 
 for (const i of v.trails) assert.ok(layout.terrain[i] < TERRAIN.length);
 for (const [i, tame] of v.tame) assert.ok(i < n && tame > 0);
 for (const c of Object.values(v.clans)) assert.ok(c.home < n && c.territory.includes(c.home) && c.territory.every((i) => i < n) && c.routes.every((r) => r.path.every((i) => i < n)));
+
+// Territories: each clan's claims are its territory, connected over its own tiles from its home.
+const at = new Map(layout.q.map((q, i) => [`${q},${layout.r[i]}`, i]));
+const EDGE = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+const neighbours = (i) => EDGE.map(([dq, dr]) => at.get(`${layout.q[i] + dq},${layout.r[i] + dr}`)).filter((j) => j !== undefined);
+const claimOf = new Map(v.claims);
+assert.equal(v.claims.length, Object.values(v.clans).reduce((a, c) => a + c.territory.length, 0), 'claims are the territories');
+for (const c of Object.values(v.clans)) {
+  const held = v.claims.filter(([, k]) => k === c.id).map(([i]) => i).sort((a, b) => a - b);
+  assert.deepEqual(held, [...c.territory].sort((a, b) => a - b), `clan ${c.id}: its claims are its territory`);
+  const seen = new Set([c.home]);
+  const queue = [c.home];
+  while (queue.length) {
+    for (const j of neighbours(queue.pop())) {
+      if (claimOf.get(j) === c.id && !seen.has(j)) {
+        seen.add(j);
+        queue.push(j);
+      }
+    }
+  }
+  assert.equal(seen.size, c.territory.length, `clan ${c.id}: its territory is connected`);
+}
+
+// Routes: a clan walks one route, to its festival; the path ends on the festival's tile.
+for (const c of Object.values(v.clans)) {
+  assert.equal(c.routes.length, c.market == null ? 0 : 1, `clan ${c.id}: one route if it has a festival`);
+  for (const r of c.routes) {
+    const m = v.markets[c.market];
+    assert.ok(m, `clan ${c.id}: its festival is a market`);
+    assert.equal(r.to, m.tile, `clan ${c.id}: the route goes to its festival`);
+    assert.equal(r.path.length ? r.path.at(-1) : c.home, m.tile, `clan ${c.id}: the path ends on the festival`);
+  }
+}
+
+// Wear: the tiles with some food worn, each food's share and the cap it would have unworn.
+const worn = [];
+for (let i = 0; i < n; i++) if (JSON.parse(sim.tile(i)).wear.some((x) => x > 0)) worn.push(i);
+assert.ok(worn.length > 0, 'some land wears on a medium map');
+assert.deepEqual(v.wear.map(([i]) => i), worn, 'wear lists the tiles with some food worn');
+for (const [i, wears, unworn] of v.wear) {
+  assert.equal(wears.length, GOODS.length);
+  assert.equal(unworn.length, GOODS.length);
+  const t = JSON.parse(sim.tile(i));
+  wears.forEach((x, f) => {
+    assert.ok(x >= 0 && x <= 1, `tile ${i}: a wear is a share`);
+    assert.ok(Math.abs(t.wear[f] - x) < 1e-12 && Math.abs(t.unworn[f] - unworn[f]) < 1e-12, `tile ${i}: wear matches the tile`);
+    assert.ok(Math.abs(t.cap[f] - unworn[f] * (1 - x)) < 1e-9, `tile ${i}: cap is unworn × (1 − wear)`);
+  });
+}
 
 // ---- the pick, and a unit's life ----------------------------------------------------------------
 
