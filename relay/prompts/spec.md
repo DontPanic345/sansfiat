@@ -30,9 +30,11 @@ here makes the piece cheaper.
 
 ## Choosing a shape
 
-The shape is how you arrange what's left unsettled. Cut steps by area, not by time: a
-session has room for far more than one module. M1's longest ran 23 minutes on 19% of its
-context, and every new session rereads the code.
+The shape is how you arrange what's left unsettled. Where a shape expects Opus, that means
+what the ladder gives: Opus low or medium. Opus high is still off limits.
+
+Cut steps by area, not by time: a session has room for far more than one module. M1's
+longest ran 23 minutes on 19% of its context, and every new session rereads the code.
 
 ### Henry Ford: the production line
 
@@ -103,8 +105,8 @@ The points add up, and the sum picks the model and effort:
   to mechanical work.
 - At 9–11, throw a coin for each step (`node -e "console.log(Math.random() < 0.5 ? 'sonnet high' : 'opus low')"`),
   take what it says and write `"coin": true`.
-- Opus high is only for creative work that matters: Open, New, Miss and Importance all high.
-- You can go against the ladder, except into Opus high, and say why. `relay/rates.md` holds
+- Opus high is off limits for builds and the review.
+- You can go against the ladder, but not into Opus high, and say why. `relay/rates.md` holds
   the milestone's challenge.
 
 Take what the ladder gives; don't choose a model from the shape. The shape says what to
