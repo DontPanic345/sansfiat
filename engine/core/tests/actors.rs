@@ -271,7 +271,7 @@ fn changes(a: &[usize], b: &[usize]) -> (usize, usize) {
 #[test]
 fn territories_keep_their_invariants_every_step() {
     for seed in 1..=3 {
-        let mut w = World::new(Config { seed, radius: 16, army: true });
+        let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true });
         for turn in 0..300 {
             for step in TURN {
                 let before: BTreeMap<u32, Clan> = w.clans.clone();
