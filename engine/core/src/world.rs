@@ -83,6 +83,13 @@ pub enum EventKind {
     WarriorsStarved,
     CampForaged,
     CampPillaged,
+    ScoutRouteFound,
+    ScoutNoRoute,
+    ScoutTrailBuilt,
+    ScoutPassFound,
+    ScoutBlocked,
+    ScoutHungry,
+    ScoutStarved,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division;
@@ -97,6 +104,9 @@ pub struct Event {
     pub other: Option<u32>,
     pub civ: Option<u32>,
     pub unit: Option<u32>,
+    /// A route's cost, for the scout's route events.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost: Option<f64>,
 }
 
 impl Event {
@@ -139,6 +149,15 @@ impl Event {
             EventKind::CampHungry => format!("{}'s camp at {at} goes hungry", self.civ_name(w)),
             EventKind::CampForaged => format!("{}'s camp forages at {at}", self.civ_name(w)),
             EventKind::CampPillaged => format!("{}'s camp pillages at {at}", self.civ_name(w)),
+            EventKind::ScoutRouteFound => {
+                format!("{}'s scout has its route, cost {:.1}", self.civ_name(w), self.cost.unwrap_or(0.0))
+            }
+            EventKind::ScoutNoRoute => format!("{}'s scout: no route can exist", self.civ_name(w)),
+            EventKind::ScoutTrailBuilt => format!("{}'s scout builds a trail at {at}", self.civ_name(w)),
+            EventKind::ScoutPassFound => format!("{}'s scout finds a pass at {at}", self.civ_name(w)),
+            EventKind::ScoutBlocked => format!("{}'s scout is blocked at {at}", self.civ_name(w)),
+            EventKind::ScoutHungry => format!("{}'s scout at {at} goes hungry", self.civ_name(w)),
+            EventKind::ScoutStarved => format!("{}'s scout at {at} loses a person to hunger", self.civ_name(w)),
             EventKind::PregameEnded => match &w.end {
                 Some(e) => {
                     let n = e.centres.len();
@@ -172,7 +191,7 @@ impl Event {
 impl World {
     /// Records an event at the current turn.
     pub fn event(&mut self, kind: EventKind, tile: usize, clan: Option<u32>, market: Option<u32>, other: Option<u32>) {
-        self.events.push(Event { turn: self.turn, kind, tile, clan, market, other, civ: None, unit: None });
+        self.events.push(Event { turn: self.turn, kind, tile, clan, market, other, civ: None, unit: None, cost: None });
     }
 
     /// Records an event about a civ (and its market, if any) at the current turn.
@@ -186,6 +205,7 @@ impl World {
             other: None,
             civ: Some(civ),
             unit: None,
+            cost: None,
         });
     }
 }
@@ -202,6 +222,7 @@ impl World {
             other: None,
             civ: Some(civ),
             unit: Some(unit),
+            cost: None,
         });
     }
 }
@@ -238,6 +259,13 @@ pub enum Action {
     Forage,
     /// This turn's end: pillage the rival's tile on the labour left.
     Pillage,
+    /// Set the scout's route: search from `from` for `to`, building trails as it goes.
+    SetRoute {
+        from: usize,
+        to: usize,
+    },
+    /// Stop the scout's search.
+    ClearRoute,
 }
 
 pub struct Step {
@@ -311,6 +339,8 @@ impl World {
             Action::SetSwitches { .. } | Action::Resupply => units::check_camp(self),
             Action::Forage => units::check_take(self, false),
             Action::Pillage => units::check_take(self, true),
+            Action::SetRoute { from, to } => units::check_route(self, *from, *to),
+            Action::ClearRoute => units::check_scout(self),
         }
     }
 
@@ -343,6 +373,8 @@ impl World {
             Action::Resupply => units::with_camp(self, |u| u.resupply = true),
             Action::Forage => units::with_camp(self, |u| u.forage = true),
             Action::Pillage => units::with_camp(self, |u| u.pillage = true),
+            Action::SetRoute { from, to } => units::order_route(self, Some((*from, *to))),
+            Action::ClearRoute => units::order_route(self, None),
         }
         self.log.push(action);
         Ok(())

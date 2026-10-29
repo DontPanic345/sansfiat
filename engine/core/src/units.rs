@@ -5,6 +5,7 @@
 //! from each, and disbanded to the civ's own clan. The `ai` step keeps each AI camp posted; the
 //! `units` step runs every camp.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::actors::{walk_cost, Actor, Route};
 use crate::civs;
 use crate::data::*;
-use crate::land::{passable, path, step_cost};
+use crate::land::{self, build_trail, cost_map, passable, path, path_by, step_cost, trailable};
 use crate::market::Basket;
 use crate::world::{EventKind, Phase, World};
 
@@ -20,12 +21,14 @@ use crate::world::{EventKind, Phase, World};
 #[serde(rename_all = "camelCase")]
 pub enum UnitKind {
     Camp,
+    Scout,
 }
 
 impl UnitKind {
     pub fn name(self) -> &'static str {
         match self {
             UnitKind::Camp => "camp",
+            UnitKind::Scout => "scout",
         }
     }
 }
@@ -78,6 +81,15 @@ pub struct Unit {
     pub cut: bool,
     pub foraging: bool,
     pub supplying: bool,
+    /// A scout's route: the tile it searches from and the tile it searches for.
+    #[serde(default)]
+    pub route: Option<(usize, usize)>,
+    /// A scout has said what its route costs; it is in `heard` once a route is found.
+    #[serde(default)]
+    pub heard: bool,
+    /// A scout has reported that it is blocked, so says it once.
+    #[serde(default)]
+    pub blocked: bool,
 }
 
 impl Deref for Unit {
@@ -108,7 +120,12 @@ fn steps(w: &World, a: usize, b: usize) -> i32 {
 
 /// `civ`'s camp, if it has one.
 pub fn camp(w: &World, civ: u32) -> Option<&Unit> {
-    w.units.values().find(|u| u.civ == civ)
+    w.units.values().find(|u| u.civ == civ && u.kind == UnitKind::Camp)
+}
+
+/// `civ`'s scout, if it has one.
+pub fn scout(w: &World, civ: u32) -> Option<&Unit> {
+    w.units.values().find(|u| u.civ == civ && u.kind == UnitKind::Scout)
 }
 
 /// The food `people` warriors' packs hold.
@@ -194,6 +211,9 @@ fn join(w: &mut World, civ: u32, k: f64, pack: Basket) -> u32 {
                 cut: false,
                 foraging: false,
                 supplying: false,
+                route: None,
+                heard: false,
+                blocked: false,
             };
             w.units.insert(id, unit);
             w.civs.get_mut(&civ).unwrap().army.raised += 1;
@@ -209,11 +229,21 @@ fn join(w: &mut World, civ: u32, k: f64, pack: Basket) -> u32 {
 /// Founding's camp: `UNIT.start` warriors from the civ's biggest clans, one each (round again when
 /// there are fewer clans), at the capital, their packs from the store. No clan to give, no camp.
 pub fn raise_at_founding(w: &mut World, civ: u32) {
+    let k = take_people(w, civ, UNIT.start);
+    if k == 0.0 {
+        return;
+    }
+    let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
+    join(w, civ, k, pack);
+}
+
+/// Takes `n` people from the civ's clans, one from each in turn, biggest first; round again when
+/// there are fewer clans. Returns how many were taken.
+fn take_people(w: &mut World, civ: u32, n: u32) -> f64 {
     let mut k = 0.0;
     let mut given: Vec<u32> = Vec::new();
-    for _ in 0..UNIT.start {
+    for _ in 0..n {
         let able = givers(w, civ);
-        // One from each clan in turn, biggest first; round again when there are fewer clans.
         let Some(&clan) = able.iter().find(|c| !given.contains(c)).or(able.first()) else { break };
         if given.len() >= able.len() {
             given.clear();
@@ -222,11 +252,43 @@ pub fn raise_at_founding(w: &mut World, civ: u32) {
         w.clans.get_mut(&clan).unwrap().people -= 1.0;
         k += 1.0;
     }
+    k
+}
+
+/// Founding's scout: `SCOUT.people` people from the civ's clans, at the capital, its pack from the
+/// store after the camp's. It is made with or without an army.
+pub fn raise_scout_at_founding(w: &mut World, civ: u32) {
+    let k = take_people(w, civ, SCOUT.people);
     if k == 0.0 {
         return;
     }
     let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
-    join(w, civ, k, pack);
+    let capital = w.civs[&civ].capital;
+    let mut actor = Actor::new(capital, k);
+    actor.store = pack;
+    let id = w.next_id;
+    w.next_id += 1;
+    let unit = Unit {
+        id,
+        civ,
+        kind: UnitKind::Scout,
+        actor,
+        dest: None,
+        banked: 0.0,
+        hungry: 0,
+        auto_forage: true,
+        auto_supply: true,
+        resupply: false,
+        forage: false,
+        pillage: false,
+        cut: false,
+        foraging: false,
+        supplying: false,
+        route: None,
+        heard: false,
+        blocked: false,
+    };
+    w.units.insert(id, unit);
 }
 
 /// Raises up to `n` warriors for `civ`: one person from each of the `n` biggest clans able to give,
@@ -557,14 +619,483 @@ fn camp_turn(w: &mut World, id: u32) {
     }
 }
 
-/// The `units` step, after `civs`: fallow tiles count down, then each camp, in id order, takes its turn.
+// ---- the scout ----------------------------------------------------------------------------------
+//
+// The scout searches a route for its civ, as `scout/`'s `routePlan` and `scoutWork` did: it prices
+// the route as the civ knows the map (`known`) and as the unrevealed tiles could still be (`possible`),
+// reveals what could change the answer, and builds the trails the route needs. Its labour is its
+// people's, spent on steps, reveals and trails, after it has fed itself.
+
+/// Whether tile `j` is revealed to `civ`.
+fn revealed(w: &World, civ: u32, j: usize) -> bool {
+    w.civs[&civ].revealed.contains(&j)
+}
+
+/// Whether a mountain can be bridged by some span the map can roll, by `CIV.bridge_span`.
+fn mountain_may_bridge() -> bool {
+    MAP.mountain_span.iter().any(|&(s, _)| s.is_some_and(|s| s <= CIV.bridge_span))
+}
+
+/// What entering tile `j` costs `civ`, ignoring any river: as it is known (`possible` false) or as
+/// it could be (`possible` true). A tile with a trail, or revealed, is priced with its trail where
+/// one could go (`min` of bare and hidden, a mountain only by its trail). An unrevealed tile is its
+/// bare cost as known; as possible, its cheapest hidden trail if it could hide one. `None` is
+/// impassable.
+fn tile_cost(w: &World, civ: u32, j: usize, possible: bool) -> Option<f64> {
+    let t = &w.tiles[j];
+    let bare = TERRAIN[t.terrain].move_cost;
+    if t.trail || revealed(w, civ, j) {
+        let hidden = if t.trail || trailable(w, j) { t.trail_cost } else { None };
+        return match hidden {
+            Some(h) => Some(bare.map_or(h, |c| c.min(h))),
+            None => bare,
+        };
+    }
+    if !possible {
+        return bare;
+    }
+    let hidden = match t.terrain {
+        FOREST | HILLS => {
+            let pairs = if t.terrain == FOREST { MAP.forest_cost } else { MAP.hills_cost };
+            Some(pairs.iter().map(|p| f64::from(p.0)).fold(f64::INFINITY, f64::min))
+        }
+        MOUNTAIN if mountain_may_bridge() => Some(MAP.mountain_cost as f64),
+        _ => None,
+    };
+    match hidden {
+        Some(h) => Some(bare.map_or(h, |c| c.min(h))),
+        None => bare,
+    }
+}
+
+/// Whether tile `j` could be trailed as `civ` knows it.
+fn may_trail(w: &World, civ: u32, j: usize) -> bool {
+    let t = &w.tiles[j];
+    if t.trail || revealed(w, civ, j) {
+        return t.trail || trailable(w, j);
+    }
+    match t.terrain {
+        FOREST | HILLS => true,
+        MOUNTAIN => mountain_may_bridge(),
+        _ => false,
+    }
+}
+
+/// The step into `j` as `civ` prices it (`tile_cost` plus a river crossing, which a trail bridges:
+/// known keeps it until a trail is built, possible drops it where one could go).
+fn step_as(w: &World, civ: u32, from: usize, to: usize, possible: bool) -> Option<f64> {
+    let t = &w.tiles[to];
+    let along = w.tiles[from].flow == Some(to) || t.flow == Some(from);
+    let bridged = if possible { may_trail(w, civ, to) } else { t.trail };
+    let cross = if t.river > 0 && !bridged && !along { RIVER.cross } else { 0.0 };
+    Some(tile_cost(w, civ, to, possible)? + cross)
+}
+
+/// Whether a trail on revealed tile `j` would cut what entering it costs: it is trailable, not
+/// built, and its hidden cost is less than its bare one (or it bridges a river).
+fn needs_trail(w: &World, civ: u32, j: usize) -> bool {
+    let t = &w.tiles[j];
+    if t.trail || !revealed(w, civ, j) || !trailable(w, j) || !TRAIL.work.iter().any(|&(k, _)| k == t.terrain) {
+        return false;
+    }
+    let cut = TERRAIN[t.terrain].move_cost.is_none_or(|c| t.trail_cost.is_some_and(|h| h < c));
+    cut || t.river > 0
+}
+
+/// The labour a trail on tile `j` still needs, or `None` where none can be built.
+fn trail_left(w: &World, j: usize) -> Option<f64> {
+    let t = &w.tiles[j];
+    TRAIL.work.iter().find(|&&(k, _)| k == t.terrain).map(|&(_, need)| (need - t.trail_work).max(0.0))
+}
+
+/// What a route plan says: `known` and `possible` are the cheapest paths from `from` to `to` (tiles
+/// after `from`, and cost), and `candidates` are the unrevealed tiles on the possible path whose
+/// known and possible costs differ. None when the known path is already as cheap as the possible one.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Plan {
+    pub known: Option<(Vec<usize>, f64)>,
+    pub possible: Option<(Vec<usize>, f64)>,
+    pub candidates: Vec<usize>,
+}
+
+/// The route plan for `civ` from `from` to `to`: see `Plan`.
+pub fn route_plan(w: &World, civ: u32, from: usize, to: usize) -> Plan {
+    let known = path_by(w, from, to, |i, j| step_as(w, civ, i, j, false));
+    let possible = path_by(w, from, to, |i, j| step_as(w, civ, i, j, true));
+    let mut candidates = Vec::new();
+    if let Some((pp, pc)) = &possible {
+        let kc = known.as_ref().map_or(f64::INFINITY, |k| k.1);
+        if kc > pc + EPS {
+            let mut prev = from;
+            for &j in pp {
+                let differ = step_as(w, civ, prev, j, false) != step_as(w, civ, prev, j, true);
+                if differ && !revealed(w, civ, j) && !w.tiles[j].trail {
+                    candidates.push(j);
+                }
+                prev = j;
+            }
+        }
+    }
+    Plan { known, possible, candidates }
+}
+
+/// The labour a scout's walk costs, from `home`: `cost_map` over walkable tiles.
+fn walk_costs(w: &World, home: usize) -> BTreeMap<usize, f64> {
+    cost_map(w, &[home], f64::INFINITY, |i| walkable(w, i))
+}
+
+/// The cheapest tile to stand on to work on tile `j` (`j` itself or a neighbour) that the walk
+/// reaches: its walk cost and the tile.
+fn beside(w: &World, costs: &BTreeMap<usize, f64>, j: usize) -> Option<(f64, usize)> {
+    std::iter::once(j)
+        .chain(land::neighbours(w, j))
+        .filter_map(|n| costs.get(&n).map(|&c| (c, n)))
+        .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)))
+}
+
+/// The walk to a tile beside `j` from `home`: empty when it stands there already, `None` when no
+/// walk reaches one.
+fn approach(w: &World, costs: &BTreeMap<usize, f64>, home: usize, j: usize) -> Option<Vec<usize>> {
+    if steps(w, home, j) <= 1 {
+        return Some(Vec::new());
+    }
+    let (_, n) = beside(w, costs, j)?;
+    if n == home {
+        return Some(Vec::new());
+    }
+    path_between(w, home, n).map(|(p, _)| p)
+}
+
+/// The tiles a scout works on next, in order: mountains first (the ones that decide whether a
+/// route exists), then the nearest to the scout, then the biggest saving. A mountain candidate
+/// stands for its range: the unrevealed mountains joined to it whose cheapest possible route
+/// through them beats the known one. So the search sweeps along a range from where it stands.
+fn ordered(w: &World, civ: u32, plan: &Plan, from: usize, to: usize, costs: &BTreeMap<usize, f64>) -> Vec<usize> {
+    let known_cost = plan.known.as_ref().map_or(f64::INFINITY, |k| k.1);
+    let mut set: BTreeSet<usize> = plan.candidates.iter().copied().collect();
+    let through = |m: usize| {
+        let a = path_by(w, from, m, |i, j| step_as(w, civ, i, j, true));
+        let b = path_by(w, m, to, |i, j| step_as(w, civ, i, j, true));
+        match (a, b) {
+            (Some((_, x)), Some((_, y))) => x + y,
+            _ => f64::INFINITY,
+        }
+    };
+    for &c in plan.candidates.iter().filter(|&&c| w.tiles[c].terrain == MOUNTAIN) {
+        let mut range = BTreeSet::new();
+        let mut stack = vec![c];
+        while let Some(m) = stack.pop() {
+            if !range.insert(m) {
+                continue;
+            }
+            for n in land::neighbours(w, m) {
+                if w.tiles[n].terrain == MOUNTAIN && !revealed(w, civ, n) && !range.contains(&n) {
+                    stack.push(n);
+                }
+            }
+        }
+        set.extend(range.into_iter().filter(|&m| through(m) < known_cost - EPS));
+    }
+    let mut keyed: Vec<(u8, f64, f64, usize)> = set
+        .into_iter()
+        .map(|j| {
+            let reach = beside(w, costs, j).map_or(f64::INFINITY, |(c, _)| c);
+            let tier = u8::from(w.tiles[j].terrain != MOUNTAIN);
+            let saving = match tile_cost(w, civ, j, false) {
+                Some(k) => k - tile_cost(w, civ, j, true).unwrap_or(k),
+                None => f64::INFINITY,
+            };
+            (tier, reach, saving, j)
+        })
+        .collect();
+    keyed.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(b.2.total_cmp(&a.2)).then(a.3.cmp(&b.3)));
+    keyed.into_iter().map(|k| k.3).collect()
+}
+
+/// Puts a scout's walk on `path` into its labour `left`: steps taken while each costs no more than
+/// what is left. A step part-paid carries to next turn as `banked`. Returns whether it reached the
+/// end of the path.
+fn march(w: &mut World, id: u32, path: &[usize], left: &mut f64, banked: &mut f64) -> bool {
+    let mut at = w.units[&id].home;
+    let mut taken = 0;
+    for &next in path {
+        let Some(cost) = step_cost(w, at, next) else { break };
+        if cost > *left + EPS {
+            break;
+        }
+        *left -= cost;
+        at = next;
+        taken += 1;
+        w.tiles[next].walked = true;
+    }
+    let u = w.units.get_mut(&id).unwrap();
+    if taken > 0 {
+        u.actor.home = at;
+        u.actor.territory = vec![at];
+    }
+    let done = taken == path.len();
+    if done {
+        *banked = 0.0;
+    } else {
+        *banked = *left;
+        *left = 0.0;
+    }
+    done
+}
+
+/// Logs a scout's event about its tile, with a route cost where it has one.
+fn scout_event(w: &mut World, kind: EventKind, tile: usize, civ: u32, id: u32, cost: Option<f64>) {
+    w.unit_event(kind, tile, civ, id, None);
+    if let Some(e) = w.events.last_mut() {
+        e.cost = cost;
+    }
+}
+
+/// Clears a scout's route and what it has reported about it.
+fn clear_route(w: &mut World, id: u32) {
+    if let Some(u) = w.units.get_mut(&id) {
+        u.route = None;
+        u.heard = false;
+        u.blocked = false;
+    }
+}
+
+/// Reports a scout is blocked, once until it moves on.
+fn blocked(w: &mut World, id: u32, civ: u32) {
+    let u = &w.units[&id];
+    if u.blocked {
+        return;
+    }
+    let tile = u.home;
+    w.units.get_mut(&id).unwrap().blocked = true;
+    scout_event(w, EventKind::ScoutBlocked, tile, civ, id, None);
+}
+
+/// Spends the scout's labour `left` on its route, as `scout/`'s `scoutWork`: it walks to the first
+/// reveal it can reach, reveals it, and builds the trails its route needs; a mountain takes a whole
+/// turn's search labour, begun beside it (`start` is what the search had this turn). Returns the
+/// labour a part-paid step carries to next turn.
+fn search(w: &mut World, id: u32, left: &mut f64, start: f64) -> f64 {
+    let civ = w.units[&id].civ;
+    let mut banked = 0.0;
+    let mut guard = 0;
+    while *left > EPS && guard < 100_000 {
+        guard += 1;
+        let Some((from, to)) = w.units[&id].route else { break };
+        let home = w.units[&id].home;
+        let plan = route_plan(w, civ, from, to);
+        if plan.possible.is_none() {
+            let tile = home;
+            clear_route(w, id);
+            scout_event(w, EventKind::ScoutNoRoute, tile, civ, id, None);
+            break;
+        }
+        let costs = walk_costs(w, home);
+        let order = ordered(w, civ, &plan, from, to, &costs);
+        let reach = order.iter().find_map(|&j| approach(w, &costs, home, j).map(|p| (j, p)));
+        if let Some((j, path)) = reach {
+            if !path.is_empty() {
+                march(w, id, &path, left, &mut banked);
+                w.units.get_mut(&id).unwrap().blocked = false;
+                continue;
+            }
+            if w.tiles[j].terrain == MOUNTAIN {
+                // A mountain needs the whole turn's search labour, begun beside it.
+                if *left + EPS < start {
+                    break;
+                }
+                reveal(w, id, civ, j);
+                *left = 0.0;
+            } else {
+                if *left + EPS < SCOUT.reveal {
+                    break;
+                }
+                *left -= SCOUT.reveal;
+                reveal(w, id, civ, j);
+            }
+            continue;
+        }
+        // No reveal can be reached. Once the candidates are none, the known route is settled and
+        // its trails are built; while candidates remain unreached, the first reachable trail on the
+        // possible path is built instead (a pass that opens the land beyond).
+        let known_cost = plan.known.as_ref().map(|k| k.1);
+        let no_reveal = !plan.candidates.is_empty();
+        let trail_on: &[usize] = match (&plan.known, &plan.possible) {
+            (Some((p, _)), _) if !no_reveal => p,
+            (_, Some((p, _))) if no_reveal => p,
+            _ => &[],
+        };
+        let needs: Vec<usize> = {
+            let mut v: Vec<usize> = trail_on.iter().copied().filter(|&j| needs_trail(w, civ, j)).collect();
+            v.sort_by_key(|&j| (steps(w, home, j), j));
+            v
+        };
+        if !no_reveal {
+            let pcost = plan.possible.as_ref().map_or(f64::INFINITY, |p| p.1);
+            if known_cost.is_some_and(|k| k <= pcost + EPS) && !w.units[&id].heard && !needs.is_empty() {
+                let cost = known_cost.unwrap_or(0.0);
+                w.units.get_mut(&id).unwrap().heard = true;
+                scout_event(w, EventKind::ScoutRouteFound, home, civ, id, Some(cost));
+            }
+        }
+        let trail = needs.iter().find_map(|&j| approach(w, &costs, home, j).map(|p| (j, p)));
+        let Some((j, path)) = trail else {
+            match known_cost {
+                Some(cost) if !no_reveal && needs.is_empty() => {
+                    clear_route(w, id);
+                    scout_event(w, EventKind::ScoutRouteFound, home, civ, id, Some(cost));
+                }
+                _ => blocked(w, id, civ),
+            }
+            break;
+        };
+        if !path.is_empty() {
+            march(w, id, &path, left, &mut banked);
+            w.units.get_mut(&id).unwrap().blocked = false;
+            continue;
+        }
+        let Some(need) = trail_left(w, j) else { break };
+        let used = need.min(*left);
+        if used <= EPS {
+            break;
+        }
+        *left -= used;
+        if build_trail(w, j, used) {
+            scout_event(w, EventKind::ScoutTrailBuilt, j, civ, id, None);
+        }
+        w.units.get_mut(&id).unwrap().blocked = false;
+    }
+    banked
+}
+
+/// Reveals tile `j` for `civ`; a mountain that can be bridged is a pass found.
+fn reveal(w: &mut World, id: u32, civ: u32, j: usize) {
+    w.civs.get_mut(&civ).unwrap().revealed.insert(j);
+    w.units.get_mut(&id).unwrap().blocked = false;
+    if w.tiles[j].terrain == MOUNTAIN && trailable(w, j) {
+        scout_event(w, EventKind::ScoutPassFound, j, civ, id, None);
+    }
+}
+
+/// One scout's turn: it spoils, feeds itself (forage only on a route and off rival land, then the
+/// line for what is still short), searches on the labour left, and eats. Its people go hungry as a
+/// camp's do; a scout that starves to nothing is gone.
+fn scout_turn(w: &mut World, id: u32) {
+    let civ = w.units[&id].civ;
+    {
+        let u = w.units.get_mut(&id).unwrap();
+        u.store = u.store.map(|v| v * (1.0 - CLAN.spoilage));
+    }
+    let people = w.units[&id].people;
+    let need = people * UNIT.food;
+    let mut left = people * UNIT.labour + w.units[&id].banked;
+    let mut banked = 0.0;
+    w.units.get_mut(&id).unwrap().banked = 0.0;
+
+    // Without a route it walks home to the capital, to be fed there rather than starve out in the
+    // country (where it forages nothing).
+    if w.units[&id].route.is_none() {
+        let (home, capital) = (w.units[&id].home, w.civs[&civ].capital);
+        if let Some((p, _)) = path_between(w, home, capital) {
+            if !p.is_empty() {
+                march(w, id, &p, &mut left, &mut banked);
+            }
+        }
+    }
+
+    // Feeds first: foraging only while it has a route, and never on rival land.
+    if w.units[&id].route.is_some() && !rival_of(w, &w.units[&id]) {
+        let short = (need - total(&w.units[&id].store)).max(0.0);
+        let (used, _) = strip(w, id, left, short.min(room(&w.units[&id])), UNIT.forage);
+        left -= used;
+    }
+    let short = (need - total(&w.units[&id].store)).max(0.0);
+    let (used, _) = supply(w, id, left, short.min(room(&w.units[&id])));
+    left -= used;
+
+    // Searches on what labour is left.
+    let start = left;
+    if w.units[&id].route.is_some() {
+        banked = search(w, id, &mut left, start);
+    }
+    w.units.get_mut(&id).unwrap().banked = banked;
+
+    // The line, for the page.
+    let routes = match line(w, id) {
+        Some((p, cost, _)) if !p.is_empty() => vec![Route { to: w.civs[&civ].capital, path: p, cost }],
+        _ => Vec::new(),
+    };
+    w.units.get_mut(&id).unwrap().actor.routes = routes;
+
+    // Eating, and hunger.
+    let u = w.units.get_mut(&id).unwrap();
+    let eaten = take(&mut u.store, need);
+    let fed = total(&eaten) + EPS >= need;
+    u.hungry = if fed { 0 } else { u.hungry + 1 };
+    let (hungry, tile) = (u.hungry, u.home);
+    if hungry == 1 {
+        scout_event(w, EventKind::ScoutHungry, tile, civ, id, None);
+    }
+    if hungry >= UNIT.hungry_turns {
+        let u = w.units.get_mut(&id).unwrap();
+        u.people -= 1.0;
+        scout_event(w, EventKind::ScoutStarved, tile, civ, id, None);
+        if w.units[&id].people <= EPS {
+            w.units.remove(&id);
+        }
+    }
+}
+
+/// Checks `SetRoute`: the player leads a civ with a scout, and both tiles are different land or
+/// mountain tiles on the map.
+pub fn check_route(w: &World, from: usize, to: usize) -> Result<(), String> {
+    let civ = leader(w)?;
+    if scout(w, civ).is_none() {
+        return Err("you have no scout".to_string());
+    }
+    for t in [from, to] {
+        if t >= w.tiles.len() {
+            return Err(format!("{t} is not a tile"));
+        }
+        let terrain = w.tiles[t].terrain;
+        if !(TERRAIN[terrain].land || terrain == MOUNTAIN) {
+            return Err("a scout can only search land and mountains".to_string());
+        }
+    }
+    if from == to {
+        return Err("a route needs two different tiles".to_string());
+    }
+    Ok(())
+}
+
+/// Checks `ClearRoute`: the player leads a civ with a scout.
+pub fn check_scout(w: &World) -> Result<(), String> {
+    let civ = leader(w)?;
+    scout(w, civ).map(|_| ()).ok_or_else(|| "you have no scout".to_string())
+}
+
+/// Applies a route order to the player's scout: a new route replaces the old one.
+pub fn order_route(w: &mut World, route: Option<(usize, usize)>) {
+    let Some(civ) = w.player else { return };
+    let Some(id) = scout(w, civ).map(|u| u.id) else { return };
+    let u = w.units.get_mut(&id).unwrap();
+    u.route = route;
+    u.heard = false;
+    u.blocked = false;
+}
+
+/// The `units` step, after `civs`: fallow tiles count down, then each camp and scout, in id order, takes its turn.
 pub fn step(w: &mut World) {
     for t in &mut w.tiles {
         t.fallow = t.fallow.saturating_sub(1);
     }
     let ids: Vec<u32> = w.units.keys().copied().collect();
     for id in ids {
-        camp_turn(w, id);
+        match w.units.get(&id).map(|u| u.kind) {
+            Some(UnitKind::Camp) => camp_turn(w, id),
+            Some(UnitKind::Scout) => scout_turn(w, id),
+            None => {}
+        }
     }
 }
 

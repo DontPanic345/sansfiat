@@ -287,6 +287,7 @@ pub fn hold(w: &mut World) {
                     other: None,
                     civ: None,
                     unit: None,
+                    cost: None,
                 });
             }
         } else if !held {

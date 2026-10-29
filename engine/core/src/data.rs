@@ -441,6 +441,15 @@ pub const CIV: CivRules = CivRules {
     pull: 3.0,
 };
 
+pub struct ScoutRules {
+    /// People a scout is made with, from the civ's clans, one each.
+    pub people: u32,
+    /// Labour to reveal a forest or hills tile (a mountain takes a whole turn's search labour).
+    pub reveal: f64,
+}
+
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 };
+
 pub struct UnitRules {
     /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
     pub labour: f64,

@@ -199,3 +199,28 @@ third civ).
 | with the switch at founding (current) | 15 of 21 | 882.1 |
 
 `sweep --size all` is unchanged by it (founding comes after the end).
+
+## build-2 (the scout at founding): sweep --size all and --after 200 --maps retro
+
+The scouts take two people from the clans and their packs from the store at founding, so the
+retro sweep moves; the pre-game's end turns don't (founding comes after it).
+
+```
+small: 10 of 10 ended on their own, 0 needed the top-up, median end turn 261
+small: people over the last 100 turns before the end changed by +2% +3% +1% +2% +1% +2% +2% +2% +2% +3%: 10 of 10 levelled off (under 10%)
+medium: 10 of 10 ended on their own, 0 needed the top-up, median end turn 355
+medium: people over the last 100 turns before the end changed by +4% +3% +3% +4% +4% +4% +3% +3% +3% +3%: 10 of 10 levelled off (under 10%)
+large: 10 of 10 ended on their own, 0 needed the top-up, median end turn 373
+large: people over the last 100 turns before the end changed by +4% +4% +4% +4% +4% +4% +4% +4% +4% +4%: 10 of 10 levelled off (under 10%)
+civs that kept their first camp: 15 of 21 (no camp lost, at least 3 warriors at the end)
+clans' people at the end, all civs (army): 777.0
+```
+
+| | civs kept their first camp | clans' people 200 turns after the pick |
+|---|---|---|
+| before the scout (the owner's centre and switch rules) | 15 of 21 | 882.1 |
+| with the scout at founding (build-2) | 15 of 21 | 777.0 |
+
+The scouts' 42 people (two per civ) are most of the 105 fewer people; the rest is what they stop
+doing for the clans in the 200 turns. Nothing tunes it here. The scout is made with or without an
+army (`--no-army` keeps it, as the spec says).

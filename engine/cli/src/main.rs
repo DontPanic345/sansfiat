@@ -256,7 +256,17 @@ fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
     }
     let targets: Vec<usize> =
         w.civs.values().filter(|c| c.id != me).map(|c| c.capital).chain(std::iter::once(w.civs[&me].capital)).collect();
-    if w.units.values().any(|u| u.civ == me && u.dest.is_none()) {
+    if n == 2 {
+        // The scout searches for a rough tile seven steps out: the first forest or hills tile by index.
+        let cap = w.civs[&me].capital;
+        let target = (0..w.tiles.len()).find(|&i| {
+            matches!(w.tiles[i].terrain, FOREST | HILLS) && w.tiles[i].hex().distance(w.tiles[cap].hex()) == 7
+        });
+        if let Some(to) = target {
+            let _ = w.act(Action::SetRoute { from: cap, to });
+        }
+    }
+    if w.units.values().any(|u| u.civ == me && u.dest.is_none() && u.kind == units::UnitKind::Camp) {
         for &to in &targets {
             if w.act(Action::MoveCamp { to }).is_ok() {
                 break;

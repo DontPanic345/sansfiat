@@ -20,6 +20,8 @@ const lead = process.argv[5] === 'lead';
 //   4. If the player's camp has no dest: moveCamp to the first accepted of the other civs' capitals
 //      in civ id order, then its own capital.
 //   5. When n == 60: disband one warrior (ignored without a camp).
+//   6. When n == 2: the scout searches from the capital for the first forest or hills tile by index
+//      seven steps out (ignored when there is none).
 // The state is read only on the pick turn and the turns after it (the camp's dest needs it).
 let pick = null;
 const act = (a) => {
@@ -47,7 +49,18 @@ function leadOrders(turn) {
   const me = state.player;
   const civs = byId(state.civs);
   const targets = civs.filter((c) => c.id !== me).map((c) => c.capital).concat(state.civs[me].capital);
-  if (byId(state.units).some((u) => u.civ === me && u.dest === null)) {
+  if (n === 2) {
+    const layout = JSON.parse(sim.layout());
+    const cap = state.civs[me].capital;
+    const dist = (a, b) => {
+      const dq = layout.q[a] - layout.q[b];
+      const dr = layout.r[a] - layout.r[b];
+      return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+    };
+    const to = layout.terrain.findIndex((t, i) => (t === 3 || t === 4) && dist(i, cap) === 7);
+    if (to >= 0) act({ type: 'setRoute', from: cap, to });
+  }
+  if (byId(state.units).some((u) => u.civ === me && u.dest === null && u.kind === 'camp')) {
     for (const to of targets) if (act({ type: 'moveCamp', to })) break;
   }
   if (n === 60) act({ type: 'disband', n: 1 });

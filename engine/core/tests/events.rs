@@ -168,7 +168,8 @@ fn a_market_that_fades_is_an_event() {
             market: Some(m),
             other: None,
             civ: None,
-            unit: None
+            unit: None,
+            cost: None,
         }]
     );
     assert_eq!(w.events[0].text(&w), format!("Market {m} fades"), "worded after the market is gone");

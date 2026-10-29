@@ -168,11 +168,12 @@ pub fn found(w: &mut World) {
     // as close to a capital switch to it.
     crate::markets::go(w);
     switch_to_capitals(w);
-    if w.config.army {
-        let ids: Vec<u32> = w.civs.keys().copied().collect();
-        for id in ids {
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    for id in ids {
+        if w.config.army {
             units::raise_at_founding(w, id);
         }
+        units::raise_scout_at_founding(w, id);
     }
     w.phase = Phase::Choose;
 }
