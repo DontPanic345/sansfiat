@@ -138,7 +138,7 @@ fn total(b: &Basket) -> f64 {
 }
 
 /// Takes up to `amount` of food from `from`, in proportion to what it holds.
-fn take(from: &mut Basket, amount: f64) -> Basket {
+pub(crate) fn take(from: &mut Basket, amount: f64) -> Basket {
     let held = total(from);
     if held <= 0.0 || amount <= 0.0 {
         return [0.0; N];
@@ -1102,7 +1102,7 @@ pub fn step(w: &mut World) {
 /// Where the AI posts `civ`'s camp: up to `UNIT.post` steps along the way from the capital to the
 /// nearest rival capital reachable by land, or with none, to its farthest clan, keeping to its
 /// own land. The capital when there is nowhere to go.
-fn post(w: &World, civ: u32) -> usize {
+pub fn post(w: &World, civ: u32) -> usize {
     let c = &w.civs[&civ];
     let to_rival = w
         .civs
@@ -1153,7 +1153,7 @@ pub fn ai(w: &mut World) {
 }
 
 /// The civ the player leads, or why there is none.
-fn leader(w: &World) -> Result<u32, String> {
+pub fn leader(w: &World) -> Result<u32, String> {
     if w.phase != Phase::Main {
         return Err("the game has not begun".to_string());
     }

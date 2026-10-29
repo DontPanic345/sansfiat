@@ -31,6 +31,7 @@ export const KINDS = {
   scoutBlocked: { icon: '⊘', color: '#ffb347', label: 'Scout blocked' },
   scoutHungry: { icon: '!', color: '#ffb347', label: 'Scout hungry' },
   scoutStarved: { icon: '✕', color: '#ff7b72', label: 'Scout starved' },
+  clanJoined: { icon: '✚', color: '#3a9d5d', label: 'Clan joined' },
 };
 /** Rare, important kinds: the last ones trimmed from the DOM. */
 const PINNED = new Set(['centreFormed', 'pregameEnded', 'civFounded']);

@@ -448,9 +448,16 @@ function panel() {
   if (d.actions.length) {
     const box = document.createElement('div');
     box.className = 'actions';
+    // Actions with the same `row` share a line; others each have their own.
+    let row = null;
+    let rowKey;
     for (const a of d.actions) {
       const why = a.arm ? '' : sim.check(JSON.stringify(a.action));
-      const row = document.createElement('div');
+      if (!row || a.row === undefined || a.row !== rowKey) {
+        row = document.createElement('div');
+        rowKey = a.row;
+        box.append(row);
+      }
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = a.label;
@@ -468,9 +475,10 @@ function panel() {
         note.textContent = ` ${why}`;
         row.append(note);
       }
-      box.append(row);
     }
-    el.append(box);
+    const slot = el.querySelector('[data-actions]');
+    if (slot) slot.replaceWith(box);
+    else el.append(box);
   }
   $('closedetail').onclick = () => select(null);
 }
@@ -480,6 +488,7 @@ $('detail').addEventListener('click', (e) => {
   if (!b) return;
   const [kind, id] = b.dataset.select.split(':');
   if (kind === 'unit' && Number(id) in v.units) select({ kind: 'unit', id: Number(id) });
+  else if (kind === 'clan' && Number(id) in v.clans) select({ kind: 'tile', tile: v.clans[id].home, clan: Number(id) });
 });
 
 const isHearth = (i) => {

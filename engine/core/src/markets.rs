@@ -12,8 +12,10 @@ use crate::civs;
 use crate::clans::{nutrition, surplus, Clan};
 use crate::data::*;
 use crate::land::{cost_map, passable, path};
+use crate::leaning;
 use crate::market::{clear, demand, Basket, Params};
-use crate::world::{EventKind, World};
+use crate::units::take;
+use crate::world::{EventKind, Phase, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Market {
@@ -123,7 +125,7 @@ pub fn trade(w: &mut World) {
     for mid in mids {
         civs::levy(w, mid);
         let ids: Vec<u32> = w.clans.values().filter(|c| c.market == Some(mid)).map(|c| c.id).collect();
-        let (brought, kept): (Vec<Basket>, Vec<Basket>) = ids
+        let (mut brought, mut kept): (Vec<Basket>, Vec<Basket>) = ids
             .iter()
             .map(|id| {
                 let c = &w.clans[id];
@@ -133,6 +135,30 @@ pub fn trade(w: &mut World) {
                 (c.basket.map(|v| v * share), c.basket.map(|v| v - v * share))
             })
             .unzip();
+        // The civ whose capital market this is gives and posts what its store holds beyond its keep.
+        let civ = w.civs.values().find(|c| c.market == mid && w.phase == Phase::Main).map(|c| c.id);
+        let mut posted = 0.0;
+        if let Some(civ) = civ {
+            let spare = (w.civs[&civ].store.iter().sum::<f64>() - civs::keep(w, civ)).max(0.0);
+            let unaligned: Vec<usize> = (0..ids.len()).filter(|&i| w.clans[&ids[i]].civ.is_none()).collect();
+            let pool = if w.config.gifts { w.civs[&civ].gift.min(spare) } else { 0.0 };
+            let mut gifts: Vec<Basket> = unaligned.iter().map(|&i| kept[i]).collect();
+            let unaligned_ids: Vec<u32> = unaligned.iter().map(|&i| ids[i]).collect();
+            let given = leaning::give(w, civ, &unaligned_ids, &mut gifts, pool);
+            for (&i, g) in unaligned.iter().zip(gifts) {
+                kept[i] = g;
+            }
+            let rest = (spare - given).max(0.0);
+            let basket = take(&mut w.civs.get_mut(&civ).unwrap().store, rest);
+            posted = basket.iter().sum();
+            if posted > 0.0 {
+                brought.push(basket);
+            }
+            let c = w.civs.get_mut(&civ).unwrap();
+            c.given = given;
+            c.gifted += given;
+            c.posted = posted;
+        }
         let m = w.markets.get_mut(&mid).unwrap();
         let c = clear(&brought, &m.prices, &Params::default());
         if c.cleared {
@@ -142,6 +168,27 @@ pub fn trade(w: &mut World) {
         m.volume = c.volume.iter().sum();
         m.traders = ids.len();
         m.activity = MARKET.fade * m.activity + (1.0 - MARKET.fade) * ids.len() as f64;
+        if let (Some(civ), true) = (civ, posted > 0.0) {
+            let back = c.after[ids.len()];
+            let store = &mut w.civs.get_mut(&civ).unwrap().store;
+            for f in 0..N {
+                store[f] += back[f];
+            }
+            // Trade leaning: the food a person an unaligned clan gained in the clearing.
+            if c.cleared {
+                for (i, id) in ids.iter().enumerate() {
+                    let clan = w.clans.get_mut(id).unwrap();
+                    if clan.civ.is_some() {
+                        continue;
+                    }
+                    let p = clan.people;
+                    let gained = (nutrition(&c.after[i], p) - nutrition(&brought[i], p)).max(0.0);
+                    if gained > 0.0 {
+                        *clan.leaning.entry(civ).or_insert(0.0) += LEANING.trade * gained / p;
+                    }
+                }
+            }
+        }
         for ((id, after), kept) in ids.iter().zip(c.after).zip(kept) {
             w.clans.get_mut(id).unwrap().basket = std::array::from_fn(|f| after[f] + kept[f]);
         }

@@ -187,10 +187,36 @@ function scoutPanel(ctx, id) {
     actions.push({ label: 'Clear route', action: { type: 'clearRoute' } });
   }
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
+/** The unaligned clans leaning towards civ `id`, strongest first, up to ten. Each row selects its clan's
+ *  home tile; a civ that leans more than `id` leads it. */
+function leaningList(ctx, id) {
+  const { v, rules } = ctx;
+  const c = v.civs[id];
+  const rows = Object.values(v.clans)
+    .filter((k) => k.civ == null && (k.leaning[id] ?? 0) > 0)
+    .sort((a, b) => b.leaning[id] - a.leaning[id] || a.id - b.id)
+    .slice(0, 10)
+    .map((k) => {
+      const [top, lean] = Object.entries(k.leaning).sort(([, a], [, b]) => b - a)[0];
+      const leads = lean > k.leaning[id] ? ` · ${v.civs[top]?.name ?? '?'} leads` : '';
+      const starving = k.starving ? ' · <b style="color:#ff7b72">starving</b>' : '';
+      const share = Math.round((100 * k.leaning[id]) / rules.join);
+      return `<button type="button" class="link" data-select="clan:${k.id}">Clan ${k.id}</button> ${f2(k.people)} people${starving} · leaning ${share}%${leads}`;
+    });
+  if (!rows.length) return `<p class="dim">No clan leans towards ${c.name} yet.</p>`;
+  return `<p class="units"><span class="dim">Leaning clans</span><br>${rows.join('<br>')}</p>`;
+}
+
+/** A clan's leanings by civ, as shares of `join`, strongest first; empty if it leans to none. */
+function leaningsHtml(ctx, clan) {
+  const leans = Object.entries(clan.leaning).sort(([, a], [, b]) => b - a);
+  if (!leans.length) return '';
+  const rows = leans.map(([civ, x]) => `${civName(ctx, +civ)} ${Math.round((100 * x) / ctx.rules.join)}%`);
+  return `<p>Leans to<br>${rows.join('<br>')}</p>`;
 }
 
 function capitalPanel(ctx, id) {
-  const { v, goods } = ctx;
+  const { v, goods, rules } = ctx;
   const c = v.civs[id];
   if (!c) return null;
   const mine = id === v.player;
@@ -200,11 +226,26 @@ function capitalPanel(ctx, id) {
   goods.forEach((g, f) => {
     if (c.store[f] > 0.005) html += `<tr><td>${g}</td><td>${f2(c.store[f])}</td></tr>`;
   });
-  html += `<tr><td class="dim">store</td><td class="dim">${f2(c.store.reduce((a, b) => a + b, 0))} / ${ctx.rules.store_cap}${c.lost > 0.005 ? `, lost ${f2(c.lost)} last turn` : ''}</td></tr>`;
+  html += `<tr><td class="dim">store</td><td class="dim">${f2(c.store.reduce((a, b) => a + b, 0))} / ${rules.store_cap}${c.lost > 0.005 ? `, lost ${f2(c.lost)} last turn` : ''}</td></tr>`;
   html += '</table>';
+  html += `<p class="dim">kept ${f2(c.keep)} · posted ${f2(c.posted)} · given ${f2(c.given)} last turn</p>`;
+  html += `<p>${c.joined} clan${c.joined === 1 ? '' : 's'} joined since founding</p>`;
+  // The player's controls sit here, under the store, not below the clans: main.js puts the actions in the slot.
+  const actions = [];
+  if (mine) {
+    html += `<p>Gift ${f2(c.gift)} food a turn</p>`;
+    actions.push({ label: 'Gift −1', row: 'gift', action: { type: 'setGift', food: Math.max(0, c.gift - 1) } });
+    actions.push({ label: 'Gift +1', row: 'gift', action: { type: 'setGift', food: Math.min(rules.gift_max, c.gift + 1) } });
+    html += `<p>Keep ${f2(c.keep)}${c.keep_set == null ? ' (the default)' : ''}</p>`;
+    actions.push({ label: 'Keep −1', row: 'keep', action: { type: 'setKeep', food: Math.max(0, c.keep - 1) } });
+    actions.push({ label: 'Keep +1', row: 'keep', action: { type: 'setKeep', food: c.keep + 1 } });
+    if (c.keep_set != null) actions.push({ label: 'Keep default', row: 'keep', action: { type: 'setKeep', food: null } });
+    html += '<div data-actions></div>';
+    actions.push({ label: 'Raise warrior', action: { type: 'raise', n: 1 } });
+  }
+  html += leaningList(ctx, id);
   const units = Object.values(v.units).filter((u) => u.civ === id).sort((a, b) => a.id - b.id);
   html += units.length ? unitList(ctx, units, `Units (${units.length})`, true) : '<p class="dim">No units.</p>';
-  const actions = mine ? [{ label: 'Raise warrior', action: { type: 'raise', n: 1 } }] : [];
   return { title: `${c.name}'s capital`, html, actions };
 }
 
@@ -229,6 +270,7 @@ function tilePanel(ctx, sel) {
     if (id == null || shown.has(id) || !v.clans[id]) return;
     shown.add(id);
     html += clanHtml(v.clans[id], how);
+    html += leaningsHtml(ctx, v.clans[id]);
   };
   addClan(sel.clan, 'chosen');
   addClan(view.clanAt(i), 'in its territory');

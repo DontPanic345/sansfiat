@@ -437,7 +437,7 @@ pub const CIV: CivRules = CivRules {
     endowment: [0.0, 20.0, 0.0, 0.0, 0.0],
     bridge_span: 1,
     levy: 0.2,
-    store_cap: 20.0,
+    store_cap: 60.0,
     pull: 3.0,
 };
 
@@ -449,6 +449,37 @@ pub struct ScoutRules {
 }
 
 pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 };
+
+pub struct LeaningRules {
+    /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's
+    /// market on a turn the civ posted.
+    pub trade: f64,
+    /// Leaning a gift buys: `gift × v × ln(1 + g / (gift_scale × people))` for `g` food given.
+    pub gift: f64,
+    /// Food a person that a gift must reach to count much: the log's scale.
+    pub gift_scale: f64,
+    /// How much more a starving clan values a gift, and how much more of the gift it is given.
+    pub starving: f64,
+    /// The share of a leaning lost each turn.
+    pub fade: f64,
+    /// The leaning at which a clan joins the civ.
+    pub join: f64,
+    /// The food a turn every civ gives at most when founded.
+    pub gift_default: f64,
+    /// A leaning under this is dropped.
+    pub floor: f64,
+}
+
+pub const LEANING: LeaningRules = LeaningRules {
+    trade: 1.0,
+    gift: 0.3,
+    gift_scale: 0.5,
+    starving: 5.0,
+    fade: 0.03,
+    join: 1.0,
+    gift_default: 2.0,
+    floor: 0.001,
+};
 
 pub struct UnitRules {
     /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
@@ -498,6 +529,10 @@ pub struct Config {
     /// levy). Old saves load with it on.
     #[serde(default = "yes")]
     pub army: bool,
+    /// Whether civs give gifts: off is the control (no civ gives, whatever its `gift`). Old saves
+    /// load with it on.
+    #[serde(default = "yes")]
+    pub gifts: bool,
 }
 
 fn yes() -> bool {
@@ -507,6 +542,6 @@ fn yes() -> bool {
 impl Default for Config {
     /// Radius 16: three centres 10 steps apart need the room.
     fn default() -> Self {
-        Config { seed: 1, radius: 16, army: true }
+        Config { seed: 1, radius: 16, army: true, gifts: true }
     }
 }

@@ -10,7 +10,7 @@ cargo fmt --check && cargo clippy --all-targets -- -D warnings
 cargo run -p sansfiat -- map [--seed N] [--size small|medium|large | --radius N]   # the map as ASCII, a legend and counts
 cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--every 25] [--save game.json] [--json | --events-json] [--no-events]  # stops at the pre-game's end (before the pick), then reports each civ; prints "turn  text" per event
 cargo run -p sansfiat -- sweep [seed ...] [--radius N | --size small|medium|large|all] [--turns N] [--every 50]   # seeds default 1..=10, size small; seeds run in parallel; each seed's line, its turn/clans/people every N turns, and per size whether people levelled off over the last 100 turns
-cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army]   # the camps: run to the pick with all on the AI, then 200 turns on; one line per civ (its camp, pack, hunger, starvation, line, cut off, foraging, its clans' people) and the totals: civs that kept their first camp, and the clans' people. --no-army is the control (no camp, no AI raising, no levy). Without --maps retro: the seeds and --size as above
+cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army] [--no-gifts] [--lever G]   # the camps and joining: run to the pick with all on the AI, then 200 turns on; one line per civ (its camp, pack, hunger, starvation, line, cut off, foraging, its clans' people) and the totals: civs that kept their first camp, and the clans' people. --no-army is the control (no camp, no AI raising, no levy). Without --maps retro: the seeds and --size as above
 cargo run -p sansfiat -- replay game.json [--json | --events-json] [--no-events]
 cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
 cargo run -p sansfiat -- clear baskets.json     # or - for stdin
@@ -22,6 +22,7 @@ cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N] [--lead]   #
 node www/play.mjs "?size=small&seed=2&run=1" --until "document.body.dataset.phase === 'choose'" --shot pick.png   # the page in headless Chrome; import { open } from it to click tiles and buttons
 node www/play-camp.mjs [out-dir]   # leads a civ, moves its camp out on its land, ends turns, screenshots the line (default relay/specs/29/screens)
 node www/play-scout.mjs [out-dir]  # leads a civ, selects its scout, sets a route by clicks (seed 2, small: capital to tile 58), ends turns until found, screenshots both routes and a built trail (default relay/specs/28/screens)
+node www/play-lean.mjs [out-dir]   # leads a civ, raises its gift three steps, ends 30 turns, screenshots its panel and a leaning clan's (default relay/specs/55/screens)
 ```
 
 ## Layout
@@ -35,15 +36,16 @@ node www/play-scout.mjs [out-dir]  # leads a civ, selects its scout, sets a rout
 | `core/src/actors.rs` | Actors: `Actor`, `walk_cost`, `Walks` inside a territory, `divide` and the add/drop rule `change`. |
 | `core/src/clans.rs` | Clans on the actor: seeding, `reap` and `value`, the `move`, `harvest` and `eat` steps, dividing. |
 | `core/src/market.rs` | `clear`: barter exchange ratios by tâtonnement. |
-| `core/src/markets.rs` | Markets: reach, the `go` step (one festival route by worth), trading, forming and fading. |
+| `core/src/markets.rs` | Markets: reach, the `go` step (one festival route by worth), trading (with a civ's gift, posting and trade leaning, which call into `leaning.rs`), forming and fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, the `end` step and `top_up`. |
-| `core/src/civs.rs` | Civs: `found` (the civ's own clan, the capital on its home), the `levy` (called by `trade`), the `civs` step (store upkeep), territory and the pick's `cards`. |
+| `core/src/civs.rs` | Civs: `found` (the civ's own clan, the capital on its home), the `levy` (called by `trade`), `keep` (the food kept in force: the player's setting, else the camp's full pack), the `civs` step (store upkeep), territory and the pick's `cards`. |
+| `core/src/leaning.rs` | Unaligned clans joining a civ: `give` (a civ's gift to the clans at its market, called by `trade`), `gift_leaning`, and the `lean` step after `people` (fading, then `ClanJoined` at `LEANING.join`). |
 | `core/src/units.rs` | The camp (one per civ, an actor of warriors): raise, disband, the pack, the `line` to the capital and `cut_off`, forage and pillage, the `ai` and `units` steps, the per-civ `Counters`, and the `check_*` that `validate` calls. The scout (`UnitKind::Scout`, made at founding): `route_plan` (known and possible paths and costs from a start to an end), the search in `scout_turn` (reveal, build trails, forage, feed), and `SetRoute`/`ClearRoute`. |
 | `core/src/stats.rs` | `summary`, the evidence reports, and `digest` to compare builds. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
 | `web/` | The wasm-bindgen `Sim` the page drives: `layout()` once per map, `view()` each turn, `act`/`check` for orders. |
-| `www/` | The page, plain ES modules: `main.js` (controls and `body.dataset` for scripts: `routeState` (`none`, `set`, `found`, `nopath`), `armed` (`start`, `to`), `scout`), `select.js` (the selection panel, a scout's route buttons), `map-view.js` (the canvas, `screenOf(i)`: revealed rings, trails under way, the scout's known (solid) and possible (dashed) routes via `setPlan`), `feed.js`; `check.mjs` checks its data under Node, `play.mjs` drives it in headless Chrome, `play-camp.mjs` plays a camp and `play-scout.mjs` a scout's route through it. The selected camp's line home is drawn in `map-view.js` (`setLine`), coloured in `main.js` (`lineColour`). `www/pkg` is built, not committed. |
+| `www/` | The page, plain ES modules: `main.js` (controls and `body.dataset` for scripts: `routeState` (`none`, `set`, `found`, `nopath`), `armed` (`start`, `to`), `scout`), `select.js` (the selection panel: a civ's gift and keep, its leaning clans, a clan's leanings, a scout's route buttons), `map-view.js` (the canvas, `screenOf(i)`: revealed rings, trails under way, the scout's known (solid) and possible (dashed) routes via `setPlan`), `feed.js`; `check.mjs` checks its data under Node, `play.mjs` drives it in headless Chrome, `play-camp.mjs` plays a camp, `play-lean.mjs` a civ's gift and `play-scout.mjs` a scout's route through it. The selected camp's line home is drawn in `map-view.js` (`setLine`), coloured in `main.js` (`lineColour`). `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 

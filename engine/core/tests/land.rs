@@ -16,7 +16,7 @@ fn goods_are_the_five_foods() {
 #[test]
 fn caps_are_terrain_food_times_fertility() {
     for seed in 1..=3 {
-        let w = World::new(Config { seed, radius: 16, army: true });
+        let w = World::new(Config { seed, radius: 16, army: true, gifts: true });
         for t in &w.tiles {
             let terrain = &TERRAIN[t.terrain];
             let river = if t.river > 0 { FEATURES.river } else { [0.0; N] };
@@ -39,7 +39,7 @@ fn caps_are_terrain_food_times_fertility() {
 
 #[test]
 fn fertility_is_patchy() {
-    let w = World::new(Config { seed: 1, radius: 16, army: true });
+    let w = World::new(Config { seed: 1, radius: 16, army: true, gifts: true });
     let f: Vec<f64> = w.tiles.iter().map(|t| t.fertility).collect();
     let (mut near, mut n) = (0.0, 0);
     for i in 0..f.len() {
@@ -79,7 +79,7 @@ fn index_matches_within() {
 
 #[test]
 fn step_costs() {
-    let mut w = World::new(Config { seed: 1, radius: 8, army: true });
+    let mut w = World::new(Config { seed: 1, radius: 8, army: true, gifts: true });
     let find = |w: &World, t: usize| w.tiles.iter().position(|x| x.terrain == t && x.river == 0).unwrap();
     let sea = find(&w, SEA);
     let plains = find(&w, PLAINS);
@@ -190,7 +190,7 @@ fn a_camp_crosses_a_built_pass_and_no_unbuilt_one() {
 
 #[test]
 fn path_by_is_path_on_the_real_cost() {
-    let mut w = World::new(Config { seed: 2, radius: 12, army: true });
+    let mut w = World::new(Config { seed: 2, radius: 12, army: true, gifts: true });
     for i in 0..w.tiles.len() {
         if i % 3 == 0 && w.tiles[i].trail_cost.is_some() {
             w.tiles[i].trail = true;
@@ -213,7 +213,7 @@ fn path_by_is_path_on_the_real_cost() {
 
 #[test]
 fn food_regrows_and_game_breeds() {
-    let mut w = World::new(Config { seed: 1, radius: 8, army: true });
+    let mut w = World::new(Config { seed: 1, radius: 8, army: true, gifts: true });
     let i = w.tiles.iter().position(|t| t.cap[GRAIN] > 0.0 && t.cap[GAME] > 0.0).unwrap();
     w.clans.clear();
     let cap = w.tiles[i].cap;
