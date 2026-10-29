@@ -44,7 +44,7 @@ fn founding_makes_a_civ_on_each_centre() {
     assert_eq!(colors, ["#d64545", "#3b6fd6", "#d6a63b"]);
     for (c, m) in w.civs.values().zip(ms) {
         assert_eq!((c.market, c.capital, c.founded), (m, w.markets[&m].tile, 77));
-        assert_eq!(c.store, [0.0, 30.0, 0.0, 0.0, 0.0]);
+        assert_eq!(c.store, CIV.endowment);
         assert_eq!(c.lost, 0.0);
     }
     let founded: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::CivFounded).collect();
@@ -193,7 +193,7 @@ fn the_store_spoils_and_is_capped() {
     let (mut w, ids) = founded();
     let red = ids[0];
     civs::upkeep(&mut w);
-    let kept = 30.0 * (1.0 - CLAN.spoilage);
+    let kept = CIV.endowment[GRAIN] * (1.0 - CLAN.spoilage);
     assert!((w.civs[&red].store[GRAIN] - kept).abs() < 1e-9);
     assert!((w.civs[&ids[2]].store[GRAIN] - kept).abs() < 1e-9);
 
@@ -211,8 +211,9 @@ fn the_store_spoils_and_is_capped() {
     let c = &w.civs[&red];
     let total: f64 = c.store.iter().sum();
     assert!((total - CIV.store_cap).abs() < 1e-9, "{total}");
-    // 60 spoils to 54, 4 over.
-    assert!((c.lost - 4.0).abs() < 1e-9, "{}", c.lost);
+    // 60 spoils to 54, the rest over.
+    let over = 60.0 * (1.0 - CLAN.spoilage) - CIV.store_cap;
+    assert!((c.lost - over).abs() < 1e-9, "{}", c.lost);
     assert!((c.store[GRAIN] / c.store[FRUIT] - 2.0).abs() < 1e-9);
     civs::upkeep(&mut w);
     assert_eq!(w.civs[&red].lost, 0.0, "nothing lost once under the cap");

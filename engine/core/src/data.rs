@@ -419,14 +419,17 @@ pub struct CivRules {
     pub territory: i32,
     /// What a civ's store starts with, standing in for the boon year.
     pub endowment: [f64; N],
-    /// The share of its surplus (its harvest beyond need) a civ clan pays into the store when it
-    /// walks to the capital's market.
+    /// The share of what it brings (its basket) a civ clan pays into the store when it walks to the
+    /// capital's market, while the store has room; its harvest drops by the same share.
     pub levy: f64,
     /// The most goods, in all, a civ's store holds; the excess is lost.
     pub store_cap: f64,
+    /// What a civ clan makes of going to its capital's market over another festival, in labour.
+    pub pull: f64,
 }
 
-pub const CIV: CivRules = CivRules { territory: 2, endowment: [0.0, 30.0, 0.0, 0.0, 0.0], levy: 0.3, store_cap: 50.0 };
+pub const CIV: CivRules =
+    CivRules { territory: 2, endowment: [0.0, 20.0, 0.0, 0.0, 0.0], levy: 0.2, store_cap: 20.0, pull: 3.0 };
 
 pub struct UnitRules {
     /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
@@ -461,7 +464,7 @@ pub const UNIT: UnitRules = UnitRules {
     min_clan: 2.0,
     start: 3,
     pack: 5.0,
-    carry: 1.0,
+    carry: 3.0,
     forage: 0.5,
     pillage: 1.0,
     fallow: 5,

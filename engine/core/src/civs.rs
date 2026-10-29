@@ -199,9 +199,11 @@ fn repair(w: &mut World) {
 }
 
 /// The levy at market `mid`: each clan of the civ whose capital market it is that came there pays
-/// `CIV.levy` of its surplus (its harvest beyond need) into the civ's store, taken in proportion
-/// from its harvest and its basket, so that growth, which `eat` reckons on the harvest, sees less.
-/// Called by `markets::trade` before the market clears. Nothing with `Config.army` off.
+/// `CIV.levy` of what it brought (its basket) into the civ's store, in id order until the store is
+/// at `CIV.store_cap`; its harvest drops by the same share, so that growth, which `eat` reckons on
+/// the harvest, sees less. (A share of only the harvest beyond need brings next to nothing: clans
+/// grow until their harvest just feeds them.) Called by `markets::trade` before the market clears.
+/// Nothing with `Config.army` off.
 pub fn levy(w: &mut World, mid: u32) {
     if !w.config.army {
         return;
@@ -209,18 +211,20 @@ pub fn levy(w: &mut World, mid: u32) {
     let Some(civ) = w.civs.values().find(|c| c.market == mid).map(|c| c.id) else { return };
     let ids: Vec<u32> =
         w.clans.values().filter(|c| c.civ == Some(civ) && c.market == Some(mid)).map(|c| c.id).collect();
+    let mut room = (CIV.store_cap - w.civs[&civ].store.iter().sum::<f64>()).max(0.0);
     for id in ids {
         let c = w.clans.get_mut(&id).unwrap();
-        let total: f64 = c.harvest.iter().sum();
-        if total <= 0.0 {
+        let total: f64 = c.basket.iter().sum();
+        if total <= 0.0 || room <= 0.0 {
             continue;
         }
-        let share = (CIV.levy * crate::clans::surplus(&c.harvest, c.people) / total).min(1.0);
-        let paid = c.harvest.map(|v| v * share);
+        let share = CIV.levy.min(room / total);
+        room -= share * total;
+        let paid = c.basket.map(|v| v * share);
         let store = &mut w.civs.get_mut(&civ).unwrap().store;
         for (f, &p) in paid.iter().enumerate() {
-            c.harvest[f] -= p;
-            c.basket[f] = (c.basket[f] - p).max(0.0);
+            c.harvest[f] *= 1.0 - share;
+            c.basket[f] -= p;
             store[f] += p;
         }
     }

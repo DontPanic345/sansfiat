@@ -70,11 +70,14 @@ pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
     let near = cost_map(w, &[clan.home], most, |i| passable(w, i));
     let b: Basket = std::array::from_fn(|f| clan.store[f] + clan.harvest[f]);
     let surplus = clan.store.iter().sum::<f64>() >= MARKET.surplus_at * clan.people;
+    // A civ clan is drawn to its capital's market.
+    let capital = clan.civ.and_then(|c| w.civs.get(&c)).map(|c| c.market);
     w.markets
         .values()
         .filter_map(|m| {
             let cost = walk_cost(*near.get(&m.tile)?, 1.0);
-            Some((m.id, gain(m, &b, clan.people) * CLAN.harvest_labour + desire(m, surplus) - cost, cost))
+            let pull = if Some(m.id) == capital { CIV.pull } else { 0.0 };
+            Some((m.id, gain(m, &b, clan.people) * CLAN.harvest_labour + desire(m, surplus) + pull - cost, cost))
         })
         .collect()
 }

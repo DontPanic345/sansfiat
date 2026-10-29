@@ -40,11 +40,14 @@ That is judged by the sweep and by playing, so it sits on top, in one canvas ste
    half holding the capital stays the civ's clan. If that clan is ever gone (merged, died),
    `Civ.clan` passes to the civ's biggest clan; the capital stays.
 2. **The levy** replaces "every fed civ clan, each turn". A civ clan whose festival route goes
-   to the capital's market that turn pays `CIV.levy` of its surplus into the store, in the
-   `trade` step at that market: its harvest beyond its need (`clans::surplus`), taken in
-   proportion from its harvest, before `eat`. So growth, which `eat` reckons on the harvest
-   beyond need, sees less: the levy slows growth as the design says. The civ's own clan always
-   walks there (a route of cost 0 from the capital). Other civ clans pay nothing.
+   to the capital's market that turn pays `CIV.levy` of what it brought (its basket) into the
+   store, in the `trade` step at that market, until the store is at `CIV.store_cap`; its harvest
+   drops by the same share, before `eat`. So growth, which `eat` reckons on the harvest beyond
+   need, sees less: the levy slows growth as the design says. The civ's own clan always walks
+   there (a route of cost 0 from the capital). Other civ clans pay nothing. (build-3: a share of
+   only the harvest beyond need, as first planned, brought nothing: clans grow until their harvest
+   just feeds them, so `clans::surplus` is 0 at every capital. And a civ clan counts `CIV.pull` in
+   favour of its capital's market when it picks a festival, so a capital isn't left with one clan.)
 3. **The store** starts at `CIV.endowment` (the boon year), spoils at the clan rate and is
    capped, as now. The first camp's pack is taken from it at founding.
 4. **The camp** is a `Unit` with `kind: Camp`, built on `Actor`: `people` are its warriors,
@@ -116,6 +119,11 @@ That is judged by the sweep and by playing, so it sits on top, in one canvas ste
 | The AI's post | the same sweep, with the camp a real line away (not sitting on the capital) | build-3 |
 | How far a line reaches | `sweep.md` reports the longest line a camp of `UNIT.start` holds steady on, in steps; by play it should reach a handful of steps on open ground (a turn is a year, so not "days"), much less over hills, and a camp past it should go hungry in a few turns. At the starting numbers it can't: a warrior's 3.5 labour over a line of `2 × steps` carries `1.75 × carry / steps` food, so at `carry` 1.0 a camp is cut off two plains steps out | build-3 |
 | The line's colour scale on the page | by eye on screenshots | build-3 may change build-2's |
+
+build-3 settled these: `CIV` levy 0.2 of the basket (up to the store's room), endowment 20, store_cap 20,
+pull 3; `UNIT.start` 3, carry 3.0, the rest unchanged; the AI's post unchanged (3 steps). All 21 civs on
+the seven maps keep their first camp, on a line of 2 or 3 steps; the clans' people end 8% under the
+control in total (the margin named: within 15%). Reach: 5 plains steps, 2 hills steps. See `sweep.md`.
 
 ## Decisions the piece left open
 

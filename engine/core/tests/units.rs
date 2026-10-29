@@ -2,7 +2,7 @@ mod common;
 
 use common::*;
 use engine::civs::{self, levy};
-use engine::clans::{adjust, eat, harvest, surplus};
+use engine::clans::{adjust, eat, harvest};
 use engine::data::*;
 use engine::land::regrow;
 use engine::units::{self, Unit};
@@ -148,7 +148,7 @@ fn harvested(w: &mut World, id: u32, market: Option<u32>, civ: Option<u32>) {
 }
 
 #[test]
-fn the_levy_comes_only_from_clans_walking_to_the_capital_out_of_the_harvest_before_growth() {
+fn the_levy_comes_only_from_clans_walking_to_the_capital_out_of_their_basket_before_growth() {
     let (mut w, ids, clans) = three();
     let (red, a) = (ids[0], clans[0]);
     let mid = w.civs[&red].market;
@@ -162,8 +162,8 @@ fn the_levy_comes_only_from_clans_walking_to_the_capital_out_of_the_harvest_befo
     harvested(&mut w, twin, None, None);
     w.clans.get_mut(&a).unwrap().harvest = [0.0; N];
     w.civs.get_mut(&red).unwrap().store = [0.0; N];
-    let s = surplus(&w.clans[&walker].harvest, 4.0);
-    assert!(s > 0.0);
+    let s = total(&w.clans[&walker].basket);
+    assert!(CIV.levy * s < CIV.store_cap);
     levy(&mut w, mid);
     let paid = total(&w.civs[&red].store);
     assert!((paid - CIV.levy * s).abs() < 1e-9, "{paid} vs {}", CIV.levy * s);
@@ -175,7 +175,7 @@ fn the_levy_comes_only_from_clans_walking_to_the_capital_out_of_the_harvest_befo
     let (before, after) = (w.clans[&twin].people, w.clans[&walker].people);
     assert_eq!(before, after);
     eat(&mut w);
-    assert!(w.clans[&walker].people > after && w.clans[&twin].people > before, "both grow");
+    assert!(w.clans[&twin].people > before, "the unlevied clan grows");
     assert!(w.clans[&walker].people < w.clans[&twin].people, "the levied clan grows less");
 }
 
@@ -201,6 +201,7 @@ fn raising_drops_n_clans_by_one_each() {
     }
     let people = |w: &World, id: u32| w.clans[&id].people;
     let before = [people(&w, clans[0]), people(&w, b), people(&w, c), people(&w, d)];
+    w.civs.get_mut(&red).unwrap().store = CIV.endowment;
     let (camp_before, store_before) = (units::camp(&w, red).unwrap().people, total(&w.civs[&red].store));
     w.act(Action::Raise { n: 2 }).unwrap();
     // The two biggest gave one each; the one under UNIT.min_clan and the third gave nothing.
@@ -309,7 +310,7 @@ fn a_far_camps_line_costs_more_and_carries_less() {
     let id = camp_id(&w, ids[0]);
     let cap = w.civs[&ids[0]].capital;
     let mut seen = Vec::new();
-    for k in [1, 2, 4] {
+    for k in [1, 2, 5, 6] {
         let tile = at_big(-5 + k, 0);
         put_camp(&mut w, ids[0], tile);
         let (path, cost, carry) = units::line(&w, id).unwrap();
@@ -319,10 +320,13 @@ fn a_far_camps_line_costs_more_and_carries_less() {
         assert!((carry - 3.0 * UNIT.labour * UNIT.carry / cost).abs() < 1e-9);
         seen.push((cost, carry, units::cut_off(&w, id)));
     }
-    assert!(seen[0].0 < seen[1].0 && seen[1].0 < seen[2].0);
-    assert!(seen[0].1 > seen[1].1 && seen[1].1 > seen[2].1);
-    // At the starting numbers a camp of three is fed one plains step out, not two.
-    assert_eq!(seen.iter().map(|s| s.2).collect::<Vec<_>>(), [false, true, true]);
+    assert!(seen.windows(2).all(|p| p[0].0 < p[1].0 && p[0].1 > p[1].1));
+    // Cut off once the line costs more than a warrior's labour carries of their food, whatever the
+    // camp's size: at the tuned numbers five plains steps out is fed and six is not.
+    for s in &seen {
+        assert_eq!(s.2, s.0 > UNIT.labour * UNIT.carry / UNIT.food, "{s:?}");
+    }
+    assert_eq!(seen.iter().map(|s| s.2).collect::<Vec<_>>(), [false, false, false, true]);
 }
 
 /// A corridor of land along r = 0 from Red's capital (-5, 0) to (9, 0), Blue's (5, 0) in the middle.
@@ -628,5 +632,23 @@ fn the_control_run_has_no_army_and_never_levies() {
     for c in w.civs.values() {
         assert_eq!(c.army.raised, 0);
         assert!(total(&c.store) <= total(&CIV.endowment), "only spoiling: nothing came in");
+    }
+}
+
+#[test]
+fn on_a_real_map_every_ai_civ_keeps_the_camp_it_raised_at_the_pick_on_a_line_from_its_capital() {
+    let mut w = World::new(Config { seed: 2, radius: size_radius("small").unwrap(), army: true });
+    while w.phase == Phase::Pregame {
+        w.run(1);
+    }
+    w.act(Action::ChooseCiv { civ: None }).unwrap();
+    w.run(100);
+    for c in w.civs.values() {
+        let camp = units::camp(&w, c.id).unwrap_or_else(|| panic!("civ {} has its camp", c.id));
+        assert_eq!(c.army.lost, 0, "civ {} lost no camp", c.id);
+        assert!(camp.people >= f64::from(UNIT.start), "civ {} has {} warriors", c.id, camp.people);
+        let (path, cost, _) = units::line(&w, camp.id).unwrap();
+        assert!(!path.is_empty() && cost > 0.0, "civ {}'s camp is posted off its capital", c.id);
+        assert!(!units::cut_off(&w, camp.id), "civ {}'s camp is fed by its line", c.id);
     }
 }
