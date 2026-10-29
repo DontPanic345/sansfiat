@@ -67,6 +67,9 @@ pub struct Tile {
     pub trail_cost: Option<f64>,
     /// Hidden: tiles a bridge over this mountain must span.
     pub span: Option<u8>,
+    /// Turns left in which a foraged or pillaged tile yields nothing to anyone and regrows nothing.
+    #[serde(default)]
+    pub fallow: u32,
 }
 
 impl Tile {
@@ -333,6 +336,7 @@ fn finish(geo: &Geo, rng: &mut u32, base: &Base, mut terrain: Vec<usize>, zone: 
             pass: pass[i],
             trail_cost: None,
             span: None,
+            fallow: 0,
         })
         .collect();
     finish_caps(&mut tiles);

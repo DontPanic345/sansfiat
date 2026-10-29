@@ -227,7 +227,7 @@ fn a_save_with_merges_and_moves_replays_to_the_same_world() {
     let mut merged = 0;
     let mut moved = 0.0;
     for seed in 1..=3 {
-        let mut w = World::new(Config { seed, radius: 12 });
+        let mut w = World::new(Config { seed, radius: 12, army: true });
         w.run(300);
         merged += w.events.iter().filter(|e| e.kind == EventKind::ClanMerged).count();
         moved += w.moved;

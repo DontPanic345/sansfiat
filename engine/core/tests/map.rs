@@ -242,7 +242,7 @@ fn tiny_maps_generate() {
 fn every_landmass_that_can_feed_has_a_clan() {
     for &(name, radius) in &SIZES {
         for seed in 1..=5 {
-            let w = World::new(Config { seed, radius });
+            let w = World::new(Config { seed, radius, army: true });
             for mass in map::landmasses(&w.tiles, radius) {
                 // Nobody is seeded in a sealed valley (a landmass of its own).
                 let fed =
@@ -266,7 +266,7 @@ fn same_seed_same_tiles_and_replay_matches() {
         assert_eq!(made(radius, 7), made(radius, 7));
         assert_ne!(made(radius, 7), made(radius, 8));
     }
-    let mut w = World::new(Config { seed: 3, radius: 16 });
+    let mut w = World::new(Config { seed: 3, radius: 16, army: true });
     w.run(40);
     assert_eq!(World::replay(&w.save()).unwrap(), w);
 }

@@ -49,6 +49,7 @@ export class MapView {
     this.terrain = opts.terrain;
     this.options = { fertility: false, territory: true, routes: true, wear: true, markets: true, hidden: false, civs: true };
     this.routes = []; // [{unit, tiles: [from, ...path], selected}]: the player's units' routes
+    this.line = null; // {tiles, colour}: the selected camp's line home, or null
     this.civShapes = [];
     this.cx = 0; this.cy = 0; this.k = 8;
     this.w = 1; this.h = 1; this.dpr = 1;
@@ -181,6 +182,12 @@ export class MapView {
     const terrainChanged = o.fertility !== this.options.fertility || o.hidden !== this.options.hidden;
     Object.assign(this.options, o);
     if (terrainChanged) this.dirty = true;
+    this.requestDraw();
+  }
+
+  /** The selected camp's line home: `{tiles: [its tile, ...path], colour}`, or null. */
+  setLine(line) {
+    this.line = line;
     this.requestDraw();
   }
 
@@ -742,6 +749,19 @@ export class MapView {
         ctx.strokeStyle = casing;
         flag(this.px[end], this.py[end], sel ? '#fff' : col);
         ctx.globalAlpha = 1;
+      }
+    }
+    // The selected camp's line home: solid, in its colour, edged dark.
+    if (this.line && this.line.tiles.length > 1) {
+      const { tiles, colour } = this.line;
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
+      for (const [c, w] of [[casing, 7], [colour, 4]]) {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(px * w, 0.12);
+        ctx.beginPath();
+        tiles.forEach((i, n) => (n === 0 ? ctx.moveTo(this.px[i], this.py[i]) : ctx.lineTo(this.px[i], this.py[i])));
+        ctx.stroke();
       }
     }
     // Capitals: a house in the civ's colour, at least 14 px wide so it shows zoomed out.

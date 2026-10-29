@@ -14,7 +14,7 @@ pub struct Sim {
 impl Sim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, radius: i32) -> Sim {
-        Sim { world: World::new(Config { seed, radius }) }
+        Sim { world: World::new(Config { seed, radius, army: true }) }
     }
 
     /// Rebuilds the world from a save's JSON.
@@ -66,8 +66,13 @@ impl Sim {
     /// wear, in `goods()` order). `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
     /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, territory (the
-    /// capital's tiles), work (its work tiles)}}`; `units` is `{id: {id, civ, kind, tile, dest, banked,
-    /// hungry}}`; `clan_civ` is `[clan, civ]` for every clan with a civ.
+    /// capital's tiles), work (its work tiles), army (its `units::Counters`)}}`. `units` is the camps,
+    /// `{id: camp}`, a camp being its engine fields (`kind`, `people` (warriors), `home`, `store` (the
+    /// pack, a basket), `dest`, `banked`, `hungry`, `auto_forage`, `auto_supply`, `routes`, ...) and
+    /// `tile`, `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
+    /// (`{path, cost, carry}`: the path after its tile to the capital, its cost, and the food it carries
+    /// a turn with all its labour; carry null is without limit, at the capital; `line` itself null when
+    /// there is no line) and `cut_off`. `clan_civ` is `[clan, civ]` for every clan with a civ.
     pub fn view(&self) -> String {
         let w = &self.world;
         let trails: Vec<usize> = (0..w.tiles.len()).filter(|&i| w.tiles[i].trail).collect();
@@ -100,8 +105,28 @@ impl Sim {
                     "clans": mine.count(),
                     "territory": civs::territory(w, c.id),
                     "work": civs::work_tiles(w, c.id),
+                    "army": c.army,
                 });
                 (c.id, row)
+            })
+            .collect();
+        // Each camp as it is, with its tile, its line to the capital (path, cost, carry a turn; null
+        // carry is without limit) and whether it is cut off.
+        let units_json: BTreeMap<u32, serde_json::Value> = w
+            .units
+            .values()
+            .map(|u| {
+                let mut row = serde_json::to_value(u).unwrap();
+                let need = u.people * UNIT.food;
+                let held: f64 = u.store.iter().sum();
+                row["tile"] = u.tile().into();
+                row["pack_cap"] = units::pack_cap(u.people).into();
+                row["food_turns"] = if need > 0.0 { held / need } else { 0.0 }.into();
+                row["line"] = units::line(w, u.id)
+                    .map(|(path, cost, carry)| serde_json::json!({ "path": path, "cost": cost, "carry": carry }))
+                    .into();
+                row["cut_off"] = units::cut_off(w, u.id).into();
+                (u.id, row)
             })
             .collect();
         let clan_civ: Vec<(u32, u32)> = w.clans.values().filter_map(|c| c.civ.map(|civ| (c.id, civ))).collect();
@@ -117,7 +142,7 @@ impl Sim {
             "claims": claims,
             "wear": wear,
             "civs": civ_rows,
-            "units": w.units,
+            "units": units_json,
             "clan_civ": clan_civ,
             "summary": stats::summary(w),
         })
@@ -145,7 +170,7 @@ impl Sim {
         let w = &self.world;
         let json = units::route(w, unit).map(|(path, cost)| {
             let u = &w.units[&unit];
-            let turns = units::turns(w, &path, u.tile, u.banked);
+            let turns = units::turns(w, &path, u.tile(), u.banked);
             serde_json::json!({ "path": path, "cost": cost, "turns": turns })
         });
         serde_json::to_string(&json).unwrap()

@@ -7,6 +7,7 @@ use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
 use crate::actors::{self, Actor, Route, Walks};
+use crate::civs;
 use crate::data::*;
 use crate::land::{neighbours, passable};
 use crate::map::{self, Zone};
@@ -134,7 +135,7 @@ pub fn reap(w: &World, people: f64, store: &Basket, routes: &[Route], tiles: &[u
     for (&t, &labour) in tiles.iter().zip(&work) {
         let stock = &w.tiles[t].stock;
         let held: f64 = stock.iter().sum();
-        if held <= 0.0 || labour <= 0.0 {
+        if held <= 0.0 || labour <= 0.0 || w.tiles[t].fallow > 0 {
             takes.push([0.0; N]);
             continue;
         }
@@ -355,7 +356,8 @@ fn move_on(w: &mut World, c: &Clan, now: f64) -> bool {
 pub fn adjust(w: &mut World) {
     for id in shuffled(w) {
         let c = w.clans[&id].clone();
-        if c.hungry >= CLAN.patience && move_on(w, &c, value(w, &c, &c.territory)) {
+        let pinned = civs::is_civ_clan(w, id);
+        if !pinned && c.hungry >= CLAN.patience && move_on(w, &c, value(w, &c, &c.territory)) {
             continue;
         }
         let changed = actors::change(
@@ -367,7 +369,12 @@ pub fn adjust(w: &mut World) {
             CLAN.land_margin,
             |t| value(w, &c, t),
         );
-        let (home, territory) = actors::recentre(w, c.home, &changed, CLAN.territory_radius);
+        // The civ's own clan stays on the capital: it adjusts its land around it.
+        let (home, territory) = if pinned {
+            (c.home, actors::trim(w, c.home, &changed, CLAN.territory_radius))
+        } else {
+            actors::recentre(w, c.home, &changed, CLAN.territory_radius)
+        };
         free(w, id, &c.territory);
         for &t in &territory {
             w.tiles[t].claim = Some(id);

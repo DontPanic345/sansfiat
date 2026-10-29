@@ -5,7 +5,7 @@ use engine::{Config, World};
 
 #[test]
 fn summary_counts_match_the_world() {
-    let mut w = World::new(Config { seed: 2, radius: 12 });
+    let mut w = World::new(Config { seed: 2, radius: 12, army: true });
     w.run(100);
     let s = summary(&w);
     assert_eq!(s.turn, w.turn);
@@ -26,7 +26,7 @@ fn summary_counts_match_the_world() {
 
 #[test]
 fn centre_report_compares_with_the_mean_over_land() {
-    let mut w = World::new(Config { seed: 1, radius: 12 });
+    let mut w = World::new(Config { seed: 1, radius: 12, army: true });
     w.run(100);
     let land: Vec<f64> = w.tiles.iter().filter(|t| TERRAIN[t.terrain].land).map(|t| t.fertility).collect();
     let mean = land.iter().sum::<f64>() / land.len() as f64;
@@ -61,7 +61,7 @@ fn land_tile(w: &World) -> usize {
 #[test]
 fn digest_is_stable_16_hex_and_moves_with_the_world() {
     let run = |turns| {
-        let mut w = World::new(Config { seed: 3, radius: 10 });
+        let mut w = World::new(Config { seed: 3, radius: 10, army: true });
         w.run(turns);
         w
     };

@@ -31,7 +31,7 @@ pub fn at_big(q: i32, r: i32) -> usize {
 }
 
 fn flat_radius(radius: i32) -> World {
-    let mut w = World::new(Config { seed: 1, radius });
+    let mut w = World::new(Config { seed: 1, radius, army: true });
     w.clans.clear();
     w.rng = 4151932303;
     w.next_id = 4;

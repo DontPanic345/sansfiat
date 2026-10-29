@@ -15,10 +15,15 @@ export const KINDS = {
   centreFormed: { icon: '★', color: '#ffc800', label: 'Centres' },
   pregameEnded: { icon: '⚑', color: '#ffffff', label: 'End' },
   civFounded: { icon: '♜', color: '#ffffff', label: 'Civs' },
-  unitMade: { icon: '+', color: '#8fd18f', label: 'Units made' },
-  unitHungry: { icon: '!', color: '#ffb347', label: 'Units hungry' },
-  unitDisbanded: { icon: '−', color: '#a8a8a8', label: 'Units disbanded' },
-  unitStarved: { icon: '✕', color: '#ff7b72', label: 'Units starved' },
+  campRaised: { icon: '+', color: '#8fd18f', label: 'Camps raised' },
+  warriorsRaised: { icon: '+', color: '#8fd18f', label: 'Warriors raised' },
+  warriorsDisbanded: { icon: '−', color: '#a8a8a8', label: 'Warriors disbanded' },
+  campResupplied: { icon: '↻', color: '#8fd18f', label: 'Camp resupplied' },
+  campCutOff: { icon: '✂', color: '#ffb347', label: 'Camp cut off' },
+  campHungry: { icon: '!', color: '#ffb347', label: 'Camp hungry' },
+  warriorsStarved: { icon: '✕', color: '#ff7b72', label: 'Warriors starved' },
+  campForaged: { icon: '·', color: '#c9b77a', label: 'Camp foraged' },
+  campPillaged: { icon: '✕', color: '#d64545', label: 'Camp pillaged' },
 };
 /** Rare, important kinds: the last ones trimmed from the DOM. */
 const PINNED = new Set(['centreFormed', 'pregameEnded', 'civFounded']);

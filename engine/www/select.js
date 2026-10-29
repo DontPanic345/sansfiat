@@ -99,14 +99,26 @@ function unitList(ctx, units, label, withTile) {
   return `<p class="units"><span class="dim">${label}</span><br>${rows}</p>`;
 }
 
-function unitPanel(ctx, id) {
-  const { v, sim } = ctx;
+/** A camp's panel: its warriors, pack and hunger, its line home, its switches, and its orders. */
+function campPanel(ctx, id) {
+  const { v, sim, rules } = ctx;
   const u = v.units[id];
   if (!u) return null;
   const mine = u.civ === v.player;
-  let html = `<p class="dim">${civName(ctx, u.civ)} · at ${hex(ctx, u.tile)}</p>`;
-  if (u.hungry > 0) html += `<p><b style="color:#ff7b72">Hungry for ${u.hungry} turn${u.hungry === 1 ? '' : 's'}</b> <span class="dim">(disbands at ${ctx.rules.hungry_turns})</span></p>`;
-  const actions = [];
+  const capital = v.civs[u.civ]?.capital === u.tile;
+  const pack = u.store.reduce((a, b) => a + b, 0);
+  let html = `<p class="dim">${civName(ctx, u.civ)} · camp at ${hex(ctx, u.tile)}${capital ? ' (the capital)' : ''}</p>`;
+  html += `<p>${f2(u.people)} warrior${u.people === 1 ? '' : 's'} · pack ${f2(pack)} of ${f2(u.pack_cap)}, ${f2(u.food_turns)} turn${u.food_turns === 1 ? '' : 's'} of food</p>`;
+  if (u.hungry > 0) html += `<p><b style="color:#ff7b72">Hungry for ${u.hungry} turn${u.hungry === 1 ? '' : 's'}</b> <span class="dim">(loses a warrior at ${rules.hungry_turns})</span></p>`;
+  if (u.line && u.line.path.length) {
+    const carry = u.line.carry == null ? 'without limit' : `${f2(u.line.carry)} food a turn`;
+    html += `<p>Line home: ${u.line.path.length} step${u.line.path.length === 1 ? '' : 's'}, cost ${f2(u.line.cost)}, carries ${carry} with all its labour</p>`;
+  } else if (u.line) {
+    html += '<p class="dim">At the capital: fed from the store.</p>';
+  } else {
+    html += '<p><b>No line home.</b></p>';
+  }
+  if (u.cut_off) html += '<p><b style="color:#ffb347">Cut off</b>: its line can not feed it.</p>';
   if (u.dest != null) {
     const r = JSON.parse(sim.route(id));
     html += r
@@ -119,9 +131,23 @@ function unitPanel(ctx, id) {
   }
   const others = Object.values(v.units).filter((o) => o.tile === u.tile && o.id !== id).sort((a, b) => a.id - b.id);
   html += unitList(ctx, others, 'Units here', false);
+  const actions = [];
   if (mine) {
-    if (u.dest != null) actions.push({ label: 'Stop', action: { type: 'moveUnit', unit: id, to: u.tile } });
-    actions.push({ label: 'Disband', action: { type: 'disbandUnit', unit: id } });
+    actions.push({ label: 'Raise 1', action: { type: 'raise', n: 1 } });
+    actions.push({ label: 'Disband 1', action: { type: 'disband', n: 1 } });
+    actions.push({ label: 'Disband all', action: { type: 'disband', n: null } });
+    actions.push({ label: 'Resupply', action: { type: 'resupply' } });
+    actions.push({ label: 'Forage', action: { type: 'forage' } });
+    actions.push({ label: 'Pillage', action: { type: 'pillage' } });
+    actions.push({
+      label: `Auto-forage: ${u.auto_forage ? 'on' : 'off'}`,
+      action: { type: 'setSwitches', forage: !u.auto_forage, supply: u.auto_supply },
+    });
+    actions.push({
+      label: `Auto-supply: ${u.auto_supply ? 'on' : 'off'}`,
+      action: { type: 'setSwitches', forage: u.auto_forage, supply: !u.auto_supply },
+    });
+    if (u.dest != null) actions.push({ label: 'Stop', action: { type: 'moveCamp', to: u.tile } });
   }
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 }
@@ -141,7 +167,7 @@ function capitalPanel(ctx, id) {
   html += '</table>';
   const units = Object.values(v.units).filter((u) => u.civ === id).sort((a, b) => a.id - b.id);
   html += units.length ? unitList(ctx, units, `Units (${units.length})`, true) : '<p class="dim">No units.</p>';
-  const actions = mine ? [{ label: 'Make warrior', action: { type: 'makeUnit' } }] : [];
+  const actions = mine ? [{ label: 'Raise warrior', action: { type: 'raise', n: 1 } }] : [];
   return { title: `${c.name}'s capital`, html, actions };
 }
 
@@ -181,7 +207,7 @@ function tilePanel(ctx, sel) {
 /** The panel for a selection: `{title, html, actions: [{label, action}]}`, or null if it is gone. */
 export function describe(ctx, sel) {
   if (!sel) return null;
-  if (sel.kind === 'unit') return unitPanel(ctx, sel.id);
+  if (sel.kind === 'unit') return campPanel(ctx, sel.id);
   if (sel.kind === 'capital') return capitalPanel(ctx, sel.civ);
   return tilePanel(ctx, sel);
 }

@@ -74,10 +74,15 @@ pub enum EventKind {
     CentreFormed,
     PregameEnded,
     CivFounded,
-    UnitMade,
-    UnitHungry,
-    UnitDisbanded,
-    UnitStarved,
+    CampRaised,
+    WarriorsRaised,
+    WarriorsDisbanded,
+    CampResupplied,
+    CampCutOff,
+    CampHungry,
+    WarriorsStarved,
+    CampForaged,
+    CampPillaged,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division;
@@ -116,22 +121,21 @@ impl Event {
                 let name = self.civ.and_then(|id| w.civs.get(&id)).map_or("A civ", |c| c.name.as_str());
                 format!("{name} is founded at {at}, on market {market}")
             }
-            EventKind::UnitMade => {
-                let (civ, unit) = (self.civ_name(w), self.unit.unwrap_or(0));
-                match self.clan {
-                    Some(c) => format!("{civ} makes warrior {unit} from clan {c}"),
-                    None => format!("{civ} makes warrior {unit}"),
-                }
-            }
-            EventKind::UnitHungry => format!("{}'s warrior {} goes hungry", self.civ_name(w), self.unit.unwrap_or(0)),
-            EventKind::UnitDisbanded | EventKind::UnitStarved => {
-                let why = if self.kind == EventKind::UnitStarved { " from hunger" } else { "" };
+            EventKind::CampRaised => format!("{} raises a camp at {at}", self.civ_name(w)),
+            EventKind::WarriorsRaised => format!("{} raises more warriors for its camp", self.civ_name(w)),
+            EventKind::WarriorsDisbanded | EventKind::WarriorsStarved => {
+                let why = if self.kind == EventKind::WarriorsStarved { " from hunger" } else { "" };
                 let person = match self.clan {
-                    Some(c) => format!("its person rejoins clan {c}"),
-                    None => "its person is lost".to_string(),
+                    Some(c) => format!("they rejoin clan {c}"),
+                    None => "they are lost".to_string(),
                 };
-                format!("{}'s warrior {} disbands{why}; {person}", self.civ_name(w), self.unit.unwrap_or(0))
+                format!("{}'s warriors disband{why} at {at}; {person}", self.civ_name(w))
             }
+            EventKind::CampResupplied => format!("{}'s camp at {at} is resupplied", self.civ_name(w)),
+            EventKind::CampCutOff => format!("{}'s camp at {at} is cut off from its capital", self.civ_name(w)),
+            EventKind::CampHungry => format!("{}'s camp at {at} goes hungry", self.civ_name(w)),
+            EventKind::CampForaged => format!("{}'s camp forages at {at}", self.civ_name(w)),
+            EventKind::CampPillaged => format!("{}'s camp pillages at {at}", self.civ_name(w)),
             EventKind::PregameEnded => match &w.end {
                 Some(e) => {
                     let n = e.centres.len();
@@ -207,17 +211,30 @@ pub enum Action {
     ChooseCiv {
         civ: Option<u32>,
     },
-    /// Make a warrior at the capital of the civ the player leads.
-    MakeUnit,
-    /// Send a unit to a tile; it moves when the turn ends.
-    MoveUnit {
-        unit: u32,
+    /// Raise warriors for the camp (making it at the capital if there is none): one person from
+    /// each of up to `n` clans of the civ the player leads.
+    Raise {
+        n: u32,
+    },
+    /// Disband `n` warriors, or all with `None`, to the civ's own clan.
+    Disband {
+        n: Option<u32>,
+    },
+    /// Send the camp to a tile; it moves when the turn ends.
+    MoveCamp {
         to: usize,
     },
-    /// Disband a unit at once; its person rejoins the nearest clan of its civ.
-    DisbandUnit {
-        unit: u32,
+    /// Set the camp's auto-forage and auto-supply.
+    SetSwitches {
+        forage: bool,
+        supply: bool,
     },
+    /// This turn's end: put the labour left on the line.
+    Resupply,
+    /// This turn's end: forage the tile on the labour left.
+    Forage,
+    /// This turn's end: pillage the rival's tile on the labour left.
+    Pillage,
 }
 
 pub struct Step {
@@ -236,7 +253,8 @@ pub const TURN: &[Step] = &[
     Step { name: "people", run: markets::people },
     Step { name: "wear", run: land::wear },
     Step { name: "civs", run: civs::upkeep },
-    Step { name: "units", run: units::march },
+    Step { name: "ai", run: units::ai },
+    Step { name: "units", run: units::step },
     Step { name: "hold", run: land::hold },
     Step { name: "markets", run: markets::form_and_fade },
     Step { name: "end", run: pregame::check_end },
@@ -284,9 +302,12 @@ impl World {
             Action::ChooseCiv { .. } if self.phase != Phase::Choose => Err("there is no civ to choose now".to_string()),
             Action::ChooseCiv { civ: Some(id) } if !self.civs.contains_key(id) => Err(format!("{id} is not a civ")),
             Action::ChooseCiv { .. } => Ok(()),
-            Action::MakeUnit => units::check_make(self),
-            Action::MoveUnit { unit, to } => units::check_move(self, *unit, *to),
-            Action::DisbandUnit { unit } => units::check_disband(self, *unit),
+            Action::Raise { n } => units::check_raise(self, *n),
+            Action::Disband { n } => units::check_disband(self, *n),
+            Action::MoveCamp { to } => units::check_move(self, *to),
+            Action::SetSwitches { .. } | Action::Resupply => units::check_camp(self),
+            Action::Forage => units::check_take(self, false),
+            Action::Pillage => units::check_take(self, true),
         }
     }
 
@@ -299,12 +320,26 @@ impl World {
                 self.player = *civ;
                 self.phase = Phase::Main;
             }
-            Action::MakeUnit => {
+            Action::Raise { n } => {
                 let civ = self.player.expect("validated: the player leads a civ");
-                units::make(self, civ).expect("validated: a clan can give a person");
+                units::raise(self, civ, *n).expect("validated: a clan can give a person");
             }
-            Action::MoveUnit { unit, to } => units::order_move(self, *unit, *to),
-            Action::DisbandUnit { unit } => units::disband(self, *unit, false),
+            Action::Disband { n } => {
+                let civ = self.player.expect("validated: the player leads a civ");
+                units::disband(self, civ, *n, false);
+            }
+            Action::MoveCamp { to } => {
+                let civ = self.player.expect("validated: the player leads a civ");
+                let id = units::camp(self, civ).expect("validated: there is a camp").id;
+                units::order_move(self, id, *to);
+            }
+            Action::SetSwitches { forage, supply } => units::with_camp(self, |u| {
+                u.auto_forage = *forage;
+                u.auto_supply = *supply;
+            }),
+            Action::Resupply => units::with_camp(self, |u| u.resupply = true),
+            Action::Forage => units::with_camp(self, |u| u.forage = true),
+            Action::Pillage => units::with_camp(self, |u| u.pillage = true),
         }
         self.log.push(action);
         Ok(())

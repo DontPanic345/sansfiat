@@ -103,19 +103,21 @@ function refresh() {
     $('phasetext').textContent = 'Main game';
     $('phasenote').textContent = `pre-game ${over}`;
   }
-  const mine = v.player != null ? Object.values(v.units).filter((u) => u.civ === v.player).length : 0;
+  const mine = v.player != null ? Object.values(v.units).filter((u) => u.civ === v.player) : [];
+  const warriors = mine.reduce((a, u) => a + u.people, 0);
   document.body.dataset.turn = v.turn;
   document.body.dataset.phase = v.phase;
   document.body.dataset.centres = centres;
   document.body.dataset.civ = v.player ?? '';
-  document.body.dataset.units = mine;
+  document.body.dataset.units = mine.length;
+  document.body.dataset.warriors = Math.round(warriors);
   const choose = v.phase === 'choose';
   for (const id of ['end', 'play', 'run']) {
     $(id).disabled = choose;
     $(id).title = choose ? 'Choose a civ first' : '';
   }
   $('run').hidden = v.phase === 'main';
-  civBar(mine);
+  civBar(warriors);
   routes();
   pickCard();
   if (selected && !alive(ctx(), selected)) {
@@ -127,7 +129,8 @@ function refresh() {
   view.drawNow();
 }
 
-/** Hands the map the player's units' routes (the selected one drawn firmly, the rest faint). */
+/** Hands the map the player's camps' routes (the selected one drawn firmly, the rest faint), and the
+ *  selected camp's line home. */
 function routes() {
   const out = [];
   for (const u of Object.values(v.units)) {
@@ -136,10 +139,22 @@ function routes() {
     if (r) out.push({ unit: u.id, civ: u.civ, tiles: [u.tile, ...r.path], selected: selected?.kind === 'unit' && selected.id === u.id });
   }
   view.setRoutes(out);
+  const camp = selected?.kind === 'unit' ? v.units[selected.id] : null;
+  view.setLine(camp && camp.line && camp.line.path.length ? { tiles: [camp.tile, ...camp.line.path], colour: lineColour(camp) } : null);
 }
 
-/** The player's civ in the top bar: swatch, name, people, store, units; "Watching" when it leads none. */
-function civBar(units) {
+/** A camp's line home, coloured by how much of its labour the line takes to feed it: green where a
+ *  turn's food is cheap to carry, amber halfway, red when it is cut off. The thresholds are the
+ *  page's to tune. */
+function lineColour(u) {
+  const t = u.cut_off ? 1 : u.line.carry == null ? 0 : Math.min(1, (u.people * RULES.unit_food) / u.line.carry);
+  // Green (120) at 0, amber (40) at a half, red (0) at 1.
+  const hue = t < 0.5 ? 120 - (80 * t) / 0.5 : 40 - (40 * (t - 0.5)) / 0.5;
+  return `hsl(${hue} 85% 55%)`;
+}
+
+/** The player's civ in the top bar: swatch, name, people, store, warriors; "Watching" when it leads none. */
+function civBar(warriors) {
   const bar = $('civbar');
   bar.hidden = v.phase !== 'main';
   if (bar.hidden) return;
@@ -151,11 +166,11 @@ function civBar(units) {
   $('civsw').style.background = c.color;
   const total = c.store.reduce((a, b) => a + b, 0);
   $('civpeople').textContent = Math.round(c.people);
-  $('civinunits').textContent = units ? `+${units} in units` : '';
+  $('civinunits').textContent = '';
   $('civstore').textContent = `${Math.round(total)} / ${RULES.store_cap}`;
   const lines = GOODS.map((g, f) => [g, c.store[f]]).filter(([, x]) => x > 0.005).map(([g, x]) => `${g} ${f2(x)}`);
   $('st-store').title = `${lines.join(', ') || 'empty'}${c.lost > 0.005 ? `; ${f2(c.lost)} lost to the cap last turn` : ''}`;
-  $('civunits').textContent = units;
+  $('civunits').textContent = Math.round(warriors);
 }
 
 /** The pick: a card over the map while the phase is `choose`, built once per game. */
@@ -342,7 +357,7 @@ function onPick(i) {
 function onCommand(i) {
   const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
   if (i < 0 || !u || u.civ !== v.player) return;
-  order({ type: 'moveUnit', unit: u.id, to: i });
+  order({ type: 'moveCamp', to: i });
 }
 
 function onFeed(item) {
@@ -538,6 +553,7 @@ function legend() {
     [sw('background:#3b6fd6;border:2px solid #000;width:10px;height:12px;margin:0 4px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)'), 'warrior'],
     [sw('background:#3b6fd6;border:2px solid #ff2a2a;width:10px;height:12px;margin:0 4px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)'), 'hungry warrior'],
     [sw('background:transparent;border:0;border-top:3px dashed #fff;height:0;margin:5px 0'), 'route (selected unit)'],
+    [sw('background:hsl(120,85%,55%);height:3px;margin:5px 0;border:0'), 'camp line (green: cheap to feed, red: cut off)'],
   ];
   $('legenditems').innerHTML = items.map(([s, name]) => `<span class="item">${s}${name}</span>`).join('');
 }

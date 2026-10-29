@@ -11,7 +11,7 @@ use crate::land::{cost_map, is_hearth, neighbours, passable};
 use crate::map;
 use crate::market::Basket;
 use crate::markets::reach;
-use crate::units;
+use crate::units::{self, Counters};
 use crate::world::{EventKind, Phase, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -30,6 +30,13 @@ pub struct Civ {
     pub store: Basket,
     /// Goods cut by the cap last turn.
     pub lost: f64,
+    /// The civ's own clan: its home is the capital and stays there. If it goes, the civ's biggest
+    /// clan takes its place.
+    #[serde(default)]
+    pub clan: u32,
+    /// What its army has done, kept here so it outlives any one camp.
+    #[serde(default)]
+    pub army: Counters,
 }
 
 fn steps(w: &World, a: usize, b: usize) -> i32 {
@@ -55,6 +62,8 @@ pub fn found(w: &mut World) {
             founded: w.turn,
             store: CIV.endowment,
             lost: 0.0,
+            clan: 0,
+            army: Counters::default(),
         };
         w.civs.insert(id, civ);
         w.civ_event(EventKind::CivFounded, capital, id, Some(mid));
@@ -98,10 +107,33 @@ pub fn found(w: &mut World) {
             w.clans.get_mut(&clan).unwrap().civ = Some(id);
         }
     }
-    // Each civ's starting warrior.
+    // Each civ's own clan: the biggest that joined with its home in reach of the festival (ties to
+    // the lower id), else its biggest. Its home is the capital, and the festival moves there.
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     for id in ids {
-        units::make_first(w, id);
+        let near = reach(w, w.civs[&id].capital);
+        let joined = |near_only: bool| {
+            w.clans
+                .values()
+                .filter(|c| c.civ == Some(id) && (!near_only || near.contains_key(&c.home)))
+                .min_by(|a, b| b.people.total_cmp(&a.people).then(a.id.cmp(&b.id)))
+                .map(|c| c.id)
+        };
+        let Some(clan) = joined(true).or_else(|| joined(false)) else { continue };
+        let home = w.clans[&clan].home;
+        let mid = w.civs[&id].market;
+        w.markets.get_mut(&mid).unwrap().tile = home;
+        let civ = w.civs.get_mut(&id).unwrap();
+        civ.capital = home;
+        civ.clan = clan;
+    }
+    // Festivals moved, so routes are laid again (the civ's own clan's is nothing).
+    crate::markets::go(w);
+    if w.config.army {
+        let ids: Vec<u32> = w.civs.keys().copied().collect();
+        for id in ids {
+            units::raise_at_founding(w, id);
+        }
     }
     w.phase = Phase::Choose;
 }
@@ -141,20 +173,70 @@ pub fn work_tiles(w: &World, civ: u32) -> Vec<usize> {
     std::iter::once(c.capital).chain(neighbours(w, c.capital)).collect()
 }
 
-/// The `civs` step, after eating: each civ's store spoils, its fed clans hand it their share, and
-/// what is over the cap is lost.
+/// Whether clan `id` is the own clan of its civ.
+pub fn is_civ_clan(w: &World, id: u32) -> bool {
+    w.clans.get(&id).and_then(|c| c.civ).and_then(|civ| w.civs.get(&civ)).is_some_and(|c| c.clan == id)
+}
+
+/// A civ whose own clan is gone (merged, died) passes it to its biggest clan (ties to the lower
+/// id); the capital stays.
+fn repair(w: &mut World) {
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    for id in ids {
+        if w.clans.contains_key(&w.civs[&id].clan) {
+            continue;
+        }
+        let best = w
+            .clans
+            .values()
+            .filter(|c| c.civ == Some(id))
+            .min_by(|a, b| b.people.total_cmp(&a.people).then(a.id.cmp(&b.id)))
+            .map(|c| c.id);
+        if let Some(clan) = best {
+            w.civs.get_mut(&id).unwrap().clan = clan;
+        }
+    }
+}
+
+/// The levy at market `mid`: each clan of the civ whose capital market it is that came there pays
+/// `CIV.levy` of what it brought (its basket) into the civ's store, in id order until the store is
+/// at `CIV.store_cap`; its harvest drops by the same share, so that growth, which `eat` reckons on
+/// the harvest, sees less. (A share of only the harvest beyond need brings next to nothing: clans
+/// grow until their harvest just feeds them.) Called by `markets::trade` before the market clears.
+/// Nothing with `Config.army` off.
+pub fn levy(w: &mut World, mid: u32) {
+    if !w.config.army {
+        return;
+    }
+    let Some(civ) = w.civs.values().find(|c| c.market == mid).map(|c| c.id) else { return };
+    let ids: Vec<u32> =
+        w.clans.values().filter(|c| c.civ == Some(civ) && c.market == Some(mid)).map(|c| c.id).collect();
+    let mut room = (CIV.store_cap - w.civs[&civ].store.iter().sum::<f64>()).max(0.0);
+    for id in ids {
+        let c = w.clans.get_mut(&id).unwrap();
+        let total: f64 = c.basket.iter().sum();
+        if total <= 0.0 || room <= 0.0 {
+            continue;
+        }
+        let share = CIV.levy.min(room / total);
+        room -= share * total;
+        let paid = c.basket.map(|v| v * share);
+        let store = &mut w.civs.get_mut(&civ).unwrap().store;
+        for (f, &p) in paid.iter().enumerate() {
+            c.harvest[f] *= 1.0 - share;
+            c.basket[f] -= p;
+            store[f] += p;
+        }
+    }
+}
+
+/// The `civs` step, after eating: each civ's own clan is checked, its store spoils and what is
+/// over the cap is lost.
 pub fn upkeep(w: &mut World) {
+    repair(w);
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     for id in ids {
         let mut store = w.civs[&id].store.map(|v| v * (1.0 - CLAN.spoilage));
-        for c in w.clans.values_mut().filter(|c| c.civ == Some(id) && c.fed) {
-            for (have, held) in c.store.iter_mut().zip(store.iter_mut()) {
-                let give = CIV.levy * *have;
-                *have -= give;
-                *held += give;
-            }
-        }
-        units::feed(w, id, &mut store);
         let total: f64 = store.iter().sum();
         let mut lost = 0.0;
         if total > CIV.store_cap {
