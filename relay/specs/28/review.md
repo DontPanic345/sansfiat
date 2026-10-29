@@ -8,10 +8,10 @@ capital to each rival capital, run until its route ended (300 turns at most).
 
 | Result | Routes |
 |---|---|
-| No route can exist at once (no land path, so nothing to reveal) | 7 of 16 |
+| Ended in the first turn with nothing revealed (seed 5 checked: no path at all, so no route can exist) | 7 of 16 |
 | Searched, the scout starved to nothing before the route was found | 5 of 9 |
-| Searched, the scout lost a person | 3 of 9 |
-| Searched, the route ended with both people alive | 1 of 9 |
+| Searched, the scout lost one of its two people | 2 of 9 |
+| Searched, the route ended with both people alive | 2 of 9 |
 
 Why: the scout starts with 5 food for 2 people (the store after the camp's pack), forages one tile a turn
 (tiles hold 2-3 food in clan country, then fall fallow for 5 turns), and its line to the capital carries
