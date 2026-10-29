@@ -1,6 +1,6 @@
 // What the selection panel shows: one function from a selection to {title, html, actions}. Later
 // pieces add actions by adding entries to the lists below; main.js greys a button when
-// `Sim.check(action)` refuses it and runs it when clicked.
+// `Sim.check(action)` refuses it and runs it when clicked. An entry with `arm` (and no action) arms a map click.
 //
 // A selection is {kind: 'unit', id}, {kind: 'capital', civ} or {kind: 'tile', tile, clan?, market?}.
 // `ctx` is what the page knows: {v (Sim.view), layout, terrain, goods, rules, sim, view (MapView)}.
@@ -152,6 +152,41 @@ function campPanel(ctx, id) {
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 }
 
+/** A scout's panel: its people and pack, its route with the known and possible costs, and the buttons
+ *  that set the route. `ctx.routing` is the page's: `arm` ('start' | 'to' | null) and `start` (the tile
+ *  picked, or null for the scout's own); `ctx.outcome` is how the last route ended ('found' | 'nopath'). */
+function scoutPanel(ctx, id) {
+  const { v, routing = {}, outcome } = ctx;
+  const u = v.units[id];
+  if (!u) return null;
+  const mine = u.civ === v.player;
+  const capital = v.civs[u.civ]?.capital === u.tile;
+  const pack = u.store.reduce((a, b) => a + b, 0);
+  let html = `<p class="dim">${civName(ctx, u.civ)} · scout at ${hex(ctx, u.tile)}${capital ? ' (the capital)' : ''}</p>`;
+  html += `<p>${f2(u.people)} people · pack ${f2(pack)} of ${f2(u.pack_cap)}, ${f2(u.food_turns)} turn${u.food_turns === 1 ? '' : 's'} of food</p>`;
+  if (u.hungry > 0) html += `<p><b style="color:#ff7b72">Hungry for ${u.hungry} turn${u.hungry === 1 ? '' : 's'}</b></p>`;
+  const plan = u.plan;
+  const way = (p) => (p ? `${p.path.length} step${p.path.length === 1 ? '' : 's'}, cost ${f2(p.cost)}` : '<b>none</b>');
+  if (u.route && plan) {
+    const [from, to] = u.route;
+    html += `<p>Route: from ${hex(ctx, from)} to ${hex(ctx, to)}</p>`;
+    html += `<p>Known: ${way(plan.known)}<br>Possible: ${way(plan.possible)}</p>`;
+    if (plan.candidates.length) html += `<p class="dim">${plan.candidates.length} unrevealed tile${plan.candidates.length === 1 ? '' : 's'} on the possible route</p>`;
+  } else {
+    if (outcome === 'found') html += '<p>Last route: <b>found</b>.</p>';
+    if (outcome === 'nopath') html += '<p>Last route: <b>no route can exist</b>.</p>';
+    html += `<p class="dim">Start: ${routing.start != null ? hex(ctx, routing.start) : `the scout's tile (${hex(ctx, u.tile)})`}.</p>`;
+  }
+  if (routing.arm) html += `<p><b>Click the map</b> for the route's ${routing.arm === 'start' ? 'start' : 'end'}.</p>`;
+  const others = Object.values(v.units).filter((o) => o.tile === u.tile && o.id !== id).sort((a, b) => a.id - b.id);
+  html += unitList(ctx, others, 'Units here', false);
+  const actions = [];
+  if (mine) {
+    actions.push({ label: 'Start here', arm: 'start' });
+    actions.push({ label: 'Route to here', arm: 'to' });
+    actions.push({ label: 'Clear route', action: { type: 'clearRoute' } });
+  }
+  return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 /** The unaligned clans leaning towards civ `id`, strongest first, up to ten. Each row selects its clan's
  *  home tile; a civ that leans more than `id` leads it. */
 function leaningList(ctx, id) {
@@ -251,7 +286,7 @@ function tilePanel(ctx, sel) {
 /** The panel for a selection: `{title, html, actions: [{label, action}]}`, or null if it is gone. */
 export function describe(ctx, sel) {
   if (!sel) return null;
-  if (sel.kind === 'unit') return campPanel(ctx, sel.id);
+  if (sel.kind === 'unit') return ctx.v.units[sel.id]?.kind === 'scout' ? scoutPanel(ctx, sel.id) : campPanel(ctx, sel.id);
   if (sel.kind === 'capital') return capitalPanel(ctx, sel.civ);
   return tilePanel(ctx, sel);
 }

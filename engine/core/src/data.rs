@@ -208,11 +208,12 @@ pub struct TrailRules {
     pub after: u32,
     /// Turns in a row unwalked before its trail wears away.
     pub fade: u32,
-    /// Move cost on a trail.
-    pub cost: f64,
+    /// Labour to finish a built trail, by the terrain it goes on (`scout`'s work: forest, hills, a
+    /// mountain pass). A trail brings a tile to its hidden `trail_cost`, not to a flat cost.
+    pub work: [(usize, f64); 3],
 }
 
-pub const TRAIL: TrailRules = TrailRules { after: 10, fade: 30, cost: 1.0 };
+pub const TRAIL: TrailRules = TrailRules { after: 10, fade: 30, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)] };
 
 pub struct DepletionRules {
     /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
@@ -419,6 +420,9 @@ pub struct CivRules {
     pub territory: i32,
     /// What a civ's store starts with, standing in for the boon year.
     pub endowment: [f64; N],
+    /// The widest a mountain's span may be for a trail to bridge it: every civ has the shortest span
+    /// for now, standing in for the bridge-span technology.
+    pub bridge_span: u8,
     /// The share of what it brings (its basket) a civ clan pays into the store when it walks to the
     /// capital's market, while the store has room; its harvest drops by the same share.
     pub levy: f64,
@@ -428,8 +432,23 @@ pub struct CivRules {
     pub pull: f64,
 }
 
-pub const CIV: CivRules =
-    CivRules { territory: 2, endowment: [0.0, 20.0, 0.0, 0.0, 0.0], levy: 0.2, store_cap: 60.0, pull: 3.0 };
+pub const CIV: CivRules = CivRules {
+    territory: 2,
+    endowment: [0.0, 20.0, 0.0, 0.0, 0.0],
+    bridge_span: 1,
+    levy: 0.2,
+    store_cap: 60.0,
+    pull: 3.0,
+};
+
+pub struct ScoutRules {
+    /// People a scout is made with, from the civ's clans, one each.
+    pub people: u32,
+    /// Labour to reveal a forest or hills tile (a mountain takes a whole turn's search labour).
+    pub reveal: f64,
+}
+
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's

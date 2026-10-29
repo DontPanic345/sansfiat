@@ -52,6 +52,9 @@ pub struct Tile {
     pub held: u32,
     pub unheld: u32,
     pub trail: bool,
+    /// Labour put into a trail not yet built on this tile; reset when it is built.
+    #[serde(default)]
+    pub trail_work: f64,
     /// River tiles upstream including this one; 0 is no river.
     pub river: u32,
     /// The tile downstream (for a mouth, the water it empties into).
@@ -63,7 +66,7 @@ pub struct Tile {
     pub zone: Zone,
     /// A gap in a ridge that a valley is entered by.
     pub pass: bool,
-    /// Hidden: the trail cost a forest, hills or crossable mountain tile will have (nothing reads it yet).
+    /// Hidden: the cost a trail brings a forest, hills or crossable mountain tile to (`step_cost`).
     pub trail_cost: Option<f64>,
     /// Hidden: tiles a bridge over this mountain must span.
     pub span: Option<u8>,
@@ -328,6 +331,7 @@ fn finish(geo: &Geo, rng: &mut u32, base: &Base, mut terrain: Vec<usize>, zone: 
             held: 0,
             unheld: 0,
             trail: false,
+            trail_work: 0.0,
             river: river[i],
             flow: flow[i],
             lake: lake[i],

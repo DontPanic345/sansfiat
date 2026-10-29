@@ -1,5 +1,6 @@
-use engine::data::{CIV, LEANING, PREGAME, SIZES, TENDING, UNIT};
+use engine::data::{CIV, LEANING, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
+use engine::units::UnitKind;
 use engine::{civs, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
 use std::collections::BTreeMap;
 
@@ -59,8 +60,10 @@ impl Sim {
         .to_string()
     }
 
-    /// What changes each turn, as JSON: `{turn, end, phase, player, clans, markets, trails, tame, claims,
-    /// wear, civs, units, clan_civ, summary}`. `trails` lists the tiles with one, `tame` is `[tile, turns]`
+    /// What changes each turn, as JSON: `{turn, end, phase, player, clans, markets, trails, trail_work,
+    /// revealed, tame, claims, wear, civs, units, clan_civ, summary}`. `trails` lists the tiles with one,
+    /// `trail_work` is `[tile, labour, need]` for each tile with a trail under way (`need` its labour to
+    /// finish), `revealed` the led civ's revealed tiles (empty when it leads none), `tame` is `[tile, turns]`
     /// where above zero, `claims` is `[tile, clan]` for every tile in a territory, `wear` is `[tile, worn,
     /// unworn]` for every tile with some food worn (each food's wear as a share, `0..=1`, and its cap before
     /// wear, in `goods()` order). `phase` is as `phase()`;
@@ -76,7 +79,10 @@ impl Sim {
     /// `tile`, `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
     /// (`{path, cost, carry}`: the path after its tile to the capital, its cost, and the food it carries
     /// a turn with all its labour; carry null is without limit, at the capital; `line` itself null when
-    /// there is no line) and `cut_off`. `clan_civ` is `[clan, civ]` for every clan with a civ.
+    /// there is no line) and `cut_off`. A scout also has `plan` when it has a route: `{known, possible,
+    /// candidates}`, where `known` and `possible` are `{path, cost}` (path from the route's start, null
+    /// when there is none) and `candidates` the unrevealed tiles the search would reveal next.
+    /// `clan_civ` is `[clan, civ]` for every clan with a civ.
     pub fn view(&self) -> String {
         let w = &self.world;
         let trails: Vec<usize> = (0..w.tiles.len()).filter(|&i| w.tiles[i].trail).collect();
@@ -137,7 +143,24 @@ impl Sim {
                     .map(|(path, cost, carry)| serde_json::json!({ "path": path, "cost": cost, "carry": carry }))
                     .into();
                 row["cut_off"] = units::cut_off(w, u.id).into();
+                if let (UnitKind::Scout, Some((from, to))) = (u.kind, u.route) {
+                    let plan = units::route_plan(w, u.civ, from, to);
+                    let way = |p: &Option<(Vec<usize>, f64)>| p.as_ref().map(|(path, cost)| serde_json::json!({ "path": path, "cost": cost }));
+                    row["plan"] = serde_json::json!({ "known": way(&plan.known), "possible": way(&plan.possible), "candidates": plan.candidates });
+                }
                 (u.id, row)
+            })
+            .collect();
+        // The led civ's revealed tiles, and the trails under way (labour in, labour needed).
+        let revealed: Vec<usize> =
+            w.player.and_then(|p| w.civs.get(&p)).map_or(Vec::new(), |c| c.revealed.iter().copied().collect());
+        let trail_work: Vec<(usize, f64, f64)> = w
+            .tiles
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.trail_work > 0.0 && !t.trail)
+            .filter_map(|(i, t)| {
+                TRAIL.work.iter().find(|&&(k, _)| k == t.terrain).map(|&(_, need)| (i, t.trail_work, need))
             })
             .collect();
         let clan_civ: Vec<(u32, u32)> = w.clans.values().filter_map(|c| c.civ.map(|civ| (c.id, civ))).collect();
@@ -149,6 +172,8 @@ impl Sim {
             "clans": w.clans,
             "markets": w.markets,
             "trails": trails,
+            "trail_work": trail_work,
+            "revealed": revealed,
             "tame": tame,
             "claims": claims,
             "wear": wear,

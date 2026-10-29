@@ -18,6 +18,8 @@ let layout = null;
 let v = null; // the last Sim.view()
 let cursor = 0; // into Sim.events
 let selected = null; // {kind: 'unit', id} | {kind: 'capital', civ} | {kind: 'tile', tile, clan, market}
+let routing = { arm: null, start: null, unit: null }; // the selected scout's route: a map click arms 'start' or 'to'
+let outcome = null; // how the player's last scout route ended: 'found' | 'nopath' | null
 let pickFor = null; // the Sim the pick card was built for
 let playing = false;
 let running = false;
@@ -39,7 +41,7 @@ const feed = new Feed({ list: $('feed'), filters: $('filters'), onClick: onFeed,
 new ResizeObserver(() => view.resize()).observe($('mapbox'));
 
 /** What the selection panel and the pick read the world through. */
-const ctx = () => ({ v, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view });
+const ctx = () => ({ v, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome });
 
 // ---- starting a map --------------------------------------------------------------------------
 
@@ -51,6 +53,8 @@ function start(next, seedShown) {
   sim = next;
   layout = JSON.parse(sim.layout());
   selected = null;
+  routing = { arm: null, start: null, unit: null };
+  outcome = null;
   pickFor = null;
   view.setLayout(layout);
   view.setHighlight(null);
@@ -125,6 +129,10 @@ function refresh() {
     syncSelection();
   }
   pullEvents();
+  const scout = v.player != null ? Object.values(v.units).find((u) => u.civ === v.player && u.kind === 'scout') : null;
+  document.body.dataset.scout = scout ? scout.id : '';
+  document.body.dataset.routeState = scout?.route ? 'set' : (outcome ?? 'none');
+  document.body.dataset.armed = routing.arm ?? '';
   panel();
   view.drawNow();
 }
@@ -134,13 +142,22 @@ function refresh() {
 function routes() {
   const out = [];
   for (const u of Object.values(v.units)) {
-    if (u.civ !== v.player || u.dest == null) continue;
+    if (u.civ !== v.player || u.kind !== 'camp' || u.dest == null) continue;
     const r = JSON.parse(sim.route(u.id));
     if (r) out.push({ unit: u.id, civ: u.civ, tiles: [u.tile, ...r.path], selected: selected?.kind === 'unit' && selected.id === u.id });
   }
   view.setRoutes(out);
   const camp = selected?.kind === 'unit' ? v.units[selected.id] : null;
   view.setLine(camp && camp.line && camp.line.path.length ? { tiles: [camp.tile, ...camp.line.path], colour: lineColour(camp) } : null);
+  // The selected scout's route, from where its search starts: known and possible.
+  const scout = selected?.kind === 'unit' ? v.units[selected.id] : null;
+  if (scout?.plan) {
+    const [from] = scout.route;
+    const tilesFrom = (p) => (p ? [from, ...p.path] : null);
+    view.setPlan({ known: tilesFrom(scout.plan.known), possible: tilesFrom(scout.plan.possible) });
+  } else {
+    view.setPlan(null);
+  }
 }
 
 /** A camp's line home, coloured by how much of its labour the line takes to feed it: green where a
@@ -232,6 +249,11 @@ function order(action) {
   try {
     sim.act(JSON.stringify(action));
     $('error').textContent = '';
+    if (action.type === 'setRoute' || action.type === 'clearRoute') {
+      outcome = null;
+      routing.arm = null;
+      routing.start = null;
+    }
   } catch (e) {
     $('error').textContent = String(e);
     ok = false;
@@ -243,6 +265,11 @@ function order(action) {
 function pullEvents() {
   const ev = JSON.parse(sim.events(cursor));
   cursor += ev.length;
+  for (const e of ev) {
+    if (e.civ !== v.player) continue;
+    if (e.kind === 'scoutRouteFound') outcome = 'found';
+    if (e.kind === 'scoutNoRoute') outcome = 'nopath';
+  }
   if (ev.length) feed.add(ev);
 }
 
@@ -323,6 +350,10 @@ function runToEnd() {
 // ---- selecting and the selection panel -------------------------------------------------------
 
 function select(sel) {
+  const unit = sel?.kind === 'unit' ? sel.id : null;
+  // Picking another thing forgets a route being set; the same unit keeps its start.
+  if (unit !== routing.unit) routing = { arm: null, start: null, unit };
+  else routing.arm = null;
   selected = sel;
   feed.select(null);
   syncSelection();
@@ -340,6 +371,10 @@ function syncSelection() {
 
 /** A left-click: the first thing on the tile, or the next one if something there is already selected. */
 function onPick(i) {
+  if (routing.arm) {
+    armedPick(i);
+    return;
+  }
   if (i < 0) {
     select(null);
     return;
@@ -353,10 +388,41 @@ function onPick(i) {
   select(next);
 }
 
-/** A right-click: the selected unit of the player's goes to the tile. */
+/** The map click after a route button: the start, or the end, which sends `SetRoute` from the start (or the scout's tile). */
+function armedPick(i) {
+  const kind = routing.arm;
+  routing.arm = null;
+  if (i < 0) {
+    panel();
+    syncArm();
+    return;
+  }
+  if (kind === 'start') {
+    routing.start = i;
+    panel();
+    syncArm();
+    return;
+  }
+  const u = v.units[routing.unit];
+  if (!u) return;
+  order({ type: 'setRoute', from: routing.start ?? u.tile, to: i });
+}
+
+/** Arms (or disarms, if it is armed already) a map click for the route: 'start' or 'to'. */
+function arm(kind) {
+  routing.arm = routing.arm === kind ? null : kind;
+  syncArm();
+  panel();
+}
+
+function syncArm() {
+  document.body.dataset.armed = routing.arm ?? '';
+}
+
+/** A right-click: the selected camp of the player's goes to the tile (a scout's sends nothing). */
 function onCommand(i) {
   const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
-  if (i < 0 || !u || u.civ !== v.player) return;
+  if (i < 0 || !u || u.civ !== v.player || u.kind !== 'camp') return;
   order({ type: 'moveCamp', to: i });
 }
 
@@ -386,8 +452,7 @@ function panel() {
     let row = null;
     let rowKey;
     for (const a of d.actions) {
-      const json = JSON.stringify(a.action);
-      const why = sim.check(json);
+      const why = a.arm ? '' : sim.check(JSON.stringify(a.action));
       if (!row || a.row === undefined || a.row !== rowKey) {
         row = document.createElement('div');
         rowKey = a.row;
@@ -397,7 +462,12 @@ function panel() {
       b.type = 'button';
       b.textContent = a.label;
       b.disabled = why !== '';
-      b.onclick = () => order(a.action);
+      if (a.arm) {
+        b.setAttribute('aria-pressed', String(routing.arm === a.arm));
+        b.onclick = () => arm(a.arm);
+      } else {
+        b.onclick = () => order(a.action);
+      }
       row.append(b);
       if (why) {
         const note = document.createElement('span');

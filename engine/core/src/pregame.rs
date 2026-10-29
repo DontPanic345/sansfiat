@@ -1,22 +1,27 @@
 //! The end of the pre-game: once enough centres have formed on their own, far apart, and people
-//! have spread over the land they can reach. A turn limit is the backstop.
+//! have spread over the land they can reach. A turn limit is the backstop. A centre is a clan;
+//! the pre-game ends with a market on each centre's site, where founding puts a civ.
 
 use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
 
 use crate::civs;
+use crate::clans::Clan;
 use crate::data::*;
 use crate::land::{is_hearth, neighbours, passable};
 use crate::map::{Tile, Zone};
-use crate::markets::{raise, reach, Market};
+use crate::markets::{raise, Market};
 use crate::world::{EventKind, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct End {
     pub turn: u32,
-    /// The centres' market ids.
+    /// The markets on the centres' sites, where the civs are founded.
     pub centres: Vec<u32>,
+    /// Each site's centre clan, in `centres` order; `None` for a site the top-up found without one.
+    #[serde(default)]
+    pub clans: Vec<Option<u32>>,
     pub cover: f64,
     /// Ended by `max_turns`, not by the centres and the cover.
     pub by_limit: bool,
@@ -28,41 +33,51 @@ fn steps(w: &World, a: usize, b: usize) -> i32 {
     w.tiles[a].hex().distance(w.tiles[b].hex())
 }
 
-/// A market that has lasted `centre_age` turns, had `centre_clans` traders last turn, and has a
-/// hearth in its reach.
-pub fn is_centre(w: &World, m: &Market) -> bool {
-    w.turn.saturating_sub(m.founded) >= PREGAME.centre_age
-        && m.traders >= PREGAME.centre_clans
-        && reach(w, m.tile).keys().any(|&t| is_hearth(&w.tiles[t]))
+/// A clan settled at home `centre_age` turns, going to a festival that had `centre_clans` traders
+/// last turn, with a hearth on its territory.
+pub fn is_centre(w: &World, c: &Clan) -> bool {
+    c.since >= PREGAME.centre_age
+        && c.market.and_then(|m| w.markets.get(&m)).is_some_and(|m| m.traders >= PREGAME.centre_clans)
+        && c.territory.iter().any(|&t| is_hearth(&w.tiles[t]))
 }
 
-/// The centres, busiest first (traders, then older, then lower id), each `centre_spacing` steps
-/// from those taken before it, up to `players`. Greedy, not the best set.
+/// The centre clans, biggest first (people, then lower id), each home `centre_spacing` steps from
+/// those taken before it, up to `players`. Greedy, not the best set.
 pub fn centres(w: &World) -> Vec<u32> {
-    let mut ms: Vec<&Market> = w.markets.values().filter(|m| is_centre(w, m)).collect();
-    ms.sort_by_key(|m| (std::cmp::Reverse(m.traders), m.founded, m.id));
-    let mut taken: Vec<&Market> = Vec::new();
-    for m in ms {
+    let mut cs: Vec<&Clan> = w.clans.values().filter(|c| is_centre(w, c)).collect();
+    cs.sort_by(|a, b| b.people.total_cmp(&a.people).then(a.id.cmp(&b.id)));
+    let mut taken: Vec<&Clan> = Vec::new();
+    for c in cs {
         if taken.len() == PREGAME.players {
             break;
         }
-        if taken.iter().all(|t| steps(w, t.tile, m.tile) >= PREGAME.centre_spacing) {
-            taken.push(m);
+        if taken.iter().all(|t| steps(w, t.home, c.home) >= PREGAME.centre_spacing) {
+            taken.push(c);
         }
     }
-    taken.iter().map(|m| m.id).collect()
+    taken.iter().map(|c| c.id).collect()
 }
 
-/// The share of the land connected over passable land to the centres' markets (all land with no
-/// centres) that lies within `cover_steps` steps of some clan's territory.
-pub fn land_cover(w: &World, centres: &[u32]) -> f64 {
+/// The centres' sites: the homes of the clans `ids`, before the end.
+pub fn homes(w: &World, ids: &[u32]) -> Vec<usize> {
+    ids.iter().filter_map(|id| w.clans.get(id)).map(|c| c.home).collect()
+}
+
+/// The centres' sites: the tiles of the markets `ids`, after the end.
+pub fn sites(w: &World, ids: &[u32]) -> Vec<usize> {
+    ids.iter().filter_map(|id| w.markets.get(id)).map(|m| m.tile).collect()
+}
+
+/// The share of the land connected over passable land to the centres' sites `tiles` (all land
+/// with none) that lies within `cover_steps` steps of some clan's territory.
+pub fn land_cover(w: &World, tiles: &[usize]) -> f64 {
     let n = w.tiles.len();
     let passable = |i: usize| TERRAIN[w.tiles[i].terrain].land && passable(w, i);
-    let land: Vec<usize> = if centres.is_empty() {
+    let land: Vec<usize> = if tiles.is_empty() {
         (0..n).filter(|&i| TERRAIN[w.tiles[i].terrain].land).collect()
     } else {
         let mut seen = vec![false; n];
-        let mut todo: Vec<usize> = centres.iter().map(|id| w.markets[id].tile).collect();
+        let mut todo: Vec<usize> = tiles.to_vec();
         for &t in &todo {
             seen[t] = true;
         }
@@ -132,17 +147,19 @@ fn regions(w: &World) -> Vec<usize> {
     label
 }
 
-/// One site the top-up takes: an existing market, or a tile to raise one on.
+/// One site the top-up takes: a clan's home, an existing market, or a tile to raise one on.
 enum Pick {
+    Clan(u32),
     Market(u32),
     Tile(usize),
 }
 
-/// The sites that bring `centres` up to `players` within `region`, in order: existing markets,
-/// best first; then the most tended land; then any land with grain. Every site is
-/// `centre_spacing` steps from those taken, on passable land that isn't a sealed valley.
+/// The sites that bring the centre clans `centres` up to `players` within `region`, in order:
+/// other clans' homes, biggest first; then existing markets, best first; then the most tended
+/// land; then any land with grain. Every site is `centre_spacing` steps from those taken, on
+/// passable land that isn't a sealed valley.
 fn plan(w: &World, centres: &[u32], label: &[usize], region: usize) -> Vec<Pick> {
-    let mut taken: Vec<usize> = centres.iter().map(|id| w.markets[id].tile).collect();
+    let mut taken: Vec<usize> = homes(w, centres);
     let mut picks = Vec::new();
     let fits = |taken: &mut Vec<usize>, i: usize| {
         let ok = label[i] != usize::MAX
@@ -155,7 +172,18 @@ fn plan(w: &World, centres: &[u32], label: &[usize], region: usize) -> Vec<Pick>
         ok
     };
 
-    let mut markets: Vec<&Market> = w.markets.values().filter(|m| !centres.contains(&m.id)).collect();
+    let mut clans: Vec<&Clan> = w.clans.values().filter(|c| !centres.contains(&c.id)).collect();
+    clans.sort_by(|a, b| b.people.total_cmp(&a.people).then(a.id.cmp(&b.id)));
+    for c in clans {
+        if centres.len() + picks.len() == PREGAME.players {
+            return picks;
+        }
+        if fits(&mut taken, c.home) {
+            picks.push(Pick::Clan(c.id));
+        }
+    }
+
+    let mut markets: Vec<&Market> = w.markets.values().collect();
     markets.sort_by_key(|m| (std::cmp::Reverse(m.traders), m.founded, m.id));
     for m in markets {
         if centres.len() + picks.len() == PREGAME.players {
@@ -189,15 +217,15 @@ fn plan(w: &World, centres: &[u32], label: &[usize], region: usize) -> Vec<Pick>
     picks
 }
 
-/// Adds sites to `centres` until there are `players`, at the turn limit; returns the ids added.
-/// The sites are in the first centre's region of passable land. With no centres, the region of
+/// The sites that bring the centre clans `centres` up to `players`, at the turn limit, from
+/// `plan`. The sites are in the first centre's region of passable land. With no centres, the region of
 /// the most populated clan's home comes first, then the others by their people: the first that
 /// can hold all the sites wins, else the one that holds most. It ends short only if no region
 /// holds `players` sites, `centre_spacing` apart.
-fn top_up(w: &mut World, centres: &mut Vec<u32>) -> Vec<u32> {
+fn top_up(w: &World, centres: &[u32]) -> Vec<Pick> {
     let label = regions(w);
     let order: Vec<usize> = match centres.first() {
-        Some(id) => vec![label[w.markets[id].tile]],
+        Some(id) => vec![label[w.clans[id].home]],
         None => {
             let count = label.iter().filter(|&&r| r != usize::MAX).max().map_or(0, |&r| r + 1);
             let (mut people, mut size) = (vec![0.0; count], vec![0usize; count]);
@@ -229,16 +257,15 @@ fn top_up(w: &mut World, centres: &mut Vec<u32>) -> Vec<u32> {
             break;
         }
     }
-    let mut added = Vec::new();
-    for pick in best {
-        let id = match pick {
-            Pick::Market(id) => id,
-            Pick::Tile(tile) => raise(w, tile),
-        };
-        centres.push(id);
-        added.push(id);
+    best
+}
+
+/// The market on `tile`, raising one if there is none.
+fn site(w: &mut World, tile: usize) -> u32 {
+    match w.markets.values().find(|m| m.tile == tile) {
+        Some(m) => m.id,
+        None => raise(w, tile),
     }
-    added
 }
 
 /// Whether people have levelled off: counted every turn, they changed by under `settled` over
@@ -261,36 +288,51 @@ pub fn check_end(w: &mut World) {
     if w.end.is_some() {
         return;
     }
-    let mut centres = centres(w);
+    let centres = centres(w);
     for &id in &centres {
         if !w.centres_seen.contains(&id) {
-            let tile = w.markets[&id].tile;
-            w.event(EventKind::CentreFormed, tile, None, Some(id), None);
+            let home = w.clans[&id].home;
+            w.event(EventKind::CentreFormed, home, Some(id), None, None);
         }
     }
-    // A market that drops out of the greedy set and back in is not announced twice.
+    // A clan that drops out of the greedy set and back in is not announced twice.
     for &id in &centres {
         if !w.centres_seen.contains(&id) {
             w.centres_seen.push(id);
         }
     }
     let settled = settled(w);
-    let by_centres = settled && centres.len() == PREGAME.players && land_cover(w, &centres) >= PREGAME.cover;
+    let by_centres = settled && centres.len() == PREGAME.players && land_cover(w, &homes(w, &centres)) >= PREGAME.cover;
     if !by_centres && w.turn + 1 < PREGAME.max_turns {
         return;
     }
-    let topped_up = if !by_centres && centres.len() < PREGAME.players { top_up(w, &mut centres) } else { Vec::new() };
-    for &id in &topped_up {
-        // A market that was a centre before and dropped out of the greedy set was announced then.
-        if !w.centres_seen.contains(&id) {
-            let tile = w.markets[&id].tile;
-            w.event(EventKind::CentreFormed, tile, None, Some(id), None);
-            w.centres_seen.push(id);
-        }
+    let picks = if !by_centres && centres.len() < PREGAME.players { top_up(w, &centres) } else { Vec::new() };
+    // Each site gets a market where it has none; a centre clan's festival stays where it is.
+    let mut sites: Vec<(u32, Option<u32>)> = Vec::new();
+    for id in centres {
+        let home = w.clans[&id].home;
+        sites.push((site(w, home), Some(id)));
     }
-    let cover = land_cover(w, &centres);
+    let mut topped_up = Vec::new();
+    for pick in picks {
+        let (mid, clan) = match pick {
+            Pick::Clan(id) => (site(w, w.clans[&id].home), Some(id)),
+            Pick::Market(mid) => (mid, None),
+            Pick::Tile(tile) => (raise(w, tile), None),
+        };
+        // A clan that was a centre before and dropped out of the greedy set was announced then.
+        if clan.is_none_or(|id| !w.centres_seen.contains(&id)) {
+            let tile = w.markets[&mid].tile;
+            w.event(EventKind::CentreFormed, tile, clan, Some(mid), None);
+            w.centres_seen.extend(clan);
+        }
+        sites.push((mid, clan));
+        topped_up.push(mid);
+    }
+    let (centres, clans): (Vec<u32>, Vec<Option<u32>>) = sites.into_iter().unzip();
+    let cover = land_cover(w, &self::sites(w, &centres));
     let first = centres.first().map_or(0, |id| w.markets[id].tile);
-    w.end = Some(End { turn: w.turn, centres, cover, by_limit: !by_centres, topped_up });
+    w.end = Some(End { turn: w.turn, centres, clans, cover, by_limit: !by_centres, topped_up });
     w.event(EventKind::PregameEnded, first, None, None, None);
     civs::found(w);
 }

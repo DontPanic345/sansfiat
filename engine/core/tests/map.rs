@@ -187,12 +187,12 @@ fn step_cost_ignores_the_hidden_rolls() {
         w.tiles[i].span = span;
         assert_eq!(step_cost(&w, from, i), base);
     }
-    // Worn trails still bring forest and hills down to the trail cost.
+    // Worn trails still bring forest and hills down to their hidden cost.
     for terrain in [FOREST, HILLS] {
         w.tiles[i].terrain = terrain;
-        w.tiles[i].trail_cost = Some(2.0);
+        w.tiles[i].trail_cost = Some(1.0);
         w.tiles[i].trail = true;
-        assert_eq!(step_cost(&w, from, i), Some(TRAIL.cost));
+        assert_eq!(step_cost(&w, from, i), Some(1.0));
     }
 }
 

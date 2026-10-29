@@ -26,6 +26,7 @@ fn a_walked_tile_wears_a_trail_and_an_unwalked_one_wears_away() {
     let mut w = flat();
     let (o, f) = (at(0, 0), out(0, 1));
     w.tiles[f].terrain = FOREST;
+    w.tiles[f].trail_cost = Some(1.0);
     let id = put(&mut w, &[o, f], 3.0);
     let cost = |w: &World, id: u32| {
         let c = &w.clans[&id];
@@ -43,8 +44,8 @@ fn a_walked_tile_wears_a_trail_and_an_unwalked_one_wears_away() {
     hold(&mut w);
     assert!(w.tiles[f].trail, "walked {} turns", w.tiles[f].walk_run);
     assert!(!w.tiles[o].trail, "home is held but never walked");
-    assert_eq!(step_cost(&w, o, f), Some(TRAIL.cost));
-    assert_eq!(cost(&w, id), TRAIL.cost);
+    assert_eq!(step_cost(&w, o, f), Some(1.0));
+    assert_eq!(cost(&w, id), 1.0);
 
     // Freed, the clan no longer walks: each turn's harvest clears the walks, and nothing walks.
     free(&mut w, id);

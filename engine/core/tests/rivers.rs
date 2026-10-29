@@ -262,13 +262,14 @@ fn entering_a_river_from_the_bank_costs_the_crossing() {
     assert_eq!(step_cost(&w, here, side), Some(1.0));
     assert_eq!(step_cost(&w, here, other), Some(1.0 + RIVER.cross), "into a river not this one's course");
     assert_eq!(step_cost(&w, other, here), Some(1.0 + RIVER.cross));
-    // The crossing adds to the terrain; a trail bridges it and caps the terrain.
+    // The crossing adds to the terrain; a trail bridges it and brings the terrain to its hidden cost.
     w.tiles[here].terrain = FOREST;
     assert_eq!(step_cost(&w, bank, here), Some(2.0 + RIVER.cross));
     assert_eq!(step_cost(&w, up, here), Some(2.0));
     w.tiles[here].trail = true;
-    assert_eq!(step_cost(&w, bank, here), Some(TRAIL.cost));
-    assert_eq!(step_cost(&w, up, here), Some(TRAIL.cost));
+    w.tiles[here].trail_cost = Some(1.0);
+    assert_eq!(step_cost(&w, bank, here), Some(1.0));
+    assert_eq!(step_cost(&w, up, here), Some(1.0));
 }
 
 #[test]
