@@ -60,7 +60,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);
@@ -189,13 +189,21 @@ const checkCamps = (view) => {
       u.line === null || (u.line.carry !== null && u.line.carry + 1e-9 < u.people * RULES.unit_food),
       'cut off is its line failing to carry its warriors\' food',
     );
+    // Its zone and the ground it holds, which the page paints.
+    assert.ok(u.territory.includes(u.tile), 'a zone holds the camp\'s tile');
+    assert.ok(u.territory.every((t, k) => k === 0 || u.territory[k - 1] < t), 'a zone is sorted');
+    assert.ok(u.territory.length <= Math.max(u.zone_cap, 1) + 3, 'a zone keeps near its cap');
+    assert.equal(typeof u.zone_cap, 'number', 'a camp carries its zone cap');
+    assert.ok(u.held.every((t) => u.territory.includes(t)), 'held tiles are in the zone');
+    assert.equal(u.guard.length, u.held.length, 'a guard share for each held tile');
+    assert.ok(u.cut_at === null || (u.cut_at.path.includes(u.cut_at.at) && view.civs[u.cut_at.by]), 'cut_at names a tile and a civ');
     if (u.line && u.line.path.length) {
       assert.equal(u.line.path.at(-1), view.civs[u.civ].capital, 'a line ends at its capital');
       assert.ok(u.line.cost > 0 && u.line.path.every((i) => i < n), 'a line is a path of tiles');
     }
   }
   for (const c of Object.values(view.civs)) {
-    for (const key of ['raised', 'lost', 'hungry', 'cut_off', 'foraged', 'pillaged', 'resupplied', 'starved']) {
+    for (const key of ['raised', 'lost', 'hungry', 'cut_off', 'foraged', 'pillaged', 'resupplied', 'starved', 'held', 'cut_by_army']) {
       assert.ok(key in c.army, `civ carries army.${key}`);
     }
   }
@@ -325,8 +333,25 @@ assert.ok(!moved || moved.tile !== unit.tile, 'the camp moved in 10 turns (or st
 const again = JSON.parse(sim.route(unit.id));
 assert.ok(again === null || again.path.length < route.path.length, 'the route shortens');
 
-// The switches and the one-shot orders are checked while there is a camp to give them to.
+// The switches, the zone and the one-shot orders are checked while there is a camp to give them to.
 if (moved) {
+  sim.act(JSON.stringify({ type: 'moveCamp', to: moved.tile }));
+  const here = Object.values(JSON.parse(sim.view()).units).find((u) => u.civ === w.player);
+  assert.notEqual(sim.check(JSON.stringify({ type: 'zone', tiles: [here.tile + 1000000] })), '', 'a zone off the map is refused');
+  const capitals = Object.values(w.civs).map((c) => c.capital);
+  const first = (here.line?.path ?? []).filter((t) => !capitals.includes(t)).slice(0, 1);
+  if (first.length && here.people >= 2) {
+    const zone = JSON.stringify({ type: 'zone', tiles: first });
+    assert.equal(sim.check(zone), '', 'a zone over the line\'s first tile');
+    sim.act(zone);
+    sim.act('{"type":"endTurn"}');
+    const deployed = Object.values(JSON.parse(sim.view()).units).find((u) => u.civ === w.player);
+    if (deployed) {
+      assert.deepEqual(deployed.territory, [...new Set([here.tile, first[0]])].sort((a, b) => a - b), 'the zone is set');
+      assert.ok(deployed.held.includes(here.tile), 'it holds its own tile');
+      checkCamps(JSON.parse(sim.view()));
+    }
+  }
   assert.equal(sim.check('{"type":"setSwitches","forage":false,"supply":true}'), '');
   sim.act('{"type":"setSwitches","forage":false,"supply":true}');
   const switched = Object.values(JSON.parse(sim.view()).units).find((u) => u.civ === w.player && u.kind === 'camp');

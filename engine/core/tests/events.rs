@@ -11,7 +11,7 @@ use engine::{Config, Event, EventKind, World};
 
 /// A small world run for `turns` turns.
 fn run(seed: u32, turns: u32) -> World {
-    let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true });
+    let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
     w.run(turns);
     w
 }

@@ -38,7 +38,7 @@ const fertBucket = (f) => Math.max(0, Math.min(FERT_BUCKETS - 1, Math.floor(((f 
 export class MapView {
   /**
    * @param {HTMLCanvasElement} canvas
-   * @param {{terrain: object[], rules: object, onPick(i: number): void, onCommand?(i: number): void, onHover(i: number, x: number, y: number): void, onHoverEnd(): void}} opts
+   * @param {{terrain: object[], rules: object, onPick(i: number): void, onCommand?(i: number): void, onPaint?(i: number): void, onHover(i: number, x: number, y: number): void, onHoverEnd(): void}} opts
    */
   constructor(canvas, opts) {
     this.canvas = canvas;
@@ -49,7 +49,8 @@ export class MapView {
     this.terrain = opts.terrain;
     this.options = { fertility: false, territory: true, routes: true, wear: true, markets: true, hidden: false, civs: true };
     this.routes = []; // [{unit, tiles: [from, ...path], selected}]: the player's units' routes
-    this.line = null; // {tiles, colour}: the selected camp's line home, or null
+    this.line = null; // {tiles, colour, cut?}: the selected camp's line home (to where it is cut, `cut` the tile), or null
+    this.painting = false; // in paint mode a left press or drag paints tiles (onPaint) instead of picking or panning
     this.plan = null; // {known, possible}: the selected scout's route as tile lists from its start, or null
     this.revealed = new Uint8Array(0); // 1 where the led civ has revealed the tile
     this.work = []; // [tile, labour, need]: trails under way
@@ -195,6 +196,12 @@ export class MapView {
   }
 
   /** The selected camp's line home: `{tiles: [its tile, ...path], colour}`, or null. */
+  /** Paint mode on or off: while on, a left press and drag call `onPaint` for each tile they cross. */
+  setPainting(on) {
+    this.painting = on;
+    this.canvas.style.cursor = on ? 'crosshair' : '';
+  }
+
   setLine(line) {
     this.line = line;
     this.requestDraw();
@@ -356,6 +363,12 @@ export class MapView {
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       this.opts.onHoverEnd();
       this.drag = { moved: 0, pinch: this.pointers.size > 1 ? this.pinchState() : null, button: e.button };
+      if (this.painting && e.button === 0 && this.pointers.size === 1) {
+        const rect = c.getBoundingClientRect();
+        const i = this.tileAt(e.clientX - rect.left, e.clientY - rect.top);
+        this.drag.paint = i;
+        if (i >= 0) this.opts.onPaint?.(i);
+      }
     });
     c.addEventListener('pointermove', (e) => {
       const p = this.pointers.get(e.pointerId);
@@ -378,6 +391,12 @@ export class MapView {
         this.drag.moved += 100;
         return;
       }
+      if (this.drag.paint !== undefined) {
+        const i = this.tileAt(e.clientX - rect.left, e.clientY - rect.top);
+        if (i >= 0 && i !== this.drag.paint) this.opts.onPaint?.(i);
+        this.drag.paint = i;
+        return;
+      }
       this.drag.moved += Math.abs(dx) + Math.abs(dy);
       if (this.drag.moved > 4) {
         this.opts.onHoverEnd();
@@ -388,7 +407,7 @@ export class MapView {
       const was = this.pointers.delete(e.pointerId);
       if (!was || !this.drag) return;
       if (this.pointers.size === 0) {
-        if (this.drag.moved <= 4 && e.type === 'pointerup') {
+        if (this.drag.moved <= 4 && e.type === 'pointerup' && this.drag.paint === undefined) {
           const rect = c.getBoundingClientRect();
           const i = this.tileAt(e.clientX - rect.left, e.clientY - rect.top);
           // Left picks, right commands; other buttons do neither.
@@ -766,7 +785,41 @@ export class MapView {
         ctx.globalAlpha = 1;
       }
     }
-    // The selected camp's line home: solid, in its colour, edged dark.
+    // Each camp's zone: its outline in the civ's colour, the tiles its warriors hold filled faintly.
+    for (const u of Object.values(v.units || {})) {
+      const col = v.civs[u.civ]?.color || '#fff';
+      const zone = new Set(u.territory);
+      if (zone.size > 1) {
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        for (const i of u.held) if (onScreen(i)) this.hexAt(ctx, i, 0.92);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        for (const [c, w] of [[casing, 4], [col, 2]]) {
+          ctx.strokeStyle = c;
+          ctx.lineWidth = Math.max(px * w, 0.1);
+          ctx.setLineDash(c === casing ? [] : [Math.max(px * 4, 0.3), Math.max(px * 2, 0.15)]);
+          this.edges(ctx, (i) => zone.has(i), (_, j) => zone.has(j));
+        }
+        ctx.setLineDash([]);
+      }
+    }
+    // The selected camp's line home: solid, in its colour, edged dark; where held ground cuts it, a cross.
+    if (this.line && this.line.cut != null) {
+      const x = this.px[this.line.cut], y = this.py[this.line.cut];
+      const s = 0.55;
+      for (const [c, w] of [[casing, 7], ['#ff4d4d', 4]]) {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = Math.max(px * w, 0.12);
+        ctx.beginPath();
+        ctx.moveTo(x - s, y - s);
+        ctx.lineTo(x + s, y + s);
+        ctx.moveTo(x + s, y - s);
+        ctx.lineTo(x - s, y + s);
+        ctx.stroke();
+      }
+    }
     if (this.line && this.line.tiles.length > 1) {
       const { tiles, colour } = this.line;
       ctx.globalAlpha = 1;

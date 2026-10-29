@@ -34,6 +34,7 @@ const view = new MapView($('map'), {
   rules: RULES,
   onPick,
   onCommand,
+  onPaint,
   onHover: showTip,
   onHoverEnd: hideTip,
 });
@@ -41,7 +42,7 @@ const feed = new Feed({ list: $('feed'), filters: $('filters'), onClick: onFeed,
 new ResizeObserver(() => view.resize()).observe($('mapbox'));
 
 /** What the selection panel and the pick read the world through. */
-const ctx = () => ({ v, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome });
+const ctx = () => ({ v, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome, painting });
 
 // ---- starting a map --------------------------------------------------------------------------
 
@@ -148,7 +149,13 @@ function routes() {
   }
   view.setRoutes(out);
   const camp = selected?.kind === 'unit' ? v.units[selected.id] : null;
-  view.setLine(camp && camp.line && camp.line.path.length ? { tiles: [camp.tile, ...camp.line.path], colour: lineColour(camp) } : null);
+  if (camp && camp.cut_at) {
+    // Cut by held ground: the line it would have, drawn to the tile where it stops, marked.
+    const stop = camp.cut_at.path.indexOf(camp.cut_at.at);
+    view.setLine({ tiles: [camp.tile, ...camp.cut_at.path.slice(0, stop + 1)], colour: lineColour(camp), cut: camp.cut_at.at });
+  } else {
+    view.setLine(camp && camp.line && camp.line.path.length ? { tiles: [camp.tile, ...camp.line.path], colour: lineColour(camp) } : null);
+  }
   // The selected scout's route, from where its search starts: known and possible.
   const scout = selected?.kind === 'unit' ? v.units[selected.id] : null;
   if (scout?.plan) {
@@ -158,6 +165,54 @@ function routes() {
   } else {
     view.setPlan(null);
   }
+}
+
+// ---- painting a zone ---------------------------------------------------------------------------
+
+/** 'paint', 'unpaint' or null: what a left press and drag on the map do to the selected camp's zone. */
+let painting = null;
+
+function setPainting(mode) {
+  const u = selected?.kind === 'unit' ? v?.units[selected.id] : null;
+  painting = u && u.kind === 'camp' && u.civ === v.player ? mode : null;
+  view.setPainting(painting != null);
+  document.body.dataset.painting = painting ?? '';
+  panel();
+}
+
+/** The tiles of `zone` (a Set holding `home`) still connected to `home` through each other. */
+function pruneZone(zone, home) {
+  const keep = new Set([home]);
+  const todo = [home];
+  while (todo.length) {
+    const i = todo.pop();
+    for (let d = 0; d < 6; d++) {
+      const j = view.nb[i * 6 + d];
+      if (j >= 0 && zone.has(j) && !keep.has(j)) {
+        keep.add(j);
+        todo.push(j);
+      }
+    }
+  }
+  return keep;
+}
+
+/** A painted tile: added to the selected camp's zone, or in unpaint mode taken out with whatever is
+ *  then no longer connected to the camp (paint-army's prune). The zone goes to the engine at once;
+ *  a refusal says why under the panel. */
+function onPaint(i) {
+  const u = selected?.kind === 'unit' ? v.units[selected.id] : null;
+  if (!painting || !u || u.civ !== v.player || i === u.tile) return;
+  let zone = new Set(u.territory);
+  if (painting === 'paint') {
+    if (zone.has(i)) return;
+    zone.add(i);
+  } else {
+    if (!zone.has(i)) return;
+    zone.delete(i);
+    zone = pruneZone(zone, u.tile);
+  }
+  order({ type: 'zone', tiles: [...zone].filter((t) => t !== u.tile).sort((a, b) => a - b) });
 }
 
 /** A camp's line home, coloured by how much of its labour the line takes to feed it: green where a
@@ -354,6 +409,11 @@ function select(sel) {
   // Picking another thing forgets a route being set; the same unit keeps its start.
   if (unit !== routing.unit) routing = { arm: null, start: null, unit };
   else routing.arm = null;
+  if (painting && !(sel?.kind === 'unit' && selected?.kind === 'unit' && sel.id === selected.id)) {
+    painting = null;
+    view.setPainting(false);
+    document.body.dataset.painting = '';
+  }
   selected = sel;
   feed.select(null);
   syncSelection();
@@ -484,6 +544,11 @@ function panel() {
 }
 
 $('detail').addEventListener('click', (e) => {
+  const p = e.target.closest('[data-paint]');
+  if (p) {
+    setPainting(painting === p.dataset.paint ? null : p.dataset.paint);
+    return;
+  }
   const b = e.target.closest('[data-select]');
   if (!b) return;
   const [kind, id] = b.dataset.select.split(':');
@@ -690,7 +755,9 @@ window.addEventListener('keydown', (e) => {
     case '+': case '=': view.zoomBy(1.4); break;
     case '-': case '_': view.zoomBy(1 / 1.4); break;
     case '0': view.fit(); break;
-    case 'Escape': select(null); break;
+    case 'Escape': if (painting) setPainting(null); else select(null); break;
+    case 'p': case 'P': setPainting(painting === 'paint' ? null : 'paint'); break;
+    case 'u': case 'U': setPainting(painting === 'unpaint' ? null : 'unpaint'); break;
     default: return;
   }
   e.preventDefault();
@@ -737,6 +804,7 @@ legend();
 window.game = {
   view: () => v,
   layout: () => layout,
+  tileCiv: (i) => sim.tile_civ(i),
   save: () => JSON.parse(sim.save()),
   map: view,
   feed,

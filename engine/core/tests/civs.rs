@@ -94,7 +94,7 @@ fn fewer_than_three_centres_found_fewer_civs() {
         assert_eq!(w.phase, Phase::Choose);
         assert_eq!(w.civs.values().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["Red", "Blue"][..n]);
         assert_eq!(civ_of(&w, id), w.civs.keys().next().copied(), "the one clan joins the first civ if there is one");
-        let mut v = World::new(Config { seed: 1, radius: 6, army: true, gifts: true });
+        let mut v = World::new(Config { seed: 1, radius: 6, army: true, gifts: true, zone: true });
         v.clans.clear();
         found(&mut v, &[]);
         assert_eq!((v.phase, v.civs.len()), (Phase::Choose, 0));
@@ -337,7 +337,7 @@ fn a_rival_across_the_sea_is_not_by_land() {
 
 #[test]
 fn watching_and_leading_replay_to_the_same_world() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
     while w.end.is_none() {
         w.run(1);
     }
@@ -361,7 +361,7 @@ fn watching_and_leading_replay_to_the_same_world() {
 
 #[test]
 fn a_real_map_founds_three_civs_that_live_on() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
     while w.end.is_none() {
         w.run(1);
     }

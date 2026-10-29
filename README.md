@@ -9,7 +9,6 @@ Each folder stands alone. Live builds are on [GitHub Pages](https://dontpanic345
 | [`merge4/`](merge4/) | hex-economy, hex4x, scout and supply-lines merged into one game: pre-game economy, civs, scouts, armies, supply. |
 | [`scout/`](scout/) | Hidden trail costs and scouting routes. |
 | [`supply-lines/`](supply-lines/) | Archived: units carrying food, resupply lines, forage and pillage (the camp is in `engine/`, #29). |
-| [`paint-army/`](paint-army/) | Single-page territory-painting army experiments. |
 
 The prototypes not listed are archived under `prototype/<name>` tags.
 

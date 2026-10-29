@@ -13,7 +13,7 @@ const RADIUS: i32 = 16;
 
 /// The real map of `seed`, run to the pick, led by its first civ.
 fn lead(seed: u32) -> World {
-    let mut w = World::new(Config { seed, radius: RADIUS, army: true, gifts: true });
+    let mut w = World::new(Config { seed, radius: RADIUS, army: true, gifts: true, zone: true });
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }

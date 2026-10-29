@@ -283,7 +283,7 @@ fn small_radii_have_no_closed_country() {
 fn nobody_is_seeded_in_a_sealed_valley() {
     let mut sealed = 0;
     for seed in 1..=40 {
-        let w = World::new(Config { seed, radius: 16, army: true, gifts: true });
+        let w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
         sealed += w.tiles.iter().any(|t| t.zone == Zone::Sealed) as usize;
         for c in w.clans.values() {
             assert_ne!(w.tiles[c.home].zone, Zone::Sealed, "seed {seed}: clan {}", c.id);
@@ -295,7 +295,7 @@ fn nobody_is_seeded_in_a_sealed_valley() {
 #[test]
 fn a_sealed_valley_stays_empty_through_the_pregame() {
     for seed in 1..=5 {
-        let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true });
+        let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
         assert!(w.tiles.iter().any(|t| t.zone == Zone::Sealed), "seed {seed}: no sealed valley");
         while w.end.is_none() && w.turn < PREGAME.max_turns {
             w.run(1);

@@ -13,7 +13,7 @@ sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
-sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army and --no-gifts are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
+sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--no-zone] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army, --no-gifts and --no-zone (AI camps paint no zone) are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
 sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
 sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead]   (prints turn and digest, from turn 0; --lead plays the scripted game: picks the first civ and gives orders)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
@@ -233,6 +233,11 @@ fn digest(args: &[String]) -> Result<(), String> {
 /// 5. When `n == 60`: `Disband { n: Some(1) }`, if there is a camp.
 /// 6. When `n == 10`: `SetGift` twice the default (`2 × LEANING.gift_default`); when `n == 50`:
 ///    `SetKeep { food: Some(5.0) }`; when `n == 70`: `SetKeep { food: None }`.
+/// 7. When `n == 2`: `SetRoute` for the scout from the capital to the first forest or hills tile by
+///    index seven steps out (ignored when there is none).
+/// 8. When `n == 45`, if there is a camp: `MoveCamp` to its own tile (it halts), then `Zone` over the
+///    first `people − 1` tiles of its line (the capital left out; a refusal is ignored). Rule 4 rests
+///    while `45 <= n < 55`, so the zone spreads and is held.
 fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
     if w.phase == Phase::Choose {
         let first = w.civs.keys().next().copied();
@@ -268,10 +273,23 @@ fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
             let _ = w.act(Action::SetRoute { from: cap, to });
         }
     }
-    if w.units.values().any(|u| u.civ == me && u.dest.is_none() && u.kind == units::UnitKind::Camp) {
+    if !(45..55).contains(&n)
+        && w.units.values().any(|u| u.civ == me && u.dest.is_none() && u.kind == units::UnitKind::Camp)
+    {
         for &to in &targets {
             if w.act(Action::MoveCamp { to }).is_ok() {
                 break;
+            }
+        }
+    }
+    if n == 45 {
+        if let Some((id, home, people)) = units::camp(w, me).map(|u| (u.id, u.home, u.people)) {
+            let _ = w.act(Action::MoveCamp { to: home });
+            if let Some((path, _, _)) = units::line(w, id) {
+                let capital = w.civs[&me].capital;
+                let k = (people as usize).saturating_sub(1);
+                let tiles: Vec<usize> = path.into_iter().filter(|&t| t != capital).take(k).collect();
+                let _ = w.act(Action::Zone { tiles });
             }
         }
     }
@@ -370,7 +388,7 @@ const LEVEL_TURNS: usize = 100;
 
 fn sweep_run(seed: u32, radius: i32, turns: u32, every: u32) -> Run {
     let start = Instant::now();
-    let mut w = World::new(Config { seed, radius, army: true, gifts: true });
+    let mut w = World::new(Config { seed, radius, army: true, gifts: true, zone: true });
     let mut series = vec![Point::of(&w)];
     // People after each turn, from turn 0.
     let mut people = vec![series[0].people];
@@ -450,12 +468,14 @@ fn sweep(args: &[String]) -> Result<(), String> {
     let mut sizes: Vec<(String, i32)> = vec![(SIZES[0].0.to_string(), SIZES[0].1)];
     let (mut after, mut army, mut retro) = (None, true, false);
     let (mut gifts, mut lever): (bool, Option<f64>) = (true, None);
+    let mut zone = true;
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--after" => after = Some(it.next().and_then(|v| v.parse().ok()).ok_or("--after needs a number")?),
             "--no-army" => army = false,
             "--no-gifts" => gifts = false,
+            "--no-zone" => zone = false,
             "--lever" => {
                 lever = Some(
                     it.next()
@@ -495,10 +515,10 @@ fn sweep(args: &[String]) -> Result<(), String> {
             }
             sizes.iter().flat_map(|(name, radius)| seeds.iter().map(move |&s| (name.clone(), *radius, s))).collect()
         };
-        return sweep_after(&maps, after, army, gifts, lever);
+        return sweep_after(&maps, after, army, gifts, zone, lever);
     }
-    if !army || !gifts || lever.is_some() || retro {
-        return Err(format!("--no-army, --no-gifts, --lever and --maps retro need --after N\n{USAGE}"));
+    if !army || !gifts || !zone || lever.is_some() || retro {
+        return Err(format!("--no-army, --no-gifts, --no-zone, --lever and --maps retro need --after N\n{USAGE}"));
     }
     if seeds.is_empty() {
         seeds = (1..=10).collect();
@@ -597,6 +617,10 @@ struct CivArmy {
     people: f64,
     joined: u32,
     lead: bool,
+    hungry: u32,
+    starved: u32,
+    held: u32,
+    cut_by_army: u32,
     text: String,
 }
 
@@ -608,10 +632,20 @@ struct MapRun {
 }
 
 /// One map of the camp sweep: runs to the pick with every civ on the AI, then `after` turns on, and
-/// reports each civ (`army` or `gifts` off is the control). With `lever` the lowest civ id is led
+/// reports each civ (`army`, `gifts` or `zone` off is the control). With `lever` the lowest civ id is led
 /// with that gift, and its camp is raised and posted where the AI would.
-fn after_run(name: &str, radius: i32, seed: u32, after: u32, army: bool, gifts: bool, lever: Option<f64>) -> MapRun {
-    let mut w = World::new(Config { seed, radius, army, gifts });
+#[allow(clippy::too_many_arguments)]
+fn after_run(
+    name: &str,
+    radius: i32,
+    seed: u32,
+    after: u32,
+    army: bool,
+    gifts: bool,
+    zone: bool,
+    lever: Option<f64>,
+) -> MapRun {
+    let mut w = World::new(Config { seed, radius, army, gifts, zone });
     while w.phase == Phase::Pregame {
         w.run(1);
     }
@@ -662,7 +696,7 @@ fn after_run(name: &str, radius: i32, seed: u32, after: u32, army: bool, gifts: 
                 .count();
             let lead = led == Some(civ);
             let text = format!(
-                "{name:<6} seed {seed:>3} civ {civ}: camp {} warriors {warriors:>4.1} pack {pack:>5.2} hungry {:>4} starved {:>3} lost {} line {line} cut off {:>4} foraged {:>3} tiles pillaged {:>3} tiles clans' people {people:>6.1}  kept {}  joined {} gifted {:.1} leaning {leaning}{}",
+                "{name:<6} seed {seed:>3} civ {civ}: camp {} warriors {warriors:>4.1} pack {pack:>5.2} hungry {:>4} starved {:>3} lost {} line {line} cut off {:>4} held {:>4} cut by army {:>3} foraged {:>3} tiles pillaged {:>3} tiles clans' people {people:>6.1}  kept {}  joined {} gifted {:.1} leaning {leaning}{}",
                 match (camp.is_some(), a.lost > 0) {
                     (true, _) => "alive",
                     (false, true) => "lost",
@@ -672,6 +706,8 @@ fn after_run(name: &str, radius: i32, seed: u32, after: u32, army: bool, gifts: 
                 a.starved,
                 a.lost,
                 a.cut_off,
+                a.held,
+                a.cut_by_army,
                 a.foraged_tiles,
                 a.pillaged_tiles,
                 if kept { "yes" } else { "no" },
@@ -679,7 +715,17 @@ fn after_run(name: &str, radius: i32, seed: u32, after: u32, army: bool, gifts: 
                 civ_state.gifted,
                 if lead { "  lead" } else { "" },
             );
-            CivArmy { kept, people, joined: civ_state.joined, lead, text }
+            CivArmy {
+                kept,
+                people,
+                joined: civ_state.joined,
+                lead,
+                hungry: a.hungry,
+                starved: a.starved,
+                held: a.held,
+                cut_by_army: a.cut_by_army,
+                text,
+            }
         })
         .collect();
     MapRun { civs, unaligned, clans }
@@ -692,12 +738,15 @@ fn sweep_after(
     after: u32,
     army: bool,
     gifts: bool,
+    zone: bool,
     lever: Option<f64>,
 ) -> Result<(), String> {
     let runs: Vec<MapRun> = std::thread::scope(|scope| {
         let handles: Vec<_> = maps
             .iter()
-            .map(|(name, radius, seed)| scope.spawn(move || after_run(name, *radius, *seed, after, army, gifts, lever)))
+            .map(|(name, radius, seed)| {
+                scope.spawn(move || after_run(name, *radius, *seed, after, army, gifts, zone, lever))
+            })
             .collect();
         handles.into_iter().map(|h| h.join().unwrap()).collect()
     });
@@ -708,6 +757,7 @@ fn sweep_after(
     let kept = all.iter().filter(|c| c.kept).count();
     let people: f64 = all.iter().map(|c| c.people).sum();
     let mode = match (army, gifts) {
+        (true, true) if !zone => "control, no zone",
         (true, true) => "army",
         (false, true) => "control, no army",
         (true, false) => "control, no gifts",
@@ -717,6 +767,14 @@ fn sweep_after(
         "civs that kept their first camp: {kept} of {} (no camp lost, at least {} warriors at the end)",
         all.len(),
         UNIT.start
+    );
+    let sum = |f: fn(&CivArmy) -> u32| all.iter().map(|c| f(c)).sum::<u32>();
+    println!(
+        "camps' hungry turns {}, warriors starved {}, tile-turns held {}, turns cut by an army {}",
+        sum(|c| c.hungry),
+        sum(|c| c.starved),
+        sum(|c| c.held),
+        sum(|c| c.cut_by_army)
     );
     let mut joins: Vec<u32> = all.iter().map(|c| c.joined).collect();
     joins.sort_unstable();
@@ -872,7 +930,7 @@ fn bench(args: &[String]) -> Result<(), String> {
     }
     for seed in seeds {
         let start = Instant::now();
-        let mut w = World::new(Config { seed, radius, army: true, gifts: true });
+        let mut w = World::new(Config { seed, radius, army: true, gifts: true, zone: true });
         let built = start.elapsed();
         w.run(turns);
         let total = start.elapsed();
