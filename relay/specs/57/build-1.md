@@ -12,9 +12,10 @@ step does to clans, tiles, markets, civs or units. The proof is the digest test 
 ## First, before any edit
 
 1. `cargo run --release -p sansfiat -- digest` (or a short test) for seeds 1, 2, 3 on the small
-   map, run to the pick and 20 turns on, watching (`World::run`): note the three digests. They go
+   map, run to the pick and 20 turns on, watching (`World::run`), and seed 2 with `digest --lead`
+   to the same turn: note the four digests. They go
    into `the_save_version_pins_the_rules`.
-2. `cargo run --release -p sansfiat -- bench 1 2 3` (small): note the time. Write both into
+2. `cargo run --release -p sansfiat -- bench 1 2 3` (small): note the best of three runs (the runner is noisy). Write both into
    `relay/specs/57/bench.md`, and the after numbers when you're done. More than 10% slower: make
    notes cheaper (format only when a rule acts, skip work when nothing changed).
 
@@ -50,7 +51,7 @@ step does to clans, tiles, markets, civs or units. The proof is the digest test 
 
 ## Done
 
-`./check.sh` green (fmt, clippy, tests, web build, cross-build, check.mjs), the three digests
+`./check.sh` green (fmt, clippy, tests, web build, cross-build, check.mjs), the four digests
 unchanged, `bench.md` written, and `run --seed 2 --size small --turns 400 --why <a clan id>`
 printing a believable story for a clan. Put two or three of those notes in your summary so
 build-2 and the review see the voice.

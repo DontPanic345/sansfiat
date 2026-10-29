@@ -99,8 +99,9 @@ names the clan and civ on a tile. build-2 fills the gaps listed below, not a red
     CLI's `replay` and `Sim.load` pass that through, and the page shows it in `#error` as it
     already shows load errors.
 11. **The version guards the rules.** A test, `the_save_version_pins_the_rules`, plays seeds 1–3 on the
-    small map to the pick and 20 turns on, watching, and holds their `stats::digest`s to constants
-    beside `SAVE_VERSION`. Any change that moves the digest must bump `SAVE_VERSION` and the
+    small map to the pick and 20 turns on, watching, and seed 2 led by the scripted game of
+    `digest --lead` (so the player's orders, camp and scout paths are pinned too), and holds
+    those four `stats::digest`s to constants beside `SAVE_VERSION`. Any change that moves the digest must bump `SAVE_VERSION` and the
     constant together; `engine/CLAUDE.md`'s invariants say so. A save made before a rules change
     would replay into a different world, maybe silently; the version turns that into a reason.
 
@@ -148,7 +149,7 @@ box and the dimming (build-2) are judged in passing by the review from build-2's
 - Notes: a run to the pick and 50 turns on, watching, gives notes to clans, markets, civs, camps
   and scouts; a divided clan's note names its daughter and the daughter's names its mother; no
   subject holds more than `NOTES.kept`; a gone subject has none; a replay rebuilds the same notes.
-- `the_save_version_pins_the_rules` (item 11): build-1 takes the three digests from the code as it
+- `the_save_version_pins_the_rules` (item 11): build-1 takes the four digests from the code as it
   finds it, before any change, so the test also proves the piece changed no rule.
 - Alerts: with a led civ, its camp moved far out on its land goes hungry and the first `CampHungry`
   is an alert and the next turn's isn't; a rival's `ClanJoined` is an alert and the player's own
