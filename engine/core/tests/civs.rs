@@ -14,7 +14,14 @@ fn markets3(w: &mut World) -> [u32; 3] {
 
 /// Ends the pre-game on `centres` by hand, as the end step would, and founds the civs.
 fn found(w: &mut World, centres: &[u32]) {
-    w.end = Some(End { turn: w.turn, centres: centres.to_vec(), cover: 1.0, by_limit: false, topped_up: Vec::new() });
+    w.end = Some(End {
+        turn: w.turn,
+        centres: centres.to_vec(),
+        clans: Vec::new(),
+        cover: 1.0,
+        by_limit: false,
+        topped_up: Vec::new(),
+    });
     civs::found(w);
 }
 
@@ -281,8 +288,9 @@ fn the_territory_stops_at_the_edge_of_the_map() {
 #[test]
 fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     let mut w = big();
-    let ms = [open(&mut w, at_big(-5, 0)), open(&mut w, at_big(7, 0)), open(&mut w, at_big(0, -10))];
-    // Red's land (round the capital, which moves to (-4, 1)): the 19 tiles round it and a clan's tile beyond: 16 plains, 2 forest, 2 hills.
+    // Red's site is its bigger clan's home, as the pre-game leaves it.
+    let ms = [open(&mut w, at_big(-4, 1)), open(&mut w, at_big(7, 0)), open(&mut w, at_big(0, -10))];
+    // Red's land (round the capital at (-4, 1)): the 19 tiles round it and a clan's tile beyond: 16 plains, 2 forest, 2 hills.
     for (t, k) in [(at_big(-5, 1), FOREST), (at_big(-6, 1), FOREST), (at_big(-4, -1), HILLS), (at_big(-4, 0), HILLS)] {
         w.tiles[t].terrain = k;
     }
@@ -291,13 +299,13 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     hearth(&mut w, at_big(-5, 2), 3.0);
     hearth(&mut w, at_big(-1, 0), 3.0);
     let a = put(&mut w, &[at_big(-4, 1)], 5.0);
-    let b = put(&mut w, &[at_big(-6, -1)], 2.5);
+    let b = put(&mut w, &[at_big(-1, 1)], 2.5);
     found(&mut w, &ms);
     assert_eq!([civ_of(&w, a), civ_of(&w, b)], [w.civs.keys().next().copied(); 2]);
     let cs = cards(&w);
     assert_eq!(cs.len(), 3);
     let red = &cs[0];
-    // The bigger clan is the civ, and the capital moves to its home.
+    // The bigger clan is the civ, its home the capital.
     assert_eq!((red.name.as_str(), red.capital, red.q, red.r), ("Red", at_big(-4, 1), -4, 1));
     assert_eq!(w.civs.values().next().unwrap().clan, a);
     // 7.5 people, less the three the camp took from the bigger clan.

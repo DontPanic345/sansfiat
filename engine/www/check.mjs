@@ -83,7 +83,7 @@ const v = JSON.parse(sim.view());
 assert.equal(v.turn, turns);
 assert.ok(v.end, 'view.end is set after the end');
 assert.equal(v.end.centres.length, 3, 'three centres');
-assert.deepEqual(v.summary.centres, v.end.centres, 'summary.centres is end.centres after the end');
+assert.deepEqual(v.summary.centres, v.end.clans.filter((c) => c != null), "summary.centres is the end's centre clans after the end");
 for (const id of v.end.centres) assert.ok(v.markets[id], `centre ${id} is a market`);
 for (const [i, c] of v.claims) assert.ok(i >= 0 && i < n && v.clans[c], 'claims are tile, clan');
 for (const i of v.trails) assert.ok(layout.terrain[i] < TERRAIN.length);

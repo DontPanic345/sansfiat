@@ -74,8 +74,14 @@ fn a_festival_one_clan_keeps_coming_to_stays_and_an_empty_one_fades() {
     let kept = open(&mut w, at(0, 0));
     let empty = open(&mut w, out(0, 5));
     let centre = open(&mut w, out(3, 5));
-    w.end =
-        Some(engine::pregame::End { turn: 0, centres: vec![centre], topped_up: vec![], by_limit: false, cover: 1.0 });
+    w.end = Some(engine::pregame::End {
+        turn: 0,
+        centres: vec![centre],
+        clans: vec![],
+        topped_up: vec![],
+        by_limit: false,
+        cover: 1.0,
+    });
     let id = put(&mut w, &[at(0, 1)], 4.0);
     come(&mut w, id, kept);
     for _ in 0..80 {

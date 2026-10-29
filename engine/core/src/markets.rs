@@ -101,7 +101,7 @@ pub fn go(w: &mut World) {
     let ids: Vec<u32> = w.clans.keys().copied().collect();
     for id in ids {
         let c = &w.clans[&id];
-        // A civ's own clan always walks to the capital's market, a route of nothing.
+        // A civ's own clan always walks to the capital's market: a route of nothing from its home.
         let civ_market = c.civ.and_then(|civ| w.civs.get(&civ)).filter(|civ| civ.clan == id).map(|civ| civ.market);
         let choice = civ_market.or_else(|| choose(&worths(w, c), c.market));
         let route = choice.and_then(|mid| {

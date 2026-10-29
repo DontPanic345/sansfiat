@@ -65,9 +65,8 @@ fn events_are_in_turn_order_with_valid_tiles_and_wording() {
         match e.kind {
             EventKind::ClanDivided => assert!(e.clan.is_some() && e.other.is_some(), "{e:?}"),
             EventKind::ClanStarving | EventKind::ClanMoved => assert!(e.clan.is_some(), "{e:?}"),
-            EventKind::MarketFormed | EventKind::MarketFaded | EventKind::CentreFormed => {
-                assert!(e.market.is_some(), "{e:?}")
-            }
+            EventKind::MarketFormed | EventKind::MarketFaded => assert!(e.market.is_some(), "{e:?}"),
+            EventKind::CentreFormed => assert!(e.clan.is_some() || e.market.is_some(), "{e:?}"),
             _ => {}
         }
     }
@@ -210,16 +209,14 @@ fn a_top_up_is_a_centre_each_then_the_end() {
 }
 
 #[test]
-fn a_market_that_becomes_a_centre_is_announced_once() {
+fn a_clan_that_becomes_a_centre_is_announced_once() {
     let (mut w, ids) = {
         let mut w = flat();
         w.turn = 40;
         let tiles = [at(5, 0), at(-5, 5), at(0, -5)];
         let mut ids = [0; 3];
         for k in 0..3 {
-            hearth(&mut w, tiles[k], 4.0);
-            ids[k] = open(&mut w, tiles[k]);
-            w.markets.get_mut(&ids[k]).unwrap().traders = 4;
+            ids[k] = centre(&mut w, tiles[k]);
         }
         (w, ids)
     };
@@ -227,7 +224,8 @@ fn a_market_that_becomes_a_centre_is_announced_once() {
     check_end(&mut w);
     let formed: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::CentreFormed).collect();
     assert_eq!(formed.len(), 3, "once each, not each turn");
-    assert!(ids.iter().all(|id| formed.iter().any(|e| e.market == Some(*id))));
+    assert!(ids.iter().all(|id| formed.iter().any(|e| e.clan == Some(*id) && e.tile == w.clans[id].home)));
+    assert_eq!(formed[0].text(&w), format!("Clan {} becomes a centre", ids[0]));
     // Cover short: it carries on, with the end not yet reached.
     assert!(w.end.is_none());
 }
@@ -235,21 +233,35 @@ fn a_market_that_becomes_a_centre_is_announced_once() {
 #[test]
 fn a_centre_that_dropped_out_and_is_topped_up_is_announced_once() {
     let mut w = big();
-    let a = open(&mut w, at_big(8, 0));
+    w.turn = 40;
+    let clan = centre(&mut w, at_big(8, 0));
+    let a = w.clans[&clan].market.unwrap();
     let b = open(&mut w, at_big(-8, 8));
     let c = open(&mut w, at_big(0, -8));
-    hearth(&mut w, at_big(8, 0), 4.0);
-    w.turn = 40;
-    w.markets.get_mut(&a).unwrap().traders = 4;
     check_end(&mut w);
     assert!(w.end.is_none(), "one centre, not the end");
-    // It loses its traders and is no longer a centre; the limit tops it up.
+    // Its festival loses its traders and it is no longer a centre; the limit tops it up.
     w.markets.get_mut(&a).unwrap().traders = 0;
     w.turn = PREGAME.max_turns - 1;
     check_end(&mut w);
-    assert_eq!(w.end.as_ref().unwrap().centres.len(), 3);
+    let end = w.end.clone().unwrap();
+    assert_eq!((end.centres, end.clans), (vec![a, b, c], vec![Some(clan), None, None]));
     let formed: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::CentreFormed).collect();
-    for id in [a, b, c] {
+    assert_eq!(formed.iter().filter(|e| e.clan == Some(clan)).count(), 1, "clan {clan} announced once");
+    for id in [b, c] {
         assert_eq!(formed.iter().filter(|e| e.market == Some(id)).count(), 1, "market {id} announced once");
     }
+}
+
+/// A centre clan at `tile`: a hearth on its home, settled `centre_age` turns, going to a festival
+/// on its home that had `centre_clans` traders last turn.
+fn centre(w: &mut World, tile: usize) -> u32 {
+    hearth(w, tile, 4.0);
+    let c = put(w, &[tile], 4.0);
+    let m = open(w, tile);
+    w.markets.get_mut(&m).unwrap().traders = PREGAME.centre_clans;
+    let clan = w.clans.get_mut(&c).unwrap();
+    clan.market = Some(m);
+    clan.since = PREGAME.centre_age;
+    c
 }

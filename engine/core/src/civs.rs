@@ -1,6 +1,6 @@
-//! Civs: what founding makes of the pre-game's centres. Each centre's market becomes a civ with a
-//! capital on it; clans in reach of the market join the civ; the civ keeps one store, which its
-//! fed clans levy into and which spoils and is capped.
+//! Civs: what founding makes of the pre-game's centres. Each centre's site market becomes a civ
+//! with a capital on it, and the centre's clan its own clan; clans in reach of the market join the
+//! civ; the civ keeps one store, which its fed clans levy into and which spoils and is capped.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -46,11 +46,13 @@ fn steps(w: &World, a: usize, b: usize) -> i32 {
     w.tiles[a].hex().distance(w.tiles[b].hex())
 }
 
-/// Founding, once, as the pre-game ends: a civ on each centre's market (the k-th takes `CIVS[k]`),
-/// clans in reach joining the nearest, a civ with no clan taking the nearest unaligned one, and
-/// the phase `Choose`. Draws no random numbers.
+/// Founding, once, as the pre-game ends: a civ on each centre's site market (the k-th takes
+/// `CIVS[k]`), clans in reach joining the nearest, a civ with no clan taking the nearest unaligned
+/// one, each civ's own clan, and the phase `Choose`. Draws no random numbers.
 pub fn found(w: &mut World) {
-    let centres = w.end.as_ref().map(|e| e.centres.clone()).unwrap_or_default();
+    let (centres, centre_clans) = w.end.as_ref().map(|e| (e.centres.clone(), e.clans.clone())).unwrap_or_default();
+    // Each civ and its centre's clan, if the site had one.
+    let mut owns: Vec<(u32, Option<u32>)> = Vec::new();
     for (k, mid) in centres.into_iter().enumerate() {
         let (Some(&(name, color)), Some(m)) = (CIVS.get(k), w.markets.get(&mid)) else { continue };
         let capital = m.tile;
@@ -71,6 +73,7 @@ pub fn found(w: &mut World) {
         };
         w.civs.insert(id, civ);
         w.civ_event(EventKind::CivFounded, capital, id, Some(mid));
+        owns.push((id, centre_clans.get(k).copied().flatten().filter(|c| w.clans.contains_key(c))));
     }
 
     let reaches: Vec<(u32, BTreeMap<usize, f64>)> = w.civs.values().map(|c| (c.id, reach(w, c.capital))).collect();
@@ -111,10 +114,15 @@ pub fn found(w: &mut World) {
             w.clans.get_mut(&clan).unwrap().civ = Some(id);
         }
     }
-    // Each civ's own clan: the biggest that joined with its home in reach of the festival (ties to
-    // the lower id), else its biggest. Its home is the capital, and the festival moves there.
-    let ids: Vec<u32> = w.civs.keys().copied().collect();
-    for id in ids {
+    // Each civ's own clan: its centre's clan, whose home is the capital; for a site the top-up
+    // found without one, the biggest that joined with its home in reach of the capital (ties to
+    // the lower id), else its biggest. Nothing moves: the clan's festival stays where it was.
+    for (id, own) in owns {
+        if let Some(clan) = own {
+            w.clans.get_mut(&clan).unwrap().civ = Some(id);
+            w.civs.get_mut(&id).unwrap().clan = clan;
+            continue;
+        }
         let near = reach(w, w.civs[&id].capital);
         let joined = |near_only: bool| {
             w.clans
@@ -124,14 +132,9 @@ pub fn found(w: &mut World) {
                 .map(|c| c.id)
         };
         let Some(clan) = joined(true).or_else(|| joined(false)) else { continue };
-        let home = w.clans[&clan].home;
-        let mid = w.civs[&id].market;
-        w.markets.get_mut(&mid).unwrap().tile = home;
-        let civ = w.civs.get_mut(&id).unwrap();
-        civ.capital = home;
-        civ.clan = clan;
+        w.civs.get_mut(&id).unwrap().clan = clan;
     }
-    // Festivals moved, so routes are laid again (the civ's own clan's is nothing).
+    // Civ clans are drawn to their capitals now, so routes are laid again.
     crate::markets::go(w);
     if w.config.army {
         let ids: Vec<u32> = w.civs.keys().copied().collect();

@@ -3,68 +3,79 @@ mod common;
 use common::*;
 use engine::data::*;
 use engine::map::Zone;
-use engine::pregame::{centres, check_end, is_centre, land_cover};
+use engine::pregame::{centres, check_end, homes, is_centre, land_cover};
 use engine::{Config, World};
 
-/// Three markets on the corners of the land, each 10 steps from the others, with a hearth on
-/// its tile, `traders` clans last turn, founded on turn 0; the turn is 40.
-fn three(traders: [usize; 3]) -> (World, [u32; 3]) {
+/// A centre clan of `people` at `tile`: a hearth on its home, settled `centre_age` turns, going
+/// to a festival on its home that had `centre_clans` traders last turn. Its id and the festival's.
+fn centre(w: &mut World, tile: usize, people: f64) -> (u32, u32) {
+    hearth(w, tile, 4.0);
+    let c = put(w, &[tile], people);
+    let m = open(w, tile);
+    w.markets.get_mut(&m).unwrap().traders = PREGAME.centre_clans;
+    let clan = w.clans.get_mut(&c).unwrap();
+    clan.market = Some(m);
+    clan.since = PREGAME.centre_age;
+    (c, m)
+}
+
+/// Three centre clans of `people` on the corners of the land, each 10 steps from the others;
+/// the turn is 40. The clans' ids and their festivals'.
+fn three(people: [f64; 3]) -> (World, [u32; 3], [u32; 3]) {
     let mut w = flat();
     w.turn = 40;
     let tiles = [at(5, 0), at(-5, 5), at(0, -5)];
-    let mut ids = [0; 3];
+    let (mut cs, mut ms) = ([0; 3], [0; 3]);
     for k in 0..3 {
-        hearth(&mut w, tiles[k], 4.0);
-        ids[k] = open(&mut w, tiles[k]);
-        w.markets.get_mut(&ids[k]).unwrap().traders = traders[k];
+        (cs[k], ms[k]) = centre(&mut w, tiles[k], people[k]);
     }
     for a in tiles {
         for b in tiles {
             assert!(a == b || steps(&w, a, b) >= PREGAME.centre_spacing);
         }
     }
-    (w, ids)
+    (w, cs, ms)
 }
 
 #[test]
-fn three_centres_far_apart_are_all_taken_busiest_first() {
-    let (w, ids) = three([4, 6, 5]);
-    assert_eq!(centres(&w), vec![ids[1], ids[2], ids[0]]);
+fn three_centres_far_apart_are_all_taken_biggest_first() {
+    let (w, cs, _) = three([4.0, 6.0, 5.0]);
+    assert_eq!(centres(&w), vec![cs[1], cs[2], cs[0]]);
 }
 
 #[test]
-fn a_centre_near_a_busier_one_is_not_taken() {
+fn a_centre_near_a_bigger_one_is_not_taken() {
     let mut w = flat();
     w.turn = 40;
     let (a, b) = (at(5, 0), at(-1, 0));
     assert_eq!(steps(&w, a, b), 6);
-    hearth(&mut w, a, 4.0);
-    hearth(&mut w, b, 4.0);
-    let (ma, mb) = (open(&mut w, a), open(&mut w, b));
-    w.markets.get_mut(&ma).unwrap().traders = 4;
-    w.markets.get_mut(&mb).unwrap().traders = 5;
-    assert!(is_centre(&w, &w.markets[&ma]) && is_centre(&w, &w.markets[&mb]));
-    assert_eq!(centres(&w), vec![mb]);
+    let (ca, _) = centre(&mut w, a, 4.0);
+    let (cb, _) = centre(&mut w, b, 5.0);
+    assert!(is_centre(&w, &w.clans[&ca]) && is_centre(&w, &w.clans[&cb]));
+    assert_eq!(centres(&w), vec![cb]);
 }
 
 #[test]
-fn a_centre_needs_age_traders_and_a_hearth_in_reach() {
-    let (mut w, ids) = three([4, 4, 4]);
-    let m = w.markets[&ids[0]].clone();
-    assert!(is_centre(&w, &m));
-    // A hearth anywhere in reach will do.
-    w.tiles[m.tile].tame = 0;
-    assert!(!is_centre(&w, &m), "no hearth in reach");
-    hearth(&mut w, at(3, 0), 4.0);
-    assert!(is_centre(&w, &m));
-    w.tiles[at(3, 0)].tame = 0;
-    hearth(&mut w, at(1, 0), 4.0);
-    assert!(!is_centre(&w, &m), "a hearth 4 steps away, out of reach");
+fn a_centre_is_settled_at_a_busy_festival_with_a_hearth_on_its_land() {
+    let (mut w, cs, ms) = three([4.0, 4.0, 4.0]);
+    let c = cs[0];
+    assert!(is_centre(&w, &w.clans[&c]));
+    // A hearth on its territory, not just near it.
+    w.tiles[at(5, 0)].tame = 0;
+    assert!(!is_centre(&w, &w.clans[&c]), "no hearth on its land");
+    hearth(&mut w, at(4, 0), 4.0);
+    assert!(!is_centre(&w, &w.clans[&c]), "a hearth next door is not its own");
+    w.clans.get_mut(&c).unwrap().territory = vec![at(4, 0), at(5, 0)];
+    assert!(is_centre(&w, &w.clans[&c]));
 
-    let (mut w, ids) = three([4, 3, 4]);
-    assert!(!is_centre(&w, &w.markets[&ids[1]]), "three traders");
-    w.turn = PREGAME.centre_age - 1;
-    assert!(!is_centre(&w, &w.markets[&ids[0]]), "too young");
+    let (mut w, cs, ms2) = three([4.0, 4.0, 4.0]);
+    assert_eq!(ms, ms2);
+    w.markets.get_mut(&ms[1]).unwrap().traders = PREGAME.centre_clans - 1;
+    assert!(!is_centre(&w, &w.clans[&cs[1]]), "a quiet festival");
+    w.clans.get_mut(&cs[2]).unwrap().market = None;
+    assert!(!is_centre(&w, &w.clans[&cs[2]]), "no festival");
+    w.clans.get_mut(&cs[0]).unwrap().since = PREGAME.centre_age - 1;
+    assert!(!is_centre(&w, &w.clans[&cs[0]]), "not settled long enough");
     assert!(centres(&w).is_empty());
 }
 
@@ -77,36 +88,38 @@ fn land_cover_is_the_share_near_some_territory() {
     // Its territory is q = −5; within 3 steps of that is q = −5..=−2.
     put(&mut w, &[row[0]], 3.0);
     assert!((land_cover(&w, &[]) - 4.0 / 12.0).abs() < 1e-12);
-    let m = open(&mut w, row[9]);
-    assert!((land_cover(&w, &[m]) - 0.4).abs() < 1e-12);
-    let m2 = open(&mut w, isle[0]);
-    assert_eq!(land_cover(&w, &[m2]), 0.0);
+    assert!((land_cover(&w, &[row[9]]) - 0.4).abs() < 1e-12);
+    assert_eq!(land_cover(&w, &[isle[0]]), 0.0);
 }
 
 #[test]
 fn the_pregame_ends_with_three_centres_the_land_covered_and_people_levelled_off() {
-    let (mut w, ids) = three([4, 4, 4]);
+    let (mut w, cs, ms) = three([4.0, 4.0, 4.0]);
+    // The centres alone leave the land short of covered.
+    let levelled = |w: &mut World, share: f64| {
+        let people: f64 = w.clans.values().map(|c| c.people).sum();
+        w.people_seen = vec![people * share; PREGAME.settle_turns];
+    };
+    levelled(&mut w, 1.0);
     check_end(&mut w);
-    assert_eq!(w.end, None, "nobody lives on the land");
-    // A clan in the middle covers 3 steps out, short of the rim.
+    assert_eq!(w.end, None, "the land is not covered");
+    assert!(land_cover(&w, &homes(&w, &cs)) < PREGAME.cover);
+    // One in the middle and six more, 4 out, cover it all.
     put(&mut w, &[at(0, 0)], 3.0);
-    check_end(&mut w);
-    assert_eq!(w.end, None);
-    assert!((land_cover(&w, &ids) - 37.0 / 91.0).abs() < 1e-12);
-    // Six more, 4 out, cover it all.
     for d in 0..6 {
         put(&mut w, &[out(d, 4)], 3.0);
     }
     // Still growing: people were a tenth fewer `settle_turns` ago.
-    let people: f64 = w.clans.values().map(|c| c.people).sum();
-    w.people_seen = vec![people * 0.9; PREGAME.settle_turns];
+    levelled(&mut w, 0.9);
     check_end(&mut w);
     assert_eq!(w.end, None, "people have not levelled off");
-    // Levelled off.
-    w.people_seen = vec![people; PREGAME.settle_turns];
+    levelled(&mut w, 1.0);
     check_end(&mut w);
     let end = w.end.clone().expect("ended");
-    assert_eq!((end.turn, end.centres, end.cover, end.by_limit), (40, ids.to_vec(), 1.0, false));
+    // Each festival is on its centre's home, so it is the site: no market is raised.
+    assert_eq!((end.turn, &end.centres, end.cover, end.by_limit), (40, &ms.to_vec(), 1.0, false));
+    assert_eq!(end.clans, cs.map(Some).to_vec());
+    assert_eq!(w.markets.len(), 3);
     w.markets.clear();
     w.turn += 1;
     check_end(&mut w);
@@ -114,8 +127,31 @@ fn the_pregame_ends_with_three_centres_the_land_covered_and_people_levelled_off(
 }
 
 #[test]
+fn a_site_gets_a_market_and_the_festival_stays_where_it_is() {
+    let (mut w, cs, ms) = three([4.0, 4.0, 4.0]);
+    // The first centre walks to a festival two steps from home.
+    let away = open(&mut w, at(3, 0));
+    w.markets.get_mut(&away).unwrap().traders = PREGAME.centre_clans;
+    w.clans.get_mut(&cs[0]).unwrap().market = Some(away);
+    w.markets.remove(&ms[0]);
+    at_the_limit(&mut w);
+    let end = w.end.clone().expect("ended");
+    assert_eq!(end.clans, cs.map(Some).to_vec());
+    let site = end.centres[0];
+    assert!(site != away && !ms.contains(&site), "a market raised on the site");
+    assert_eq!(w.markets[&site].tile, at(5, 0));
+    assert_eq!(w.markets[&away].tile, at(3, 0), "the festival does not move");
+    assert_eq!(end.centres[1..], ms[1..]);
+    // The civ is founded on the site, with the centre clan its own.
+    let civ = w.civs.values().find(|c| c.market == site).unwrap();
+    assert_eq!((civ.capital, civ.clan), (at(5, 0), cs[0]));
+    assert_eq!(w.clans[&cs[0]].civ, Some(civ.id));
+}
+
+#[test]
 fn the_pregame_ends_at_the_turn_limit() {
-    let (mut w, _) = three([4, 4, 3]);
+    let (mut w, _, ms) = three([4.0, 4.0, 4.0]);
+    w.markets.get_mut(&ms[2]).unwrap().traders = PREGAME.centre_clans - 1;
     put(&mut w, &[at(0, 0)], 3.0);
     w.turn = PREGAME.max_turns - 2;
     w.run(1);
@@ -127,6 +163,25 @@ fn the_pregame_ends_at_the_turn_limit() {
 }
 
 // The top-up.
+
+#[test]
+fn the_top_up_takes_the_biggest_spaced_clans_before_markets() {
+    let mut w = big();
+    let m = market(&mut w, at_big(8, 0), 5);
+    let small = put(&mut w, &[at_big(-8, 8)], 3.0);
+    let big = put(&mut w, &[at_big(0, -8)], 5.0);
+    let near = put(&mut w, &[at_big(-7, 8)], 4.0);
+    assert!(centres(&w).is_empty());
+    at_the_limit(&mut w);
+    let end = w.end.clone().expect("ended");
+    assert_eq!(end.clans, vec![Some(big), Some(near), None], "the smaller clan is too near the bigger");
+    assert_eq!(end.centres[2], m);
+    let tiles: Vec<usize> = end.centres.iter().map(|id| w.markets[id].tile).collect();
+    assert_eq!(tiles, vec![at_big(0, -8), at_big(-7, 8), at_big(8, 0)], "markets raised on the clans' homes");
+    assert_eq!(end.topped_up, end.centres);
+    assert!(!end.clans.contains(&Some(small)));
+    assert_spaced(&w, &end.centres);
+}
 
 /// Sets the turn to the last before the limit and runs the `end` step.
 fn at_the_limit(w: &mut World) {
@@ -186,11 +241,9 @@ fn with_no_centres_the_best_spaced_markets_make_three() {
 #[test]
 fn two_centres_and_no_more_markets_raise_one_on_the_most_tended_tile() {
     let mut w = big();
-    let (a, b) = (market(&mut w, at_big(8, 0), 4), market(&mut w, at_big(-8, 8), 4));
-    hearth(&mut w, at_big(8, 0), 4.0);
-    hearth(&mut w, at_big(-8, 8), 4.0);
+    let ((ca, a), (cb, b)) = (centre(&mut w, at_big(8, 0), 4.0), centre(&mut w, at_big(-8, 8), 4.0));
     w.turn = 40;
-    assert_eq!(centres(&w), vec![a, b]);
+    assert_eq!(centres(&w), vec![ca, cb]);
     // Two tended tiles that fit; the one with more tame wins though it is less fertile. A third,
     // more tended still, is too near the first centre.
     grain(&mut w, at_big(0, -8), 3, 2.0);
@@ -200,6 +253,7 @@ fn two_centres_and_no_more_markets_raise_one_on_the_most_tended_tile() {
     let end = w.end.clone().expect("ended");
     assert_eq!(end.centres.len(), 3);
     assert_eq!(end.centres[..2], [a, b]);
+    assert_eq!(end.clans, vec![Some(ca), Some(cb), None]);
     assert_eq!(end.topped_up.len(), 1);
     let m = &w.markets[&end.topped_up[0]];
     assert_eq!(m.tile, at_big(0, -9));
@@ -212,10 +266,9 @@ fn two_centres_and_no_more_markets_raise_one_on_the_most_tended_tile() {
 #[test]
 fn with_no_tame_land_the_most_fertile_grain_makes_the_rest() {
     let mut w = big();
-    let a = market(&mut w, at_big(8, 0), 4);
-    hearth(&mut w, at_big(8, 0), 4.0);
+    let (ca, _) = centre(&mut w, at_big(8, 0), 4.0);
     w.turn = 40;
-    assert_eq!(centres(&w), vec![a]);
+    assert_eq!(centres(&w), vec![ca]);
     // Wild grain: the better of two close tiles wins, one near the centre is out of reach.
     grain(&mut w, at_big(-8, 8), 0, 1.5);
     grain(&mut w, at_big(-7, 8), 0, 1.9);
@@ -281,10 +334,9 @@ fn a_sealed_or_too_close_candidate_is_skipped() {
 #[test]
 fn topped_up_lists_exactly_the_new_ids() {
     let mut w = big();
-    let a = market(&mut w, at_big(8, 0), 4);
-    hearth(&mut w, at_big(8, 0), 4.0);
+    let (ca, a) = centre(&mut w, at_big(8, 0), 4.0);
     w.turn = 40;
-    assert_eq!(centres(&w), vec![a]);
+    assert_eq!(centres(&w), vec![ca]);
     let before: Vec<u32> = w.markets.keys().copied().collect();
     grain(&mut w, at_big(-8, 8), 4, 1.0);
     grain(&mut w, at_big(0, -8), 3, 1.0);
@@ -304,11 +356,11 @@ fn nothing_to_top_up_with_ends_short_and_a_full_set_is_left_alone() {
     let end = w.end.clone().expect("ended");
     assert_eq!((end.centres, end.topped_up), (vec![a], vec![a]));
     // Three centres with the cover short: by the limit, nothing added.
-    let (mut w, ids) = three([4, 4, 4]);
+    let (mut w, _, ms) = three([4.0, 4.0, 4.0]);
     at_the_limit(&mut w);
     let end = w.end.clone().expect("ended");
     assert!(end.by_limit);
-    assert_eq!((end.centres, end.topped_up), (ids.to_vec(), vec![]));
+    assert_eq!((end.centres, end.topped_up), (ms.to_vec(), vec![]));
 }
 
 #[test]
@@ -391,7 +443,7 @@ fn with_no_centres_a_region_too_small_for_three_is_passed_over() {
     at_the_limit(&mut w);
     let end = w.end.clone().expect("ended");
     assert_eq!(end.centres.len(), 3);
-    // Founding then moves a civ's market to the clan it takes, so read where each civ was founded.
+    // Read where each civ was founded.
     let founded: Vec<_> = w.events.iter().filter(|e| e.kind == engine::EventKind::CivFounded).collect();
     assert_eq!(founded.len(), 3);
     assert!(founded.iter().all(|e| w.tiles[e.tile].q < 0), "all in the west");

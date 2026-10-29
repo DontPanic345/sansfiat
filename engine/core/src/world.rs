@@ -48,7 +48,7 @@ pub struct World {
     /// What happened, in order: derived from the turns, so not saved; a replay rebuilds it.
     #[serde(skip)]
     pub events: Vec<Event>,
-    /// Every market that has been among the centres before the end, so each is announced once.
+    /// Every clan that has been among the centres before the end, so each is announced once.
     #[serde(skip)]
     pub centres_seen: Vec<u32>,
 }
@@ -116,7 +116,10 @@ impl Event {
             EventKind::MarketFormed => format!("A market forms at {at}"),
             EventKind::MarketFaded => format!("Market {market} fades"),
             EventKind::HearthTamed => format!("A hearth is tamed at {at}"),
-            EventKind::CentreFormed => format!("Market {market} becomes a centre"),
+            EventKind::CentreFormed => match self.clan {
+                Some(c) => format!("Clan {c} becomes a centre"),
+                None => format!("Market {market} becomes a centre"),
+            },
             EventKind::CivFounded => {
                 let name = self.civ.and_then(|id| w.civs.get(&id)).map_or("A civ", |c| c.name.as_str());
                 format!("{name} is founded at {at}, on market {market}")

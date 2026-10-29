@@ -156,3 +156,29 @@ clans' people at the end, all civs (army): 847.2
 ```
 
 Both match the "after" blocks above line for line.
+
+## Owner's change: a centre is a clan, and the capital gets its own market
+
+A centre is now a clan: the biggest first, settled at home `centre_age` turns, going to a
+festival with `centre_clans` traders last turn, with a hearth on its own territory, its home
+`centre_spacing` from the other centres'. The site is its home. Founding no longer moves the
+festival: a market is raised on the site unless one is there. This fixes the spaced-centres
+failure (seed 2, radius 16), since the capital is where the spacing was checked.
+
+`sweep --size all`: unchanged, 10/10 ended on their own on every size, median end 261, 355, 373.
+
+`sweep --after 200 --maps retro`:
+
+| | civs kept their first camp | clans' people |
+|---|---|---|
+| build-1 (festival moves to the clan's home) | 21 of 21 | 847.2 |
+| clan centres, festival moved to the home (experiment) | 18 of 21 | 811.6 |
+| clan centres, new market on the site, `CIV.pull` 3 (committed) | 11 of 21 | 866.1 |
+| the same, `CIV.pull` 6 | 17 of 21 | 846.6 |
+| the same, `CIV.pull` 10 | 19 of 21 | 841.9 |
+
+Why camps starve: when the centre clan's festival is not on its home, the civ's other clans keep
+going to that festival, busy and with its prices settled, and only the centre clan comes to the
+new capital market (small seed 3: two of three capitals with one trader for 60 turns). The levy
+is paid only at the capital's market, so the store stays empty and the camp's line brings nothing.
+`CIV.pull` is left at 3 for the owner to decide.

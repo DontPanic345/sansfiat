@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::data::*;
 use crate::land::{is_depleted, is_hearth};
 use crate::markets::reach;
-use crate::pregame::{centres, land_cover, End};
+use crate::pregame::{centres, homes, land_cover, sites, End};
 use crate::world::World;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -32,6 +32,7 @@ pub struct Summary {
     pub markets: usize,
     /// Clans with a market.
     pub trading: usize,
+    /// The centre clans: so far, before the end; the end's, after it.
     pub centres: Vec<u32>,
     pub cover: f64,
     pub end: Option<End>,
@@ -39,8 +40,14 @@ pub struct Summary {
 
 pub fn summary(w: &World) -> Summary {
     let n = w.clans.len().max(1) as f64;
-    let centres = w.end.as_ref().map_or_else(|| centres(w), |e| e.centres.clone());
-    let cover = land_cover(w, &centres);
+    let (centres, cover) = match &w.end {
+        Some(e) => (e.clans.iter().flatten().copied().collect(), land_cover(w, &sites(w, &e.centres))),
+        None => {
+            let ids = centres(w);
+            let cover = land_cover(w, &homes(w, &ids));
+            (ids, cover)
+        }
+    };
     Summary {
         turn: w.turn,
         clans: w.clans.len(),

@@ -15,7 +15,14 @@ fn markets3(w: &mut World) -> [u32; 3] {
 
 /// Ends the pre-game on `centres` by hand and founds the civs.
 fn found(w: &mut World, centres: &[u32]) {
-    w.end = Some(End { turn: w.turn, centres: centres.to_vec(), cover: 1.0, by_limit: false, topped_up: Vec::new() });
+    w.end = Some(End {
+        turn: w.turn,
+        centres: centres.to_vec(),
+        clans: Vec::new(),
+        cover: 1.0,
+        by_limit: false,
+        topped_up: Vec::new(),
+    });
     civs::found(w);
 }
 
@@ -69,7 +76,7 @@ fn end_turn(w: &mut World) {
 }
 
 #[test]
-fn founding_makes_the_biggest_near_clan_the_civ_with_the_market_on_its_home() {
+fn founding_with_no_centre_clan_makes_the_biggest_near_clan_the_civ_and_moves_nothing() {
     let mut w = big();
     let ms = markets3(&mut w);
     let small = put(&mut w, &[at_big(-4, 1)], 5.0);
@@ -79,11 +86,11 @@ fn founding_makes_the_biggest_near_clan_the_civ_with_the_market_on_its_home() {
     let red = w.civs.values().next().unwrap();
     assert_eq!(w.clans[&far].civ, Some(red.id), "the far clan joined");
     assert_eq!(red.clan, small, "but the near one is the civ");
-    assert_eq!(red.capital, at_big(-4, 1));
-    assert_eq!(w.markets[&red.market].tile, at_big(-4, 1), "the festival moved to its home");
+    assert_eq!(red.capital, at_big(-5, 0), "the capital stays on the site");
+    assert_eq!(w.markets[&red.market].tile, at_big(-5, 0), "the market does not move");
     assert_eq!(red.army.raised, 1);
     let camp = units::camp(&w, red.id).unwrap();
-    assert_eq!((camp.tile(), camp.people), (at_big(-4, 1), f64::from(UNIT.start)));
+    assert_eq!((camp.tile(), camp.people), (at_big(-5, 0), f64::from(UNIT.start)));
     // One person from each clan in turn, biggest first: the far clan twice.
     assert_eq!((w.clans[&small].people, w.clans[&far].people), (4.0, 18.0));
     // A pack each from the store.

@@ -127,7 +127,10 @@ export class MapView {
     for (let i = 0; i < n; i++) {
       if (this.l.wild_grain[i] > 0 && (tame.get(i) || 0) >= tameTurns) this.hearths.push(i);
     }
-    this.centres = new Set(v.end ? v.end.centres : v.summary.centres);
+    // The centres' sites: the end's markets, or before it the centre clans' homes.
+    this.centres = v.end
+      ? v.end.centres.map((id) => v.markets[id]?.tile).filter((t) => t != null)
+      : v.summary.centres.map((id) => v.clans[id]?.home).filter((t) => t != null);
     this.buildCivs(v);
     // A market's reach, approximated by hex steps over land (as the page always has).
     for (const m of Object.values(v.markets)) {
@@ -986,11 +989,10 @@ export class MapView {
         ctx.lineWidth = Math.max(px * 3.2, 0.3) + px * wide * 2;
         ctx.beginPath();
         const ring = 1.7;
-        for (const id of this.centres) {
-          const m = v.markets[id];
-          if (!m || !onScreen(m.tile)) continue;
-          ctx.moveTo(this.px[m.tile] + ring, this.py[m.tile]);
-          ctx.arc(this.px[m.tile], this.py[m.tile], ring, 0, 2 * Math.PI);
+        for (const t of this.centres) {
+          if (!onScreen(t)) continue;
+          ctx.moveTo(this.px[t] + ring, this.py[t]);
+          ctx.arc(this.px[t], this.py[t], ring, 0, 2 * Math.PI);
         }
         ctx.stroke();
       }

@@ -6,9 +6,9 @@ units; the rest of a civ comes in later pieces.
 
 ## Founding
 
-- At each centre, its biggest clan becomes the civ, with a name and colour. Its home tile is
-  the capital, and the centre's festival becomes the capital's market there. The capital's
-  market never fades.
+- At each centre, its clan becomes the civ, with a name and colour. Its home tile is the
+  capital. The capital gets a market of its own there, unless one is already on that tile; the
+  festival the clan went to stays where it is. The capital's market never fades.
 - The player picks a civ to lead, or watches all three on the AI. The pick shows each civ's
   clans, people, tamed grain, terrain and distance to the nearest rival.
 - Every clan that comes to a founding festival joins its civ. A civ that gets none takes the

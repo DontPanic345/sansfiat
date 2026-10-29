@@ -301,9 +301,10 @@ struct Run {
     how: &'static str,
     centres: usize,
     topped_up: usize,
-    /// How many of those were existing markets, raised on tended land, raised on any grain land
-    /// (told apart by when the market was founded and whether its tile is tamed).
-    tiers: [usize; 3],
+    /// How many of those were clans' homes, existing markets, raised on tended land, raised on any
+    /// grain land (told apart by the site's clan, when the market was founded and whether its tile
+    /// is tamed).
+    tiers: [usize; 4],
     cover: f64,
     clans: usize,
     people: f64,
@@ -382,16 +383,19 @@ fn sweep_run(seed: u32, radius: i32, turns: u32, every: u32) -> Run {
         ),
         None => (w.turn, "none", 0),
     };
-    let mut tiers = [0; 3];
+    let mut tiers = [0; 4];
     if let Some(e) = &w.end {
         for id in &e.topped_up {
             let m = &w.markets[id];
-            tiers[if m.founded < e.turn {
+            let k = e.centres.iter().position(|c| c == id).unwrap();
+            tiers[if e.clans.get(k).copied().flatten().is_some() {
                 0
-            } else if w.tiles[m.tile].tame > 0 {
+            } else if m.founded < e.turn {
                 1
-            } else {
+            } else if w.tiles[m.tile].tame > 0 {
                 2
+            } else {
+                3
             }] += 1;
         }
     }
@@ -491,8 +495,8 @@ fn sweep(args: &[String]) -> Result<(), String> {
         });
         for r in &runs {
             println!(
-                "{name:<6} seed {:>3}: ended {:>3} by {:<11} centres {} topped up {} ({}/{}/{})  cover {:.2}  clans {:>3}  people {:>6.1}  depleted {:>4}  markets {:>2}  hearths {:>3}  closed {}/{}/{}  {:.1} ms a turn",
-                r.seed, r.ended, r.how, r.centres, r.topped_up, r.tiers[0], r.tiers[1], r.tiers[2], r.cover, r.clans, r.people, r.depleted, r.markets, r.hearths,
+                "{name:<6} seed {:>3}: ended {:>3} by {:<11} centres {} topped up {} ({}/{}/{}/{})  cover {:.2}  clans {:>3}  people {:>6.1}  depleted {:>4}  markets {:>2}  hearths {:>3}  closed {}/{}/{}  {:.1} ms a turn",
+                r.seed, r.ended, r.how, r.centres, r.topped_up, r.tiers[0], r.tiers[1], r.tiers[2], r.tiers[3], r.cover, r.clans, r.people, r.depleted, r.markets, r.hearths,
                 r.closed[0], r.closed[1], r.closed[2], r.ms
             );
             let mut before = 0.0;
@@ -517,10 +521,11 @@ fn sweep(args: &[String]) -> Result<(), String> {
         ends.sort_unstable();
         let tier = |k: usize| runs.iter().map(|r| r.tiers[k]).sum::<usize>();
         println!(
-            "{name}: the top-up took {} existing markets, {} tended tiles, {} other grain tiles",
+            "{name}: the top-up took {} clans' homes, {} existing markets, {} tended tiles, {} other grain tiles",
             tier(0),
             tier(1),
-            tier(2)
+            tier(2),
+            tier(3)
         );
         println!(
             "{name}: {} of {} ended on their own, {} needed the top-up, {cover_short} ended on the limit with three centres already (cover short or people not levelled off){}, median end turn {}",
@@ -685,7 +690,7 @@ fn report(w: &World, out: &Output) {
     let trading = w.clans.values().filter(|c| c.market.is_some()).count();
     let hearths = w.tiles.iter().filter(|t| land::is_hearth(t)).count();
     let trails = w.tiles.iter().filter(|t| t.trail).count();
-    let cover = pregame::land_cover(w, &w.end.as_ref().map_or_else(|| pregame::centres(w), |e| e.centres.clone()));
+    let cover = stats::summary(w).cover;
     let end = match &w.end {
         Some(e) => {
             let tiles: Vec<String> = e
@@ -713,7 +718,10 @@ fn report(w: &World, out: &Output) {
     let (ids, what) = match &w.end {
         Some(e) if e.by_limit => (e.centres.clone(), "turn limit reached, centres (topped up included)"),
         Some(e) => (e.centres.clone(), "centres"),
-        None => (pregame::centres(w), "not ended, centres so far"),
+        None => (
+            pregame::centres(w).iter().filter_map(|id| w.clans[id].market).collect(),
+            "not ended, centre clans so far, by their festivals",
+        ),
     };
     println!("{what}: {}", ids.len());
     print!("{}", centres_text(w, &ids));
