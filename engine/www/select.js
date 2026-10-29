@@ -120,8 +120,8 @@ function unitPanel(ctx, id) {
   const others = Object.values(v.units).filter((o) => o.tile === u.tile && o.id !== id).sort((a, b) => a.id - b.id);
   html += unitList(ctx, others, 'Units here', false);
   if (mine) {
-    if (u.dest != null) actions.push({ label: 'Stop', action: { type: 'moveUnit', unit: id, to: u.tile } });
-    actions.push({ label: 'Disband', action: { type: 'disbandUnit', unit: id } });
+    if (u.dest != null) actions.push({ label: 'Stop', action: { type: 'moveCamp', to: u.tile } });
+    actions.push({ label: 'Disband', action: { type: 'disband', n: null } });
   }
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 }
@@ -141,7 +141,7 @@ function capitalPanel(ctx, id) {
   html += '</table>';
   const units = Object.values(v.units).filter((u) => u.civ === id).sort((a, b) => a.id - b.id);
   html += units.length ? unitList(ctx, units, `Units (${units.length})`, true) : '<p class="dim">No units.</p>';
-  const actions = mine ? [{ label: 'Make warrior', action: { type: 'makeUnit' } }] : [];
+  const actions = mine ? [{ label: 'Raise warrior', action: { type: 'raise', n: 1 } }] : [];
   return { title: `${c.name}'s capital`, html, actions };
 }
 

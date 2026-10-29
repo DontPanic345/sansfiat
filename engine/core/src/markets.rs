@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::actors::{walk_cost, Route};
+use crate::civs;
 use crate::clans::{nutrition, surplus, Clan};
 use crate::data::*;
 use crate::land::{cost_map, passable, path};
@@ -97,7 +98,9 @@ pub fn go(w: &mut World) {
     let ids: Vec<u32> = w.clans.keys().copied().collect();
     for id in ids {
         let c = &w.clans[&id];
-        let choice = choose(&worths(w, c), c.market);
+        // A civ's own clan always walks to the capital's market, a route of nothing.
+        let civ_market = c.civ.and_then(|civ| w.civs.get(&civ)).filter(|civ| civ.clan == id).map(|civ| civ.market);
+        let choice = civ_market.or_else(|| choose(&worths(w, c), c.market));
         let route = choice.and_then(|mid| {
             let to = w.markets[&mid].tile;
             let (path, cost) = path(w, c.home, to, |i| passable(w, i))?;
@@ -115,6 +118,7 @@ pub fn go(w: &mut World) {
 pub fn trade(w: &mut World) {
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {
+        civs::levy(w, mid);
         let ids: Vec<u32> = w.clans.values().filter(|c| c.market == Some(mid)).map(|c| c.id).collect();
         let (brought, kept): (Vec<Basket>, Vec<Basket>) = ids
             .iter()

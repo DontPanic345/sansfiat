@@ -123,6 +123,10 @@ pub fn path(w: &World, from: usize, to: usize, allowed: impl Fn(usize) -> bool) 
 /// hunted-out tile recovers slowly.
 pub fn regrow(w: &mut World) {
     for t in &mut w.tiles {
+        // A stripped tile regrows nothing while it lies fallow (`units` counts the turns down).
+        if t.fallow > 0 {
+            continue;
+        }
         for (f, food) in FOOD.iter().enumerate() {
             let (cap, stock) = (t.cap[f], t.stock[f]);
             if cap <= 0.0 {

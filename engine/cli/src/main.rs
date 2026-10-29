@@ -223,10 +223,12 @@ fn digest(args: &[String]) -> Result<(), String> {
 /// The scripted game of `digest --lead`, between turns and before each `EndTurn`; `cross-build.mjs`
 /// plays the same rule. `pick` is the turn `ChooseCiv` was acted, and `n` the turns since.
 /// 1. At `Choose`: lead the lowest civ id.
-/// 2. In `Main`, when `n > 0 && n.is_multiple_of(20)`: `MakeUnit` (a refusal is ignored).
-/// 3. Each of the player's units with no `dest`, in id order: `MoveUnit` to the first accepted of
-///    the other civs' capitals in civ id order, then its own capital.
-/// 4. When `n == 60`: `DisbandUnit` the player's lowest unit id, if any.
+/// 2. In `Main`, when `n > 0 && n.is_multiple_of(20)`: `Raise { n: 1 }` (a refusal is ignored).
+/// 3. When `n == 30`: `SetSwitches` both off; when `n == 40`: both on. When `n > 0 &&
+///    n.is_multiple_of(25)`: `Resupply` (a refusal is ignored).
+/// 4. If the player's camp has no `dest`: `MoveCamp` to the first accepted of the other civs'
+///    capitals in civ id order, then its own capital.
+/// 5. When `n == 60`: `Disband { n: Some(1) }`, if there is a camp.
 fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
     if w.phase == Phase::Choose {
         let first = w.civs.keys().next().copied();
@@ -239,25 +241,28 @@ fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
     }
     let n = w.turn - pick;
     if n > 0 && n.is_multiple_of(20) {
-        let _ = w.act(Action::MakeUnit);
+        let _ = w.act(Action::Raise { n: 1 });
     }
-    let mine = |w: &World| -> Vec<u32> { w.units.values().filter(|u| u.civ == me).map(|u| u.id).collect() };
+    if n == 30 {
+        let _ = w.act(Action::SetSwitches { forage: false, supply: false });
+    }
+    if n == 40 {
+        let _ = w.act(Action::SetSwitches { forage: true, supply: true });
+    }
+    if n > 0 && n.is_multiple_of(25) {
+        let _ = w.act(Action::Resupply);
+    }
     let targets: Vec<usize> =
         w.civs.values().filter(|c| c.id != me).map(|c| c.capital).chain(std::iter::once(w.civs[&me].capital)).collect();
-    for unit in mine(w) {
-        if w.units[&unit].dest.is_some() {
-            continue;
-        }
+    if w.units.values().any(|u| u.civ == me && u.dest.is_none()) {
         for &to in &targets {
-            if w.act(Action::MoveUnit { unit, to }).is_ok() {
+            if w.act(Action::MoveCamp { to }).is_ok() {
                 break;
             }
         }
     }
     if n == 60 {
-        if let Some(&unit) = mine(w).first() {
-            w.act(Action::DisbandUnit { unit }).expect("the player's own unit can be disbanded");
-        }
+        let _ = w.act(Action::Disband { n: Some(1) });
     }
 }
 
@@ -341,7 +346,7 @@ const LEVEL_TURNS: usize = 100;
 
 fn sweep_run(seed: u32, radius: i32, turns: u32, every: u32) -> Run {
     let start = Instant::now();
-    let mut w = World::new(Config { seed, radius });
+    let mut w = World::new(Config { seed, radius, army: true });
     let mut series = vec![Point::of(&w)];
     // People after each turn, from turn 0.
     let mut people = vec![series[0].people];
@@ -603,7 +608,7 @@ fn civs_text(w: &World) -> String {
         let civ = &w.civs[&c.civ];
         let store: f64 = civ.store.iter().sum();
         out += &format!(
-            "  civ {} at ({}, {}), market {}: {} clans, {:.1} people, store {store:.1}, {} hearths on its land, {} units\n",
+            "  civ {} at ({}, {}), market {}: {} clans, {:.1} people, store {store:.1}, {} hearths on its land, camp {}\n",
             c.name,
             c.q,
             c.r,
@@ -611,7 +616,7 @@ fn civs_text(w: &World) -> String {
             c.clans,
             c.people,
             c.hearths,
-            w.units.values().filter(|u| u.civ == c.civ).count()
+            engine::units::camp(w, c.civ).map_or("none".to_string(), |u| format!("{:.0} warriors", u.people))
         );
     }
     out
@@ -636,7 +641,7 @@ fn bench(args: &[String]) -> Result<(), String> {
     }
     for seed in seeds {
         let start = Instant::now();
-        let mut w = World::new(Config { seed, radius });
+        let mut w = World::new(Config { seed, radius, army: true });
         let built = start.elapsed();
         w.run(turns);
         let total = start.elapsed();

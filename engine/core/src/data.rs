@@ -419,36 +419,72 @@ pub struct CivRules {
     pub territory: i32,
     /// What a civ's store starts with, standing in for the boon year.
     pub endowment: [f64; N],
-    /// The share of its store a fed civ clan hands the civ each turn.
+    /// The share of its surplus (its harvest beyond need) a civ clan pays into the store when it
+    /// walks to the capital's market.
     pub levy: f64,
     /// The most goods, in all, a civ's store holds; the excess is lost.
     pub store_cap: f64,
 }
 
-pub const CIV: CivRules = CivRules { territory: 2, endowment: [0.0, 30.0, 0.0, 0.0, 0.0], levy: 0.5, store_cap: 50.0 };
+pub const CIV: CivRules = CivRules { territory: 2, endowment: [0.0, 30.0, 0.0, 0.0, 0.0], levy: 0.3, store_cap: 50.0 };
 
 pub struct UnitRules {
-    /// One person's work a turn: what a unit spends on its steps (`CLAN.work`).
+    /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
     pub labour: f64,
-    /// What a unit eats a turn from its civ's store: one person's need.
+    /// What a warrior eats a turn from the pack: one person's need.
     pub food: f64,
-    /// Hungry turns in a row before a unit disbands.
+    /// Hungry turns in a row before the camp loses a warrior (and one more each turn after).
     pub hungry_turns: u32,
-    /// The fewest people a clan must have to give one to a unit.
+    /// The fewest people a clan must have to give one to the camp.
     pub min_clan: f64,
+    /// Warriors raised at founding.
+    pub start: u32,
+    /// Turns of food a warrior's share of the pack holds.
+    pub pack: f64,
+    /// Food a unit of labour carries one unit of line cost (a line of cost `c` carries
+    /// `labour × carry / c`).
+    pub carry: f64,
+    /// Food a unit of labour takes from a tile it forages (own or unclaimed land).
+    pub forage: f64,
+    /// Food a unit of labour takes from a rival's tile it pillages.
+    pub pillage: f64,
+    /// Turns a stripped tile yields nothing to anyone and regrows nothing.
+    pub fallow: u32,
+    /// Steps from the capital the AI posts its camp.
+    pub post: usize,
 }
 
-pub const UNIT: UnitRules = UnitRules { labour: 3.5, food: 1.0, hungry_turns: 3, min_clan: 2.0 };
+pub const UNIT: UnitRules = UnitRules {
+    labour: 3.5,
+    food: 1.0,
+    hungry_turns: 3,
+    min_clan: 2.0,
+    start: 3,
+    pack: 5.0,
+    carry: 1.0,
+    forage: 0.5,
+    pillage: 1.0,
+    fallow: 5,
+    post: 3,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub seed: u32,
     pub radius: i32,
+    /// Whether civs have armies: off is the control (no camp at founding, the AI raises none, no
+    /// levy). Old saves load with it on.
+    #[serde(default = "yes")]
+    pub army: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 impl Default for Config {
     /// Radius 16: three centres 10 steps apart need the room.
     fn default() -> Self {
-        Config { seed: 1, radius: 16 }
+        Config { seed: 1, radius: 16, army: true }
     }
 }

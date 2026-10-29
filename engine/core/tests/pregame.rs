@@ -350,7 +350,7 @@ fn spaced(w: &World) {
 
 fn pregame_ends_with_three(radius: i32, seeds: std::ops::RangeInclusive<u32>) {
     for seed in seeds {
-        let mut w = World::new(Config { seed, radius });
+        let mut w = World::new(Config { seed, radius, army: true });
         w.run(PREGAME.max_turns);
         assert!(w.end.is_some(), "seed {seed} radius {radius}: no end");
         spaced(&w);
@@ -391,6 +391,8 @@ fn with_no_centres_a_region_too_small_for_three_is_passed_over() {
     at_the_limit(&mut w);
     let end = w.end.clone().expect("ended");
     assert_eq!(end.centres.len(), 3);
-    assert!(end.centres.iter().all(|id| w.tiles[w.markets[id].tile].q < 0), "all in the west");
-    assert_spaced(&w, &end.centres);
+    // Founding then moves a civ's market to the clan it takes, so read where each civ was founded.
+    let founded: Vec<_> = w.events.iter().filter(|e| e.kind == engine::EventKind::CivFounded).collect();
+    assert_eq!(founded.len(), 3);
+    assert!(founded.iter().all(|e| w.tiles[e.tile].q < 0), "all in the west");
 }

@@ -342,7 +342,7 @@ function onPick(i) {
 function onCommand(i) {
   const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
   if (i < 0 || !u || u.civ !== v.player) return;
-  order({ type: 'moveUnit', unit: u.id, to: i });
+  order({ type: 'moveCamp', to: i });
 }
 
 function onFeed(item) {

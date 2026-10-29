@@ -60,7 +60,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'unitMade', 'unitHungry', 'unitDisbanded', 'unitStarved']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);
@@ -154,7 +154,7 @@ for (const c of cards) {
 }
 assert.throws(() => sim.act('{"type":"endTurn"}'), /choose/, 'endTurn is refused at the pick');
 assert.match(sim.check('{"type":"endTurn"}'), /choose/, 'check names the pick');
-assert.match(sim.check('{"type":"makeUnit"}'), /not begun/, 'no orders before the pick');
+assert.match(sim.check('{"type":"raise","n":1}'), /not begun/, 'no orders before the pick');
 assert.ok(sim.check('{"nonsense":1}').length > 0, 'check says why an action does not parse');
 assert.equal(sim.check(JSON.stringify({ type: 'chooseCiv', civ: cards[0].civ })), '');
 
@@ -170,8 +170,9 @@ for (const c of civs) {
   assert.equal(sim.tile_civ(c.capital), c.id, 'a capital belongs to its civ');
   assert.equal(v.clans[Object.keys(v.clans).find((id) => v.clan_civ.some(([k, k2]) => k === Number(id) && k2 === c.id))].civ, c.id);
 }
-assert.equal(Object.values(v.units).length, 3, 'a warrior each');
-assert.ok(Object.values(v.units).every((u) => u.kind === 'warrior' && u.tile === v.civs[u.civ].capital));
+assert.equal(Object.values(v.units).length, 3, 'a camp each');
+assert.ok(Object.values(v.units).every((u) => u.kind === 'camp' && u.tile === v.civs[u.civ].capital && u.people > 0));
+assert.ok(Object.values(v.units).every((u) => u.line !== undefined && 'cut_off' in u), 'a camp carries its line');
 assert.equal(sim.tile_civ(-1 >>> 0), -1, 'no civ off the map');
 
 sim.act(JSON.stringify({ type: 'chooseCiv', civ: cards[0].civ }));
@@ -180,15 +181,16 @@ let w = JSON.parse(sim.view());
 assert.equal(w.player, cards[0].civ);
 const rival = Object.values(w.civs).find((c) => c.id !== w.player);
 
-// A warrior made, if the civ can spare a person.
-const made = sim.check('{"type":"makeUnit"}');
+// Warriors raised, if the civ can spare a person.
+const made = sim.check('{"type":"raise","n":1}');
 assert.ok(made === '' || made.length > 0);
 if (made === '') {
-  sim.act('{"type":"makeUnit"}');
+  const before = Object.values(w.units).find((u) => u.civ === w.player).people;
+  sim.act('{"type":"raise","n":1}');
   w = JSON.parse(sim.view());
-  assert.equal(Object.values(w.units).filter((u) => u.civ === w.player).length, 2, 'a warrior made');
+  assert.ok(Object.values(w.units).find((u) => u.civ === w.player).people > before, 'warriors raised');
 }
-const unit = Object.values(w.units).filter((u) => u.civ === w.player).pop();
+const unit = Object.values(w.units).find((u) => u.civ === w.player);
 assert.equal(sim.route(unit.id), 'null', 'no route without a destination');
 
 // Order it towards a rival capital, or if no land route goes there, to land 5+ steps away.
@@ -201,8 +203,8 @@ if (JSON.parse(sim.path(unit.tile, target)) === null) {
   target = [...Array(n).keys()].find((i) => hexSteps(i, unit.tile) >= 5 && JSON.parse(sim.path(unit.tile, i)) !== null);
 }
 assert.ok(target !== undefined, 'some land is reachable');
-const go = JSON.stringify({ type: 'moveUnit', unit: unit.id, to: target });
-assert.equal(sim.check(go), '', 'the unit can go there');
+const go = JSON.stringify({ type: 'moveCamp', to: target });
+assert.equal(sim.check(go), '', 'the camp can go there');
 const preview = JSON.parse(sim.path(unit.tile, target));
 sim.act(go);
 const route = JSON.parse(sim.route(unit.id));
@@ -210,7 +212,7 @@ assert.ok(route.path.length > 0 && route.path.at(-1) === target, 'the route ends
 assert.ok(route.cost > 0 && route.turns >= 1);
 assert.deepEqual(route, preview, 'the preview is the route');
 assert.equal(JSON.parse(sim.path(unit.tile, unit.tile + 1000000)), null);
-assert.ok(sim.check(JSON.stringify({ type: 'moveUnit', unit: unit.id, to: n + 5 })).length > 0, 'off the map is refused');
+assert.ok(sim.check(JSON.stringify({ type: 'moveCamp', to: n + 5 })).length > 0, 'off the map is refused');
 for (let i = 0; i < 10; i++) {
   sim.act('{"type":"endTurn"}');
   const more = JSON.parse(sim.events(cursor));
@@ -218,18 +220,24 @@ for (let i = 0; i < 10; i++) {
   events.push(...more);
 }
 w = JSON.parse(sim.view());
-assert.notEqual(w.units[unit.id]?.tile, unit.tile, 'the unit moved in 10 turns');
+const moved = Object.values(w.units).find((u) => u.civ === w.player);
+assert.ok(!moved || moved.tile !== unit.tile, 'the camp moved in 10 turns (or starved out)');
 const again = JSON.parse(sim.route(unit.id));
 assert.ok(again === null || again.path.length < route.path.length, 'the route shortens');
 
-// Disband it.
-assert.equal(sim.check(JSON.stringify({ type: 'disbandUnit', unit: unit.id })), '');
-sim.act(JSON.stringify({ type: 'disbandUnit', unit: unit.id }));
-w = JSON.parse(sim.view());
-assert.ok(!(unit.id in w.units), 'the unit is gone');
-assert.ok(sim.check(JSON.stringify({ type: 'disbandUnit', unit: unit.id })).length > 0, 'it cannot be disbanded twice');
+// The switches and the one-shot orders are checked while there is a camp to give them to.
+if (moved) {
+  assert.equal(sim.check('{"type":"setSwitches","forage":false,"supply":true}'), '');
+  assert.equal(sim.check('{"type":"resupply"}'), '');
+  // Disband it.
+  assert.equal(sim.check('{"type":"disband","n":null}'), '');
+  sim.act('{"type":"disband","n":null}');
+  w = JSON.parse(sim.view());
+  assert.ok(!Object.values(w.units).some((u) => u.civ === w.player), 'the camp is gone');
+}
+assert.ok(sim.check('{"type":"disband","n":null}').length > 0, 'it cannot be disbanded twice');
 const kinds = new Set(JSON.parse(sim.events(0)).map((e) => e.kind));
-for (const k of ['civFounded', 'unitMade', 'unitDisbanded']) assert.ok(kinds.has(k), `${k} appears`);
+for (const k of ['civFounded', 'campRaised']) assert.ok(kinds.has(k), `${k} appears`);
 for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.has(e.kind));
 
 console.log(`ok: medium seed ${seed}, ${n} tiles, ended turn ${v.end.turn}${v.end.by_limit ? ' by the limit' : ''}, ${all.length} events, ${Object.keys(v.clans).length} clans`);

@@ -11,7 +11,7 @@ use engine::{Config, Event, EventKind, World};
 
 /// A small world run for `turns` turns.
 fn run(seed: u32, turns: u32) -> World {
-    let mut w = World::new(Config { seed, radius: 16 });
+    let mut w = World::new(Config { seed, radius: 16, army: true });
     w.run(turns);
     w
 }
@@ -34,7 +34,7 @@ fn every_kind_fires_in_real_runs() {
         PregameEnded,
         CivFounded,
         // The others (hungry, disbanded, starved) are held in units.rs.
-        UnitMade,
+        CampRaised,
     ];
     let mut seen = vec![0usize; all.len()];
     // Seed 3 ends on the turn limit with a top-up; the others end on their own.
@@ -197,10 +197,7 @@ fn a_top_up_is_a_centre_each_then_the_end() {
             (EventKind::CivFounded, Some(a)),
             (EventKind::CivFounded, Some(b)),
             (EventKind::CivFounded, Some(c)),
-            // And each civ's starting warrior.
-            (EventKind::UnitMade, None),
-            (EventKind::UnitMade, None),
-            (EventKind::UnitMade, None)
+            // No clans, so no camps are raised.
         ]
     );
     let last = &w.events[3];
@@ -209,7 +206,7 @@ fn a_top_up_is_a_centre_each_then_the_end() {
     assert_eq!(w.events[0].text(&w), format!("Market {a} becomes a centre"));
     // Nothing more once it has ended.
     check_end(&mut w);
-    assert_eq!(w.events.len(), 10);
+    assert_eq!(w.events.len(), 7);
 }
 
 #[test]

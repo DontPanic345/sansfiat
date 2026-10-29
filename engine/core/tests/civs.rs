@@ -87,7 +87,7 @@ fn fewer_than_three_centres_found_fewer_civs() {
         assert_eq!(w.phase, Phase::Choose);
         assert_eq!(w.civs.values().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["Red", "Blue"][..n]);
         assert_eq!(civ_of(&w, id), w.civs.keys().next().copied(), "the one clan joins the first civ if there is one");
-        let mut v = World::new(Config { seed: 1, radius: 6 });
+        let mut v = World::new(Config { seed: 1, radius: 6, army: true });
         v.clans.clear();
         found(&mut v, &[]);
         assert_eq!((v.phase, v.civs.len()), (Phase::Choose, 0));
@@ -189,43 +189,31 @@ fn a_daughter_belongs_to_her_mothers_civ() {
 }
 
 #[test]
-fn the_store_spoils_takes_the_levy_and_is_capped() {
+fn the_store_spoils_and_is_capped() {
     let (mut w, ids) = founded();
-    w.units.clear(); // the starting warriors eat from the store; see units.rs
     let red = ids[0];
     civs::upkeep(&mut w);
     let kept = 30.0 * (1.0 - CLAN.spoilage);
     assert!((w.civs[&red].store[GRAIN] - kept).abs() < 1e-9);
     assert!((w.civs[&ids[2]].store[GRAIN] - kept).abs() < 1e-9);
 
-    // A fed civ clan hands over half its store, good by good; an unfed one and an unaligned one
-    // hand nothing.
-    for c in w.civs.values_mut() {
-        c.store = [0.0; N];
-    }
+    // The upkeep no longer levies: a clan's store stays its own.
     let fed = put(&mut w, &[at_big(-4, 0)], 6.0);
-    let hungry = put(&mut w, &[at_big(-4, 1)], 6.0);
-    let loner = put(&mut w, &[at_big(0, 8)], 6.0);
-    for (id, civ, ok) in [(fed, Some(red), true), (hungry, Some(red), false), (loner, None, true)] {
-        let c = w.clans.get_mut(&id).unwrap();
-        (c.civ, c.fed, c.store) = (civ, ok, [4.0, 2.0, 0.0, 6.0, 0.0]);
+    {
+        let c = w.clans.get_mut(&fed).unwrap();
+        (c.civ, c.fed, c.store) = (Some(red), true, [4.0, 2.0, 0.0, 6.0, 0.0]);
     }
-    civs::upkeep(&mut w);
-    assert_eq!(w.civs[&red].store, [2.0, 1.0, 0.0, 3.0, 0.0]);
-    assert_eq!(w.clans[&fed].store, [2.0, 1.0, 0.0, 3.0, 0.0]);
-    assert_eq!(w.clans[&hungry].store, [4.0, 2.0, 0.0, 6.0, 0.0]);
-    assert_eq!(w.clans[&loner].store, [4.0, 2.0, 0.0, 6.0, 0.0]);
-    assert_eq!(w.civs[&ids[1]].store, [0.0; N]);
-
-    // Past the cap, every good scales down so the store holds the cap.
     w.civs.get_mut(&red).unwrap().store = [0.0, 40.0, 20.0, 0.0, 0.0];
     civs::upkeep(&mut w);
+    assert_eq!(w.clans[&fed].store, [4.0, 2.0, 0.0, 6.0, 0.0]);
+
+    // Past the cap, every good scales down so the store holds the cap.
     let c = &w.civs[&red];
     let total: f64 = c.store.iter().sum();
     assert!((total - CIV.store_cap).abs() < 1e-9, "{total}");
-    // 60 spoils to 54 and the fed clan's half of [2, 1, 0, 3, 0] comes in: 57 in all, 7 over.
-    assert!((c.lost - 7.0).abs() < 1e-9, "{}", c.lost);
-    assert!((c.store[GRAIN] / c.store[FRUIT] - 36.5 / 18.0).abs() < 1e-9);
+    // 60 spoils to 54, 4 over.
+    assert!((c.lost - 4.0).abs() < 1e-9, "{}", c.lost);
+    assert!((c.store[GRAIN] / c.store[FRUIT] - 2.0).abs() < 1e-9);
     civs::upkeep(&mut w);
     assert_eq!(w.civs[&red].lost, 0.0, "nothing lost once under the cap");
 }
@@ -233,7 +221,6 @@ fn the_store_spoils_takes_the_levy_and_is_capped() {
 #[test]
 fn a_cut_store_says_how_much_was_lost() {
     let (mut w, ids) = founded();
-    w.units.clear();
     w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 60.0, 0.0, 0.0, 0.0];
     civs::upkeep(&mut w);
     let c = &w.civs[&ids[0]];
@@ -294,7 +281,7 @@ fn the_territory_stops_at_the_edge_of_the_map() {
 fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     let mut w = big();
     let ms = [open(&mut w, at_big(-5, 0)), open(&mut w, at_big(7, 0)), open(&mut w, at_big(0, -10))];
-    // Red's land: 14 plains, 2 forest, 2 hills, 1 desert.
+    // Red's land (round the capital, which moves to (-4, 1)): the 19 tiles round it and a clan's tile beyond: 16 plains, 2 forest, 2 hills.
     for (t, k) in [(at_big(-5, 1), FOREST), (at_big(-6, 1), FOREST), (at_big(-4, -1), HILLS), (at_big(-4, 0), HILLS)] {
         w.tiles[t].terrain = k;
     }
@@ -309,17 +296,19 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     let cs = cards(&w);
     assert_eq!(cs.len(), 3);
     let red = &cs[0];
-    assert_eq!((red.name.as_str(), red.capital, red.q, red.r), ("Red", at_big(-5, 0), -5, 0));
-    // 7.5 people, less the one the starting warrior took from the bigger clan.
-    assert_eq!((red.clans, red.people, red.hearths), (2, 6.5, 2));
+    // The bigger clan is the civ, and the capital moves to its home.
+    assert_eq!((red.name.as_str(), red.capital, red.q, red.r), ("Red", at_big(-4, 1), -4, 1));
+    assert_eq!(w.civs.values().next().unwrap().clan, a);
+    // 7.5 people, less the three the camp took from the bigger clan.
+    assert_eq!((red.clans, red.people, red.hearths), (2, 4.5, 1));
     let names: Vec<&str> = red.terrain.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(names, ["plains", "forest", "hills"], "ties by terrain index");
-    assert!((red.terrain[0].1 - 14.0 / 19.0).abs() < 1e-12 && (red.terrain[1].1 - 2.0 / 19.0).abs() < 1e-12);
-    assert_eq!([cs[0].rival_steps, cs[1].rival_steps, cs[2].rival_steps], [Some(10), Some(12), Some(10)]);
+    assert!((red.terrain[0].1 - 16.0 / 20.0).abs() < 1e-12 && (red.terrain[1].1 - 2.0 / 20.0).abs() < 1e-12);
+    assert_eq!([cs[0].rival_steps, cs[1].rival_steps, cs[2].rival_steps], [Some(11), Some(11), Some(11)]);
     assert_eq!((cs[1].clans, cs[1].people, cs[1].hearths), (0, 0.0, 0));
     assert!(cs.iter().all(|c| c.rival_by_land));
     let json = serde_json::to_value(red).unwrap();
-    assert_eq!(json["rival_steps"], 10);
+    assert_eq!(json["rival_steps"], 11);
     assert_eq!(json["rival_by_land"], true);
 }
 
@@ -339,7 +328,7 @@ fn a_rival_across_the_sea_is_not_by_land() {
 
 #[test]
 fn watching_and_leading_replay_to_the_same_world() {
-    let mut w = World::new(Config { seed: 2, radius: 16 });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true });
     while w.end.is_none() {
         w.run(1);
     }
@@ -363,7 +352,7 @@ fn watching_and_leading_replay_to_the_same_world() {
 
 #[test]
 fn a_real_map_founds_three_civs_that_live_on() {
-    let mut w = World::new(Config { seed: 2, radius: 16 });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true });
     while w.end.is_none() {
         w.run(1);
     }

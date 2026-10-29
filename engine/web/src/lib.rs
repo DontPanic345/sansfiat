@@ -14,7 +14,7 @@ pub struct Sim {
 impl Sim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, radius: i32) -> Sim {
-        Sim { world: World::new(Config { seed, radius }) }
+        Sim { world: World::new(Config { seed, radius, army: true }) }
     }
 
     /// Rebuilds the world from a save's JSON.
@@ -104,6 +104,21 @@ impl Sim {
                 (c.id, row)
             })
             .collect();
+        // Each camp as it is, with its tile, its line to the capital (path, cost, carry a turn; null
+        // carry is without limit) and whether it is cut off.
+        let units_json: BTreeMap<u32, serde_json::Value> = w
+            .units
+            .values()
+            .map(|u| {
+                let mut row = serde_json::to_value(u).unwrap();
+                row["tile"] = u.tile().into();
+                row["line"] = units::line(w, u.id)
+                    .map(|(path, cost, carry)| serde_json::json!({ "path": path, "cost": cost, "carry": carry }))
+                    .into();
+                row["cut_off"] = units::cut_off(w, u.id).into();
+                (u.id, row)
+            })
+            .collect();
         let clan_civ: Vec<(u32, u32)> = w.clans.values().filter_map(|c| c.civ.map(|civ| (c.id, civ))).collect();
         serde_json::json!({
             "turn": w.turn,
@@ -117,7 +132,7 @@ impl Sim {
             "claims": claims,
             "wear": wear,
             "civs": civ_rows,
-            "units": w.units,
+            "units": units_json,
             "clan_civ": clan_civ,
             "summary": stats::summary(w),
         })
@@ -145,7 +160,7 @@ impl Sim {
         let w = &self.world;
         let json = units::route(w, unit).map(|(path, cost)| {
             let u = &w.units[&unit];
-            let turns = units::turns(w, &path, u.tile, u.banked);
+            let turns = units::turns(w, &path, u.tile(), u.banked);
             serde_json::json!({ "path": path, "cost": cost, "turns": turns })
         });
         serde_json::to_string(&json).unwrap()

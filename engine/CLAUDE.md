@@ -34,8 +34,8 @@ node www/play.mjs "?size=small&seed=2&run=1" --until "document.body.dataset.phas
 | `core/src/market.rs` | `clear`: barter exchange ratios by tâtonnement. |
 | `core/src/markets.rs` | Markets: reach, the `go` step (one festival route by worth), trading, forming and fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, the `end` step and `top_up`. |
-| `core/src/civs.rs` | Civs: `found`, the `civs` step (store upkeep), territory and the pick's `cards`. |
-| `core/src/units.rs` | Units: make, disband, `feed`, the `units` step `march`, and the `check_*` that `validate` calls. |
+| `core/src/civs.rs` | Civs: `found` (the civ's own clan, the capital on its home), the `levy` (called by `trade`), the `civs` step (store upkeep), territory and the pick's `cards`. |
+| `core/src/units.rs` | The camp (one per civ, an actor of warriors): raise, disband, the pack, the `line` to the capital and `cut_off`, forage and pillage, the `ai` and `units` steps, the per-civ `Counters`, and the `check_*` that `validate` calls. |
 | `core/src/stats.rs` | `summary`, the evidence reports, and `digest` to compare builds. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
