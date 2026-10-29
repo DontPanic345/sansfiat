@@ -182,3 +182,14 @@ going to that festival, busy and with its prices settled, and only the centre cl
 new capital market (small seed 3: two of three capitals with one trader for 60 turns). The levy
 is paid only at the capital's market, so the store stays empty and the camp's line brings nothing.
 `CIV.pull` is left at 3 for the owner to decide.
+
+The owner's answer: not a regression, since a camp is only a cost until the features that use it
+are built; and at founding a clan switches to a capital's market whose path costs no more than
+its festival's (`civs::switch_to_capitals`), the markets' traders counted again so the next turn's
+choice sees the switch. After that clans choose as ever. `CIV.pull` stays at 3.
+
+| | civs kept their first camp | clans' people |
+|---|---|---|
+| with the switch at founding | 15 of 21 | 882.1 |
+
+`sweep --size all` is unchanged by it (founding comes after the end).

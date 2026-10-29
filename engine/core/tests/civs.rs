@@ -396,3 +396,27 @@ fn a_real_map_founds_three_civs_that_live_on() {
     }
     assert!(w.civs.values().any(|c| c.store.iter().sum::<f64>() > 0.0));
 }
+
+#[test]
+fn at_founding_a_clan_as_close_to_a_capital_as_its_festival_switches_to_it() {
+    let mut w = big();
+    let ms = markets3(&mut w);
+    // A busy festival two steps east of Red's capital at (-5, 0).
+    let fest = open(&mut w, at_big(-3, 0));
+    w.markets.get_mut(&fest).unwrap().traders = 6;
+    let own = put(&mut w, &[at_big(-5, 0)], 10.0);
+    // One step from each: it switches. One step from the festival and three from the capital: it stays.
+    let tie = put(&mut w, &[at_big(-4, 0)], 3.0);
+    let near = put(&mut w, &[at_big(-2, 0)], 3.0);
+    for id in [tie, near] {
+        w.clans.get_mut(&id).unwrap().market = Some(fest);
+    }
+    found(&mut w, &ms);
+    let red = w.civs.values().next().unwrap();
+    assert_eq!((red.clan, red.capital), (own, at_big(-5, 0)));
+    assert_eq!(w.clans[&tie].market, Some(red.market));
+    assert_eq!(w.clans[&tie].routes[0].to, red.capital);
+    assert_eq!(w.clans[&near].market, Some(fest));
+    // Traders are counted again as the clans now stand.
+    assert_eq!((w.markets[&red.market].traders, w.markets[&fest].traders), (2, 1));
+}

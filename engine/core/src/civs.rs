@@ -6,8 +6,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
+use crate::actors::{walk_cost, Route};
 use crate::data::*;
-use crate::land::{cost_map, is_hearth, neighbours, passable};
+use crate::land::{cost_map, is_hearth, neighbours, passable, path};
 use crate::map;
 use crate::market::Basket;
 use crate::markets::reach;
@@ -40,6 +41,35 @@ pub struct Civ {
     /// The tiles the civ has revealed: their hidden trail costs are known to it.
     #[serde(default)]
     pub revealed: BTreeSet<usize>,
+}
+
+/// At founding, each clan going to a festival that isn't a capital's switches to the capital
+/// market whose path from its home costs no more than its festival's (the cheapest, ties to the
+/// lower id), and takes that path as its route, so the new markets start with the clans around
+/// them; each market's traders are counted again for it. After that the clans choose as ever.
+fn switch_to_capitals(w: &mut World) {
+    let capitals: Vec<(u32, usize)> = w.civs.values().map(|c| (c.market, c.capital)).collect();
+    let ids: Vec<u32> = w.clans.keys().copied().collect();
+    for id in ids {
+        let c = &w.clans[&id];
+        let Some(festival) = c.market.filter(|m| !capitals.iter().any(|&(cm, _)| cm == *m)) else { continue };
+        let near = cost_map(w, &[c.home], MARKET.reach_walk / 2.0, |i| passable(w, i));
+        let Some(&cost) = w.markets.get(&festival).and_then(|m| near.get(&m.tile)) else { continue };
+        let best = capitals
+            .iter()
+            .filter_map(|&(mid, tile)| near.get(&tile).filter(|&&k| k <= cost).map(|&k| (k, mid)))
+            .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        let Some((_, mid)) = best else { continue };
+        let to = w.markets[&mid].tile;
+        let Some((path, cost)) = path(w, c.home, to, |i| passable(w, i)) else { continue };
+        let c = w.clans.get_mut(&id).unwrap();
+        c.market = Some(mid);
+        c.routes = vec![Route { to, path, cost: walk_cost(cost, 1.0) }];
+    }
+    // Last turn's traders, as the clans now stand, so the next choice sees who switched.
+    for m in w.markets.values_mut() {
+        m.traders = w.clans.values().filter(|c| c.market == Some(m.id)).count();
+    }
 }
 
 fn steps(w: &World, a: usize, b: usize) -> i32 {
@@ -134,8 +164,10 @@ pub fn found(w: &mut World) {
         let Some(clan) = joined(true).or_else(|| joined(false)) else { continue };
         w.civs.get_mut(&id).unwrap().clan = clan;
     }
-    // Civ clans are drawn to their capitals now, so routes are laid again.
+    // Civ clans are drawn to their capitals now, so routes are laid again; then the clans at least
+    // as close to a capital switch to it.
     crate::markets::go(w);
+    switch_to_capitals(w);
     if w.config.army {
         let ids: Vec<u32> = w.civs.keys().copied().collect();
         for id in ids {
