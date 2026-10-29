@@ -1,36 +1,11 @@
 {
   "status": "done",
-  "summary": "Build-3 is in: the page for scouts, the view data, play-scout.mjs, the engine docs, and the archive of scout/. web/src/lib.rs `view()` adds top-level `revealed` (the led civ's revealed tiles, empty at the pick) and `trail_work` (`[tile, labour, need]` for each trail under way); a scout row with a route carries `plan` = `{known, possible, candidates}`, where known and possible are `{path, cost}` from the route's start (null when there is none). www/select.js: a scout's panel shows its people, pack, food, route, known and possible costs and last outcome, with buttons 'Start here' and 'Route to here' (they arm a map click, the second sends setRoute from the picked start or the scout's tile) and 'Clear route'. www/main.js: body.dataset gains `scout` (the led civ's scout id), `routeState` (`none`, `set`, `found`, `nopath`; found/nopath are the last scout route outcome from events, cleared by a new route) and `armed` (`start`, `to`, or empty); a right-click with a scout selected sends nothing. www/map-view.js: revealed tiles get a faint ring, trails under way a partial line, and `setPlan` draws the known route solid and the possible route dashed over it. Feed: the scout's event kinds have icons and filters. www/check.mjs checks the new data and drives the scout's route orders (set, clear, refusals). www/play-scout.mjs (`node www/play-scout.mjs [out-dir]`, default relay/specs/28/screens) leads the first civ on seed 2, small, selects the scout at the capital, picks start (capital) and end (tile 58) by clicks, ends turns until routeState is found or nopath, and exits non-zero if it is not found or the page errors. Run result: the route is set (known 11, possible 7, 7 steps), found after two end turns, with one trail built by the scout (tile 144). Screenshots: relay/specs/28/screens/route-both.png (both routes) and trail-built.png. engine/CLAUDE.md has the new command, layout rows and body.dataset fields. scout/ is deleted except a README.md pointing at tag prototype/scout (it exists, at 46d2401), and `scout` is dropped from ci.yml's js matrix. engine/check.sh passes end to end (fmt, clippy, all tests, wasm and native digests, check.mjs); the engine's rules are unchanged this step.",
+  "summary": "Reviewed #28 as built: read the design, the whole diff and the page; engine/check.sh passes end to end, CI is green, and play-scout.mjs plays a scout's route through the page (seed 2, small, capital to tile 58: known 11, possible 7, found in 2 turns, one trail built). The engine's rules match the design and spec; the build departures (scout walks on its whole labour, walks home when idle, a pass counts as walkable for units) are sound. One finding, written up in relay/specs/28/review.md: on real maps a scout sent across country starves. On seeds 1-8, of 16 capital-to-capital routes 7 had no land route at once, and of the 9 that were searched 8 lost people and 5 starved out before the route was found; the scout has 5 food at the start, forages one tile a turn (2-3 food in clan country) and its line carries under one person's food from about 8 steps out. The proofs only sit near the capital. I tried keeping banked labour out of feeding and capping the line at half the labour: no effect, so I changed no code. The fix is tuning (starting pack, forage, or the scout's pack before the camp's), and I left the verdict to the owner.",
   "decisions": [
-    {
-      "decision": "routeState is the led civ's scout state: 'set' while it has a route, else the last route outcome ('found' or 'nopath'), else 'none'. Found and nopath come from scoutRouteFound and scoutNoRoute events for the player's civ and clear when a route is set or cleared.",
-      "why": "The brief names routeState without values; the scout clears its route when it finishes, so the page has to remember how it ended for a script to wait on it."
-    },
-    {
-      "decision": "Start and end are armed map clicks: 'Start here' arms a click that records the start (it does not send anything); 'Route to here' arms a click that sends setRoute from that start, or the scout's tile when none was picked. Picking another selection forgets the start; the same scout keeps it.",
-      "why": "Matches the brief's wording (each arms a map click; the second sends SetRoute, with from defaulting to the scout's tile)."
-    },
-    {
-      "decision": "The possible route is drawn dashed over the known route, and the known route is drawn solid under it.",
-      "why": "In the page's own example both paths are the same tiles (the cost differs, not the path), so the dashes over the solid line are what show both."
-    },
-    {
-      "decision": "play-scout.mjs targets tile 58 from the capital (166) on seed 2, small, the tile build-2's lead orders use, and it screenshots the route centred on its middle at minK 14.",
-      "why": "The brief asks for the route build-2's lead_orders uses; a full-map frame made the route unreadable at screenshot size."
-    },
-    {
-      "decision": "The trail-built screenshot is taken at the first end turn in which a tile of the route that had no trail gains one, and the separate route-found frame is not kept.",
-      "why": "In this game the scout's trail completes on the turn the route is found, so a route-found frame would duplicate it."
-    }
+    {"decision": "Changed no code and set merge false.", "why": "The piece does what the spec says and its proofs pass, but a scout can't live more than about 5-8 steps from its capital on real maps. How to tune that is the owner's call (pack, forage, the store split)."}
   ],
   "ideas": [
-    {
-      "title": "The page's example route is mostly trailed already",
-      "body": "On seed 2 (small) the capital-to-tile-58 route runs over clan trails on five of its seven tiles; only one tile (144) is left for the scout to build, so the route is found in two turns. A demo route through untrailed country would show the scout's search and trail building better. The owner may want play-scout.mjs to pick a farther target, or a second scenario."
-    },
-    {
-      "title": "A scout's pack is nearly empty after its route",
-      "body": "In the screenshot the scout holds 0.25 of 10 in its pack (0.13 turns of food) two turns after it set out, with no hunger yet. A scout with no route walks home and sits, so it stays fed from the line, but the early pack looks thin. Worth checking the pack's size (SCOUT.pack) against the store after founding."
-    }
+    {"title": "Tune the scout's food", "body": "A larger starting pack (the scout's filled before the camp's), a higher forage rate for scouts, or a line that carries more. Measure with seeds 1-8, scout to each rival capital: today 8 of 9 searched routes lose people (relay/specs/28/review.md)."},
+    {"title": "Outward order walks back toward home", "body": "After a reveal the nearest candidate can lie back toward the capital, so the scout walks home and out again (seed 1, capital to the second rival, turns 4-13). Pick candidates by the walk from the scout and prefer the ones on the far side of its route."}
   ]
 }
