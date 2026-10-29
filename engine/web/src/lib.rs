@@ -14,7 +14,7 @@ pub struct Sim {
 impl Sim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, radius: i32) -> Sim {
-        Sim { world: World::new(Config { seed, radius, army: true }) }
+        Sim { world: World::new(Config { seed, radius, army: true, gifts: true }) }
     }
 
     /// Rebuilds the world from a save's JSON.

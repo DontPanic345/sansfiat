@@ -20,7 +20,10 @@ const lead = process.argv[5] === 'lead';
 //   4. If the player's camp has no dest: moveCamp to the first accepted of the other civs' capitals
 //      in civ id order, then its own capital.
 //   5. When n == 60: disband one warrior (ignored without a camp).
+//   6. When n == 10: setGift twice the default (2 * LEANING.gift_default); when n == 50: setKeep 5;
+//      when n == 70: setKeep null.
 // The state is read only on the pick turn and the turns after it (the camp's dest needs it).
+const GIFT_DEFAULT = 2.0; // LEANING.gift_default
 let pick = null;
 const act = (a) => {
   try {
@@ -51,6 +54,9 @@ function leadOrders(turn) {
     for (const to of targets) if (act({ type: 'moveCamp', to })) break;
   }
   if (n === 60) act({ type: 'disband', n: 1 });
+  if (n === 10) act({ type: 'setGift', food: 2 * GIFT_DEFAULT });
+  if (n === 50) act({ type: 'setKeep', food: 5 });
+  if (n === 70) act({ type: 'setKeep', food: null });
 }
 const sim = new Sim(seed, radius);
 const lines = [`0 ${sim.digest()}`];

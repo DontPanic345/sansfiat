@@ -11,8 +11,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::civs::{self, Civ};
 use crate::clans::{self, Clan};
-use crate::data::Config;
+use crate::data::{Config, CIV};
 use crate::land;
+use crate::leaning;
 use crate::map::{self, Tile};
 use crate::markets::{self, Market};
 use crate::pregame::{self, End};
@@ -83,6 +84,7 @@ pub enum EventKind {
     WarriorsStarved,
     CampForaged,
     CampPillaged,
+    ClanJoined,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division;
@@ -136,6 +138,7 @@ impl Event {
             EventKind::CampHungry => format!("{}'s camp at {at} goes hungry", self.civ_name(w)),
             EventKind::CampForaged => format!("{}'s camp forages at {at}", self.civ_name(w)),
             EventKind::CampPillaged => format!("{}'s camp pillages at {at}", self.civ_name(w)),
+            EventKind::ClanJoined => format!("Clan {clan} joins {}", self.civ_name(w)),
             EventKind::PregameEnded => match &w.end {
                 Some(e) => {
                     let n = e.centres.len();
@@ -180,6 +183,22 @@ impl World {
             tile,
             clan: None,
             market,
+            other: None,
+            civ: Some(civ),
+            unit: None,
+        });
+    }
+}
+
+impl World {
+    /// Records an event about a clan joining a civ, at the clan's home.
+    pub fn civ_clan_event(&mut self, kind: EventKind, tile: usize, civ: u32, clan: u32) {
+        self.events.push(Event {
+            turn: self.turn,
+            kind,
+            tile,
+            clan: Some(clan),
+            market: None,
             other: None,
             civ: Some(civ),
             unit: None,
@@ -235,6 +254,14 @@ pub enum Action {
     Forage,
     /// This turn's end: pillage the rival's tile on the labour left.
     Pillage,
+    /// Set the food the civ keeps in its store, or `None` for the default (its camp's pack).
+    SetKeep {
+        food: Option<f64>,
+    },
+    /// Set the most food the civ gives a turn to the unaligned clans at its market.
+    SetGift {
+        food: f64,
+    },
 }
 
 pub struct Step {
@@ -251,6 +278,7 @@ pub const TURN: &[Step] = &[
     Step { name: "trade", run: markets::trade },
     Step { name: "eat", run: clans::eat },
     Step { name: "people", run: markets::people },
+    Step { name: "lean", run: leaning::lean },
     Step { name: "wear", run: land::wear },
     Step { name: "civs", run: civs::upkeep },
     Step { name: "ai", run: units::ai },
@@ -308,6 +336,14 @@ impl World {
             Action::SetSwitches { .. } | Action::Resupply => units::check_camp(self),
             Action::Forage => units::check_take(self, false),
             Action::Pillage => units::check_take(self, true),
+            Action::SetKeep { food: Some(f) } if !f.is_finite() || *f < 0.0 => {
+                Err("keep a number of food, 0 or more".to_string())
+            }
+            Action::SetKeep { .. } => units::leader(self).map(|_| ()),
+            Action::SetGift { food } if !food.is_finite() || *food < 0.0 || *food > CIV.store_cap => {
+                Err(format!("give between 0 and {} food a turn", CIV.store_cap))
+            }
+            Action::SetGift { .. } => units::leader(self).map(|_| ()),
         }
     }
 
@@ -340,6 +376,14 @@ impl World {
             Action::Resupply => units::with_camp(self, |u| u.resupply = true),
             Action::Forage => units::with_camp(self, |u| u.forage = true),
             Action::Pillage => units::with_camp(self, |u| u.pillage = true),
+            Action::SetKeep { food } => {
+                let civ = self.player.expect("validated: the player leads a civ");
+                self.civs.get_mut(&civ).unwrap().keep = *food;
+            }
+            Action::SetGift { food } => {
+                let civ = self.player.expect("validated: the player leads a civ");
+                self.civs.get_mut(&civ).unwrap().gift = *food;
+            }
         }
         self.log.push(action);
         Ok(())

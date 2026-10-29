@@ -559,7 +559,7 @@ fn the_ai_raises_a_lost_camp_and_posts_it_off_the_capital() {
 
 #[test]
 fn a_real_map_replays_with_the_camp_under_orders() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true });
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }
@@ -625,7 +625,7 @@ fn a_real_map_replays_with_the_camp_under_orders() {
 
 #[test]
 fn the_control_run_has_no_army_and_never_levies() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: false });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: false, gifts: true });
     w.run(400);
     assert!(w.phase == Phase::Main && w.turn > w.end.as_ref().unwrap().turn + 50);
     assert!(w.units.is_empty());
@@ -637,7 +637,7 @@ fn the_control_run_has_no_army_and_never_levies() {
 
 #[test]
 fn on_a_real_map_every_ai_civ_keeps_the_camp_it_raised_at_the_pick_on_a_line_from_its_capital() {
-    let mut w = World::new(Config { seed: 2, radius: size_radius("small").unwrap(), army: true });
+    let mut w = World::new(Config { seed: 2, radius: size_radius("small").unwrap(), army: true, gifts: true });
     while w.phase == Phase::Pregame {
         w.run(1);
     }

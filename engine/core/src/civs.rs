@@ -37,6 +37,24 @@ pub struct Civ {
     /// What its army has done, kept here so it outlives any one camp.
     #[serde(default)]
     pub army: Counters,
+    /// The food the player has set it to keep; `None` is the default (see `keep`).
+    #[serde(default)]
+    pub keep: Option<f64>,
+    /// The most food it gives a turn to unaligned clans at its market.
+    #[serde(default)]
+    pub gift: f64,
+    /// Food it posted to its market's clearing last turn.
+    #[serde(default)]
+    pub posted: f64,
+    /// Food it gave last turn.
+    #[serde(default)]
+    pub given: f64,
+    /// Clans that have joined it since founding.
+    #[serde(default)]
+    pub joined: u32,
+    /// Food it has given since founding.
+    #[serde(default)]
+    pub gifted: f64,
 }
 
 fn steps(w: &World, a: usize, b: usize) -> i32 {
@@ -64,6 +82,12 @@ pub fn found(w: &mut World) {
             lost: 0.0,
             clan: 0,
             army: Counters::default(),
+            keep: None,
+            gift: LEANING.gift_default,
+            posted: 0.0,
+            given: 0.0,
+            joined: 0,
+            gifted: 0.0,
         };
         w.civs.insert(id, civ);
         w.civ_event(EventKind::CivFounded, capital, id, Some(mid));
@@ -196,6 +220,19 @@ fn repair(w: &mut World) {
             w.civs.get_mut(&id).unwrap().clan = clan;
         }
     }
+}
+
+/// The food `civ` keeps in its store out of posting and gifts: what the player set, else what its
+/// camp needs: a full pack for its warriors (a new camp's with none), and 0 with `Config.army` off.
+pub fn keep(w: &World, civ: u32) -> f64 {
+    let Some(c) = w.civs.get(&civ) else { return 0.0 };
+    if let Some(k) = c.keep {
+        return k;
+    }
+    if !w.config.army {
+        return 0.0;
+    }
+    units::pack_cap(units::camp(w, civ).map_or(f64::from(UNIT.start), |u| u.people))
 }
 
 /// The levy at market `mid`: each clan of the civ whose capital market it is that came there pays

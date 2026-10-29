@@ -24,6 +24,7 @@ export const KINDS = {
   warriorsStarved: { icon: '✕', color: '#ff7b72', label: 'Warriors starved' },
   campForaged: { icon: '·', color: '#c9b77a', label: 'Camp foraged' },
   campPillaged: { icon: '✕', color: '#d64545', label: 'Camp pillaged' },
+  clanJoined: { icon: '✚', color: '#3a9d5d', label: 'Clan joined' },
 };
 /** Rare, important kinds: the last ones trimmed from the DOM. */
 const PINNED = new Set(['centreFormed', 'pregameEnded', 'civFounded']);

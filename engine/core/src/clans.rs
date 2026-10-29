@@ -2,6 +2,7 @@
 //! gathering evenly over it (each tile's share paying the walk there first), eats a varied diet,
 //! grows on what it harvests beyond its need and starves when short.
 
+use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
@@ -35,6 +36,10 @@ pub struct Clan {
     pub walk: f64,
     /// The civ it belongs to, once founding has made civs; its daughters belong too.
     pub civ: Option<u32>,
+    /// How far an unaligned clan leans towards each civ (civ id to leaning); empty once it
+    /// belongs to one.
+    #[serde(default)]
+    pub leaning: BTreeMap<u32, f64>,
 }
 
 impl Deref for Clan {
@@ -105,6 +110,7 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         since: 0,
         walk: 0.0,
         civ: None,
+        leaning: BTreeMap::new(),
     }
 }
 
@@ -454,6 +460,7 @@ fn divide(w: &mut World, id: u32) {
     d.since = c.since;
     d.fed_ratio = c.fed_ratio;
     d.civ = c.civ;
+    d.leaning = c.leaning.clone();
     d.territory = hers;
     let m = w.clans.get_mut(&id).unwrap();
     m.territory = mine;
@@ -471,6 +478,7 @@ fn split(w: &mut World, id: u32) {
     let share = people / c.people;
     let mut d = new_clan(w.next_id, c.home, people);
     d.civ = c.civ;
+    d.leaning = c.leaning.clone();
     d.store = c.store.map(|v| v * share);
     let scored: Vec<(usize, f64)> =
         sites(w, &c, CLAN.scout_range).into_iter().map(|s| (s, site_value(w, s, people, &d.store))).collect();
