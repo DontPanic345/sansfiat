@@ -21,6 +21,7 @@ cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N] [--lead]   #
 ./check.sh                                       # every check CI runs, in order
 node www/play.mjs "?size=small&seed=2&run=1" --until "document.body.dataset.phase === 'choose'" --shot pick.png   # the page in headless Chrome; import { open } from it to click tiles and buttons
 node www/play-camp.mjs [out-dir]   # leads a civ, moves its camp out on its land, ends turns, screenshots the line (default relay/specs/29/screens)
+node www/play-scout.mjs [out-dir]  # leads a civ, selects its scout, sets a route by clicks (seed 2, small: capital to tile 58), ends turns until found, screenshots both routes and a built trail (default relay/specs/28/screens)
 ```
 
 ## Layout
@@ -37,12 +38,12 @@ node www/play-camp.mjs [out-dir]   # leads a civ, moves its camp out on its land
 | `core/src/markets.rs` | Markets: reach, the `go` step (one festival route by worth), trading, forming and fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, the `end` step and `top_up`. |
 | `core/src/civs.rs` | Civs: `found` (the civ's own clan, the capital on its home), the `levy` (called by `trade`), the `civs` step (store upkeep), territory and the pick's `cards`. |
-| `core/src/units.rs` | The camp (one per civ, an actor of warriors): raise, disband, the pack, the `line` to the capital and `cut_off`, forage and pillage, the `ai` and `units` steps, the per-civ `Counters`, and the `check_*` that `validate` calls. |
+| `core/src/units.rs` | The camp (one per civ, an actor of warriors): raise, disband, the pack, the `line` to the capital and `cut_off`, forage and pillage, the `ai` and `units` steps, the per-civ `Counters`, and the `check_*` that `validate` calls. The scout (`UnitKind::Scout`, made at founding): `route_plan` (known and possible paths and costs from a start to an end), the search in `scout_turn` (reveal, build trails, forage, feed), and `SetRoute`/`ClearRoute`. |
 | `core/src/stats.rs` | `summary`, the evidence reports, and `digest` to compare builds. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
 | `web/` | The wasm-bindgen `Sim` the page drives: `layout()` once per map, `view()` each turn, `act`/`check` for orders. |
-| `www/` | The page, plain ES modules: `main.js` (controls and `body.dataset` for scripts), `select.js` (the selection panel), `map-view.js` (the canvas, `screenOf(i)`), `feed.js`; `check.mjs` checks its data under Node, `play.mjs` drives it in headless Chrome and `play-camp.mjs` plays a camp through it. The selected camp's line home is drawn in `map-view.js` (`setLine`), coloured in `main.js` (`lineColour`). `www/pkg` is built, not committed. |
+| `www/` | The page, plain ES modules: `main.js` (controls and `body.dataset` for scripts: `routeState` (`none`, `set`, `found`, `nopath`), `armed` (`start`, `to`), `scout`), `select.js` (the selection panel, a scout's route buttons), `map-view.js` (the canvas, `screenOf(i)`: revealed rings, trails under way, the scout's known (solid) and possible (dashed) routes via `setPlan`), `feed.js`; `check.mjs` checks its data under Node, `play.mjs` drives it in headless Chrome, `play-camp.mjs` plays a camp and `play-scout.mjs` a scout's route through it. The selected camp's line home is drawn in `map-view.js` (`setLine`), coloured in `main.js` (`lineColour`). `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 

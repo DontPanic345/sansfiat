@@ -209,6 +209,21 @@ let w = JSON.parse(sim.view());
 assert.equal(w.player, cards[0].civ);
 const rival = Object.values(w.civs).find((c) => c.id !== w.player);
 
+// The scout: one per civ, at its capital with people and a pack, and no route until one is set.
+const scoutOf = (view) => Object.values(view.units).find((u) => u.civ === view.player && u.kind === 'scout');
+const scout = scoutOf(w);
+assert.ok(scout && scout.tile === w.civs[w.player].capital, 'the led civ has a scout at its capital');
+assert.ok(scout.people > 0 && scout.store.length === GOODS.length, 'the scout has people and a pack');
+assert.equal(scout.route, null, 'the scout has no route yet');
+assert.equal(scout.plan, undefined, 'a scout without a route has no plan');
+assert.ok(w.revealed.length === 0, 'nothing is revealed at the pick');
+const landOf = (i) => TERRAIN[layout.terrain[i]].land;
+const water = layout.terrain.findIndex((_, i) => !landOf(i));
+assert.ok(water >= 0 && sim.check(JSON.stringify({ type: 'setRoute', from: scout.tile, to: water })).length > 0, 'a scout does not search water');
+assert.ok(sim.check(JSON.stringify({ type: 'setRoute', from: scout.tile, to: scout.tile })).length > 0, 'a route needs two different tiles');
+assert.ok(sim.check(JSON.stringify({ type: 'setRoute', from: scout.tile, to: n + 3 })).length > 0, 'a route ends on the map');
+assert.ok(sim.check(JSON.stringify({ type: 'clearRoute' })) === '', 'a scout can be told to clear its route');
+
 // Warriors raised, if the civ can spare a person.
 const made = sim.check('{"type":"raise","n":1}');
 assert.ok(made === '' || made.length > 0);
@@ -241,6 +256,20 @@ assert.ok(route.cost > 0 && route.turns >= 1);
 assert.deepEqual(route, preview, 'the preview is the route');
 assert.equal(JSON.parse(sim.path(unit.tile, unit.tile + 1000000)), null);
 assert.ok(sim.check(JSON.stringify({ type: 'moveCamp', to: n + 5 })).length > 0, 'off the map is refused');
+// A route from the capital three steps out on land, set and read back as the page reads it.
+const to = [...Array(n).keys()].find((i) => landOf(i) && hexSteps(i, scout.tile) === 3);
+assert.ok(to !== undefined, 'some land lies three steps out');
+const set = JSON.stringify({ type: 'setRoute', from: scout.tile, to });
+assert.equal(sim.check(set), '', 'the route is accepted');
+sim.act(set);
+const routed = scoutOf(JSON.parse(sim.view()));
+assert.deepEqual(routed.route, [scout.tile, to], 'the route is the scout\'s');
+assert.ok(routed.plan.known && routed.plan.known.path.at(-1) === to, 'the known path ends at the route\'s end');
+assert.ok(routed.plan.possible && routed.plan.possible.cost <= routed.plan.known.cost, 'the possible path costs no more than the known');
+assert.ok(routed.plan.candidates.every((i) => i < n), 'candidates are tiles');
+sim.act('{"type":"clearRoute"}');
+assert.equal(scoutOf(JSON.parse(sim.view())).route, null, 'the route is cleared');
+sim.act(set);
 for (let i = 0; i < 10; i++) {
   sim.act('{"type":"endTurn"}');
   const more = JSON.parse(sim.events(cursor));
@@ -248,6 +277,10 @@ for (let i = 0; i < 10; i++) {
   events.push(...more);
 }
 w = JSON.parse(sim.view());
+assert.ok(w.revealed.every((i) => Number.isInteger(i) && i >= 0 && i < n), 'revealed is a list of tiles');
+assert.ok(w.trail_work.every(([i, done, need]) => i < n && done > 0 && need > 0), 'trail work is a tile, the labour in and the labour needed');
+const onRoute = scoutOf(w);
+if (onRoute && onRoute.route) assert.ok(onRoute.plan && onRoute.plan.known, 'a scout with a route carries its plan');
 const moved = Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'camp');
 checkCamps(w);
 assert.ok(!moved || moved.tile !== unit.tile, 'the camp moved in 10 turns (or starved out)');
