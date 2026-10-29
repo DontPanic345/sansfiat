@@ -173,7 +173,7 @@ failure (seed 2, radius 16), since the capital is where the spacing was checked.
 |---|---|---|
 | build-1 (festival moves to the clan's home) | 21 of 21 | 847.2 |
 | clan centres, festival moved to the home (experiment) | 18 of 21 | 811.6 |
-| clan centres, new market on the site, `CIV.pull` 3 (committed) | 11 of 21 | 866.1 |
+| clan centres, new market on the site, `CIV.pull` 3 (first commit) | 11 of 21 | 866.1 |
 | the same, `CIV.pull` 6 | 17 of 21 | 846.6 |
 | the same, `CIV.pull` 10 | 19 of 21 | 841.9 |
 
@@ -181,15 +181,21 @@ Why camps starve: when the centre clan's festival is not on its home, the civ's 
 going to that festival, busy and with its prices settled, and only the centre clan comes to the
 new capital market (small seed 3: two of three capitals with one trader for 60 turns). The levy
 is paid only at the capital's market, so the store stays empty and the camp's line brings nothing.
-`CIV.pull` is left at 3 for the owner to decide.
+`CIV.pull` stays at 3: its value is a matter for tuning, not an owner's decision.
 
 The owner's answer: not a regression, since a camp is only a cost until the features that use it
 are built; and at founding a clan switches to a capital's market whose path costs no more than
 its festival's (`civs::switch_to_capitals`), the markets' traders counted again so the next turn's
-choice sees the switch. After that clans choose as ever. `CIV.pull` stays at 3.
+choice sees the switch. After that clans choose as ever. `CIV.pull` stays at 3; like the rest,
+it is a matter for tuning.
+
+An idea for tuning, not built: a sticking power, so a clan that switched to a capital's market at
+founding stays with it a while (say a larger `switch_margin` for some turns) before it chooses as
+ever. Some switched clans drift back to their old festival within a few turns (small seed 3, the
+third civ).
 
 | | civs kept their first camp | clans' people |
 |---|---|---|
-| with the switch at founding | 15 of 21 | 882.1 |
+| with the switch at founding (current) | 15 of 21 | 882.1 |
 
 `sweep --size all` is unchanged by it (founding comes after the end).
