@@ -203,7 +203,7 @@ fn the_store_spoils_and_is_capped() {
         let c = w.clans.get_mut(&fed).unwrap();
         (c.civ, c.fed, c.store) = (Some(red), true, [4.0, 2.0, 0.0, 6.0, 0.0]);
     }
-    w.civs.get_mut(&red).unwrap().store = [0.0, 40.0, 20.0, 0.0, 0.0];
+    w.civs.get_mut(&red).unwrap().store = [0.0, 2.0 * CIV.store_cap, CIV.store_cap, 0.0, 0.0];
     civs::upkeep(&mut w);
     assert_eq!(w.clans[&fed].store, [4.0, 2.0, 0.0, 6.0, 0.0]);
 
@@ -211,8 +211,8 @@ fn the_store_spoils_and_is_capped() {
     let c = &w.civs[&red];
     let total: f64 = c.store.iter().sum();
     assert!((total - CIV.store_cap).abs() < 1e-9, "{total}");
-    // 60 spoils to 54, the rest over.
-    let over = 60.0 * (1.0 - CLAN.spoilage) - CIV.store_cap;
+    // Three caps spoil, and the rest over the cap is lost.
+    let over = 3.0 * CIV.store_cap * (1.0 - CLAN.spoilage) - CIV.store_cap;
     assert!((c.lost - over).abs() < 1e-9, "{}", c.lost);
     assert!((c.store[GRAIN] / c.store[FRUIT] - 2.0).abs() < 1e-9);
     civs::upkeep(&mut w);
@@ -222,11 +222,11 @@ fn the_store_spoils_and_is_capped() {
 #[test]
 fn a_cut_store_says_how_much_was_lost() {
     let (mut w, ids) = founded();
-    w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 60.0, 0.0, 0.0, 0.0];
+    w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 3.0 * CIV.store_cap, 0.0, 0.0, 0.0];
     civs::upkeep(&mut w);
     let c = &w.civs[&ids[0]];
     assert!((c.store[GRAIN] - CIV.store_cap).abs() < 1e-9);
-    assert!((c.lost - (60.0 * (1.0 - CLAN.spoilage) - CIV.store_cap)).abs() < 1e-9);
+    assert!((c.lost - (3.0 * CIV.store_cap * (1.0 - CLAN.spoilage) - CIV.store_cap)).abs() < 1e-9);
 }
 
 #[test]

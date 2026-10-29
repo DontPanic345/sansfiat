@@ -429,7 +429,7 @@ pub struct CivRules {
 }
 
 pub const CIV: CivRules =
-    CivRules { territory: 2, endowment: [0.0, 20.0, 0.0, 0.0, 0.0], levy: 0.2, store_cap: 20.0, pull: 3.0 };
+    CivRules { territory: 2, endowment: [0.0, 20.0, 0.0, 0.0, 0.0], levy: 0.2, store_cap: 60.0, pull: 3.0 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's
