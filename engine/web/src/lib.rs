@@ -14,7 +14,7 @@ pub struct Sim {
 impl Sim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, radius: i32) -> Sim {
-        Sim { world: World::new(Config { seed, radius, army: true, gifts: true }) }
+        Sim { world: World::new(Config { seed, radius, army: true, gifts: true, zone: true }) }
     }
 
     /// Rebuilds the world from a save's JSON.
@@ -76,7 +76,11 @@ impl Sim {
     /// `tile`, `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
     /// (`{path, cost, carry}`: the path after its tile to the capital, its cost, and the food it carries
     /// a turn with all its labour; carry null is without limit, at the capital; `line` itself null when
-    /// there is no line) and `cut_off`. `clan_civ` is `[clan, civ]` for every clan with a civ.
+    /// there is no line), `cut_off`, `territory` (its zone, sorted, its tile in it), `held` (the zone's
+    /// tiles its warriors hold) with `guard` (each one's guard share after its walk), `zone_cap` (the
+    /// most tiles its zone may have) and `cut_at` (`{path, at, by}` when a rival's held ground cuts the
+    /// line: the line it would have without held ground, the first tile on it a rival holds and that
+    /// civ; else null). `clan_civ` is `[clan, civ]` for every clan with a civ.
     pub fn view(&self) -> String {
         let w = &self.world;
         let trails: Vec<usize> = (0..w.tiles.len()).filter(|&i| w.tiles[i].trail).collect();
@@ -137,6 +141,10 @@ impl Sim {
                     .map(|(path, cost, carry)| serde_json::json!({ "path": path, "cost": cost, "carry": carry }))
                     .into();
                 row["cut_off"] = units::cut_off(w, u.id).into();
+                row["zone_cap"] = units::zone_cap(u).into();
+                row["cut_at"] = units::cut_at(w, u.id)
+                    .map(|(path, at, by)| serde_json::json!({ "path": path, "at": at, "by": by }))
+                    .into();
                 (u.id, row)
             })
             .collect();

@@ -15,7 +15,7 @@ fn land(w: &World, i: usize) -> bool {
 
 /// A world with no clans and no food, and a land tile with a land neighbour.
 fn bare() -> (World, usize, usize) {
-    let mut w = World::new(Config { seed: 1, radius: 6, army: true, gifts: true });
+    let mut w = World::new(Config { seed: 1, radius: 6, army: true, gifts: true, zone: true });
     w.clans.clear();
     for t in &mut w.tiles {
         t.stock = [0.0; N];
@@ -33,7 +33,7 @@ fn total(b: &Basket) -> f64 {
 #[test]
 fn seeds_land_on_every_big_landmass() {
     for seed in 1..=8 {
-        let w = World::new(Config { seed, radius: 16, army: true, gifts: true });
+        let w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
         // A sealed valley is a landmass of its own, and nobody is seeded there.
         let big: Vec<Vec<usize>> = landmasses(&w.tiles, 16)
             .into_iter()
@@ -105,7 +105,7 @@ fn walking_comes_off_each_tiles_share_first() {
 #[test]
 fn reaping_keeps_to_labour_stock_and_target_on_real_maps() {
     for seed in 1..=3 {
-        let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true });
+        let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
         w.run(60);
         for c in w.clans.values() {
             let (_, yearly) = walks(&w, c.home, &c.territory);
@@ -169,7 +169,7 @@ fn a_far_tile_costs_its_walk_and_its_tiles_are_walked() {
 }
 
 fn eater(pop: f64, basket: Basket, since: u32) -> World {
-    let mut w = World::new(Config { seed: 1, radius: 6, army: true, gifts: true });
+    let mut w = World::new(Config { seed: 1, radius: 6, army: true, gifts: true, zone: true });
     let c = w.clans.get_mut(&1).unwrap();
     c.people = pop;
     c.basket = basket;
@@ -269,7 +269,7 @@ fn a_clan_under_one_person_dies() {
 #[test]
 fn clans_live_for_fifty_turns() {
     for seed in 1..=3 {
-        let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true });
+        let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
         w.run(50);
         assert!(!w.clans.is_empty(), "seed {seed}");
         for c in w.clans.values() {
@@ -372,7 +372,7 @@ fn a_starving_clan_sends_a_daughter_only_where_she_would_be_fed() {
 
 #[test]
 fn clans_spread() {
-    let mut w = World::new(Config { seed: 1, radius: 16, army: true, gifts: true });
+    let mut w = World::new(Config { seed: 1, radius: 16, army: true, gifts: true, zone: true });
     w.run(300);
     assert!(w.clans.len() > 10, "{} clans", w.clans.len());
 }

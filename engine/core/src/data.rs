@@ -486,6 +486,14 @@ pub struct UnitRules {
     pub fallow: u32,
     /// Steps from the capital the AI posts its camp.
     pub post: usize,
+    /// Labour a warrior sets aside to guard a deployed camp's zone, divided over its held tiles.
+    pub guarding: f64,
+    /// The guard share a tile must keep after its walk to stay held (`divide`).
+    pub guard: f64,
+    /// The weight of a guard's walk inside the zone (`walk_cost`), as a clan's inside its territory.
+    pub inside: f64,
+    /// Tiles of its line the AI's zone covers past the camp's own, at most `people − 1`.
+    pub zone: usize,
 }
 
 pub const UNIT: UnitRules = UnitRules {
@@ -500,6 +508,10 @@ pub const UNIT: UnitRules = UnitRules {
     pillage: 1.0,
     fallow: 5,
     post: 3,
+    guarding: 1.0,
+    guard: 0.1,
+    inside: 0.2,
+    zone: 2,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -514,6 +526,10 @@ pub struct Config {
     /// load with it on.
     #[serde(default = "yes")]
     pub gifts: bool,
+    /// Whether AI camps paint a zone over their line: off is the control (the sweep's `--no-zone`).
+    /// Old saves load with it on.
+    #[serde(default = "yes")]
+    pub zone: bool,
 }
 
 fn yes() -> bool {
@@ -523,6 +539,6 @@ fn yes() -> bool {
 impl Default for Config {
     /// Radius 16: three centres 10 steps apart need the room.
     fn default() -> Self {
-        Config { seed: 1, radius: 16, army: true, gifts: true }
+        Config { seed: 1, radius: 16, army: true, gifts: true, zone: true }
     }
 }

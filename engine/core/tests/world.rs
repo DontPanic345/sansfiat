@@ -13,7 +13,7 @@ fn same_seed_same_world() {
 #[test]
 fn replaying_a_save_rebuilds_the_world() {
     for seed in 1..=5 {
-        let mut w = World::new(Config { seed, radius: 6, army: true, gifts: true });
+        let mut w = World::new(Config { seed, radius: 6, army: true, gifts: true, zone: true });
         w.run(12);
         let json = serde_json::to_string(&w.save()).unwrap();
         let save: Save = serde_json::from_str(&json).unwrap();

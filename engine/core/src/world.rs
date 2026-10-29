@@ -85,10 +85,13 @@ pub enum EventKind {
     CampForaged,
     CampPillaged,
     ClanJoined,
+    Deployed,
+    Held,
+    LineCut,
 }
 
-/// Something that happened in a turn. `tile` is where; `other` is the daughter of a division;
-/// `unit` is for units.
+/// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
+/// zone's size (`Deployed`, `Held`) or the civ whose army cut a line (`LineCut`); `unit` is for units.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Event {
     pub turn: u32,
@@ -139,6 +142,16 @@ impl Event {
             EventKind::CampForaged => format!("{}'s camp forages at {at}", self.civ_name(w)),
             EventKind::CampPillaged => format!("{}'s camp pillages at {at}", self.civ_name(w)),
             EventKind::ClanJoined => format!("Clan {clan} joins {}", self.civ_name(w)),
+            EventKind::Deployed => {
+                format!("{}'s camp at {at} deploys over {} tiles", self.civ_name(w), self.other.unwrap_or(0))
+            }
+            EventKind::Held => {
+                format!("{}'s camp at {at} holds its zone of {} tiles", self.civ_name(w), self.other.unwrap_or(0))
+            }
+            EventKind::LineCut => {
+                let by = self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str());
+                format!("{}'s camp's line is cut by {by}'s army", self.civ_name(w))
+            }
             EventKind::PregameEnded => match &w.end {
                 Some(e) => {
                     let n = e.centres.len();
@@ -220,6 +233,20 @@ impl World {
             unit: Some(unit),
         });
     }
+
+    /// Records an event about a unit of a civ, with `other` (a zone's size, or the civ that cut it).
+    pub fn unit_event_other(&mut self, kind: EventKind, tile: usize, civ: u32, unit: u32, other: u32) {
+        self.events.push(Event {
+            turn: self.turn,
+            kind,
+            tile,
+            clan: None,
+            market: None,
+            other: Some(other),
+            civ: Some(civ),
+            unit: Some(unit),
+        });
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -242,6 +269,11 @@ pub enum Action {
     /// Send the camp to a tile; it moves when the turn ends.
     MoveCamp {
         to: usize,
+    },
+    /// Spread the camp over a zone: the painted tiles (its own tile may be left out), which replace
+    /// the zone; none undeploys.
+    Zone {
+        tiles: Vec<usize>,
     },
     /// Set the camp's auto-forage and auto-supply.
     SetSwitches {
@@ -333,6 +365,7 @@ impl World {
             Action::Raise { n } => units::check_raise(self, *n),
             Action::Disband { n } => units::check_disband(self, *n),
             Action::MoveCamp { to } => units::check_move(self, *to),
+            Action::Zone { tiles } => units::check_zone(self, tiles),
             Action::SetSwitches { .. } | Action::Resupply => units::check_camp(self),
             Action::Forage => units::check_take(self, false),
             Action::Pillage => units::check_take(self, true),
@@ -368,6 +401,11 @@ impl World {
                 let civ = self.player.expect("validated: the player leads a civ");
                 let id = units::camp(self, civ).expect("validated: there is a camp").id;
                 units::order_move(self, id, *to);
+            }
+            Action::Zone { tiles } => {
+                let civ = self.player.expect("validated: the player leads a civ");
+                let id = units::camp(self, civ).expect("validated: there is a camp").id;
+                units::set_zone(self, id, tiles);
             }
             Action::SetSwitches { forage, supply } => units::with_camp(self, |u| {
                 u.auto_forage = *forage;

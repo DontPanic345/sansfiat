@@ -350,7 +350,7 @@ fn spaced(w: &World) {
 
 fn pregame_ends_with_three(radius: i32, seeds: std::ops::RangeInclusive<u32>) {
     for seed in seeds {
-        let mut w = World::new(Config { seed, radius, army: true, gifts: true });
+        let mut w = World::new(Config { seed, radius, army: true, gifts: true, zone: true });
         w.run(PREGAME.max_turns);
         assert!(w.end.is_some(), "seed {seed} radius {radius}: no end");
         spaced(&w);

@@ -118,7 +118,19 @@ function campPanel(ctx, id) {
   } else {
     html += '<p><b>No line home.</b></p>';
   }
-  if (u.cut_off) html += '<p><b style="color:#ffb347">Cut off</b>: its line can not feed it.</p>';
+  if (u.cut_at) html += `<p><b style="color:#ff7b72">Line cut</b> by ${civName(ctx, u.cut_at.by)}'s army at ${hex(ctx, u.cut_at.at)}.</p>`;
+  else if (u.cut_off) html += '<p><b style="color:#ffb347">Cut off</b>: its line can not feed it.</p>';
+  // Its zone: the tiles it spreads over and how many its warriors hold, with each one's guard share.
+  if (u.territory.length > 1) {
+    const share = u.guard.length ? u.guard.reduce((a, b) => a + b, 0) / u.guard.length : 0;
+    html += `<p>Zone ${u.territory.length} of ${u.zone_cap} tiles · holds ${u.held.length} · guard ${f2(share)} a tile <span class="dim">(least ${f2(u.guard.length ? Math.min(...u.guard) : 0)})</span></p>`;
+  } else {
+    html += `<p class="dim">Not deployed: holds its own tile (zone up to ${u.zone_cap} tiles).</p>`;
+  }
+  if (mine) {
+    const on = (m) => (ctx.painting === m ? ' aria-pressed="true" style="outline:2px solid #fff"' : '');
+    html += `<p><button type="button" data-paint="paint"${on('paint')}>Paint (P)</button> <button type="button" data-paint="unpaint"${on('unpaint')}>Unpaint (U)</button>${ctx.painting ? ' <span class="dim">click or drag on the map; Esc stops</span>' : ''}</p>`;
+  }
   if (u.dest != null) {
     const r = JSON.parse(sim.route(id));
     html += r
@@ -148,6 +160,7 @@ function campPanel(ctx, id) {
       action: { type: 'setSwitches', forage: u.auto_forage, supply: !u.auto_supply },
     });
     if (u.dest != null) actions.push({ label: 'Stop', action: { type: 'moveCamp', to: u.tile } });
+    if (u.territory.length > 1) actions.push({ label: 'Undeploy', action: { type: 'zone', tiles: [] } });
   }
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 }

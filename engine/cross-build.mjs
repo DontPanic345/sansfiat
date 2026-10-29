@@ -22,6 +22,9 @@ const lead = process.argv[5] === 'lead';
 //   5. When n == 60: disband one warrior (ignored without a camp).
 //   6. When n == 10: setGift twice the default (2 * LEANING.gift_default); when n == 50: setKeep 5;
 //      when n == 70: setKeep null.
+//   7. When n == 45, if there is a camp: moveCamp to its own tile (it halts), then zone over the first
+//      people - 1 tiles of its line (the capital left out; a refusal is ignored). Rule 4 rests while
+//      45 <= n < 55, so the zone spreads and is held.
 // The state is read only on the pick turn and the turns after it (the camp's dest needs it).
 const GIFT_DEFAULT = 2.0; // LEANING.gift_default
 let pick = null;
@@ -50,8 +53,20 @@ function leadOrders(turn) {
   const me = state.player;
   const civs = byId(state.civs);
   const targets = civs.filter((c) => c.id !== me).map((c) => c.capital).concat(state.civs[me].capital);
-  if (byId(state.units).some((u) => u.civ === me && u.dest === null)) {
+  if (!(n >= 45 && n < 55) && byId(state.units).some((u) => u.civ === me && u.dest === null)) {
     for (const to of targets) if (act({ type: 'moveCamp', to })) break;
+  }
+  if (n === 45) {
+    const camp = byId(state.units).find((u) => u.civ === me);
+    if (camp) {
+      act({ type: 'moveCamp', to: camp.home });
+      const line = JSON.parse(sim.view()).units[camp.id].line;
+      if (line) {
+        const capital = state.civs[me].capital;
+        const k = Math.max(0, Math.floor(camp.people) - 1);
+        act({ type: 'zone', tiles: line.path.filter((t) => t !== capital).slice(0, k) });
+      }
+    }
   }
   if (n === 60) act({ type: 'disband', n: 1 });
   if (n === 10) act({ type: 'setGift', food: 2 * GIFT_DEFAULT });

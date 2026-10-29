@@ -49,6 +49,7 @@ fn put_camp(w: &mut World, civ: u32, tile: usize) -> u32 {
     let u = w.units.get_mut(&id).unwrap();
     u.actor.home = tile;
     u.actor.territory = vec![tile];
+    u.held = vec![tile];
     id
 }
 
@@ -559,7 +560,7 @@ fn the_ai_raises_a_lost_camp_and_posts_it_off_the_capital() {
 
 #[test]
 fn a_real_map_replays_with_the_camp_under_orders() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }
@@ -625,7 +626,7 @@ fn a_real_map_replays_with_the_camp_under_orders() {
 
 #[test]
 fn the_control_run_has_no_army_and_never_levies() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: false, gifts: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: false, gifts: true, zone: true });
     w.run(400);
     assert!(w.phase == Phase::Main && w.turn > w.end.as_ref().unwrap().turn + 50);
     assert!(w.units.is_empty());
@@ -637,7 +638,8 @@ fn the_control_run_has_no_army_and_never_levies() {
 
 #[test]
 fn on_a_real_map_every_ai_civ_keeps_the_camp_it_raised_at_the_pick_on_a_line_from_its_capital() {
-    let mut w = World::new(Config { seed: 2, radius: size_radius("small").unwrap(), army: true, gifts: true });
+    let mut w =
+        World::new(Config { seed: 2, radius: size_radius("small").unwrap(), army: true, gifts: true, zone: true });
     while w.phase == Phase::Pregame {
         w.run(1);
     }
@@ -651,4 +653,198 @@ fn on_a_real_map_every_ai_civ_keeps_the_camp_it_raised_at_the_pick_on_a_line_fro
         assert!(!path.is_empty() && cost > 0.0, "civ {}'s camp is posted off its capital", c.id);
         assert!(!units::cut_off(&w, camp.id), "civ {}'s camp is fed by its line", c.id);
     }
+}
+
+fn held(w: &World, civ: u32) -> Vec<usize> {
+    units::camp(w, civ).unwrap().held.clone()
+}
+
+#[test]
+fn a_zone_must_be_connected_within_its_cap_and_clear_of_capitals() {
+    let (mut w, ids, _) = led();
+    put_camp(&mut w, ids[0], at_big(-4, 0));
+    let zone = |tiles: &[(i32, i32)]| Action::Zone { tiles: tiles.iter().map(|&(q, r)| at_big(q, r)).collect() };
+    let err = |w: &World, a: Action| w.validate(&a).unwrap_err();
+    assert!(err(&w, zone(&[(-5, 0)])).contains("capital"));
+    assert!(err(&w, zone(&[(-2, 0)])).contains("connected"));
+    assert!(err(&w, zone(&[(-3, 0), (-2, 0), (-1, 0)])).contains("at most 3"), "three warriors, three tiles");
+    w.tiles[at_big(-3, 1)].terrain = SEA;
+    assert!(err(&w, zone(&[(-3, 1)])).contains("land"));
+    // The camp's own tile may be listed or left out.
+    w.act(zone(&[(-3, 0), (-2, 0)])).unwrap();
+    w.act(zone(&[(-4, 0), (-3, 0), (-2, 0)])).unwrap();
+    assert_eq!(units::camp(&w, ids[0]).unwrap().territory, vec![at_big(-4, 0), at_big(-3, 0), at_big(-2, 0)]);
+    assert_eq!(kinds(&w, EventKind::Deployed), 2);
+    w.act(Action::Zone { tiles: Vec::new() }).unwrap();
+    assert_eq!(units::camp(&w, ids[0]).unwrap().territory, vec![at_big(-4, 0)], "none undeploys");
+}
+
+#[test]
+fn the_camps_tile_is_held_and_the_spread_fills_one_ring_a_turn_until_a_move_clears_it() {
+    let (mut w, ids, _) = led();
+    let red = ids[0];
+    let home = at_big(-3, 0);
+    put_camp(&mut w, red, home);
+    w.act(Action::Zone { tiles: vec![at_big(-2, 0), at_big(-1, 0)] }).unwrap();
+    assert_eq!(held(&w, red), vec![home], "only its own tile at first");
+    units::step(&mut w);
+    assert_eq!(held(&w, red), vec![home, at_big(-2, 0)], "one ring");
+    assert_eq!(kinds(&w, EventKind::Held), 0);
+    units::step(&mut w);
+    assert_eq!(held(&w, red), vec![home, at_big(-2, 0), at_big(-1, 0)], "two rings");
+    assert_eq!(kinds(&w, EventKind::Held), 1);
+    let u = units::camp(&w, red).unwrap();
+    assert_eq!(u.guard.len(), 3);
+    assert!(u.guard.iter().all(|&g| g >= UNIT.guard), "{:?}", u.guard);
+    assert_eq!(w.civs[&red].army.held, 1 + 2);
+    units::step(&mut w);
+    assert_eq!(kinds(&w, EventKind::Held), 1, "announced once");
+    // Unpainting drops a tile at once.
+    w.act(Action::Zone { tiles: vec![at_big(-2, 0)] }).unwrap();
+    assert_eq!(held(&w, red), vec![home, at_big(-2, 0)]);
+    // Moving undeploys.
+    w.act(Action::MoveCamp { to: at_big(-3, 3) }).unwrap();
+    let u = units::camp(&w, red).unwrap();
+    assert_eq!((u.territory.clone(), u.held.clone()), (vec![home], vec![home]));
+}
+
+#[test]
+fn guarding_costs_labour_only_when_deployed() {
+    let supplied = |deploy: bool| {
+        let (mut w, ids, _) = led();
+        put_camp(&mut w, ids[0], at_big(-2, 0));
+        let id = camp_id(&w, ids[0]);
+        camp_mut(&mut w, id).store = [0.0; N];
+        w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0];
+        if deploy {
+            w.act(Action::Zone { tiles: vec![at_big(-1, 0)] }).unwrap();
+        }
+        units::step(&mut w);
+        w.civs[&ids[0]].army.resupplied
+    };
+    let (off, on) = (supplied(false), supplied(true));
+    let (cost, need) = (2.0 * 3.0, 3.0 * UNIT.food);
+    assert!((off - (3.0 * UNIT.labour * UNIT.carry / cost).min(pack_total(3.0))).abs() < 1e-9, "{off}");
+    assert!((on - (3.0 * (UNIT.labour - UNIT.guarding) * UNIT.carry / cost)).abs() < 1e-9, "{on}");
+    assert!(on < off && on + 1e-9 >= need, "guarding leaves less, but enough to eat: {on} {off}");
+}
+
+/// A corridor of land along r = 0 from Red's capital (-5, 0) to (9, 0), and Blue's capital just off
+/// it at (5, -1), so Red's camp beyond Blue's land can only come home through it.
+fn corridor_off() -> (World, u32, u32) {
+    let mut w = big();
+    for i in 0..w.tiles.len() {
+        let t = &w.tiles[i];
+        if !((t.r == 0 && (-5..=9).contains(&t.q)) || (t.q, t.r) == (5, -1)) {
+            w.tiles[i].terrain = SEA;
+        }
+    }
+    let ms = [open(&mut w, at_big(-5, 0)), open(&mut w, at_big(5, -1))];
+    put(&mut w, &[at_big(-5, 0)], 8.0);
+    put(&mut w, &[at_big(5, -1)], 8.0);
+    found(&mut w, &ms);
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    (w, ids[0], ids[1])
+}
+
+#[test]
+fn a_rivals_held_tile_blocks_the_line_and_ones_own_on_rival_land_does_not() {
+    let (mut w, red, blue) = corridor();
+    let id = put_camp(&mut w, red, at_big(-1, 0));
+    assert!(units::line(&w, id).is_some());
+    put_camp(&mut w, blue, at_big(-3, 0));
+    assert_eq!(civs::holder(&w, at_big(-3, 0)), Some(blue), "held land is the holder's");
+    assert_eq!(civs::tile_civ(&w, at_big(-3, 0)), Some(red), "but still Red's land");
+    assert_eq!(units::line(&w, id), None, "Blue's held tile on Red's own land cuts it");
+    units::step(&mut w);
+    assert_eq!(kinds(&w, EventKind::LineCut), 1);
+    let red_cut = w.events.iter().filter(|e| e.kind == EventKind::CampCutOff && e.civ == Some(red)).count();
+    assert_eq!(red_cut, 0, "cut by an army, not by land");
+    let e = w.events.iter().find(|e| e.kind == EventKind::LineCut).unwrap();
+    assert_eq!(e.other, Some(blue));
+    assert!(e.text(&w).contains("is cut by"), "{}", e.text(&w));
+    assert_eq!(w.civs[&red].army.cut_by_army, 1);
+    // The line's ends never block it: Blue holding Red's capital or Red's camp's own tile.
+    put_camp(&mut w, blue, at_big(-5, 0));
+    assert!(units::line(&w, id).is_some(), "the capital end");
+    put_camp(&mut w, blue, at_big(-1, 0));
+    assert!(units::line(&w, id).is_some(), "the camp's end");
+
+    let (mut w, red, blue) = corridor_off();
+    let id = put_camp(&mut w, red, at_big(9, 0));
+    let blues: Vec<usize> = (0..=9).map(|q| at_big(q, 0)).filter(|&t| civs::tile_civ(&w, t) == Some(blue)).collect();
+    assert!(!blues.is_empty());
+    assert_eq!(units::line(&w, id), None, "Blue's land blocks it");
+    let c = camp_mut(&mut w, id);
+    c.held = blues.iter().copied().chain(std::iter::once(at_big(9, 0))).collect();
+    c.held.sort_unstable();
+    assert!(units::line(&w, id).is_some(), "Red's own held tiles on Blue's land let it through");
+}
+
+#[test]
+fn the_larger_guard_share_takes_a_contested_tile_and_a_tie_stays_with_the_holder() {
+    let contest = |red_people: f64, blue_holds: bool| {
+        let (mut w, ids, _) = three();
+        let (red, blue) = (ids[0], ids[1]);
+        let mid = at_big(1, 3);
+        let r = put_camp(&mut w, red, at_big(0, 3));
+        let b = put_camp(&mut w, blue, at_big(2, 3));
+        camp_mut(&mut w, r).people = red_people;
+        camp_mut(&mut w, r).actor.territory = vec![at_big(0, 3), mid];
+        camp_mut(&mut w, b).actor.territory = vec![mid, at_big(2, 3)];
+        if blue_holds {
+            camp_mut(&mut w, b).held = vec![mid, at_big(2, 3)];
+        }
+        units::step(&mut w);
+        (held(&w, red).contains(&mid), held(&w, blue).contains(&mid), units::camp(&w, red).unwrap().territory.clone())
+    };
+    let (r, b, zone) = contest(6.0, true);
+    assert!(r && !b, "the thicker guard takes it from the holder");
+    assert!(zone.contains(&at_big(1, 3)));
+    let (r, b, _) = contest(3.0, true);
+    assert!(!r && b, "a tie stays with the holder");
+    let (r, b, _) = contest(3.0, false);
+    assert!(r && !b, "a fresh tie to the lower civ id");
+    let (r, b, zone) = contest(2.0, false);
+    assert!(!r && b, "the thinner guard loses it");
+    assert!(zone.contains(&at_big(1, 3)), "but keeps it in its zone");
+}
+
+#[test]
+fn a_deployed_camp_on_rival_land_still_pillages() {
+    let (mut w, ids, _) = led();
+    let red = ids[0];
+    let t = at_big(4, 1);
+    assert_eq!(civs::tile_civ(&w, t), Some(ids[1]));
+    w.tiles[t].stock = [0.0, 50.0, 0.0, 0.0, 0.0];
+    let id = put_camp(&mut w, red, t);
+    camp_mut(&mut w, id).store = [0.0; N];
+    w.act(Action::Zone { tiles: vec![at_big(3, 1)] }).unwrap();
+    units::step(&mut w);
+    assert!(held(&w, red).contains(&t));
+    assert!(w.civs[&red].army.pillaged > 0.0 && w.civs[&red].army.foraged == 0.0);
+}
+
+#[test]
+fn a_camp_cut_by_an_army_eats_its_pack_then_forages() {
+    let (mut w, red, blue) = corridor();
+    let t = at_big(-1, 0);
+    let id = put_camp(&mut w, red, t);
+    w.tiles[t].stock = [0.0, 50.0, 0.0, 0.0, 0.0];
+    put_camp(&mut w, blue, at_big(-3, 0));
+    let full = total(&units::camp(&w, red).unwrap().store);
+    assert!(full >= 3.0 * UNIT.food * 2.0);
+    units::step(&mut w);
+    let a = &w.civs[&red].army;
+    assert_eq!((a.foraged, a.resupplied), (0.0, 0.0), "it eats from its pack");
+    assert!(total(&units::camp(&w, red).unwrap().store) < full);
+    let mut turns = 1;
+    while w.civs[&red].army.foraged == 0.0 {
+        units::step(&mut w);
+        turns += 1;
+        assert!(turns < 20);
+    }
+    assert!(turns >= 3, "the pack lasted {turns} turns first");
+    assert_eq!(w.civs[&red].army.resupplied, 0.0);
+    assert!(w.units.contains_key(&id));
 }

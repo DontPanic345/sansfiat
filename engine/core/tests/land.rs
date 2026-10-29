@@ -13,7 +13,7 @@ fn goods_are_the_five_foods() {
 #[test]
 fn caps_are_terrain_food_times_fertility() {
     for seed in 1..=3 {
-        let w = World::new(Config { seed, radius: 16, army: true, gifts: true });
+        let w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
         for t in &w.tiles {
             let terrain = &TERRAIN[t.terrain];
             let river = if t.river > 0 { FEATURES.river } else { [0.0; N] };
@@ -36,7 +36,7 @@ fn caps_are_terrain_food_times_fertility() {
 
 #[test]
 fn fertility_is_patchy() {
-    let w = World::new(Config { seed: 1, radius: 16, army: true, gifts: true });
+    let w = World::new(Config { seed: 1, radius: 16, army: true, gifts: true, zone: true });
     let f: Vec<f64> = w.tiles.iter().map(|t| t.fertility).collect();
     let (mut near, mut n) = (0.0, 0);
     for i in 0..f.len() {
@@ -76,7 +76,7 @@ fn index_matches_within() {
 
 #[test]
 fn step_costs() {
-    let mut w = World::new(Config { seed: 1, radius: 8, army: true, gifts: true });
+    let mut w = World::new(Config { seed: 1, radius: 8, army: true, gifts: true, zone: true });
     let find = |w: &World, t: usize| w.tiles.iter().position(|x| x.terrain == t && x.river == 0).unwrap();
     let sea = find(&w, SEA);
     let plains = find(&w, PLAINS);
@@ -92,7 +92,7 @@ fn step_costs() {
 
 #[test]
 fn food_regrows_and_game_breeds() {
-    let mut w = World::new(Config { seed: 1, radius: 8, army: true, gifts: true });
+    let mut w = World::new(Config { seed: 1, radius: 8, army: true, gifts: true, zone: true });
     let i = w.tiles.iter().position(|t| t.cap[GRAIN] > 0.0 && t.cap[GAME] > 0.0).unwrap();
     w.clans.clear();
     let cap = w.tiles[i].cap;
