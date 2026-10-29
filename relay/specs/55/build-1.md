@@ -31,8 +31,10 @@ has the commands and invariants.
 
 ## Numbers
 
-Pick starting numbers that run and let clans join on a small seed within 200 turns of the
-pick, and say what you picked. A reasonable start is `trade 1.0`, `gift 0.3`,
+Pick starting numbers that run, and say what you picked. Aim for clans joining on a small seed
+within 200 turns of the pick, but don't touch `CIV.*` to get there: with `store_cap` 20 and a
+3-warrior camp's keep of 15, a civ has at most 5 food spare a turn, so few or no joins is a
+fine baseline for build-3. Say so if it happens. A reasonable start is `trade 1.0`, `gift 0.3`,
 `gift_scale 0.5`, `starving 5.0`, `fade 0.03`, `join 1.0`, `gift_default 2.0` and
 `floor 0.001`. Don't tune: build-3 does. Leave `CIV.*` and `UNIT.*` as they are.
 

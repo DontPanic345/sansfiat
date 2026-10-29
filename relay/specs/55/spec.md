@@ -239,7 +239,7 @@ The output keeps today's lines as they are, so #29's numbers can still be compar
   a joined clan's leanings are cleared; a daughter copies them; civ clans never lean.
 - **Actions:** `SetKeep`/`SetGift` refused for a watcher, before the pick, and for bad numbers;
   applied for the leader. A save with them replays to the same world.
-- **The whole:** a small seed runs 100 turns past the pick with clans joining; native and wasm
+- **The whole:** a small seed runs 100 turns past the pick with leanings rising (and a join forced by hand-set leanings if none comes on its own at the easel's numbers); native and wasm
   digests agree through `lead`.
 
 Tests on real maps assert what holds, not counts, since build-3 retunes every number. A test
