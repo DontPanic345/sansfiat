@@ -1,8 +1,9 @@
 use std::{env, fs, io::Read, process::exit, time::Instant};
 
-use engine::data::{size_radius, DESERT, FOREST, HILLS, MARSH, MOUNTAIN, PREGAME, SEA, SIZES};
+use engine::data::{size_radius, DESERT, FOREST, HILLS, MARSH, MOUNTAIN, PREGAME, SEA, SIZES, UNIT};
 use engine::land::is_depleted;
 use engine::map::{self, Zone};
+use engine::units;
 use engine::{
     civs, clear, land, pregame, stats, utility, Action, Basket, Config, Params, Phase, Save, World, GOODS, N, TERRAIN,
 };
@@ -12,6 +13,7 @@ sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
+sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army]   (the camps: run to the pick, all on the AI, N turns on; per civ its camp, and the totals; --no-army is the control; --maps retro is the seven maps)
 sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
 sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead]   (prints turn and digest, from turn 0; --lead plays the scripted game: picks the first civ and gives orders)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
@@ -421,9 +423,16 @@ fn sweep(args: &[String]) -> Result<(), String> {
     let mut every = 50u32;
     let mut seeds: Vec<u32> = Vec::new();
     let mut sizes: Vec<(String, i32)> = vec![(SIZES[0].0.to_string(), SIZES[0].1)];
+    let (mut after, mut army, mut retro) = (None, true, false);
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
+            "--after" => after = Some(it.next().and_then(|v| v.parse().ok()).ok_or("--after needs a number")?),
+            "--no-army" => army = false,
+            "--maps" => match it.next().map(String::as_str) {
+                Some("retro") => retro = true,
+                _ => return Err(format!("--maps needs retro\n{USAGE}")),
+            },
             "--turns" => turns = it.next().and_then(|v| v.parse().ok()).ok_or("--turns needs a number")?,
             "--every" => {
                 every = it.next().and_then(|v| v.parse().ok()).filter(|&n| n > 0).ok_or("--every needs a number")?
@@ -438,6 +447,23 @@ fn sweep(args: &[String]) -> Result<(), String> {
             },
             s => seeds.push(s.parse().map_err(|_| format!("not a seed: {s}\n{USAGE}"))?),
         }
+    }
+    if let Some(after) = after {
+        let maps = if retro {
+            if !seeds.is_empty() {
+                return Err(format!("--maps retro names its own seeds\n{USAGE}"));
+            }
+            retro_maps()?
+        } else {
+            if seeds.is_empty() {
+                seeds = (1..=10).collect();
+            }
+            sizes.iter().flat_map(|(name, radius)| seeds.iter().map(move |&s| (name.clone(), *radius, s))).collect()
+        };
+        return sweep_after(&maps, after, army);
+    }
+    if !army || retro {
+        return Err(format!("--no-army and --maps retro need --after N\n{USAGE}"));
     }
     if seeds.is_empty() {
         seeds = (1..=10).collect();
@@ -512,6 +538,99 @@ fn sweep(args: &[String]) -> Result<(), String> {
             levels.len()
         );
     }
+    Ok(())
+}
+
+/// The seven maps of the retro: each size with its seeds.
+const RETRO: [(&str, &[u32]); 3] = [("small", &[2, 3, 6, 9]), ("medium", &[8, 9]), ("large", &[8])];
+
+/// The retro's maps as `(size name, radius, seed)`.
+fn retro_maps() -> Result<Vec<(String, i32, u32)>, String> {
+    let mut maps = Vec::new();
+    for (name, seeds) in RETRO {
+        let radius = size(name)?;
+        maps.extend(seeds.iter().map(|&s| (name.to_string(), radius, s)));
+    }
+    Ok(maps)
+}
+
+/// What the camp sweep reports for one civ at the end: its line, whether it kept its first camp, and
+/// its clans' people.
+struct CivArmy {
+    kept: bool,
+    people: f64,
+    text: String,
+}
+
+/// One map of the camp sweep: runs to the pick with every civ on the AI, then `after` turns on, and
+/// reports each civ (`army` off is the control).
+fn after_run(name: &str, radius: i32, seed: u32, after: u32, army: bool) -> Vec<CivArmy> {
+    let mut w = World::new(Config { seed, radius, army });
+    while w.phase == Phase::Pregame {
+        w.run(1);
+    }
+    w.act(Action::ChooseCiv { civ: None }).expect("watching is always allowed at the pick");
+    let pick = w.turn;
+    while w.turn < pick + after {
+        w.run(1);
+    }
+    let civs: Vec<u32> = w.civs.keys().copied().collect();
+    civs.into_iter()
+        .map(|civ| {
+            let camp = units::camp(&w, civ);
+            let a = &w.civs[&civ].army;
+            let people: f64 = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| k.people).sum();
+            let warriors = camp.map_or(0.0, |u| u.people);
+            let pack: f64 = camp.map_or(0.0, |u| u.store.iter().sum());
+            let line = match camp.and_then(|u| units::line(&w, u.id)) {
+                Some((_, cost, carry)) if carry.is_finite() => format!("cost {cost:.2} carry {carry:.2}"),
+                Some((_, cost, _)) => format!("cost {cost:.2} carry unlimited"),
+                None => "no line".to_string(),
+            };
+            let kept = a.lost == 0 && warriors >= f64::from(UNIT.start);
+            let text = format!(
+                "{name:<6} seed {seed:>3} civ {civ}: camp {} warriors {warriors:>4.1} pack {pack:>5.2} hungry {:>4} starved {:>3} lost {} line {line} cut off {:>4} foraged {:>3} tiles pillaged {:>3} tiles clans' people {people:>6.1}  kept {}",
+                match (camp.is_some(), a.lost > 0) {
+                    (true, _) => "alive",
+                    (false, true) => "lost",
+                    (false, false) => "none",
+                },
+                a.hungry,
+                a.starved,
+                a.lost,
+                a.cut_off,
+                a.foraged_tiles,
+                a.pillaged_tiles,
+                if kept { "yes" } else { "no" },
+            );
+            CivArmy { kept, people, text }
+        })
+        .collect()
+}
+
+/// Runs the camp sweep over `maps` (size name, radius, seed) in parallel, one line per civ, then the
+/// totals over all of them.
+fn sweep_after(maps: &[(String, i32, u32)], after: u32, army: bool) -> Result<(), String> {
+    let runs: Vec<Vec<CivArmy>> = std::thread::scope(|scope| {
+        let handles: Vec<_> = maps
+            .iter()
+            .map(|(name, radius, seed)| scope.spawn(move || after_run(name, *radius, *seed, after, army)))
+            .collect();
+        handles.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    let all: Vec<&CivArmy> = runs.iter().flatten().collect();
+    for civ in &all {
+        println!("{}", civ.text);
+    }
+    let kept = all.iter().filter(|c| c.kept).count();
+    let people: f64 = all.iter().map(|c| c.people).sum();
+    let mode = if army { "army" } else { "control, no army" };
+    println!(
+        "civs that kept their first camp: {kept} of {} (no camp lost, at least {} warriors at the end)",
+        all.len(),
+        UNIT.start
+    );
+    println!("clans' people at the end, all civs ({mode}): {people:.1}");
     Ok(())
 }
 

@@ -173,6 +173,32 @@ for (const c of civs) {
 assert.equal(Object.values(v.units).length, 3, 'a camp each');
 assert.ok(Object.values(v.units).every((u) => u.kind === 'camp' && u.tile === v.civs[u.civ].capital && u.people > 0));
 assert.ok(Object.values(v.units).every((u) => u.line !== undefined && 'cut_off' in u), 'a camp carries its line');
+// What the page reads of a camp: its pack, its food in turns, its switches, and whether it is cut off,
+// which is its line's carry under its warriors' need (no line, or a line that can't feed it, is cut off).
+const checkCamps = (view) => {
+  for (const u of Object.values(view.units)) {
+    assert.equal(typeof u.pack_cap, 'number', 'a camp carries its pack cap');
+    assert.ok(u.food_turns >= 0 && Number.isFinite(u.food_turns), 'a camp carries its food in turns');
+    assert.equal(typeof u.auto_forage, 'boolean', 'a camp carries its forage switch');
+    assert.equal(typeof u.auto_supply, 'boolean', 'a camp carries its supply switch');
+    assert.equal(u.store.length, GOODS.length, 'a camp carries its pack, a basket');
+    assert.equal(
+      u.cut_off,
+      u.line === null || (u.line.carry !== null && u.line.carry + 1e-9 < u.people * RULES.unit_food),
+      'cut off is its line failing to carry its warriors\' food',
+    );
+    if (u.line && u.line.path.length) {
+      assert.equal(u.line.path.at(-1), view.civs[u.civ].capital, 'a line ends at its capital');
+      assert.ok(u.line.cost > 0 && u.line.path.every((i) => i < n), 'a line is a path of tiles');
+    }
+  }
+  for (const c of Object.values(view.civs)) {
+    for (const key of ['raised', 'lost', 'hungry', 'cut_off', 'foraged', 'pillaged', 'resupplied', 'starved']) {
+      assert.ok(key in c.army, `civ carries army.${key}`);
+    }
+  }
+};
+checkCamps(v);
 assert.equal(sim.tile_civ(-1 >>> 0), -1, 'no civ off the map');
 
 sim.act(JSON.stringify({ type: 'chooseCiv', civ: cards[0].civ }));
@@ -221,6 +247,7 @@ for (let i = 0; i < 10; i++) {
 }
 w = JSON.parse(sim.view());
 const moved = Object.values(w.units).find((u) => u.civ === w.player);
+checkCamps(w);
 assert.ok(!moved || moved.tile !== unit.tile, 'the camp moved in 10 turns (or starved out)');
 const again = JSON.parse(sim.route(unit.id));
 assert.ok(again === null || again.path.length < route.path.length, 'the route shortens');
@@ -228,6 +255,9 @@ assert.ok(again === null || again.path.length < route.path.length, 'the route sh
 // The switches and the one-shot orders are checked while there is a camp to give them to.
 if (moved) {
   assert.equal(sim.check('{"type":"setSwitches","forage":false,"supply":true}'), '');
+  sim.act('{"type":"setSwitches","forage":false,"supply":true}');
+  const switched = Object.values(JSON.parse(sim.view()).units).find((u) => u.civ === w.player);
+  assert.ok(switched && switched.auto_forage === false && switched.auto_supply === true, 'the switches are set');
   assert.equal(sim.check('{"type":"resupply"}'), '');
   // Disband it.
   assert.equal(sim.check('{"type":"disband","n":null}'), '');

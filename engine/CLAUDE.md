@@ -10,6 +10,7 @@ cargo fmt --check && cargo clippy --all-targets -- -D warnings
 cargo run -p sansfiat -- map [--seed N] [--size small|medium|large | --radius N]   # the map as ASCII, a legend and counts
 cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--every 25] [--save game.json] [--json | --events-json] [--no-events]  # stops at the pre-game's end (before the pick), then reports each civ; prints "turn  text" per event
 cargo run -p sansfiat -- sweep [seed ...] [--radius N | --size small|medium|large|all] [--turns N] [--every 50]   # seeds default 1..=10, size small; seeds run in parallel; each seed's line, its turn/clans/people every N turns, and per size whether people levelled off over the last 100 turns
+cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army]   # the camps: run to the pick with all on the AI, then 200 turns on; one line per civ (its camp, pack, hunger, starvation, line, cut off, foraging, its clans' people) and the totals: civs that kept their first camp, and the clans' people. --no-army is the control (no camp, no AI raising, no levy). Without --maps retro: the seeds and --size as above
 cargo run -p sansfiat -- replay game.json [--json | --events-json] [--no-events]
 cargo run -p sansfiat -- bench [seed ...] [--turns N] [--radius N]
 cargo run -p sansfiat -- clear baskets.json     # or - for stdin
@@ -19,6 +20,7 @@ cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N] [--lead]   #
 ./build-web.sh && node www/check.mjs            # the data the page relies on, from the wasm build
 ./check.sh                                       # every check CI runs, in order
 node www/play.mjs "?size=small&seed=2&run=1" --until "document.body.dataset.phase === 'choose'" --shot pick.png   # the page in headless Chrome; import { open } from it to click tiles and buttons
+node www/play-camp.mjs [out-dir]   # leads a civ, moves its camp out on its land, ends turns, screenshots the line (default relay/specs/29/screens)
 ```
 
 ## Layout
@@ -40,7 +42,7 @@ node www/play.mjs "?size=small&seed=2&run=1" --until "document.body.dataset.phas
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
 | `web/` | The wasm-bindgen `Sim` the page drives: `layout()` once per map, `view()` each turn, `act`/`check` for orders. |
-| `www/` | The page, plain ES modules: `main.js` (controls and `body.dataset` for scripts), `select.js` (the selection panel), `map-view.js` (the canvas, `screenOf(i)`), `feed.js`; `check.mjs` checks its data under Node and `play.mjs` drives it in headless Chrome. `www/pkg` is built, not committed. |
+| `www/` | The page, plain ES modules: `main.js` (controls and `body.dataset` for scripts), `select.js` (the selection panel), `map-view.js` (the canvas, `screenOf(i)`), `feed.js`; `check.mjs` checks its data under Node, `play.mjs` drives it in headless Chrome and `play-camp.mjs` plays a camp through it. The selected camp's line home is drawn in `map-view.js` (`setLine`), coloured in `main.js` (`lineColour`). `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 
