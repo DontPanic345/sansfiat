@@ -12,7 +12,14 @@ use engine::{civs, units, Action, Basket, Config, End, EventKind, Phase, World};
 fn scene() -> (World, u32, u32) {
     let mut w = big();
     let ms = [open(&mut w, at_big(-5, 0)), open(&mut w, at_big(5, 0)), open(&mut w, at_big(0, -10))];
-    w.end = Some(End { turn: 0, centres: ms.to_vec(), cover: 1.0, by_limit: false, topped_up: Vec::new() });
+    w.end = Some(End {
+        turn: 0,
+        centres: ms.to_vec(),
+        clans: Vec::new(),
+        cover: 1.0,
+        by_limit: false,
+        topped_up: Vec::new(),
+    });
     civs::found(&mut w);
     w.phase = Phase::Main;
     let civ = *w.civs.keys().next().unwrap();

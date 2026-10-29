@@ -51,6 +51,9 @@ export class MapView {
     this.routes = []; // [{unit, tiles: [from, ...path], selected}]: the player's units' routes
     this.line = null; // {tiles, colour, cut?}: the selected camp's line home (to where it is cut, `cut` the tile), or null
     this.painting = false; // in paint mode a left press or drag paints tiles (onPaint) instead of picking or panning
+    this.plan = null; // {known, possible}: the selected scout's route as tile lists from its start, or null
+    this.revealed = new Uint8Array(0); // 1 where the led civ has revealed the tile
+    this.work = []; // [tile, labour, need]: trails under way
     this.civShapes = [];
     this.cx = 0; this.cy = 0; this.k = 8;
     this.w = 1; this.h = 1; this.dpr = 1;
@@ -120,6 +123,9 @@ export class MapView {
     this.worn.fill(0);
     this.reach.fill(0);
     for (const [i, c] of v.claims) this.claim[i] = c;
+    this.revealed = new Uint8Array(n);
+    for (const i of v.revealed) this.revealed[i] = 1;
+    this.work = v.trail_work;
     // A tile's wear is its most worn food's share.
     for (const [i, worn] of v.wear) this.worn[i] = Math.max(...worn);
     const tameTurns = this.opts.rules.tame_turns;
@@ -128,7 +134,10 @@ export class MapView {
     for (let i = 0; i < n; i++) {
       if (this.l.wild_grain[i] > 0 && (tame.get(i) || 0) >= tameTurns) this.hearths.push(i);
     }
-    this.centres = new Set(v.end ? v.end.centres : v.summary.centres);
+    // The centres' sites: the end's markets, or before it the centre clans' homes.
+    this.centres = v.end
+      ? v.end.centres.map((id) => v.markets[id]?.tile).filter((t) => t != null)
+      : v.summary.centres.map((id) => v.clans[id]?.home).filter((t) => t != null);
     this.buildCivs(v);
     // A market's reach, approximated by hex steps over land (as the page always has).
     for (const m of Object.values(v.markets)) {
@@ -195,6 +204,12 @@ export class MapView {
 
   setLine(line) {
     this.line = line;
+    this.requestDraw();
+  }
+
+  /** The selected scout's route: `{known, possible}`, each the tiles from its start, or null for none. */
+  setPlan(plan) {
+    this.plan = plan;
     this.requestDraw();
   }
 
@@ -817,6 +832,24 @@ export class MapView {
         ctx.stroke();
       }
     }
+    // The selected scout's route: known solid, possible dashed, both from where its search starts.
+    if (this.plan) {
+      const { known, possible } = this.plan;
+      const draw = (tiles, dash, colour, w) => {
+        ctx.setLineDash(dash);
+        for (const [c, lw] of [[casing, w + 2], [colour, w]]) {
+          ctx.strokeStyle = c;
+          ctx.lineWidth = Math.max(px * lw, 0.1);
+          ctx.beginPath();
+          tiles.forEach((i, n) => (n === 0 ? ctx.moveTo(this.px[i], this.py[i]) : ctx.lineTo(this.px[i], this.py[i])));
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      };
+      // Known first, the possible dashed over it: where the two are one path, both still show.
+      if (known && known.length > 1) draw(known, [], '#7fd3ff', 4);
+      if (possible && possible.length > 1) draw(possible, [Math.max(px * 6, 0.5), Math.max(px * 4, 0.35)], '#ffb347', 3);
+    }
     // Capitals: a house in the civ's colour, at least 14 px wide so it shows zoomed out.
     for (const { civ } of this.civShapes) {
       if (!onScreen(civ.capital)) continue;
@@ -962,6 +995,29 @@ export class MapView {
       ctx.stroke();
     }
 
+    // Revealed tiles: a faint ring, so the page shows what the civ knows of a trail's cost. Trails under
+    // way: a short line across the tile, as long as the labour put in so far.
+    ctx.strokeStyle = 'rgba(180,220,255,0.45)';
+    ctx.lineWidth = Math.max(px * 1.2, 0.05);
+    ctx.beginPath();
+    for (let a = 0; a < this.nvis; a++) {
+      const i = this.vis[a];
+      if (this.revealed[i]) this.hexAt(ctx, i, 0.9);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = '#f2dca4';
+    ctx.lineWidth = trailW;
+    ctx.globalAlpha = 0.45;
+    ctx.beginPath();
+    for (const [i, done, need] of this.work) {
+      if (!onScreen(i) || need <= 0) continue;
+      const len = 0.9 * Math.min(1, done / need);
+      ctx.moveTo(this.px[i] - 0.45, this.py[i] + 0.22);
+      ctx.lineTo(this.px[i] - 0.45 + len, this.py[i] + 0.22 - len * (0.44 / 0.9));
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
     // Hearths: a small yellow square.
     ctx.fillStyle = '#ffd400';
     ctx.strokeStyle = '#3a2c00';
@@ -1039,11 +1095,10 @@ export class MapView {
         ctx.lineWidth = Math.max(px * 3.2, 0.3) + px * wide * 2;
         ctx.beginPath();
         const ring = 1.7;
-        for (const id of this.centres) {
-          const m = v.markets[id];
-          if (!m || !onScreen(m.tile)) continue;
-          ctx.moveTo(this.px[m.tile] + ring, this.py[m.tile]);
-          ctx.arc(this.px[m.tile], this.py[m.tile], ring, 0, 2 * Math.PI);
+        for (const t of this.centres) {
+          if (!onScreen(t)) continue;
+          ctx.moveTo(this.px[t] + ring, this.py[t]);
+          ctx.arc(this.px[t], this.py[t], ring, 0, 2 * Math.PI);
         }
         ctx.stroke();
       }

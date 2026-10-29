@@ -44,3 +44,17 @@ is cut off too (its line runs through Blue's land) and starves a warrior a turn.
 else's ground costs you. Screens in `screens/`: `hold-rival.png` (Blue's camp and zone before),
 `hold-painted.png`, `hold-held.png`, `hold-cut.png` (Blue's camp selected, its line drawn to the
 tile where Red's ground stops it, marked with a cross; the feed).
+
+## Review, after merging main (#75 scouts)
+
+The merge changed the maps' costs, so some AI posts' lines no longer feed a camp at all. The
+review made the AI zone only when its line (read without held ground) still carries a turn's
+food on the labour guarding leaves, and undeploy otherwise. `sweep --after 200 --maps retro`:
+
+| | kept first camp | hungry turns | warriors starved | tile-turns held | cut by army |
+|---|---|---|---|---|---|
+| zone | 15 of 21 | 39 | 19 | 3397 | 0 |
+| `--no-zone` | 15 of 21 | 39 | 19 | 0 | 0 |
+
+`play-hold.mjs` now runs on small seed 7 (seed 2's big camp starves on the long march to the
+rival's post after the merge) and stages at the capital.

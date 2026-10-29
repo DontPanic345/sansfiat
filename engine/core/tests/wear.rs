@@ -3,7 +3,7 @@ mod common;
 
 use common::{at, flat, put};
 use engine::data::*;
-use engine::land::{domestic, hold, wear};
+use engine::land::{build_trail, domestic, hold, wear};
 use engine::stats::summary;
 use engine::{EventKind, World};
 
@@ -191,4 +191,41 @@ fn a_depleted_tile_counts_in_the_summary() {
     assert_eq!(summary(&w).depleted, before, "under the line it is not depleted");
     w.tiles[t].wear[GAME] = DEPLETION.depleted_at;
     assert_eq!(summary(&w).depleted, before + 1);
+}
+
+#[test]
+fn a_built_trail_survives_the_turn_it_is_built_then_decays_unwalked() {
+    let mut w = flat();
+    let t = at(0, 0);
+    w.tiles[t].terrain = FOREST;
+    w.tiles[t].trail_cost = Some(1.0);
+    // An unwalked tile's rest run is in the hundreds: finishing the trail must not leave it there.
+    w.tiles[t].rest_run = 200;
+    assert!(build_trail(&mut w, t, TRAIL.work[0].1));
+    walk(&mut w, &[]);
+    assert!(w.tiles[t].trail, "built this turn, it survives the turn's hold");
+    for _ in 0..TRAIL.fade - 2 {
+        walk(&mut w, &[]);
+        assert!(w.tiles[t].trail, "the trail holds until it has been unwalked for {}", TRAIL.fade);
+    }
+    walk(&mut w, &[]);
+    assert!(!w.tiles[t].trail);
+}
+
+#[test]
+fn a_built_pass_is_kept_by_walking_and_no_mountain_gets_a_worn_trail() {
+    let mut w = flat();
+    let (pass, bare) = (at(0, 0), at(1, 0));
+    for m in [pass, bare] {
+        w.tiles[m].terrain = MOUNTAIN;
+        w.tiles[m].span = Some(1);
+        w.tiles[m].trail_cost = Some(MAP.mountain_cost as f64);
+    }
+    assert!(build_trail(&mut w, pass, TRAIL.work[2].1));
+    for _ in 0..3 * TRAIL.after {
+        walk(&mut w, &[pass, bare]);
+    }
+    assert!(w.tiles[pass].trail, "walked, a built pass stays");
+    assert!(!w.tiles[bare].trail, "walked bare, a mountain never gets a trail");
+    assert!(w.tiles[bare].walk_run >= TRAIL.after);
 }

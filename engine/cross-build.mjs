@@ -22,7 +22,9 @@ const lead = process.argv[5] === 'lead';
 //   5. When n == 60: disband one warrior (ignored without a camp).
 //   6. When n == 10: setGift twice the default (2 * LEANING.gift_default); when n == 50: setKeep 5;
 //      when n == 70: setKeep null.
-//   7. When n == 45, if there is a camp: moveCamp to its own tile (it halts), then zone over the first
+//   7. When n == 2: the scout searches from the capital for the first forest or hills tile by index
+//      seven steps out (ignored when there is none).
+//   8. When n == 45, if there is a camp: moveCamp to its own tile (it halts), then zone over the first
 //      people - 1 tiles of its line (the capital left out; a refusal is ignored). Rule 4 rests while
 //      45 <= n < 55, so the zone spreads and is held.
 // The state is read only on the pick turn and the turns after it (the camp's dest needs it).
@@ -53,7 +55,18 @@ function leadOrders(turn) {
   const me = state.player;
   const civs = byId(state.civs);
   const targets = civs.filter((c) => c.id !== me).map((c) => c.capital).concat(state.civs[me].capital);
-  if (!(n >= 45 && n < 55) && byId(state.units).some((u) => u.civ === me && u.dest === null)) {
+  if (n === 2) {
+    const layout = JSON.parse(sim.layout());
+    const cap = state.civs[me].capital;
+    const dist = (a, b) => {
+      const dq = layout.q[a] - layout.q[b];
+      const dr = layout.r[a] - layout.r[b];
+      return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+    };
+    const to = layout.terrain.findIndex((t, i) => (t === 3 || t === 4) && dist(i, cap) === 7);
+    if (to >= 0) act({ type: 'setRoute', from: cap, to });
+  }
+  if (!(n >= 45 && n < 55) && byId(state.units).some((u) => u.civ === me && u.dest === null && u.kind === 'camp')) {
     for (const to of targets) if (act({ type: 'moveCamp', to })) break;
   }
   if (n === 45) {

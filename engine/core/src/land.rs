@@ -14,20 +14,55 @@ pub fn neighbours(w: &World, i: usize) -> impl Iterator<Item = usize> + '_ {
     w.tiles[i].hex().neighbors().filter_map(move |n| map::index(radius, n))
 }
 
-/// Whether tile `i` can be entered at all.
+/// Whether tile `i` can be entered at all: its terrain can be entered, or it has a trail that
+/// crosses it (a built pass over a mountain).
 pub fn passable(w: &World, i: usize) -> bool {
-    TERRAIN[w.tiles[i].terrain].move_cost.is_some()
+    let t = &w.tiles[i];
+    TERRAIN[t.terrain].move_cost.is_some() || (t.trail && t.trail_cost.is_some())
 }
 
-/// Labour to step from tile `from` into tile `to`; `None` is impassable. A trail caps the
-/// terrain's cost at `TRAIL.cost`. Entering a river tile costs `RIVER.cross` more, unless the
-/// step is along the river's course (either tile flows into the other) or a trail bridges it.
+/// Whether a trail can be built on tile `i`: it has a hidden trail cost, and a mountain's span is
+/// one `CIV.bridge_span` can bridge.
+pub fn trailable(w: &World, i: usize) -> bool {
+    let t = &w.tiles[i];
+    t.trail_cost.is_some() && (t.terrain != MOUNTAIN || t.span.is_some_and(|s| s <= CIV.bridge_span))
+}
+
+/// Labour to step from tile `from` into tile `to`; `None` is impassable. A tile with a trail costs
+/// the less of its terrain and its hidden `trail_cost`; a mountain with a trail costs its
+/// `trail_cost` alone. Entering a river tile costs `RIVER.cross` more, unless the step is along
+/// the river's course (either tile flows into the other) or a trail bridges it.
 pub fn step_cost(w: &World, from: usize, to: usize) -> Option<f64> {
     let t = &w.tiles[to];
     let along = w.tiles[from].flow == Some(to) || t.flow == Some(from);
     let cross = if t.river > 0 && !t.trail && !along { RIVER.cross } else { 0.0 };
-    let terrain = TERRAIN[t.terrain].move_cost?;
-    Some(if t.trail { terrain.min(TRAIL.cost) } else { terrain } + cross)
+    let terrain = TERRAIN[t.terrain].move_cost;
+    let cost = match (t.trail, t.trail_cost) {
+        (true, Some(hidden)) => terrain.map_or(hidden, |c| c.min(hidden)),
+        _ => terrain?,
+    };
+    Some(cost + cross)
+}
+
+/// Puts `labour` into a trail on tile `i`, which must be `trailable`. It is finished when its work
+/// reaches `TRAIL.work` for its terrain: then it has its trail, its work starts again from nothing
+/// and its `rest_run` is 0, so `hold` doesn't wear it away on the turn it is built. Returns whether
+/// it is finished.
+pub fn build_trail(w: &mut World, i: usize, labour: f64) -> bool {
+    let terrain = w.tiles[i].terrain;
+    let Some(&(_, need)) = TRAIL.work.iter().find(|&&(t, _)| t == terrain) else { return false };
+    if !trailable(w, i) {
+        return false;
+    }
+    let t = &mut w.tiles[i];
+    t.trail_work += labour;
+    if t.trail_work < need {
+        return false;
+    }
+    t.trail = true;
+    t.trail_work = 0.0;
+    t.rest_run = 0;
+    true
 }
 
 struct Entry(f64, usize);
@@ -77,10 +112,21 @@ pub fn cost_map(w: &World, from: &[usize], max: f64, allowed: impl Fn(usize) -> 
 }
 
 /// The cheapest path from `from` to `to` by `step_cost`, over `allowed` tiles: the tiles after
-/// `from`, ending at `to`, and its cost. Dijkstra as `cost_map` is, with the same tie-breaks
-/// (cheapest, then lowest tile); on an equal cost a tile keeps the predecessor found first.
-/// `from == to` is `([], 0)`; `None` when `to` can't be reached.
+/// `from`, ending at `to`, and its cost. See `path_by`.
 pub fn path(w: &World, from: usize, to: usize, allowed: impl Fn(usize) -> bool) -> Option<(Vec<usize>, f64)> {
+    path_by(w, from, to, |i, j| if allowed(j) { step_cost(w, i, j) } else { None })
+}
+
+/// The cheapest path from `from` to `to`, where a step from tile `i` into `j` costs `cost(i, j)`
+/// (`None` is no step): the tiles after `from`, ending at `to`, and its cost. Dijkstra as `cost_map`
+/// is, with the same tie-breaks (cheapest, then lowest tile); on an equal cost a tile keeps the
+/// predecessor found first. `from == to` is `([], 0)`; `None` when `to` can't be reached.
+pub fn path_by(
+    w: &World,
+    from: usize,
+    to: usize,
+    cost: impl Fn(usize, usize) -> Option<f64>,
+) -> Option<(Vec<usize>, f64)> {
     if from == to {
         return Some((Vec::new(), 0.0));
     }
@@ -97,9 +143,9 @@ pub fn path(w: &World, from: usize, to: usize, allowed: impl Fn(usize) -> bool) 
             break;
         }
         for j in neighbours(w, i) {
-            let Some(step) = step_cost(w, i, j) else { continue };
+            let Some(step) = cost(i, j) else { continue };
             let nc = c + step;
-            if !allowed(j) || best.get(&j).is_some_and(|&b| b <= nc) {
+            if best.get(&j).is_some_and(|&b| b <= nc) {
                 continue;
             }
             best.insert(j, nc);
@@ -219,7 +265,8 @@ pub fn hold(w: &mut World) {
             t.rest_run += 1;
             t.walk_run = 0;
         }
-        if t.walk_run >= TRAIL.after {
+        // Worn trails never land on a mountain: nobody walks one bare, so only a built pass is on one.
+        if t.walk_run >= TRAIL.after && t.terrain != MOUNTAIN {
             t.trail = true;
         } else if t.trail && t.rest_run >= TRAIL.fade {
             t.trail = false;
@@ -240,6 +287,7 @@ pub fn hold(w: &mut World) {
                     other: None,
                     civ: None,
                     unit: None,
+                    cost: None,
                 });
             }
         } else if !held {

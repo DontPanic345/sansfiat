@@ -16,8 +16,9 @@ inlets, seas) scales with the area.
 ### Always three centres
 
 The pre-game ends with three centres on every size and seed. If it hits its turn limit with
-fewer, it tops up with the best sites it can find: the best markets first, then the most
-tended land, then any fertile land, raising a market where there isn't one.
+fewer, it tops up with the best sites it can find: the biggest other clans' homes first, then
+the best markets, then the most tended land, then any fertile land, raising a market where
+there isn't one.
 
 ## Rivers
 

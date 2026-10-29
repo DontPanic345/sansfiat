@@ -1,0 +1,11 @@
+{
+  "status": "done",
+  "summary": "Reviewed #28 as built: read the design, the whole diff and the page; engine/check.sh passes end to end, CI is green, and play-scout.mjs plays a scout's route through the page (seed 2, small, capital to tile 58: known 11, possible 7, found in 2 turns, one trail built). The engine's rules match the design and spec; the build departures (scout walks on its whole labour, walks home when idle, a pass counts as walkable for units) are sound. One finding, written up in relay/specs/28/review.md: on real maps a scout sent across country starves. On seeds 1-8, of 16 capital-to-capital routes 7 ended in the first turn with nothing revealed (seed 5 checked: no path), and of the 9 that were searched 7 lost people and 5 starved out before the route was found; the scout has 5 food at the start, forages one tile a turn (2-3 food in clan country) and its line carries under one person's food from about 8 steps out. The proofs only sit near the capital. I tried keeping banked labour out of feeding and capping the line at half the labour: no effect, so I changed no code. The fix is tuning (starting pack, forage, or the scout's pack before the camp's), and I left the verdict to the owner.",
+  "decisions": [
+    {"decision": "Changed no code and set merge false.", "why": "The piece does what the spec says and its proofs pass, but a scout can't live more than about 5-8 steps from its capital on real maps. How to tune that is the owner's call (pack, forage, the store split)."}
+  ],
+  "ideas": [
+    {"title": "Tune the scout's food", "body": "A larger starting pack (the scout's filled before the camp's), a higher forage rate for scouts, or a line that carries more. Measure with seeds 1-8, scout to each rival capital: today 7 of 9 searched routes lose people (relay/specs/28/review.md)."},
+    {"title": "Outward order walks back toward home", "body": "After a reveal the nearest candidate can lie back toward the capital, so the scout walks home and out again (seed 1, capital to the second rival, turns 4-13). Pick candidates by the walk from the scout and prefer the ones on the far side of its route."}
+  ]
+}

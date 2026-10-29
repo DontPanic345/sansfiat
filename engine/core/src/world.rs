@@ -49,7 +49,7 @@ pub struct World {
     /// What happened, in order: derived from the turns, so not saved; a replay rebuilds it.
     #[serde(skip)]
     pub events: Vec<Event>,
-    /// Every market that has been among the centres before the end, so each is announced once.
+    /// Every clan that has been among the centres before the end, so each is announced once.
     #[serde(skip)]
     pub centres_seen: Vec<u32>,
 }
@@ -84,6 +84,13 @@ pub enum EventKind {
     WarriorsStarved,
     CampForaged,
     CampPillaged,
+    ScoutRouteFound,
+    ScoutNoRoute,
+    ScoutTrailBuilt,
+    ScoutPassFound,
+    ScoutBlocked,
+    ScoutHungry,
+    ScoutStarved,
     ClanJoined,
     Deployed,
     Held,
@@ -102,6 +109,9 @@ pub struct Event {
     pub other: Option<u32>,
     pub civ: Option<u32>,
     pub unit: Option<u32>,
+    /// A route's cost, for the scout's route events.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost: Option<f64>,
 }
 
 impl Event {
@@ -121,7 +131,10 @@ impl Event {
             EventKind::MarketFormed => format!("A market forms at {at}"),
             EventKind::MarketFaded => format!("Market {market} fades"),
             EventKind::HearthTamed => format!("A hearth is tamed at {at}"),
-            EventKind::CentreFormed => format!("Market {market} becomes a centre"),
+            EventKind::CentreFormed => match self.clan {
+                Some(c) => format!("Clan {c} becomes a centre"),
+                None => format!("Market {market} becomes a centre"),
+            },
             EventKind::CivFounded => {
                 let name = self.civ.and_then(|id| w.civs.get(&id)).map_or("A civ", |c| c.name.as_str());
                 format!("{name} is founded at {at}, on market {market}")
@@ -141,6 +154,15 @@ impl Event {
             EventKind::CampHungry => format!("{}'s camp at {at} goes hungry", self.civ_name(w)),
             EventKind::CampForaged => format!("{}'s camp forages at {at}", self.civ_name(w)),
             EventKind::CampPillaged => format!("{}'s camp pillages at {at}", self.civ_name(w)),
+            EventKind::ScoutRouteFound => {
+                format!("{}'s scout has its route, cost {:.1}", self.civ_name(w), self.cost.unwrap_or(0.0))
+            }
+            EventKind::ScoutNoRoute => format!("{}'s scout: no route can exist", self.civ_name(w)),
+            EventKind::ScoutTrailBuilt => format!("{}'s scout builds a trail at {at}", self.civ_name(w)),
+            EventKind::ScoutPassFound => format!("{}'s scout finds a pass at {at}", self.civ_name(w)),
+            EventKind::ScoutBlocked => format!("{}'s scout is blocked at {at}", self.civ_name(w)),
+            EventKind::ScoutHungry => format!("{}'s scout at {at} goes hungry", self.civ_name(w)),
+            EventKind::ScoutStarved => format!("{}'s scout at {at} loses a person to hunger", self.civ_name(w)),
             EventKind::ClanJoined => format!("Clan {clan} joins {}", self.civ_name(w)),
             EventKind::Deployed => {
                 format!("{}'s camp at {at} deploys over {} tiles", self.civ_name(w), self.other.unwrap_or(0))
@@ -185,7 +207,7 @@ impl Event {
 impl World {
     /// Records an event at the current turn.
     pub fn event(&mut self, kind: EventKind, tile: usize, clan: Option<u32>, market: Option<u32>, other: Option<u32>) {
-        self.events.push(Event { turn: self.turn, kind, tile, clan, market, other, civ: None, unit: None });
+        self.events.push(Event { turn: self.turn, kind, tile, clan, market, other, civ: None, unit: None, cost: None });
     }
 
     /// Records an event about a civ (and its market, if any) at the current turn.
@@ -199,6 +221,7 @@ impl World {
             other: None,
             civ: Some(civ),
             unit: None,
+            cost: None,
         });
     }
 }
@@ -215,6 +238,7 @@ impl World {
             other: None,
             civ: Some(civ),
             unit: None,
+            cost: None,
         });
     }
 }
@@ -231,6 +255,7 @@ impl World {
             other: None,
             civ: Some(civ),
             unit: Some(unit),
+            cost: None,
         });
     }
 
@@ -245,6 +270,7 @@ impl World {
             other: Some(other),
             civ: Some(civ),
             unit: Some(unit),
+            cost: None,
         });
     }
 }
@@ -286,6 +312,13 @@ pub enum Action {
     Forage,
     /// This turn's end: pillage the rival's tile on the labour left.
     Pillage,
+    /// Set the scout's route: search from `from` for `to`, building trails as it goes.
+    SetRoute {
+        from: usize,
+        to: usize,
+    },
+    /// Stop the scout's search.
+    ClearRoute,
     /// Set the food the civ keeps in its store, or `None` for the default (its camp's pack).
     SetKeep {
         food: Option<f64>,
@@ -369,6 +402,8 @@ impl World {
             Action::SetSwitches { .. } | Action::Resupply => units::check_camp(self),
             Action::Forage => units::check_take(self, false),
             Action::Pillage => units::check_take(self, true),
+            Action::SetRoute { from, to } => units::check_route(self, *from, *to),
+            Action::ClearRoute => units::check_scout(self),
             Action::SetKeep { food: Some(f) } if !f.is_finite() || *f < 0.0 => {
                 Err("keep a number of food, 0 or more".to_string())
             }
@@ -414,6 +449,8 @@ impl World {
             Action::Resupply => units::with_camp(self, |u| u.resupply = true),
             Action::Forage => units::with_camp(self, |u| u.forage = true),
             Action::Pillage => units::with_camp(self, |u| u.pillage = true),
+            Action::SetRoute { from, to } => units::order_route(self, Some((*from, *to))),
+            Action::ClearRoute => units::order_route(self, None),
             Action::SetKeep { food } => {
                 let civ = self.player.expect("validated: the player leads a civ");
                 self.civs.get_mut(&civ).unwrap().keep = *food;

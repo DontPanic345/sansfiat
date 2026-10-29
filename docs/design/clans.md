@@ -100,12 +100,13 @@ carry far: they trade people, and later ideas and small goods such as obsidian.
 
 ## The pre-game ends
 
-The pre-game ends once enough centres have formed by themselves. A centre is:
+The pre-game ends once enough centres have formed by themselves. A centre is a clan:
 
-- a festival that has lasted a while,
-- with enough clans coming to it,
-- with tamed grain in its reach,
-- and far from the other centres.
+- a large one, the biggest first,
+- settled at home a while,
+- going to a festival that enough clans come to,
+- with tamed grain on its own land,
+- and far from the other centres: its home is the centre's site.
 
 There are always three players for now, so the pre-game waits for three centres. It ends when
 there are three and the people have spread over the land they can reach. A turn limit is the

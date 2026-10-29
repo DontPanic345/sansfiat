@@ -3,7 +3,7 @@
 // from its capital), paints the ring of tiles round it as the zone, and ends turns until the feed
 // says the rival's line is cut by our army and its camp goes hungry. Screenshots each stage. Usage:
 //
-//   node www/play-hold.mjs [out-dir] [--seed N] [--size NAME]   (default: relay/specs/56/screens, small seed 2; needs www/pkg)
+//   node www/play-hold.mjs [out-dir] [--seed N] [--size NAME]   (default: relay/specs/56/screens, small seed 7; needs www/pkg)
 //
 // The ring works where the line can't get round: the rival camp's line starts at its own tile and
 // must leave through a neighbour, and every walkable neighbour is in our zone. Standing on the rival's
@@ -21,7 +21,7 @@ const flag = (name, dflt) => {
   const i = args.indexOf(name);
   return i >= 0 ? args.splice(i, 2)[1] : dflt;
 };
-const seed = Number(flag('--seed', '2'));
+const seed = Number(flag('--seed', '7'));
 const size = flag('--size', 'small');
 const out = resolve(args[0] ?? join(here, '../../relay/specs/56/screens'));
 mkdirSync(out, { recursive: true });
@@ -33,7 +33,7 @@ try {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');
   const me = await page.eval('game.view().player');
-  const myCamp = () => page.eval(`(() => { const u = Object.values(game.view().units).find((u) => u.civ === ${me});
+  const myCamp = () => page.eval(`(() => { const u = Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp');
     return u && { id: u.id, tile: u.tile, people: u.people, dest: u.dest, hungry: u.hungry, pack: u.store.reduce((a, b) => a + b, 0),
       zone: u.territory, held: u.held, guard: u.guard }; })()`);
   const selectMine = async () => {
@@ -58,9 +58,9 @@ try {
   const plan = await page.eval(`(() => {
     const v = game.view(), L = game.layout(), map = game.map;
     const steps = (a, b) => { const dq = L.q[a] - L.q[b], dr = L.r[a] - L.r[b]; return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr)); };
-    const mine = Object.values(v.units).find((u) => u.civ === ${me});
+    const mine = Object.values(v.units).find((u) => u.civ === ${me} && u.kind === 'camp');
     const capitals = Object.values(v.civs).map((c) => c.capital);
-    const rivals = Object.values(v.units).filter((u) => u.civ !== ${me} && !capitals.includes(u.tile) && u.line)
+    const rivals = Object.values(v.units).filter((u) => u.kind === 'camp' && u.civ !== ${me} && !capitals.includes(u.tile) && u.line)
       .sort((a, b) => steps(a.tile, mine.tile) - steps(b.tile, mine.tile));
     const r = rivals[0];
     if (!r) return null;
@@ -77,26 +77,22 @@ try {
   await page.eval(`game.map.centreOn(${plan.at}, { minK: 34, smooth: false })`);
   await page.shot(join(out, 'hold-rival.png'), 1);
 
-  // March towards it, stopping on the last tile of our own land on the way to fill the packs along
-  // the line, then onto the rival camp's tile with its auto-forage off (pillaging the tile would
-  // drive off the rival's clan there, and with it the AI's post).
+  // Fill the packs at the capital, then march onto the rival camp's tile, foraging on the way, and turn
+  // its auto-forage off there (pillaging the tile would drive off the rival's clan there, and with it the AI's post). A stage
+  // on the way out starves a big camp: its line is too dear to keep its pack.
   await selectMine();
-  await page.command(plan.at);
-  const stage = await page.eval(`(() => { const u = Object.values(game.view().units).find((u) => u.civ === ${me});
-    const r = JSON.parse(JSON.stringify(game.map.routes.find((r) => r.unit === u.id) || { tiles: [u.tile] }));
-    return r.tiles.filter((t) => game.tileCiv(t) === ${me}).at(-1); })()`);
-  await page.command(stage);
+  const stage = (await myCamp()).tile;
   for (let turn = 0; turn < 30; turn++) {
-    const c = await myCamp();
     const full = await page.eval(`(() => { const u = game.view().units[${raised.id}]; return u.store.reduce((a, b) => a + b, 0) + 0.5 >= u.pack_cap; })()`);
-    if (c.tile === stage && full) break;
+    if (full) break;
     await page.button('End turn');
   }
-  log({ staged: (await myCamp()).tile === stage, stage, camp: await myCamp() });
+  log({ staged: stage, camp: await myCamp() });
   await selectMine();
   await page.command(plan.at);
-  await page.button('Auto-forage: on');
   for (let turn = 0; turn < 30 && (await myCamp()).tile !== plan.at; turn++) await page.button('End turn');
+  await selectMine();
+  await page.button('Auto-forage: on');
   const there = await myCamp();
   log({ arrived: there.tile === plan.at, turn: Number((await page.data()).turn), camp: there });
   if (there.tile !== plan.at) throw new Error('the camp never reached the rival camp');
