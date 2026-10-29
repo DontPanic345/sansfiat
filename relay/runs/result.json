@@ -1,0 +1,56 @@
+{
+  "status": "done",
+  "summary": "Build-2 is in (commit e27e0df on relay/28; engine/check.sh passes end to end, including the native and wasm digests). Build-1 was already on the branch and green when this session started, so I went on to build-2 as the owner's reply directed. A scout, UnitKind::Scout with SCOUT {people 2, reveal 1.0}, is made at founding for every civ that has clan people to give (with or without an army): two people, one each from the biggest clans in turn, its pack from the store after the camp's. Its unit has route: Option<(from, to)>, heard and blocked flags (serde default). units::route_plan(w, civ, from, to) -> Plan { known, possible, candidates } prices each tile as known (revealed or built: min of bare and hidden trail where trailable; unrevealed: bare) or possible (unrevealed forest/hills at their lowest hidden cost, a mountain at MAP.mountain_cost if a span <= bridge_span can be rolled), with river crossings as step_cost has them. The search runs in units::scout_turn: it walks home when it has no route, feeds first (forage only with a route and off rival land, then the line), then searches on people x UNIT.labour: mountain candidates widen to their range, ordered mountains first, then walk cost from the scout, then saving; a mountain reveal needs the search labour intact and begun beside it; when no reveal is reachable it builds the first reachable trail on the possible path; when none is needed it reports the route found. Action::SetRoute and ClearRoute are validated (land or mountain, two different tiles, the player's scout), logged and replayed. The camp code now finds the civ's Camp by kind, so the scout never stands in for it (units::camp, ai, disband, lead_orders, the sweep). Lead orders and cross-build.mjs set a route on the third turn of the lead game: seed 2, radius 16, capital tile 166 to tile 58 (hills, seven steps out); build-3's play-scout.mjs should play that. Proof numbers, no tuning needed: on a painted six-tile forest/hills line the route is found in 4 turns (limit 20), with all six trails standing; on a sealed valley (a ring of mountains at distance 3, one bridgeable) the pass is built in 20 turns (limit 40), the scout never leaves the valley before the pass is built, and it never starves. sweep.md has a build-2 section: pre-game ends unchanged (261/355/373); retro camps still 15 of 21; clans' people 200 turns after the pick fall from 882.1 to 777.0, which is the scouts' 42 people and what they stop doing for the clans. Tests: core/tests/scout.rs (ten tests) and the existing units and civs tests now account for the scout's draws; www/check.mjs counts camps and scouts separately.",
+  "decisions": [
+    {
+      "decision": "The scout walks on its whole labour (people x UNIT.labour), not on one person's pace as the spec's Settled 8 says for a camp.",
+      "why": "One budget for steps, reveals and trails is simpler, and the proof numbers pass with margin. A one-person pace for a two-person scout would waste half its labour. Owner may want the spec's wording."
+    },
+    {
+      "decision": "A scout with no route walks home to its capital before it feeds, and then sits there.",
+      "why": "Found in test: a scout whose route ended in the country, with an empty civ store and no forage, starved out. The spec is silent on idle scouts away from home; walking home keeps it fed without foraging the capital's tile."
+    },
+    {
+      "decision": "SCOUT.reveal is 1.0 labour per forest or hills tile; TRAIL.work is unchanged (forest 2, hills 3, mountain 6).",
+      "why": "The brief says tune by test. Both proofs pass well inside their limits (4 of 20 turns for the route, 20 of 40 for the pass), so there was nothing to tune. Left at round numbers."
+    },
+    {
+      "decision": "Route found is emitted once early (heard) when known first equals possible and trails are still to be built, and again when the route is finished; the events carry the route's cost in a new Event.cost field (skipped when absent).",
+      "why": "The spec asks for both: the player hears the cost before building, and the route is found when it is done. Adding cost to Event is the least awkward way to carry a number on an event; serialisation skips it for the other kinds."
+    },
+    {
+      "decision": "A starving scout loses one person a turn once hungry for UNIT.hungry_turns turns, and is removed at nothing; its people do not return to the clans.",
+      "why": "The spec says the scout starves as a camp does and is gone at nothing. The camp's disband returns people to the civ's clan, but a scout has no camp-style disband action in this piece, so its people are lost."
+    },
+    {
+      "decision": "A civ with no clan people to give gets no scout; with two people from one clan, that clan gives both in turn.",
+      "why": "Same rule as the camp's founding. The spec's one scout per civ assumes the civ has clans. The hand-built units tests show it."
+    },
+    {
+      "decision": "Existing tests changed where founding's scouts drain the clans or the store: a fill_stores helper refills civ stores before the camp's raise, resupply, feed and AI tests; counts of camps are taken by kind; the no-army test expects one scout, not no units.",
+      "why": "These tests were about the camp; the scout's founding draws change their starting state, not what they check. The civ and clan expectations now include the scout's two people and its pack."
+    },
+    {
+      "decision": "check.mjs and cross-build.mjs check the new kinds and filter units by kind 'camp' where a camp is meant; the cross-build lead orders check kind 'camp' before moving the camp.",
+      "why": "A scout is a unit now; any code that took the first unit of a civ as its camp would move or count the scout."
+    }
+  ],
+  "ideas": [
+    {
+      "title": "Sticking power for a clan's switch at founding",
+      "body": "The owner's own tuning idea, not built here: a clan that switches to a capital's market at founding keeps it some turns before it chooses as usual."
+    },
+    {
+      "title": "Scouts that starve to nothing could be replaced from the clans",
+      "body": "A starved-out scout is gone and the civ gets no new one. The design's 'made and disbanded like any unit' would let a civ raise one again, with the clans' people as the camp's are."
+    },
+    {
+      "title": "Scouts at AI civs drain the civ store",
+      "body": "A scout at the capital feeds itself from the civ's store every turn (two people's food). That is the spec's rule, but it is a standing draw on the store that the camp and levy share; the owner may want scouts to feed from their own clan's pack when at home."
+    },
+    {
+      "title": "Scouts' people and clan sweep numbers",
+      "body": "The retro sweep's clans' people 200 turns after the pick fall by about 105 (882.1 to 777.0) with a scout per civ. Most of it is the 42 people taken at founding; the review should judge whether that is acceptable."
+    }
+  ]
+}
