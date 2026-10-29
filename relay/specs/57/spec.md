@@ -79,8 +79,11 @@ names the clan and civ on a tile. build-2 fills the gaps listed below, not a red
    - *people leaving its clans*: `PeopleLeft` for the player's civ (below).
 8. **Alerts fire when a trouble starts**, not every turn it lasts: an event is an alert only when
    no event of the same kind about the same subject (the unit; the civ for `PeopleLeft`; the clan
-   for `ClanJoined`) was an alert candidate on the turn before. `CampCutOff` fires every turn a
-   camp is cut off; the feed keeps reporting it, the alert once.
+   for `ClanJoined`) was an alert candidate on the turn before. `CampCutOff` is not raised every
+   turn a camp stays cut off: it fires when the line is newly cut, or when a rival's army was the
+   cause and the line is cut by distance instead (`units::camp_turn`). A camp cut by distance for
+   many turns reports it once, so the edge rule and the feed agree. (Corrected in build-1: this
+   said "every turn".)
 9. **`PeopleLeft` is a new event, not a new rule.** It reports what `markets::people` already does:
    the people a civ's clans shed at festivals to clans not of that civ (unaligned or a rival's),
    plus the people of a civ's clan that `merge` folds into a clan not of the civ. Summed per civ

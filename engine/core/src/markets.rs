@@ -105,15 +105,34 @@ pub fn go(w: &mut World) {
         let c = &w.clans[&id];
         // A civ's own clan always walks to the capital's market: a route of nothing from its home.
         let civ_market = c.civ.and_then(|civ| w.civs.get(&civ)).filter(|civ| civ.clan == id).map(|civ| civ.market);
-        let choice = civ_market.or_else(|| choose(&worths(w, c), c.market));
+        let mut considered = Vec::new();
+        let choice = civ_market.or_else(|| {
+            considered = worths(w, c);
+            choose(&considered, c.market)
+        });
         let route = choice.and_then(|mid| {
             let to = w.markets[&mid].tile;
             let (path, cost) = path(w, c.home, to, |i| passable(w, i))?;
             Some(Route { to, path, cost: walk_cost(cost, 1.0) })
         });
         let c = w.clans.get_mut(&id).unwrap();
+        let was = c.market;
         c.market = route.as_ref().and(choice);
         c.routes = route.into_iter().collect();
+        let now = c.market;
+        if now != was {
+            let text = match now {
+                Some(m) => {
+                    let at = w.at(w.markets[&m].tile);
+                    match considered.iter().find(|x| x.0 == m) {
+                        Some(x) => format!("went to the festival at {at}: worth {:.1} to it", x.1),
+                        None => format!("went to the festival at {at}"),
+                    }
+                }
+                None => "stopped going to a festival: none is worth the walk".to_string(),
+            };
+            w.note(id, text);
+        }
     }
 }
 
@@ -158,6 +177,9 @@ pub fn trade(w: &mut World) {
             c.given = given;
             c.gifted += given;
             c.posted = posted;
+            if given > 0.0 {
+                w.note(civ, format!("gave food to {} unaligned clan(s) at its market", unaligned.len()));
+            }
         }
         let m = w.markets.get_mut(&mid).unwrap();
         let c = clear(&brought, &m.prices, &Params::default());
@@ -168,7 +190,11 @@ pub fn trade(w: &mut World) {
         m.volume = c.volume.iter().sum();
         m.traders = ids.len();
         m.activity = MARKET.fade * m.activity + (1.0 - MARKET.fade) * ids.len() as f64;
+        if m.volume > 0.0 {
+            w.note(mid, "its clans traded here: traders swapped goods".to_string());
+        }
         if let (Some(civ), true) = (civ, posted > 0.0) {
+            w.note(civ, "posted its spare food to its market".to_string());
             let back = c.after[ids.len()];
             let store = &mut w.civs.get_mut(&civ).unwrap().store;
             for f in 0..N {
@@ -198,11 +224,14 @@ pub fn trade(w: &mut World) {
 /// The `people` step, after eating: at each festival, in id order, the starving clans that came
 /// offer `MARKET.shed × people × (1 − fed_ratio)` people (never the last one), and the growing
 /// clans (a surplus, not starving) have room for their surplus in people. The offers go to the
-/// growing clans in proportion to their room, all scaled down to the room if they are more.
+/// growing clans in proportion to their room, all scaled down to the room if they are more. Then
+/// `merge`. Each civ's people that leave its clans for clans not of it are one `PeopleLeft` event
+/// per civ, at its capital, when they come to `PEOPLE_LEFT_MIN` or more.
 pub fn people(w: &mut World) {
     for m in w.markets.values_mut() {
         m.moved = 0.0;
     }
+    let mut leaving: BTreeMap<u32, f64> = BTreeMap::new();
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {
         let mut offers: Vec<(u32, f64)> = Vec::new();
@@ -223,22 +252,38 @@ pub fn people(w: &mut World) {
             continue;
         }
         let moved = offered.min(room);
+        for &(id, offer) in &offers {
+            let Some(civ) = w.clans[&id].civ else { continue };
+            let shed = offer * moved / offered;
+            let away: f64 = rooms.iter().filter(|r| w.clans[&r.0].civ != Some(civ)).map(|r| shed * r.1 / room).sum();
+            *leaving.entry(civ).or_insert(0.0) += away;
+        }
         for (id, offer) in offers {
             w.clans.get_mut(&id).unwrap().people -= offer * moved / offered;
+            w.note(id, "gave people to clans at its festival while starving".to_string());
         }
         for (id, r) in rooms {
             w.clans.get_mut(&id).unwrap().people += moved * r / room;
+            w.note(id, "took in people at its festival".to_string());
         }
         w.markets.get_mut(&mid).unwrap().moved = moved;
         w.moved += moved;
+        w.note(mid, "people moved between its clans".to_string());
     }
-    merge(w);
+    merge(w, &mut leaving);
+    for (civ, n) in leaving {
+        if n >= PEOPLE_LEFT_MIN {
+            let tile = w.civs[&civ].capital;
+            w.civ_amount_event(EventKind::PeopleLeft, tile, civ, n);
+        }
+    }
 }
 
 /// After people move: in id order, a clan under `CLAN.min_pop` at a festival
 /// where another clan came joins the clan there whose home is fewest hex steps from its own
 /// (ties to the lower id): its people and store go to that clan, its tiles are freed, it goes.
-fn merge(w: &mut World) {
+/// The people a civ's clan brings to a clan not of that civ are added to `leaving`.
+fn merge(w: &mut World, leaving: &mut BTreeMap<u32, f64>) {
     let ids: Vec<u32> = w.clans.keys().copied().collect();
     for id in ids {
         let Some(c) = w.clans.get(&id) else { continue };
@@ -264,7 +309,12 @@ fn merge(w: &mut World) {
         for f in 0..N {
             o.store[f] += c.store[f];
         }
+        let other = o.civ;
+        if let Some(civ) = c.civ.filter(|&civ| other != Some(civ)) {
+            *leaving.entry(civ).or_insert(0.0) += c.people;
+        }
         w.event(EventKind::ClanMerged, c.home, Some(id), None, Some(into));
+        w.note(into, format!("took in clan {id}: {:.1} people", c.people));
     }
 }
 
@@ -324,8 +374,10 @@ pub fn form(w: &mut World) {
         if w.markets.values().any(|m| w.tiles[m.tile].hex().distance(h) < MARKET.spacing) {
             continue;
         }
+        let (near, _) = in_reach(w, tile);
         let mid = raise(w, tile);
         w.event(EventKind::MarketFormed, tile, None, Some(mid), None);
+        w.note(mid, format!("formed: {} clan(s) in reach", near.len()));
     }
 }
 

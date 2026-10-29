@@ -248,7 +248,9 @@ pub fn eat(w: &mut World) {
         c.fed = c.fed_ratio >= 0.999;
         c.starving = c.fed_ratio < CLAN.stable_at;
         if c.starving && !was_starving {
-            starving.push((c.id, c.home));
+            // The food it has least of, which it is short of.
+            let short = (0..N).min_by(|&a, &b| c.basket[a].total_cmp(&c.basket[b])).unwrap_or(0);
+            starving.push((c.id, c.home, c.fed_ratio, short));
         }
         c.hungry = if c.starving { c.hungry + 1 } else { 0 };
         c.since += 1;
@@ -262,8 +264,9 @@ pub fn eat(w: &mut World) {
             dead.push(c.id);
         }
     }
-    for (id, home) in starving {
+    for (id, home, fed, short) in starving {
         w.event(EventKind::ClanStarving, home, Some(id), None, None);
+        w.note(id, format!("began starving: fed {:.0}% of its need, short of {}", fed * 100.0, GOODS[short]));
     }
     for id in dead {
         let c = w.clans.remove(&id).unwrap();
@@ -344,6 +347,8 @@ fn move_on(w: &mut World, c: &Clan, now: f64) -> bool {
         sites(w, c, CLAN.move_range).into_iter().map(|s| (s, site_value(w, s, c.people, &c.store))).collect();
     let min = now + CLAN.move_margin;
     let Some(site) = pick_site(w, &scored, min) else { return false };
+    let worth = scored.iter().find(|s| s.0 == site).map_or(0.0, |s| s.1);
+    let (from, to) = (w.at(c.home), w.at(site));
     free(w, c.id, &c.territory);
     w.tiles[site].claim = Some(c.id);
     let m = w.clans.get_mut(&c.id).unwrap();
@@ -352,6 +357,10 @@ fn move_on(w: &mut World, c: &Clan, now: f64) -> bool {
     m.since = 0;
     m.hungry = 0;
     w.event(EventKind::ClanMoved, site, Some(c.id), None, None);
+    w.note(
+        c.id,
+        format!("left {from} for {to} after starving {} turns: worth {worth:.1} there against {now:.1}", c.hungry),
+    );
     true
 }
 
@@ -363,8 +372,14 @@ pub fn adjust(w: &mut World) {
     for id in shuffled(w) {
         let c = w.clans[&id].clone();
         let pinned = civs::is_civ_clan(w, id);
-        if !pinned && c.hungry >= CLAN.patience && move_on(w, &c, value(w, &c, &c.territory)) {
-            continue;
+        if !pinned && c.hungry >= CLAN.patience {
+            if move_on(w, &c, value(w, &c, &c.territory)) {
+                continue;
+            }
+            if c.hungry == CLAN.patience {
+                let range = CLAN.move_range;
+                w.note(id, format!("starving {} turns but no site within {range} steps is better", c.hungry));
+            }
         }
         let changed = actors::change(
             w,
@@ -381,6 +396,14 @@ pub fn adjust(w: &mut World) {
         } else {
             actors::recentre(w, c.home, &changed, CLAN.territory_radius)
         };
+        let dropped = c.territory.iter().filter(|t| !territory.contains(t)).count();
+        if dropped > 0 {
+            let (was, now) = (value(w, &c, &c.territory), value(w, &c, &territory));
+            w.note(id, format!("let go of {dropped} tile(s): land worth {now:.2} now, {was:.2} before"));
+        }
+        if home != c.home {
+            w.note(id, "moved its home to the middle of its land".to_string());
+        }
         free(w, id, &c.territory);
         for &t in &territory {
             w.tiles[t].claim = Some(id);
@@ -461,6 +484,7 @@ fn divide(w: &mut World, id: u32) {
     d.fed_ratio = c.fed_ratio;
     d.civ = c.civ;
     d.leaning = c.leaning.clone();
+    let took = hers.len();
     d.territory = hers;
     let m = w.clans.get_mut(&id).unwrap();
     m.territory = mine;
@@ -468,6 +492,14 @@ fn divide(w: &mut World, id: u32) {
     m.store = std::array::from_fn(|f| m.store[f] - d.store[f]);
     w.clans.insert(did, d);
     w.event(EventKind::ClanDivided, home, Some(id), None, Some(did));
+    w.note(
+        id,
+        format!(
+            "divided at {:.0} people (it splits at {:.0}); clan {did} took the far {took} tiles",
+            c.people, CLAN.split_at
+        ),
+    );
+    w.note(did, format!("born when clan {id} divided its land"));
 }
 
 /// A clan with no land to divide, or a starving one, sends a daughter of `min(people, split_at) /
@@ -492,5 +524,9 @@ fn split(w: &mut World, id: u32) {
     m.store = std::array::from_fn(|f| m.store[f] - d.store[f]);
     m.hungry = 0;
     w.event(EventKind::ClanDivided, site, Some(id), None, Some(d.id));
+    let why = if c.starving { "it is starving" } else { "it has no land to divide" };
+    let at = w.at(site);
+    w.note(id, format!("sent clan {} to {at} with {people:.0} people: {why}", d.id));
+    w.note(d.id, format!("set out from clan {id} with {people:.0} people"));
     w.clans.insert(d.id, d);
 }

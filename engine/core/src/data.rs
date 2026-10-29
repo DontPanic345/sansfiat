@@ -561,3 +561,16 @@ impl Default for Config {
         Config { seed: 1, radius: 16, army: true, gifts: true, zone: true }
     }
 }
+
+/// How many reasons (`World::note`) a subject keeps, and how many the selection panel shows.
+pub struct NotesRules {
+    /// The most reasons a subject keeps; the oldest go.
+    pub kept: usize,
+    /// The most reasons the panel shows, newest first.
+    pub shown: usize,
+}
+
+pub const NOTES: NotesRules = NotesRules { kept: 8, shown: 5 };
+
+/// The fewest people a civ's clans must send to clans not of it in a turn for `PeopleLeft` to report it.
+pub const PEOPLE_LEFT_MIN: f64 = 0.1;

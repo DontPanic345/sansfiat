@@ -44,6 +44,10 @@ pub fn give(w: &mut World, civ: u32, ids: &[u32], kept: &mut [Basket], pool: f64
         let lean = gift_leaning(given * share, c.people, c.starving);
         *c.leaning.entry(civ).or_insert(0.0) += lean;
     }
+    let name = w.civs[&civ].name.clone();
+    for &id in ids {
+        w.note(id, format!("received a gift from {name}"));
+    }
     given
 }
 
@@ -67,11 +71,14 @@ pub fn lean(w: &mut World) {
             Some((_, bv)) if bv >= v => b,
             _ => Some((k, v)),
         });
-        let Some((civ, _)) = best.filter(|&(_, v)| v >= LEANING.join) else { continue };
+        let Some((civ, lean)) = best.filter(|&(_, v)| v >= LEANING.join) else { continue };
         c.civ = Some(civ);
         c.leaning.clear();
         let home = c.home;
         w.civs.get_mut(&civ).unwrap().joined += 1;
         w.civ_clan_event(EventKind::ClanJoined, home, civ, id);
+        let name = w.civs[&civ].name.clone();
+        w.note(id, format!("joined {name}: its leaning reached {lean:.2}"));
+        w.note(civ, format!("clan {id} joined it"));
     }
 }
