@@ -21,6 +21,7 @@ cargo run -p sansfiat -- digest [--seed N] [--radius N] [--turns N] [--lead]   #
 ./check.sh                                       # every check CI runs, in order
 node www/play.mjs "?size=small&seed=2&run=1" --until "document.body.dataset.phase === 'choose'" --shot pick.png   # the page in headless Chrome; import { open } from it to click tiles and buttons
 node www/play-camp.mjs [out-dir]   # leads a civ, moves its camp out on its land, ends turns, screenshots the line (default relay/specs/29/screens)
+node www/play-lean.mjs [out-dir]   # leads a civ, raises its gift three steps, ends 30 turns, screenshots its panel and a leaning clan's (default relay/specs/55/screens)
 ```
 
 ## Layout
@@ -34,15 +35,16 @@ node www/play-camp.mjs [out-dir]   # leads a civ, moves its camp out on its land
 | `core/src/actors.rs` | Actors: `Actor`, `walk_cost`, `Walks` inside a territory, `divide` and the add/drop rule `change`. |
 | `core/src/clans.rs` | Clans on the actor: seeding, `reap` and `value`, the `move`, `harvest` and `eat` steps, dividing. |
 | `core/src/market.rs` | `clear`: barter exchange ratios by tâtonnement. |
-| `core/src/markets.rs` | Markets: reach, the `go` step (one festival route by worth), trading, forming and fading. |
+| `core/src/markets.rs` | Markets: reach, the `go` step (one festival route by worth), trading (with a civ's gift, posting and trade leaning, which call into `leaning.rs`), forming and fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, the `end` step and `top_up`. |
-| `core/src/civs.rs` | Civs: `found` (the civ's own clan, the capital on its home), the `levy` (called by `trade`), the `civs` step (store upkeep), territory and the pick's `cards`. |
+| `core/src/civs.rs` | Civs: `found` (the civ's own clan, the capital on its home), the `levy` (called by `trade`), `keep` (the food kept in force: the player's setting, else the camp's full pack), the `civs` step (store upkeep), territory and the pick's `cards`. |
+| `core/src/leaning.rs` | Unaligned clans joining a civ: `give` (a civ's gift to the clans at its market, called by `trade`), `gift_leaning`, and the `lean` step after `people` (fading, then `ClanJoined` at `LEANING.join`). |
 | `core/src/units.rs` | The camp (one per civ, an actor of warriors): raise, disband, the pack, the `line` to the capital and `cut_off`, forage and pillage, the `ai` and `units` steps, the per-civ `Counters`, and the `check_*` that `validate` calls. |
 | `core/src/stats.rs` | `summary`, the evidence reports, and `digest` to compare builds. |
 | `core/src/hex.rs`, `core/src/rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
 | `web/` | The wasm-bindgen `Sim` the page drives: `layout()` once per map, `view()` each turn, `act`/`check` for orders. |
-| `www/` | The page, plain ES modules: `main.js` (controls and `body.dataset` for scripts), `select.js` (the selection panel), `map-view.js` (the canvas, `screenOf(i)`), `feed.js`; `check.mjs` checks its data under Node, `play.mjs` drives it in headless Chrome and `play-camp.mjs` plays a camp through it. The selected camp's line home is drawn in `map-view.js` (`setLine`), coloured in `main.js` (`lineColour`). `www/pkg` is built, not committed. |
+| `www/` | The page, plain ES modules: `main.js` (controls and `body.dataset` for scripts), `select.js` (the selection panel: a civ's gift and keep, its leaning clans, a clan's leanings), `map-view.js` (the canvas, `screenOf(i)`), `feed.js`; `check.mjs` checks its data under Node, `play.mjs` drives it in headless Chrome, `play-camp.mjs` plays a camp through it and `play-lean.mjs` plays a civ's gift through it. The selected camp's line home is drawn in `map-view.js` (`setLine`), coloured in `main.js` (`lineColour`). `www/pkg` is built, not committed. |
 
 ## Adding a mechanic
 

@@ -1,4 +1,4 @@
-use engine::data::{CIV, PREGAME, SIZES, TENDING, UNIT};
+use engine::data::{CIV, LEANING, PREGAME, SIZES, TENDING, UNIT};
 use engine::map::Tile;
 use engine::{civs, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
 use std::collections::BTreeMap;
@@ -66,7 +66,11 @@ impl Sim {
     /// wear, in `goods()` order). `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
     /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, territory (the
-    /// capital's tiles), work (its work tiles), army (its `units::Counters`)}}`. `units` is the camps,
+    /// capital's tiles), work (its work tiles), army (its `units::Counters`), keep (the food it keeps
+    /// in force, `civs::keep`), keep_set (the food the player set it to, null for the default), gift
+    /// (the most it gives a turn), posted (food posted to its market last turn), given (food given
+    /// last turn), joined (clans joined since founding), gifted (food given since founding)}}`. Each
+    /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ). `units` is the camps,
     /// `{id: camp}`, a camp being its engine fields (`kind`, `people` (warriors), `home`, `store` (the
     /// pack, a basket), `dest`, `banked`, `hungry`, `auto_forage`, `auto_supply`, `routes`, ...) and
     /// `tile`, `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
@@ -106,6 +110,13 @@ impl Sim {
                     "territory": civs::territory(w, c.id),
                     "work": civs::work_tiles(w, c.id),
                     "army": c.army,
+                    "keep": civs::keep(w, c.id),
+                    "keep_set": c.keep,
+                    "gift": c.gift,
+                    "posted": c.posted,
+                    "given": c.given,
+                    "joined": c.joined,
+                    "gifted": c.gifted,
                 });
                 (c.id, row)
             })
@@ -264,7 +275,8 @@ pub fn goods() -> String {
 }
 
 /// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
-/// hungry_turns, store_cap, territory}`.
+/// hungry_turns, store_cap, territory, join, gift_max}`. `join` is the leaning at which a clan joins a
+/// civ; `gift_max` is the most a civ can give a turn (its store cap).
 #[wasm_bindgen]
 pub fn rules() -> String {
     serde_json::json!({
@@ -275,6 +287,8 @@ pub fn rules() -> String {
         "hungry_turns": UNIT.hungry_turns,
         "store_cap": CIV.store_cap,
         "territory": CIV.territory,
+        "join": LEANING.join,
+        "gift_max": CIV.store_cap,
     })
     .to_string()
 }

@@ -201,11 +201,49 @@ const checkCamps = (view) => {
 checkCamps(v);
 assert.equal(sim.tile_civ(-1 >>> 0), -1, 'no civ off the map');
 
+// Joining and giving: the civ's keep and gift, and the clans' leanings. Nobody leads at the pick, so a gift is refused.
+assert.ok(RULES.join > 0, 'rules.join is the leaning a clan joins at');
+assert.equal(RULES.gift_max, RULES.store_cap, 'a gift is at most the store');
+for (const c of civs) {
+  for (const key of ['keep', 'gift', 'posted', 'given', 'gifted']) assert.equal(typeof c[key], 'number', `civ carries ${key}`);
+  assert.equal(typeof c.joined, 'number', 'civ carries joined');
+  assert.ok(c.keep_set === null || typeof c.keep_set === 'number', 'keep_set is a number or null');
+  assert.ok(c.keep >= 0 && c.gift >= 0 && c.posted >= 0 && c.given >= 0 && c.gifted >= 0 && c.joined >= 0);
+  assert.equal(c.keep_set, null, 'a civ starts on the default keep');
+}
+for (const k of Object.values(v.clans)) {
+  assert.equal(typeof k.leaning, 'object', 'a clan carries its leanings');
+  if (k.civ != null) assert.deepEqual(k.leaning, {}, 'a civ clan leans to none');
+  for (const [civ, x] of Object.entries(k.leaning)) {
+    assert.ok(v.civs[civ], 'a leaning is to a civ');
+    assert.ok(x > 0 && Number.isFinite(x), 'a leaning is a positive number');
+  }
+}
+assert.notEqual(sim.check('{"type":"setGift","food":3}'), '', 'no gift before a civ is led');
+assert.notEqual(sim.check('{"type":"setKeep","food":5}'), '', 'no keep before a civ is led');
+
 sim.act(JSON.stringify({ type: 'chooseCiv', civ: cards[0].civ }));
 assert.equal(sim.phase(), 'main');
 let w = JSON.parse(sim.view());
 assert.equal(w.player, cards[0].civ);
 const rival = Object.values(w.civs).find((c) => c.id !== w.player);
+
+// The leader sets its gift and keep; a gift is refused above the store's cap, or below nothing.
+assert.equal(sim.check('{"type":"setGift","food":3}'), '', 'a leader can set its gift');
+assert.equal(sim.check('{"type":"setKeep","food":5}'), '', 'a leader can set its keep');
+assert.notEqual(sim.check(`{"type":"setGift","food":${RULES.gift_max + 1}}`), '', 'a gift above the cap is refused');
+assert.notEqual(sim.check('{"type":"setGift","food":-1}'), '', 'a negative gift is refused');
+assert.notEqual(sim.check('{"type":"setKeep","food":-1}'), '', 'a negative keep is refused');
+sim.act('{"type":"setGift","food":3}');
+sim.act('{"type":"setKeep","food":5}');
+w = JSON.parse(sim.view());
+assert.equal(w.civs[w.player].gift, 3, 'the gift is set');
+assert.equal(w.civs[w.player].keep, 5, 'the keep in force is set');
+assert.equal(w.civs[w.player].keep_set, 5, 'keep_set is the set keep');
+sim.act('{"type":"setKeep","food":null}');
+w = JSON.parse(sim.view());
+assert.equal(w.civs[w.player].keep_set, null, 'keep returns to the default');
+assert.ok(w.civs[w.player].keep > 0, 'the default keep is the camp\'s pack');
 
 // Warriors raised, if the civ can spare a person.
 const made = sim.check('{"type":"raise","n":1}');
@@ -269,5 +307,12 @@ assert.ok(sim.check('{"type":"disband","n":null}').length > 0, 'it cannot be dis
 const kinds = new Set(JSON.parse(sim.events(0)).map((e) => e.kind));
 for (const k of ['civFounded', 'campRaised']) assert.ok(kinds.has(k), `${k} appears`);
 for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.has(e.kind));
+
+// Watching (all three on the AI, as the page's "Watch all three" sends): a gift is refused while nobody leads.
+const watch = new Sim(seed, medium.radius);
+while (!watch.ended()) watch.act('{"type":"endTurn"}');
+watch.act('{"type":"chooseCiv","civ":null}');
+assert.equal(watch.phase(), 'main');
+assert.notEqual(watch.check('{"type":"setGift","food":3}'), '', 'a gift is refused while watching');
 
 console.log(`ok: medium seed ${seed}, ${n} tiles, ended turn ${v.end.turn}${v.end.by_limit ? ' by the limit' : ''}, ${all.length} events, ${Object.keys(v.clans).length} clans`);
