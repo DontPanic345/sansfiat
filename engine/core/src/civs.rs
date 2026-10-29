@@ -2,7 +2,7 @@
 //! capital on it; clans in reach of the market join the civ; the civ keeps one store, which its
 //! fed clans levy into and which spoils and is capped.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +37,9 @@ pub struct Civ {
     /// What its army has done, kept here so it outlives any one camp.
     #[serde(default)]
     pub army: Counters,
+    /// The tiles the civ has revealed: their hidden trail costs are known to it.
+    #[serde(default)]
+    pub revealed: BTreeSet<usize>,
 }
 
 fn steps(w: &World, a: usize, b: usize) -> i32 {
@@ -64,6 +67,7 @@ pub fn found(w: &mut World) {
             lost: 0.0,
             clan: 0,
             army: Counters::default(),
+            revealed: BTreeSet::new(),
         };
         w.civs.insert(id, civ);
         w.civ_event(EventKind::CivFounded, capital, id, Some(mid));

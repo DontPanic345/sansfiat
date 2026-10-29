@@ -278,13 +278,13 @@ pub fn disband(w: &mut World, civ: u32, n: Option<u32>, starved: bool) {
     w.unit_event(kind, tile, civ, id, clan);
 }
 
-/// Whether a camp may walk onto tile `i`.
+/// Whether a camp may walk onto tile `i`: passable land, or a built pass over a mountain.
 fn walkable(w: &World, i: usize) -> bool {
-    TERRAIN[w.tiles[i].terrain].land && passable(w, i)
+    passable(w, i) && (TERRAIN[w.tiles[i].terrain].land || w.tiles[i].trail)
 }
 
-/// The cheapest route from `from` to `to` over land, as `land::path`: worn trails and river
-/// crossings count; hidden trail costs are never read.
+/// The cheapest route from `from` to `to` over land and built passes, as `land::path`: trails and
+/// river crossings count as `step_cost` has them.
 pub fn path_between(w: &World, from: usize, to: usize) -> Option<(Vec<usize>, f64)> {
     path(w, from, to, |i| walkable(w, i))
 }
@@ -669,7 +669,7 @@ pub fn check_move(w: &World, to: usize) -> Result<(), String> {
     if to >= w.tiles.len() {
         return Err(format!("{to} is not a tile"));
     }
-    if !walkable(w, to) {
+    if !(TERRAIN[w.tiles[to].terrain].land && passable(w, to)) {
         return Err("a camp can only go over land".to_string());
     }
     path_between(w, u.home, to).map(|_| ()).ok_or_else(|| "no route there".to_string())

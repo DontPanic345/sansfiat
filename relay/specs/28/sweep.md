@@ -112,3 +112,47 @@ large  seed   8 civ 2750: camp alive warriors  3.0 pack 12.00 hungry    0 starve
 civs that kept their first camp: 21 of 21 (no camp lost, at least 3 warriors at the end)
 clans' people at the end, all civs (army): 847.2
 ```
+
+## build-1 re-run: sweep --size all (summary lines)
+
+```
+small: the top-up took 0 existing markets, 0 tended tiles, 0 other grain tiles
+small: 10 of 10 ended on their own, 0 needed the top-up, 0 ended on the limit with three centres already (cover short or people not levelled off), median end turn 261
+small: people over the last 100 turns before the end changed by +3% +3% +2% +3% +2% +3% +3% +3% +3% +4%: 10 of 10 levelled off (under 10%)
+medium: the top-up took 0 existing markets, 0 tended tiles, 0 other grain tiles
+medium: 10 of 10 ended on their own, 0 needed the top-up, 0 ended on the limit with three centres already (cover short or people not levelled off), median end turn 355
+medium: people over the last 100 turns before the end changed by +4% +4% +4% +4% +4% +4% +4% +4% +4% +4%: 10 of 10 levelled off (under 10%)
+large: the top-up took 0 existing markets, 0 tended tiles, 0 other grain tiles
+large: 10 of 10 ended on their own, 0 needed the top-up, 0 ended on the limit with three centres already (cover short or people not levelled off), median end turn 373
+large: people over the last 100 turns before the end changed by +4% +4% +5% +5% +4% +4% +5% +5% +5% +5%: 10 of 10 levelled off (under 10%)
+```
+
+## build-1 re-run: sweep --after 200 --maps retro
+
+```
+small  seed   2 civ 713: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   22.2  kept yes
+small  seed   2 civ 714: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   75.3  kept yes
+small  seed   2 civ 715: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   24.7  kept yes
+small  seed   3 civ 243: camp alive warriors  3.0 pack  8.51 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   19.3  kept yes
+small  seed   3 civ 244: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   23.0  kept yes
+small  seed   3 civ 245: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   24.4  kept yes
+small  seed   6 civ 432: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   36.0  kept yes
+small  seed   6 civ 433: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   42.7  kept yes
+small  seed   6 civ 434: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   55.1  kept yes
+small  seed   9 civ 290: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   52.7  kept yes
+small  seed   9 civ 291: camp alive warriors  3.0 pack  9.38 hungry    0 starved   0 lost 0 line cost 8.00 carry 3.94 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   33.4  kept yes
+small  seed   9 civ 292: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   28.1  kept yes
+medium seed   8 civ 648: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   59.4  kept yes
+medium seed   8 civ 649: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   42.2  kept yes
+medium seed   8 civ 650: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   41.6  kept yes
+medium seed   9 civ 849: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   44.9  kept yes
+medium seed   9 civ 850: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   41.4  kept yes
+medium seed   9 civ 851: camp alive warriors  3.0 pack  3.78 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   13.6  kept yes
+large  seed   8 civ 2748: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   54.2  kept yes
+large  seed   8 civ 2749: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 4.00 carry 7.88 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   56.2  kept yes
+large  seed   8 civ 2750: camp alive warriors  3.0 pack 12.00 hungry    0 starved   0 lost 0 line cost 6.00 carry 5.25 cut off    0 foraged   0 tiles pillaged   0 tiles clans' people   56.9  kept yes
+civs that kept their first camp: 21 of 21 (no camp lost, at least 3 warriors at the end)
+clans' people at the end, all civs (army): 847.2
+```
+
+Both match the "after" blocks above line for line.
