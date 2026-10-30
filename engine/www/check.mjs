@@ -60,7 +60,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);
@@ -68,7 +68,11 @@ for (const e of all) {
   assert.equal(typeof e.text, 'string');
   assert.ok(e.text.length > 0);
   assert.ok(e.turn >= lastTurn, 'events are in turn order');
+  assert.equal(typeof e.alert, 'boolean', 'an event says whether it is an alert');
   lastTurn = e.turn;
+}
+for (const e of all.filter((e) => e.kind === 'peopleLeft')) {
+  assert.ok(e.civ != null && e.amount >= 0.1 && e.text.endsWith('for others'), 'peopleLeft names its civ and amount');
 }
 assert.equal(JSON.parse(sim.events(all.length)).length, 0, 'nothing past the cursor');
 assert.equal(all.filter((e) => e.kind === 'pregameEnded').length, 1, 'one end event');
@@ -78,8 +82,24 @@ for (const e of all.filter((e) => e.kind === 'clanMerged')) {
   assert.equal(e.text, `Clan ${e.clan} merges into clan ${e.other}`, 'a merge says who joined whom');
 }
 
-// The per-turn view.
+// Reasons: each subject's, newest first, at most the kept eight; an id with none has an empty list.
 const v = JSON.parse(sim.view());
+assert.equal(RULES.notes_shown, 5, 'the panel shows five reasons');
+let reasoned = 0;
+for (const id of Object.keys(v.clans)) {
+  const list = JSON.parse(sim.notes(Number(id)));
+  assert.ok(list.length <= 8, `clan ${id} keeps at most eight reasons`);
+  for (const [k, note] of list.entries()) {
+    assert.equal(typeof note.text, 'string');
+    assert.ok(note.text.length > 0 && Number.isInteger(note.turn), 'a reason has a turn and text');
+    if (k > 0) assert.ok(list[k - 1].turn >= note.turn, `clan ${id}: reasons are newest first`);
+  }
+  if (list.length) reasoned++;
+}
+assert.ok(reasoned > 0, 'some clans have reasons after the pre-game');
+assert.deepEqual(JSON.parse(sim.notes(999999)), [], 'an id with no reasons has none');
+
+// The per-turn view.
 assert.equal(v.turn, turns);
 assert.ok(v.end, 'view.end is set after the end');
 assert.equal(v.end.centres.length, 3, 'three centres');
@@ -367,6 +387,14 @@ assert.ok(sim.check('{"type":"disband","n":null}').length > 0, 'it cannot be dis
 const kinds = new Set(JSON.parse(sim.events(0)).map((e) => e.kind));
 for (const k of ['civFounded', 'campRaised']) assert.ok(kinds.has(k), `${k} appears`);
 for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.has(e.kind));
+
+// A save carries its version, and one without it is refused with a reason that names the version.
+const save = JSON.parse(sim.save());
+assert.equal(save.version, 1, 'a save carries its version');
+assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
+const { version, ...unversioned } = save;
+assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');
+assert.throws(() => Sim.load(JSON.stringify({ ...save, version: 2 })), /version 2/, 'a save of another version fails, naming it');
 
 // Watching (all three on the AI, as the page's "Watch all three" sends): a gift is refused while nobody leads.
 const watch = new Sim(seed, medium.radius);

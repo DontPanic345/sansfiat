@@ -91,6 +91,16 @@
   #feed { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; }
   #feed li button { display:flex; gap:6px; width:100%; text-align:left; background:none; border:0; border-bottom:1px solid #222a35; border-radius:0; padding:3px 12px; font-size:12px; align-items:baseline; }
   #feed li button:hover { background:#222c38; }
+  #alerts { list-style:none; margin:0; padding:0; border-bottom:2px solid #5a2a2a; background:#241a1c; flex:none; }
+  #alerts[hidden] { display:none; }
+  #alerts li button, #feed li.alert button { border-left:3px solid #ff5a4d; padding-left:9px; }
+  #alerts li button { display:flex; gap:6px; width:100%; text-align:left; background:none; border:0; border-bottom:1px solid #3a2a2d; border-radius:0; padding:3px 12px; font-size:12px; align-items:baseline; }
+  #alerts .turn, #detail .why .turn { color:var(--dim); font-variant-numeric:tabular-nums; }
+  #alerts .icon { width:14px; text-align:center; flex:none; font-weight:bold; }
+  #alerts .text { flex:1; color:#ffd2cc; }
+  #feed li.alert .text { color:#ffd2cc; }
+  #detail .why { margin:6px 0; } #detail .why ul { list-style:none; margin:2px 0 0; padding:0; font-size:12px; }
+  #detail .why li { padding:1px 0; }
   #feed li.mine button { border-left:3px solid var(--accent); padding-left:9px; font-weight:600; }
   #feed li.selected button { background:#2b3a4d; }
   #feed .turn { color:var(--dim); min-width:38px; text-align:right; font-variant-numeric:tabular-nums; flex:none; }
@@ -147,6 +157,7 @@
         <label><input id="v-routes" type="checkbox" checked> Routes</label>
         <label><input id="v-markets" type="checkbox" checked> Markets</label>
         <label><input id="v-civs" type="checkbox" checked> Civs (land, clan rings, units)</label>
+        <label><input id="v-country" type="checkbox"> Hidden country (H)</label>
         <label><input id="v-hidden" type="checkbox"> Hidden costs (debug)</label>
       </div>
     </details>
@@ -182,6 +193,7 @@
     <div id="detail"></div>
     <div id="feedhead"><h2>Events</h2><button id="hidefeed" type="button" aria-label="Collapse the feed">×</button></div>
     <details id="filterbox"><summary class="dim" style="padding:0 12px;cursor:pointer">Filter</summary><div id="filters"></div></details>
+    <ul id="alerts" aria-label="Alerts, newest first" hidden></ul>
     <ul id="feed" aria-label="Events, newest first"></ul>
   </aside>
 </div>

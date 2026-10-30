@@ -1,7 +1,7 @@
 import init, { Sim, terrain, goods, rules, sizes } from './pkg/web.js';
 import { MapView, hue } from './map-view.js';
 import { Feed } from './feed.js';
-import { f2, keyOf, tileOf, alive, candidates, describe, tileKind, marketOn } from './select.js';
+import { f2, keyOf, tileOf, alive, candidates, describe, tileKind, marketOn, holders, clanRole } from './select.js';
 
 await init();
 const TERRAIN = JSON.parse(terrain());
@@ -26,6 +26,7 @@ let running = false;
 let loopTimer = null;
 let last = 0;
 let acc = 0;
+let country = false; // View → Hidden country: the closed-country outlines, their names and legend rows
 
 // ---- map, feed -------------------------------------------------------------------------------
 
@@ -38,11 +39,21 @@ const view = new MapView($('map'), {
   onHover: showTip,
   onHoverEnd: hideTip,
 });
-const feed = new Feed({ list: $('feed'), filters: $('filters'), onClick: onFeed, mine: (e) => v?.player != null && e.civ === v.player });
+const feed = new Feed({
+  list: $('feed'),
+  filters: $('filters'),
+  alerts: $('alerts'),
+  onClick: onFeed,
+  mine: (e) => v?.player != null && e.civ === v.player,
+  onUnread: (n) => {
+    $('feedtoggle').textContent = n ? `Feed (${n})` : 'Feed';
+    document.body.dataset.unread = n;
+  },
+});
 new ResizeObserver(() => view.resize()).observe($('mapbox'));
 
 /** What the selection panel and the pick read the world through. */
-const ctx = () => ({ v, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome, painting });
+const ctx = () => ({ v, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome, painting, country });
 
 // ---- starting a map --------------------------------------------------------------------------
 
@@ -148,6 +159,10 @@ function routes() {
     if (r) out.push({ unit: u.id, civ: u.civ, tiles: [u.tile, ...r.path], selected: selected?.kind === 'unit' && selected.id === u.id });
   }
   view.setRoutes(out);
+  // The player's camp's line home, always faint; the selected clan's territory and route bright.
+  const mineCamp = v.player != null ? Object.values(v.units).find((u) => u.civ === v.player && u.kind === 'camp') : null;
+  view.setHomeLine(mineCamp?.line?.path.length ? [mineCamp.tile, ...mineCamp.line.path] : null);
+  view.setFocus(selected?.kind === 'tile' ? (selected.clan ?? view.clanAt(selected.tile)) : null);
   const camp = selected?.kind === 'unit' ? v.units[selected.id] : null;
   if (camp && camp.cut_at) {
     // Cut by held ground: the line it would have, drawn to the tile where it stops, marked.
@@ -601,7 +616,7 @@ function showTip(i, x, y) {
 /** What a held tile says of its clan: a home names the festival its clan walks to. */
 function clanTip(i, id) {
   const c = v.clans[id];
-  if (c.home !== i) return `Clan ${id}'s territory`;
+  if (c.home !== i) return `Clan ${id}'s territory${clanRole(c, i).includes('route') ? ', on its festival route' : ''}`;
   if (c.market == null) return `Clan ${id}'s home, no festival in reach`;
   const here = c.routes.length === 0 || c.routes[0].path.length === 0;
   return `Clan ${id}'s home, ${here ? `its festival ${c.market} is here` : `walks to festival ${c.market}`}`;
@@ -624,6 +639,7 @@ function fillTip(i) {
   const lines = [`<b>${tileKind(ctx(), i)}</b>`];
   if (layout.terrain[i] !== 0 && TERRAIN[layout.terrain[i]].land) {
     lines.push(h ? clanTip(i, h) : 'Held by nobody');
+    for (const u of holders(ctx(), i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s camp`);
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
     lines.push(...wearTip(i));
   }
@@ -679,9 +695,13 @@ function legend() {
     [sw('background:#5f8a6a repeating-linear-gradient(90deg,#2f5a46 0 1px,transparent 1px 5px)'), 'marsh (delta)'],
     [sw('background:linear-gradient(#9cbf5a,#9cbf5a);border:0;height:4px;margin:5px 0;background:#58b8f2;border-radius:2px'), 'river'],
     [sw('background:rgba(96,235,70,.6);border:1px solid #1c6e18'), 'floodplain'],
-    [sw('background:transparent;border:2px solid #f0c030'), 'valley'],
-    [sw('background:transparent;border:2px dashed #b0583a'), 'sealed valley'],
-    [sw('background:transparent;border:2px solid #b070e0'), 'neck'],
+    ...(country
+      ? [
+          [sw('background:transparent;border:2px solid #f0c030'), 'valley'],
+          [sw('background:transparent;border:2px dashed #b0583a'), 'sealed valley'],
+          [sw('background:transparent;border:2px solid #b070e0'), 'neck'],
+        ]
+      : []),
     [sw('background:#fff2b0;border-radius:50%;width:10px;height:10px;margin:2px 4px;border-color:#3a2c00'), 'pass'],
     [sw('background:hsla(200,70%,55%,.35);border:1px solid hsl(200,70%,55%)'), 'territory'],
     [sw('background:rgba(26,15,7,.6)'), 'worn land'],
@@ -726,8 +746,14 @@ $('dice').onclick = () => {
 $('seed').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') newMap();
 });
-for (const key of ['fertility', 'territory', 'wear', 'routes', 'markets', 'hidden', 'civs']) {
-  $(`v-${key}`).onchange = (e) => view.setOptions({ [key]: e.target.checked });
+for (const key of ['fertility', 'territory', 'wear', 'routes', 'markets', 'hidden', 'civs', 'country']) {
+  $(`v-${key}`).onchange = (e) => {
+    view.setOptions({ [key]: e.target.checked });
+    if (key === 'country') {
+      country = e.target.checked;
+      legend();
+    }
+  };
 }
 $('zin').onclick = () => view.zoomBy(1.4);
 $('zout').onclick = () => view.zoomBy(1 / 1.4);
@@ -737,6 +763,7 @@ function showFeed(on) {
   $('side').classList.toggle('collapsed', !on);
   $('feedtoggle').setAttribute('aria-pressed', String(on));
   $('showfeed').hidden = on;
+  feed.setOpen(on);
   // The map box changes size; the observer resizes the canvas.
 }
 $('feedtoggle').onclick = () => showFeed($('side').classList.contains('collapsed'));
@@ -756,6 +783,7 @@ window.addEventListener('keydown', (e) => {
     case '-': case '_': view.zoomBy(1 / 1.4); break;
     case '0': view.fit(); break;
     case 'Escape': if (painting) setPainting(null); else select(null); break;
+    case 'h': case 'H': $('v-country').click(); break;
     case 'p': case 'P': setPainting(painting === 'paint' ? null : 'paint'); break;
     case 'u': case 'U': setPainting(painting === 'unpaint' ? null : 'unpaint'); break;
     default: return;
@@ -808,4 +836,5 @@ window.game = {
   save: () => JSON.parse(sim.save()),
   map: view,
   feed,
+  notes: (id) => sim.notes(id),
 };

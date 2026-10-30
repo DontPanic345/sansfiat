@@ -9,7 +9,7 @@ use engine::{
 };
 
 const USAGE: &str = "\
-sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json | --events-json] [--no-events]
+sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json | --events-json] [--no-events] [--why ID]   (--why prints the reasons of a clan, market, civ or unit, newest first)
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
@@ -53,7 +53,9 @@ fn main() {
 
 fn run(args: &[String]) -> Result<(), String> {
     let mut config = Config::default();
-    let (mut turns, mut save, mut every) = (PREGAME.max_turns, None, 0u32);
+    let (mut turns, mut save, mut every, mut why) = (PREGAME.max_turns, None, 0u32, None);
+    // An explicit `--turns` runs on past the pre-game's end; by default the run stops there.
+    let mut explicit = false;
     let mut out = Output::default();
     let mut it = args.iter();
     while let Some(flag) = it.next() {
@@ -64,17 +66,21 @@ fn run(args: &[String]) -> Result<(), String> {
         let bad = |_| format!("{flag}: not a number: {value}");
         match flag.as_str() {
             "--seed" => config.seed = value.parse().map_err(bad)?,
-            "--turns" => turns = value.parse().map_err(bad)?,
+            "--turns" => {
+                turns = value.parse().map_err(bad)?;
+                explicit = true;
+            }
             "--radius" => config.radius = value.parse().map_err(bad)?,
             "--size" => config.radius = size(value)?,
             "--every" => every = value.parse().map_err(bad)?,
             "--save" => save = Some(value.clone()),
+            "--why" => why = Some(value.parse().map_err(bad)?),
             _ => return Err(format!("unknown flag {flag}\n{USAGE}")),
         }
     }
     let mut w = World::new(config);
     let mut shown = 0;
-    while w.turn < turns && w.end.is_none() {
+    while w.turn < turns && (explicit || w.end.is_none()) {
         w.run(1);
         if out.events_text() {
             print_events(&w, &mut shown);
@@ -87,6 +93,9 @@ fn run(args: &[String]) -> Result<(), String> {
         fs::write(&path, serde_json::to_string(&w.save()).unwrap()).map_err(|e| format!("{path}: {e}"))?;
     }
     report(&w, &out);
+    if let (Some(id), true) = (why, out.text()) {
+        print_notes(&w, id);
+    }
     Ok(())
 }
 
@@ -121,12 +130,25 @@ impl Output {
     }
 }
 
-/// Prints the events from index `*shown` on as `turn  text`.
+/// Prints the events from index `*shown` on as `turn  text`, an alert marked `!`.
 fn print_events(w: &World, shown: &mut usize) {
     for e in &w.events[*shown..] {
-        println!("{:>6}  {}", e.turn, e.text(w));
+        let mark = if e.alert { "!" } else { " " };
+        println!("{:>6} {mark} {}", e.turn, e.text(w));
     }
     *shown = w.events.len();
+}
+
+/// Prints the reasons of subject `id`, newest first, as `turn  text`.
+fn print_notes(w: &World, id: u32) {
+    match w.notes.get(&id).filter(|list| !list.is_empty()) {
+        Some(list) => {
+            for n in list.iter().rev() {
+                println!("{:>6}  {}", n.turn, n.text);
+            }
+        }
+        None => println!("no reasons for {id}"),
+    }
 }
 
 /// Prints the map as text, a legend and counts.

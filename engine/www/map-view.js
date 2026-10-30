@@ -47,10 +47,12 @@ export class MapView {
     this.lctx = this.layer.getContext('2d');
     this.opts = opts;
     this.terrain = opts.terrain;
-    this.options = { fertility: false, territory: true, routes: true, wear: true, markets: true, hidden: false, civs: true };
+    this.options = { fertility: false, territory: true, routes: true, wear: true, markets: true, hidden: false, civs: true, country: false };
     this.routes = []; // [{unit, tiles: [from, ...path], selected}]: the player's units' routes
     this.line = null; // {tiles, colour, cut?}: the selected camp's line home (to where it is cut, `cut` the tile), or null
     this.painting = false; // in paint mode a left press or drag paints tiles (onPaint) instead of picking or panning
+    this.focus = null; // the selected clan's id: its territory and route are drawn bright, the others' dim
+    this.homeLine = null; // the led civ's camp's line home as tile lists, drawn faint at all times
     this.plan = null; // {known, possible}: the selected scout's route as tile lists from its start, or null
     this.revealed = new Uint8Array(0); // 1 where the led civ has revealed the tile
     this.work = []; // [tile, labour, need]: trails under way
@@ -189,19 +191,31 @@ export class MapView {
   }
 
   setOptions(o) {
-    const terrainChanged = o.fertility !== this.options.fertility || o.hidden !== this.options.hidden;
+    const terrainChanged = o.fertility !== this.options.fertility || o.hidden !== this.options.hidden || o.country !== this.options.country;
     Object.assign(this.options, o);
     if (terrainChanged) this.dirty = true;
     this.requestDraw();
   }
 
-  /** The selected camp's line home: `{tiles: [its tile, ...path], colour}`, or null. */
   /** Paint mode on or off: while on, a left press and drag call `onPaint` for each tile they cross. */
   setPainting(on) {
     this.painting = on;
     this.canvas.style.cursor = on ? 'crosshair' : '';
   }
 
+  /** The clan to show bright (its territory and festival route), the rest dimmed; null for none. */
+  setFocus(clanId) {
+    this.focus = clanId ?? null;
+    this.requestDraw();
+  }
+
+  /** The led civ's camp's line home as tiles from the camp, drawn thin and faint; null for none. */
+  setHomeLine(tiles) {
+    this.homeLine = tiles;
+    this.requestDraw();
+  }
+
+  /** The selected camp's line home: `{tiles: [its tile, ...path], colour}`, or null. */
   setLine(line) {
     this.line = line;
     this.requestDraw();
@@ -573,8 +587,8 @@ export class MapView {
     this.drawMarks(ctx);
     this.drawRivers(ctx);
 
-    // Closed country: an outline round each zone's outer edge.
-    for (let z = 1; z <= 3; z++) {
+    // Closed country: an outline round each zone's outer edge, on the View toggle.
+    for (let z = 1; z <= 3 && this.options.country; z++) {
       ctx.strokeStyle = ZONE_COLOR[z];
       ctx.lineWidth = Math.max(px * 2.2, 0.13);
       ctx.setLineDash(z === 2 ? [0.5, 0.3] : []);
@@ -820,6 +834,17 @@ export class MapView {
         ctx.stroke();
       }
     }
+    // The led civ's camp's line home, always: thin and faint (the selected camp's own line is drawn over it).
+    if (this.homeLine && this.homeLine.length > 1) {
+      ctx.globalAlpha = 0.45;
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#e8f0ff';
+      ctx.lineWidth = Math.max(px * 1.5, 0.06);
+      ctx.beginPath();
+      this.homeLine.forEach((i, n) => (n === 0 ? ctx.moveTo(this.px[i], this.py[i]) : ctx.lineTo(this.px[i], this.py[i])));
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     if (this.line && this.line.tiles.length > 1) {
       const { tiles, colour } = this.line;
       ctx.globalAlpha = 1;
@@ -941,16 +966,18 @@ export class MapView {
         if (!list) byClan.set(o, (list = []));
         list.push(i);
       }
-      ctx.globalAlpha = 0.3;
+      const f = this.focus;
+      const dim = (id, on, off) => (f == null || f === id ? on : off);
       for (const [id, list] of byClan) {
+        ctx.globalAlpha = dim(id, f == null ? 0.3 : 0.45, 0.12);
         ctx.fillStyle = hue(id);
         ctx.beginPath();
         for (const i of list) this.hexAt(ctx, i, 1.02);
         ctx.fill();
       }
-      ctx.globalAlpha = 0.85;
-      ctx.lineWidth = Math.max(px * 1.2, 0.04);
       for (const [id, list] of byClan) {
+        ctx.globalAlpha = dim(id, 1, 0.3);
+        ctx.lineWidth = Math.max(px * (f === id ? 2.4 : 1.2), 0.04);
         ctx.strokeStyle = hue(id);
         ctx.beginPath();
         for (const i of list) {
@@ -1035,8 +1062,11 @@ export class MapView {
       const clans = Object.values(v.clans).filter((c) => walkOf(c).length >= 2);
       ctx.setLineDash([Math.max(px * 6, 0.5), Math.max(px * 4, 0.35)]);
       for (const casing of [true, false]) {
-        ctx.lineWidth = casing ? Math.max(px * 5, 0.25) : Math.max(px * 2.6, 0.14);
         for (const c of clans) {
+          const on = this.focus == null || this.focus === c.id;
+          ctx.globalAlpha = on ? 1 : 0.25;
+          const w = this.focus === c.id ? 1.6 : 1;
+          ctx.lineWidth = (casing ? Math.max(px * 5, 0.25) : Math.max(px * 2.6, 0.14)) * w;
           ctx.strokeStyle = casing ? 'rgba(0,0,0,0.5)' : hue(c.id);
           ctx.beginPath();
           walkOf(c).forEach((i, n) => {
@@ -1047,6 +1077,7 @@ export class MapView {
         }
       }
       ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
     }
 
     // Markets: a ring with the reach outlined; centres picked out.

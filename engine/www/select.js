@@ -67,22 +67,46 @@ export function tileKind(ctx, i) {
   if (l.river[i] > 0) bits.push(`river (${l.river[i]} upstream)`);
   if (l.flood[i]) bits.push('floodplain');
   if (l.pass[i]) bits.push('pass');
-  if (l.zone[i]) bits.push(ZONES[l.zone[i]]);
+  if (l.zone[i] && ctx.country) bits.push(ZONES[l.zone[i]]);
   return bits.join(', ');
+}
+
+/** A "Why" list: the subject's latest reasons (`Sim.notes`), newest first as "turn · text"; empty if none. */
+function whyHtml(ctx, id) {
+  if (id == null) return '';
+  const notes = JSON.parse(ctx.sim.notes(id)).slice(0, ctx.rules.notes_shown);
+  if (!notes.length) return '';
+  const rows = notes.map((n) => `<li><span class="turn">${n.turn} ·</span> ${esc(n.text)}</li>`).join('');
+  return `<div class="why"><span class="dim">Why</span><ul>${rows}</ul></div>`;
+}
+const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+
+/** The camps whose warriors hold tile `i`, as "Red's camp" links. */
+export function holders(ctx, i) {
+  return Object.values(ctx.v.units).filter((u) => u.kind === 'camp' && u.held?.includes(i));
+}
+
+/** What tile `i` is to a clan: its home, in its territory, or on its festival route (can be several). */
+export function clanRole(c, i) {
+  const bits = [];
+  if (c.home === i) bits.push('home');
+  if (c.territory.includes(i)) bits.push('territory');
+  if (c.routes.length && c.routes[0].path.includes(i)) bits.push('route');
+  return bits;
 }
 
 export const marketOn = (ctx, i) => Object.values(ctx.v.markets).find((m) => m.tile === i);
 
-function clanHtml(c, how) {
+function clanHtml(c, how, i) {
   const cost = c.routes.reduce((a, r) => a + r.cost, 0);
   const festival = c.market != null ? `festival ${c.market}, route ${f2(cost)} labour a year` : 'no festival in reach';
-  return `<p><b style="color:${clanHue(c.id)}">Clan ${c.id}</b> <span class="dim">(${how})</span><br>${f2(c.people)} people · territory ${c.territory.length} tiles<br>${festival}<br>fed ${f2(c.fed_ratio)}${c.starving ? ' · <b style="color:#ff7b72">starving</b>' : ''}</p>`;
+  return `<p><b style="color:${clanHue(c.id)}">Clan ${c.id}</b> <span class="dim">(${how})</span><br>${f2(c.people)} people · territory ${c.territory.length} tiles<br>${festival}<br>fed ${f2(c.fed_ratio)}${c.starving ? ' · <b style="color:#ff7b72">starving</b>' : ''}${i == null ? '' : `<br><span class="dim">this tile: ${clanRole(c, i).join(', ') || 'outside it'}</span>`}</p>`;
 }
 
 function marketHtml(ctx, m, how) {
   const { v, goods } = ctx;
   const prices = goods.map((g, f) => `${g} ${f2(m.prices[f])}`).join(', ');
-  return `<p><b>Market ${m.id}</b> <span class="dim">(${how})</span>${v.end && v.end.centres.includes(m.id) ? ' · <b style="color:#ffc800">centre</b>' : ''}<br>age ${v.turn - m.founded} · ${m.traders} traders · activity ${f2(m.activity)}<br><span class="dim">prices ${prices}</span></p>`;
+  return `<p><b>Market ${m.id}</b> <span class="dim">(${how})</span>${v.end && v.end.centres.includes(m.id) ? ' · <b style="color:#ffc800">centre</b>' : ''}<br>age ${v.turn - m.founded} · ${m.traders} traders · activity ${f2(m.activity)}<br><span class="dim">prices ${prices}</span></p>${whyHtml(ctx, m.id)}`;
 }
 
 const unitName = (u) => `${u.kind[0].toUpperCase()}${u.kind.slice(1)} ${u.id}`;
@@ -143,6 +167,7 @@ function campPanel(ctx, id) {
   }
   const others = Object.values(v.units).filter((o) => o.tile === u.tile && o.id !== id).sort((a, b) => a.id - b.id);
   html += unitList(ctx, others, 'Units here', false);
+  html += whyHtml(ctx, id);
   const actions = [];
   if (mine) {
     actions.push({ label: 'Raise 1', action: { type: 'raise', n: 1 } });
@@ -193,6 +218,7 @@ function scoutPanel(ctx, id) {
   if (routing.arm) html += `<p><b>Click the map</b> for the route's ${routing.arm === 'start' ? 'start' : 'end'}.</p>`;
   const others = Object.values(v.units).filter((o) => o.tile === u.tile && o.id !== id).sort((a, b) => a.id - b.id);
   html += unitList(ctx, others, 'Units here', false);
+  html += whyHtml(ctx, id);
   const actions = [];
   if (mine) {
     actions.push({ label: 'Start here', arm: 'start' });
@@ -261,6 +287,7 @@ function capitalPanel(ctx, id) {
   html += leaningList(ctx, id);
   const units = Object.values(v.units).filter((u) => u.civ === id).sort((a, b) => a.id - b.id);
   html += units.length ? unitList(ctx, units, `Units (${units.length})`, true) : '<p class="dim">No units.</p>';
+  html += whyHtml(ctx, id);
   return { title: `${c.name}'s capital`, html, actions };
 }
 
@@ -272,6 +299,7 @@ function tilePanel(ctx, sel) {
   let html = `<p class="dim">${tileKind(ctx, i)}${land ? ` · fertility ${f2(t.fertility)} · trail ${t.trail ? 'yes' : 'no'}` : ''}</p>`;
   const civ = sim.tile_civ(i);
   if (civ >= 0) html += `<p>Land of ${civName(ctx, civ)}</p>`;
+  for (const u of holders(ctx, i)) html += `<p>Held by ${civName(ctx, u.civ)}'s camp</p>`;
   if (land) {
     html += '<table>';
     goods.forEach((g, f) => {
@@ -284,8 +312,9 @@ function tilePanel(ctx, sel) {
   const addClan = (id, how) => {
     if (id == null || shown.has(id) || !v.clans[id]) return;
     shown.add(id);
-    html += clanHtml(v.clans[id], how);
+    html += clanHtml(v.clans[id], how, i);
     html += leaningsHtml(ctx, v.clans[id]);
+    html += whyHtml(ctx, id);
   };
   addClan(sel.clan, 'chosen');
   addClan(view.clanAt(i), 'in its territory');

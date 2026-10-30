@@ -148,8 +148,16 @@ pub fn found(w: &mut World) {
             best.map(|(id, _)| (c.id, id))
         })
         .collect();
-    for (clan, civ) in joins {
+    for &(clan, civ) in &joins {
         w.clans.get_mut(&clan).unwrap().civ = Some(civ);
+        let name = w.civs[&civ].name.clone();
+        w.note(clan, format!("joined {name} at founding: in reach of its capital"));
+    }
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    for id in ids {
+        let n = joins.iter().filter(|j| j.1 == id).count();
+        let at = w.at(w.civs[&id].capital);
+        w.note(id, format!("founded at {at} with {n} clan(s) in reach"));
     }
 
     let ids: Vec<u32> = w.civs.keys().copied().collect();
@@ -175,6 +183,7 @@ pub fn found(w: &mut World) {
         if let Some(clan) = own {
             w.clans.get_mut(&clan).unwrap().civ = Some(id);
             w.civs.get_mut(&id).unwrap().clan = clan;
+            w.note(clan, "is its civ's own clan: its home is the capital".to_string());
             continue;
         }
         let near = reach(w, w.civs[&id].capital);
@@ -295,6 +304,7 @@ pub fn levy(w: &mut World, mid: u32) {
     let ids: Vec<u32> =
         w.clans.values().filter(|c| c.civ == Some(civ) && c.market == Some(mid)).map(|c| c.id).collect();
     let mut room = (CIV.store_cap - w.civs[&civ].store.iter().sum::<f64>()).max(0.0);
+    let mut paid_by = Vec::new();
     for id in ids {
         let c = w.clans.get_mut(&id).unwrap();
         let total: f64 = c.basket.iter().sum();
@@ -310,6 +320,19 @@ pub fn levy(w: &mut World, mid: u32) {
             c.basket[f] -= p;
             store[f] += p;
         }
+        paid_by.push((id, share < CIV.levy));
+    }
+    if !paid_by.is_empty() {
+        w.note(civ, "collected its levy at its market".to_string());
+    }
+    let name = w.civs[&civ].name.clone();
+    for (id, cut) in paid_by {
+        let text = if cut {
+            format!("paid a cut levy to {name}: its store is at the cap")
+        } else {
+            format!("paid a levy to {name}")
+        };
+        w.note(id, text);
     }
 }
 
@@ -330,6 +353,9 @@ pub fn upkeep(w: &mut World) {
         let civ = w.civs.get_mut(&id).unwrap();
         civ.store = store;
         civ.lost = lost;
+        if lost > 0.0 {
+            w.note(id, "its store is over its cap: food is lost".to_string());
+        }
     }
 }
 

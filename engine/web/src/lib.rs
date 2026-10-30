@@ -1,4 +1,4 @@
-use engine::data::{CIV, LEANING, PREGAME, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{CIV, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::units::UnitKind;
 use engine::{civs, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
@@ -86,7 +86,8 @@ impl Sim {
     /// civ; else null). A scout also has `plan` when it has a route: `{known, possible, candidates}`,
     /// where `known` and `possible` are `{path, cost}` (path from the route's start, null
     /// when there is none) and `candidates` the unrevealed tiles the search would reveal next.
-    /// `clan_civ` is `[clan, civ]` for every clan with a civ.
+    /// `clan_civ` is `[clan, civ]` for every clan with a civ. Events are not in the view: they come
+    /// from `events`, each with `alert` and `amount` as the engine gives them.
     pub fn view(&self) -> String {
         let w = &self.world;
         let trails: Vec<usize> = (0..w.tiles.len()).filter(|&i| w.tiles[i].trail).collect();
@@ -270,10 +271,26 @@ impl Sim {
         stats::digest(&self.world)
     }
 
-    /// The events from index `from` on, as a JSON array; each has its wording in `text`.
+    /// The events from index `from` on, as a JSON array; each has its wording in `text`, its `alert`
+    /// (a trouble of the led civ that has just started) and, for `peopleLeft`, its `amount`.
     pub fn events(&self, from: usize) -> String {
         let w = &self.world;
         let rows: Vec<_> = w.events.iter().skip(from).map(|e| e.json(w)).collect();
+        serde_json::to_string(&rows).unwrap()
+    }
+
+    /// The reasons of subject `id` (a clan, market, civ or unit), as JSON `[{turn, text}]`, newest
+    /// first; empty for an id with none.
+    pub fn notes(&self, id: u32) -> String {
+        let rows: Vec<_> = self
+            .world
+            .notes
+            .get(&id)
+            .into_iter()
+            .flatten()
+            .rev()
+            .map(|n| serde_json::json!({ "turn": n.turn, "text": n.text }))
+            .collect();
         serde_json::to_string(&rows).unwrap()
     }
 
@@ -308,8 +325,9 @@ pub fn goods() -> String {
 }
 
 /// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
-/// hungry_turns, store_cap, territory, join, gift_max}`. `join` is the leaning at which a clan joins a
-/// civ; `gift_max` is the most a civ can give a turn (its store cap).
+/// hungry_turns, store_cap, territory, join, gift_max, notes_shown}`. `join` is the leaning at which a
+/// clan joins a civ; `gift_max` is the most a civ can give a turn (its store cap); `notes_shown` is how
+/// many reasons the panel shows.
 #[wasm_bindgen]
 pub fn rules() -> String {
     serde_json::json!({
@@ -322,6 +340,7 @@ pub fn rules() -> String {
         "territory": CIV.territory,
         "join": LEANING.join,
         "gift_max": CIV.store_cap,
+        "notes_shown": NOTES.shown,
     })
     .to_string()
 }

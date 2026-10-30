@@ -2,6 +2,7 @@
 // Events come from `Sim.events(from)`; the page keeps the cursor and hands each new batch to `add`.
 
 const CAP = 300; // entries in the DOM
+const ALERTS = 5; // alerts in the box at the top
 const KEEP = 6000; // entries in memory, for re-rendering after a filter change
 
 export const KINDS = {
@@ -9,6 +10,7 @@ export const KINDS = {
   clanStarving: { icon: '!', color: '#ff7b72', label: 'Starving' },
   clanMoved: { icon: '→', color: '#9ecbff', label: 'Moves' },
   clanMerged: { icon: '⇉', color: '#9ecbff', label: 'Merges' },
+  peopleLeft: { icon: '⇢', color: '#ff9f6e', label: 'People leave clans' },
   marketFormed: { icon: '◉', color: '#ffd479', label: 'Markets formed' },
   marketFaded: { icon: '○', color: '#a8a8a8', label: 'Markets faded' },
   hearthTamed: { icon: '■', color: '#ffd400', label: 'Hearths' },
@@ -40,9 +42,14 @@ export const KINDS = {
 const PINNED = new Set(['centreFormed', 'pregameEnded', 'civFounded']);
 
 export class Feed {
-  /** @param {{list: HTMLElement, filters: HTMLElement, onClick(item: object): void, mine?(item: object): boolean}} o */
-  constructor({ list, filters, onClick, mine = () => false }) {
+  /** @param {{list: HTMLElement, filters: HTMLElement, alerts?: HTMLElement, onClick(item: object): void, mine?(item: object): boolean, onUnread?(n: number): void}} o
+   *  `alerts` is the box of the last `ALERTS` alerts; `onUnread` hears the count of alerts that came while the feed was hidden. */
+  constructor({ list, filters, alerts = null, onClick, mine = () => false, onUnread = () => {} }) {
     this.mine = mine;
+    this.box = alerts;
+    this.onUnread = onUnread;
+    this.open = true;
+    this.unread = 0;
     this.list = list;
     this.onClick = onClick;
     this.items = [];
@@ -66,20 +73,43 @@ export class Feed {
       label.append(box, ' ', icon, ' ', k.label);
       filters.append(label);
     }
-    this.list.addEventListener('click', (e) => {
+    const clicked = (e) => {
       const li = e.target.closest('li');
       if (!li) return;
       const item = this.items.find((it) => it.id === Number(li.dataset.id));
       if (!item) return;
       this.select(item.id);
       this.onClick(item);
-    });
+    };
+    this.list.addEventListener('click', clicked);
+    this.box?.addEventListener('click', clicked);
   }
 
   reset() {
     this.items = [];
     this.selected = null;
     this.list.replaceChildren();
+    this.unread = 0;
+    this.onUnread(0);
+    this.renderAlerts();
+  }
+
+  /** The feed is shown or hidden: showing it clears the unread alerts. */
+  setOpen(on) {
+    this.open = on;
+    if (on) {
+      this.unread = 0;
+      this.onUnread(0);
+    }
+  }
+
+  /** The last `ALERTS` alerts, newest first, in the box at the top. */
+  renderAlerts() {
+    if (!this.box) return;
+    const rows = [];
+    for (let i = this.items.length - 1; i >= 0 && rows.length < ALERTS; i--) if (this.items[i].alert) rows.push(this.row(this.items[i]));
+    this.box.replaceChildren(...rows);
+    this.box.hidden = rows.length === 0;
   }
 
   select(id) {
@@ -118,6 +148,14 @@ export class Feed {
       if (this.shown.has(item.kind)) this.list.prepend(this.row(item));
     }
     this.trim();
+    const alerts = fresh.filter((item) => item.alert).length;
+    if (alerts) {
+      this.renderAlerts();
+      if (!this.open) {
+        this.unread += alerts;
+        this.onUnread(this.unread);
+      }
+    }
   }
 
   row(item) {
@@ -128,6 +166,7 @@ export class Feed {
     li.dataset.turn = item.turn;
     if (item.id === this.selected) li.classList.add('selected');
     if (this.mine(item)) li.classList.add('mine');
+    if (item.alert) li.classList.add('alert');
     const b = document.createElement('button');
     b.type = 'button';
     const turn = document.createElement('span');
@@ -140,7 +179,7 @@ export class Feed {
     icon.setAttribute('aria-hidden', 'true');
     const text = document.createElement('span');
     text.className = 'text';
-    text.textContent = item.text;
+    text.textContent = item.alert ? `! ${item.text}` : item.text;
     b.append(turn, icon, text);
     li.append(b);
     return li;

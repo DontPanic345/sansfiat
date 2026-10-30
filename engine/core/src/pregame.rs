@@ -293,6 +293,7 @@ pub fn check_end(w: &mut World) {
         if !w.centres_seen.contains(&id) {
             let home = w.clans[&id].home;
             w.event(EventKind::CentreFormed, home, Some(id), None, None);
+            w.note(id, "became a centre of the pre-game".to_string());
         }
     }
     // A clan that drops out of the greedy set and back in is not announced twice.
@@ -324,6 +325,10 @@ pub fn check_end(w: &mut World) {
         if clan.is_none_or(|id| !w.centres_seen.contains(&id)) {
             let tile = w.markets[&mid].tile;
             w.event(EventKind::CentreFormed, tile, clan, Some(mid), None);
+            w.note(mid, "became a centre of the pre-game, topped up".to_string());
+            if let Some(id) = clan {
+                w.note(id, "became a centre of the pre-game".to_string());
+            }
             w.centres_seen.extend(clan);
         }
         sites.push((mid, clan));

@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::civs::{self, Civ};
 use crate::clans::{self, Clan};
-use crate::data::{Config, CIV};
+use crate::data::{Config, CIV, NOTES};
 use crate::land;
 use crate::leaning;
 use crate::map::{self, Tile};
@@ -52,6 +52,21 @@ pub struct World {
     /// Every clan that has been among the centres before the end, so each is announced once.
     #[serde(skip)]
     pub centres_seen: Vec<u32>,
+    /// Why each subject (a clan, market, civ or unit, by id) was acted on, oldest first: derived
+    /// from the turns, so not saved; a replay rebuilds it. See `note`.
+    #[serde(skip)]
+    pub notes: BTreeMap<u32, Vec<Note>>,
+    /// The alert candidates of the last turn, as (kind, subject): a trouble that goes on from one
+    /// turn to the next is an alert once (`flag_alerts`).
+    #[serde(skip)]
+    pub candidates: Vec<(EventKind, u32)>,
+}
+
+/// A reason: a line about a subject, written where a rule acted on it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Note {
+    pub turn: u32,
+    pub text: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -95,10 +110,13 @@ pub enum EventKind {
     Deployed,
     Held,
     LineCut,
+    PeopleLeft,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
 /// zone's size (`Deployed`, `Held`) or the civ whose army cut a line (`LineCut`); `unit` is for units.
+/// `alert` marks the events the led civ must hear of as they start (`flag_alerts`); the page and
+/// the CLI read it from the JSON as they read the rest.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Event {
     pub turn: u32,
@@ -112,6 +130,11 @@ pub struct Event {
     /// A route's cost, for the scout's route events.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cost: Option<f64>,
+    /// A number of people, for `PeopleLeft`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount: Option<f64>,
+    #[serde(default)]
+    pub alert: bool,
 }
 
 impl Event {
@@ -164,6 +187,9 @@ impl Event {
             EventKind::ScoutHungry => format!("{}'s scout at {at} goes hungry", self.civ_name(w)),
             EventKind::ScoutStarved => format!("{}'s scout at {at} loses a person to hunger", self.civ_name(w)),
             EventKind::ClanJoined => format!("Clan {clan} joins {}", self.civ_name(w)),
+            EventKind::PeopleLeft => {
+                format!("{:.1} people leave {}'s clans for others", self.amount.unwrap_or(0.0), self.civ_name(w))
+            }
             EventKind::Deployed => {
                 format!("{}'s camp at {at} deploys over {} tiles", self.civ_name(w), self.other.unwrap_or(0))
             }
@@ -207,7 +233,37 @@ impl Event {
 impl World {
     /// Records an event at the current turn.
     pub fn event(&mut self, kind: EventKind, tile: usize, clan: Option<u32>, market: Option<u32>, other: Option<u32>) {
-        self.events.push(Event { turn: self.turn, kind, tile, clan, market, other, civ: None, unit: None, cost: None });
+        self.events.push(Event {
+            turn: self.turn,
+            kind,
+            tile,
+            clan,
+            market,
+            other,
+            civ: None,
+            unit: None,
+            cost: None,
+            amount: None,
+            alert: false,
+        });
+    }
+
+    /// Records an event about a civ, with the number of people it concerns (`PeopleLeft`), at the
+    /// current turn.
+    pub fn civ_amount_event(&mut self, kind: EventKind, tile: usize, civ: u32, amount: f64) {
+        self.events.push(Event {
+            turn: self.turn,
+            kind,
+            tile,
+            clan: None,
+            market: None,
+            other: None,
+            civ: Some(civ),
+            unit: None,
+            cost: None,
+            amount: Some(amount),
+            alert: false,
+        });
     }
 
     /// Records an event about a civ (and its market, if any) at the current turn.
@@ -222,6 +278,8 @@ impl World {
             civ: Some(civ),
             unit: None,
             cost: None,
+            amount: None,
+            alert: false,
         });
     }
 }
@@ -239,6 +297,8 @@ impl World {
             civ: Some(civ),
             unit: None,
             cost: None,
+            amount: None,
+            alert: false,
         });
     }
 }
@@ -256,6 +316,8 @@ impl World {
             civ: Some(civ),
             unit: Some(unit),
             cost: None,
+            amount: None,
+            alert: false,
         });
     }
 
@@ -271,6 +333,8 @@ impl World {
             civ: Some(civ),
             unit: Some(unit),
             cost: None,
+            amount: None,
+            alert: false,
         });
     }
 }
@@ -353,9 +417,16 @@ pub const TURN: &[Step] = &[
     Step { name: "end", run: pregame::check_end },
 ];
 
-/// What a save holds: enough to replay the world.
+/// The save format's version. Any change that moves a world's digest bumps it with the constants
+/// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
+/// into a different world.
+pub const SAVE_VERSION: u32 = 1;
+
+/// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Save {
+    #[serde(default)]
+    pub version: u32,
     pub config: Config,
     pub log: Vec<Action>,
 }
@@ -382,6 +453,8 @@ impl World {
             log: Vec::new(),
             events: Vec::new(),
             centres_seen: Vec::new(),
+            notes: BTreeMap::new(),
+            candidates: Vec::new(),
         };
         clans::seed(&mut w);
         w
@@ -453,22 +526,100 @@ impl World {
             Action::ClearRoute => units::order_route(self, None),
             Action::SetKeep { food } => {
                 let civ = self.player.expect("validated: the player leads a civ");
+                let text = match food {
+                    Some(f) => format!("the player set it to keep {f:.1} food in its store"),
+                    None => "the player set it to keep its camp's full pack".to_string(),
+                };
                 self.civs.get_mut(&civ).unwrap().keep = *food;
+                self.note(civ, text);
             }
             Action::SetGift { food } => {
                 let civ = self.player.expect("validated: the player leads a civ");
                 self.civs.get_mut(&civ).unwrap().gift = *food;
+                self.note(civ, format!("the player set its gift to {food:.1} food a turn"));
             }
         }
         self.log.push(action);
         Ok(())
     }
 
+    /// A tile as the notes name it: its hex, `(q, r)`.
+    pub fn at(&self, tile: usize) -> String {
+        let h = self.tiles[tile].hex();
+        format!("({}, {})", h.q, h.r)
+    }
+
+    /// Records why a rule acted on subject `id` (a clan, market, civ or unit) this turn. A text the
+    /// subject noted last turn or this turn only moves that note on to now (and so to the newest
+    /// place); past `NOTES.kept` the oldest goes. Writes nothing a digest reads.
+    pub fn note(&mut self, id: u32, text: String) {
+        let turn = self.turn;
+        let list = self.notes.entry(id).or_default();
+        if let Some(i) = list.iter().rposition(|n| n.text == text && n.turn + 1 >= turn) {
+            let mut n = list.remove(i);
+            n.turn = turn;
+            list.push(n);
+            return;
+        }
+        list.push(Note { turn, text });
+        if list.len() > NOTES.kept {
+            list.remove(0);
+        }
+    }
+
     fn end_turn(&mut self) {
+        let from = self.events.len();
         for step in TURN {
             (step.run)(self);
         }
+        self.sweep_notes();
+        self.flag_alerts(from);
         self.turn += 1;
+    }
+
+    /// Drops the notes of subjects that are gone (a clan merged or died, a market faded, a camp or
+    /// scout disbanded).
+    fn sweep_notes(&mut self) {
+        let (clans, markets, civs, units) = (&self.clans, &self.markets, &self.civs, &self.units);
+        self.notes.retain(|id, _| {
+            clans.contains_key(id) || markets.contains_key(id) || civs.contains_key(id) || units.contains_key(id)
+        });
+    }
+
+    /// The alert key of an event this turn: its kind and subject, when it is trouble the led civ
+    /// must hear of (the camp's or scout's hunger and cut lines, a rival's clan joining, people
+    /// leaving the led civ's clans). `None` when watching.
+    fn alert_key(&self, e: &Event) -> Option<(EventKind, u32)> {
+        let me = self.player?;
+        let mine = match e.kind {
+            EventKind::CampHungry
+            | EventKind::WarriorsStarved
+            | EventKind::CampCutOff
+            | EventKind::LineCut
+            | EventKind::ScoutHungry
+            | EventKind::ScoutStarved
+            | EventKind::PeopleLeft => e.civ == Some(me),
+            EventKind::ClanJoined => e.civ.is_some_and(|c| c != me),
+            _ => false,
+        };
+        if !mine {
+            return None;
+        }
+        Some((e.kind, e.unit.or(e.clan).or(e.civ)?))
+    }
+
+    /// Marks the alerts among the events from index `from`: a candidate (`alert_key`) is an alert
+    /// unless the same kind about the same subject was a candidate last turn, so a trouble that
+    /// starts is one alert and not one a turn. Keeps this turn's candidates for the next.
+    fn flag_alerts(&mut self, from: usize) {
+        let before = std::mem::take(&mut self.candidates);
+        let mut now = Vec::new();
+        for i in from..self.events.len() {
+            let Some(key) = self.alert_key(&self.events[i]) else { continue };
+            self.events[i].alert = !before.contains(&key);
+            now.push(key);
+        }
+        self.candidates = now;
     }
 
     /// Ends `turns` turns. At the pick it first watches (`ChooseCiv { civ: None }`, logged), so a
@@ -483,11 +634,19 @@ impl World {
     }
 
     pub fn save(&self) -> Save {
-        Save { config: self.config, log: self.log.clone() }
+        Save { version: SAVE_VERSION, config: self.config, log: self.log.clone() }
     }
 
-    /// Rebuilds the world a save describes; `Err` names the first action that no longer applies.
+    /// Rebuilds the world a save describes; `Err` names why it can't (another version, or the first
+    /// action that no longer applies).
     pub fn replay(save: &Save) -> Result<World, String> {
+        if save.version != SAVE_VERSION {
+            return Err(if save.version == 0 {
+                format!("this save is from an older build (no version); this build reads version {SAVE_VERSION}")
+            } else {
+                format!("this save is version {}; this build reads version {SAVE_VERSION}", save.version)
+            });
+        }
         let mut w = World::new(save.config);
         for (i, a) in save.log.iter().enumerate() {
             w.act(a.clone()).map_err(|e| format!("action {i} ({a:?}): {e}"))?;

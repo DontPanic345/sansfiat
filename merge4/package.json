@@ -1,11 +1,1 @@
-{
-  "name": "sans-fiat",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "node tools/serve.js",
-    "test": "node --test",
-    "sim": "node tools/sim.js",
-    "bench": "node tools/bench.js"
-  }
-}
+{"name": "merge4", "private": true, "scripts": {"test": "echo archived"}}
