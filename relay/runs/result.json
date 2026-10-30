@@ -1,64 +1,13 @@
 {
   "status": "done",
-  "summary": "Build-1 (engine) of #57 is done and `./check.sh` is green (fmt, clippy, all tests including `the_save_version_pins_the_rules`, cross-build digests, `www/check.mjs`). No rule moved: the four pinned digests (seed 1 turn 336, seed 2 turn 303, seed 3 turn 239, seed 2 led turn 303) are the same as before the piece, and bench is +1.4% (`relay/specs/57/bench.md`). Added: `World.notes` (`#[serde(skip)]`, `World::note` keeps `NOTES.kept = 8`, `NOTES.shown = 5` in data.rs; gone subjects swept at end of turn; `World::at` names a tile) written by the rules at their decisions (clans, festivals, camps, scouts, civs, leanings, the pregame centres, the player's keep and gift); `Event.alert` (set in `end_turn` by `flag_alerts` for the led civ's camp and scout hunger, its camp's cut lines, a rival's `ClanJoined`, and its `PeopleLeft`, only when a trouble starts) and `Event.amount`; `EventKind::PeopleLeft` (one per civ per turn at its capital, from `markets::people` and `merge`, at least `PEOPLE_LEFT_MIN` = 0.1); `SAVE_VERSION = 1`, `Save.version` first in the JSON (missing reads as 0), and `replay` refuses another version with a reason. Web: `Sim.notes(id)` returns `[{turn, text}]` newest first (empty for unknown ids); `rules().notes_shown` = 5; `Sim.load` of a versionless save throws \"this save is from an older build (no version); this build reads version 1\". feed.js and check.mjs know `peopleLeft`. CLI: `!` marks alerts in run and replay; `run ... --why ID` prints a subject's reasons newest first. A sample: clan 2 in `run --seed 2 --size small --turns 400 --why 2` reads \"began starving: fed 77% of its need, short of fruit\" (turn 129), \"took in clan 414: 2.0 people\" (129), \"let go of 1 tile(s): land worth 1.01 now, 1.01 before\" (169). A market with `--why`, e.g. 14, shows only \"people moved between its clans\" and \"its clans traded here\", a weak spot (see ideas). Build-2 relies on: `Sim.notes`, `rules().notes_shown`, `alert` and `amount` on events, the `peopleLeft` kind, and the load error text. Spec item 8 is corrected: `CampCutOff` fires when a line is newly cut, not every turn it stays cut (the code is edge-triggered); the alert rule is unchanged.",
+  "summary": "Build-2 (page) of #57 is done; ./check.sh is green, node www/play-read.mjs passes, and `cd merge4 && npm test` prints archived. Added: a 'Why' list (select.js whyHtml, up to rules.notes_shown from Sim.notes) in the clan, market, camp, scout and capital panels; tile panels and tooltips name a camp holding the tile and a clan's tile as home/territory/route; MapView.setFocus (selected clan's territory and route bright, others dim) and setHomeLine (the player's camp's line, thin and faint, always); View > Hidden country (v-country, key H, off by default) gates the closed-country outlines, the tooltip/panel zone name and the legend rows; feed.js has an alerts box (last 5, clickable), alert styling ('!' and red left border) and an unread count on the Feed button; the load error shows in #error. merge4/ holds only README.md and package.json; its row is out of the repo README. www/play-read.mjs is in engine/CLAUDE.md. Screenshots in relay/specs/57/screens/: clan-why.png, camp-why.png, country-on.png, alerts.png. In alerts.png the first alert shown was a rival's clan joining, not camp hunger, since the run stops at the first alert.",
   "decisions": [
-    {
-      "decision": "A repeated reason moves to now and to the newest place when its text was noted last turn or this turn (spec item 2 said only the latest text).",
-      "why": "Routine acts (levy, gift, people shed or taken in, trade) interleave with each other for one clan, so a latest-only rule would write two lines every turn and flush the eight kept. Moving a repeat to the end keeps each list in turn order."
-    },
-    {
-      "decision": "Routine acts use constant text (\"paid a levy to Red\", \"took in people at its festival\") so repeats dedupe; numbers go only in transitions (began starving, took in clan N with its people, divided at N people).",
-      "why": "A number in a routine line changes every turn, so it can't dedupe and would flood the list."
-    },
-    {
-      "decision": "A clan's `adjust` writes a note only when it drops tiles or moves its home, not when it adds land.",
-      "why": "A growing clan adds a tile most turns; a note each time would fill its list with growth. Growth is shown by its numbers."
-    },
-    {
-      "decision": "Camp marches write a note when ordered (steps away) and when they arrive, not each step.",
-      "why": "A march's partial progress is routine; the order and the arrival are the decisions the player made or saw."
-    },
-    {
-      "decision": "`run` with an explicit `--turns` runs past the pre-game's end; without it the run still stops at the end.",
-      "why": "The brief's `run --seed 2 --size small --turns 400 --why ID` check needs a run past turn ~300; the old code stopped at the pre-game's end regardless of `--turns`. This changes documented CLI behaviour; the owner may prefer a separate flag."
-    },
-    {
-      "decision": "`the_save_version_pins_the_rules` lives in `cli/tests/save.rs`, running the `digest` binary, not in core.",
-      "why": "The led game (`--lead`, `lead_orders`) is in the CLI, and core can't call it. core/tests/save.rs holds the round-trip and refusal tests."
-    },
-    {
-      "decision": "A merged clan gets its reason on the clan that took it in (\"took in clan N: X people\"), not on the one that went.",
-      "why": "The absorbed clan's notes are swept at the end of the turn, so a note on it would never be seen."
-    },
-    {
-      "decision": "The `PeopleLeft` threshold is `PEOPLE_LEFT_MIN` (0.1) in data.rs, not in NOTES.",
-      "why": "It is a rule-reporting threshold with its own meaning; NOTES keeps the shape the spec names."
-    },
-    {
-      "decision": "Alert candidates are kept as (kind, subject) for the last turn; an event is an alert when its key was not a candidate on the turn before.",
-      "why": "This is spec item 8's rule as written. It makes a repeating `WarriorsStarved` alert once, which is what the test checks."
-    },
-    {
-      "decision": "Scout reasons are tested under a led game with a route, not a watched one.",
-      "why": "The watching AI does not set scout routes, so a watched run gives scouts no reasons. The spec's watched-run test list is met for clans, markets, civs and camps."
-    },
-    {
-      "decision": "Spec item 8 corrected: `CampCutOff` fires on the edge, not every turn.",
-      "why": "The code fires it when a line is newly cut, or when the cut moves from a rival's army to distance; the spec's wording was wrong."
-    }
+    {"decision": "The alerts box rows show the kind icon and a '!' before the text; the feed list also puts '!' before alert text.", "why": "The spec says '!' before the text; keeping the kind icon too lets alerts keep their kind's look."},
+    {"decision": "Selecting a tile with a clan (chosen or in whose territory) sets the focus; selecting anything else clears it.", "why": "Spec item 14: a tile panel with a clan."},
+    {"decision": "Added game.notes(id) on window.game for the play script.", "why": "play-read.mjs picks the clan with the most reasons so the screenshot reads."}
   ],
   "ideas": [
-    {
-      "title": "Market reasons flood with one line",
-      "body": "A festival's reasons are almost all \"people moved between its clans\" (every few turns, so it never dedupes) and \"its clans traded here\". Either write the move only when it is large, or fold the trade and the move into one line per turn that names both numbers. Clan 14 at turn 400 in seed 2 shows the problem."
-    },
-    {
-      "title": "Show what a clan let go, not just where it ended up",
-      "body": "\"let go of 1 tile(s): land worth 1.01 now, 1.01 before\" reads as no change, because the value at two decimals is the same before and after. Print the old and new worth to three decimals, or the tiles' names."
-    },
-    {
-      "title": "Milestone note for growth",
-      "body": "Growth writes nothing (decision above), so a clan that grew from 3 tiles to 20 has no line saying so. A note each time it passes a step (say each doubling of its tiles) would tell the story without flooding."
-    }
+    {"title": "docs/design cites merge4/ paths", "body": "merge4/ is archived; design files that cite merge4/... paths are the owner's to update, and ci.yml's js matrix can drop merge4."},
+    {"title": "play-read could wait for a camp alert", "body": "The script stops at the first alert of any kind; it could require a camp hunger or cut-line alert to shoot the most telling box."}
   ]
 }
