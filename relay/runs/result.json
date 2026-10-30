@@ -1,13 +1,10 @@
 {
   "status": "done",
-  "summary": "Build-2 (page) of #57 is done; ./check.sh is green, node www/play-read.mjs passes, and `cd merge4 && npm test` prints archived. Added: a 'Why' list (select.js whyHtml, up to rules.notes_shown from Sim.notes) in the clan, market, camp, scout and capital panels; tile panels and tooltips name a camp holding the tile and a clan's tile as home/territory/route; MapView.setFocus (selected clan's territory and route bright, others dim) and setHomeLine (the player's camp's line, thin and faint, always); View > Hidden country (v-country, key H, off by default) gates the closed-country outlines, the tooltip/panel zone name and the legend rows; feed.js has an alerts box (last 5, clickable), alert styling ('!' and red left border) and an unread count on the Feed button; the load error shows in #error. merge4/ holds only README.md and package.json; its row is out of the repo README. www/play-read.mjs is in engine/CLAUDE.md. Screenshots in relay/specs/57/screens/: clan-why.png, camp-why.png, country-on.png, alerts.png. In alerts.png the first alert shown was a rival's clan joining, not camp hunger, since the run stops at the first alert.",
-  "decisions": [
-    {"decision": "The alerts box rows show the kind icon and a '!' before the text; the feed list also puts '!' before alert text.", "why": "The spec says '!' before the text; keeping the kind icon too lets alerts keep their kind's look."},
-    {"decision": "Selecting a tile with a clan (chosen or in whose territory) sets the focus; selecting anything else clears it.", "why": "Spec item 14: a tile panel with a clan."},
-    {"decision": "Added game.notes(id) on window.game for the play script.", "why": "play-read.mjs picks the clan with the most reasons so the screenshot reads."}
-  ],
+  "summary": "Review of #57: the piece is built as agreed and ./check.sh is green, with the four pinned digests unchanged, so no rule moved. Nothing needed fixing. The build's departures from the spec stand: repeated notes dedupe across the last turn, `run --turns` runs past the pre-game's end, and the digest pin lives in the CLI tests. Verdict: merge.",
+  "merge": true,
+  "decisions": [],
   "ideas": [
-    {"title": "docs/design cites merge4/ paths", "body": "merge4/ is archived; design files that cite merge4/... paths are the owner's to update, and ci.yml's js matrix can drop merge4."},
-    {"title": "play-read could wait for a camp alert", "body": "The script stops at the first alert of any kind; it could require a camp hunger or cut-line alert to shoot the most telling box."}
+    { "title": "Festival reasons are thin", "body": "Markets mostly note only 'people moved between its clans' and 'its clans traded here'. Notes that name who traded or moved would read better." },
+    { "title": "Design files cite merge4/ paths", "body": "docs/design (supply.md, clans.md) still point at merge4/ files that are now archived under tag prototype/merge4." }
   ]
 }
