@@ -74,3 +74,10 @@ set its target. Debug views stay, but nothing in play needs them.
 - Bridge span as a technology.
 - Alliances themselves: until they exist, knowledge is the civ's alone.
 - Several scouts sharing one route.
+
+## Decided
+
+- The scout has the camp's switches and forages round it. (M2 retro, owner note 9)
+- Trails, worn or built, make a route cheaper; a marsh trail only bridges its river. (#74, #76)
+- A trail on a route the civ uses, such as a camp's line, counts as walked. (#78)
+- The player hears of a route when it's found and again when it's built. (#74, #77)

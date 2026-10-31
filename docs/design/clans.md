@@ -125,3 +125,14 @@ placing them?
 - Work besides harvesting: traders, crafters, farmers.
 - More than one festival per clan.
 - Hidden trail costs and scouting (`scouting.md`).
+
+## Decided
+
+- Clans grow from this turn's harvest beyond need, not from the store. (#58)
+- A clan keeps its festival unless another is clearly better, or it's clearly not worth the walk. (M2 retro, owner note 3)
+- A festival fades as fewer clans come; a lone clan can hold one. (#58, #63)
+- At festivals people move from starving clans to growing ones; a clan never loses its last person. (#58, #63)
+- A small clan merges into the nearest home at its festival. (#58)
+- Taming keeps going, but slows past the hearth. (#62, #65)
+- A trail wears where many people walk often: under homes and along shared routes. Holding a tile makes none. (#62, M2 retro, owner note 5)
+- The pre-game ends once people have levelled off. (#65)

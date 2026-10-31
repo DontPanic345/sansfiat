@@ -38,18 +38,6 @@ don't run a leg. You're the user's partner before the race and in the retro afte
 
 - Suggest a shape on the piece's `Shape:` line, with why. The designer may change it and say
   why.
-- The designer and spec-review run on Opus, one at medium and one at low. Opus medium is
-  the top for everything Relay runs. Throw a coin for
-  which gets medium (`node -e "console.log(Math.random() < 0.5 ? 'spec' : 'spec-review')"`)
-  and write both lines with "by coin":
-
-  ```
-  **Spec:** opus medium, by coin
-  **Spec-review:** opus low, by coin
-  ```
-
-- These two are held fixed through M2: they're the control the changes to the steps are
-  measured against. Change them only with the user.
 
 ## Working with the user
 
@@ -58,7 +46,7 @@ tell us and when it's worth playing. The user knows how the crew runs, so bring 
 in only when one changes the answer.
 
 The user works in large chunks: bring the whole proposal, and expect corrections and
-questions back. Commit and push when the user says.
+questions back.
 
 Relay should stay small. Its prompts explain the flow and leave the shape of the work to each
 session's judgment. When something goes wrong, look first for what could come out. The

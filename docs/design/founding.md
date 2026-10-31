@@ -55,3 +55,13 @@ says.
 - Cities beyond the capital, projects, materials and crafts, posting to markets, good and bad
   years, discoveries and fog.
 - Anything the AI civs do beyond keeping their units.
+
+## Decided
+
+- A unit is a camp or a scout; warriors are the camp's people. (M2 retro, owner note 7)
+- Scouts are raised and disbanded like the camp. (M2 retro, owner note 7)
+- If the civ's own clan is gone, its biggest clan takes over the capital. (#67, #69)
+- The levy is a share of the food civ clans bring to the capital's festival, until the store is full. (#72)
+- Only unaligned clans lean toward a civ. Gifts and trade at its festival draw them, the leaning fades, and enough of it makes them join. (#81)
+- A civ gives its spare food at its festival to win clans; how much it gives is the player's choice. (#81)
+- A civ can lose clans and people to its rivals. (#58, #63, M3 answer 2)

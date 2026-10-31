@@ -60,3 +60,11 @@ first, so there's no reserve to set.
 - Goods other than food on a line.
 - Units trading at markets.
 - Fighting.
+
+## Decided
+
+- The pack spoils. (#69)
+- A line reaches a few steps on plains, fewer in hills. (#72)
+- Foraging past the line takes only what's needed, and the tile rests in proportion. (M2 retro, owner note 9)
+- A contested tile goes to the side guarding it more; capitals can't be held. (#90)
+- Held ground blocks rivals' lines, and lets your own line through their land. (#88, #90)

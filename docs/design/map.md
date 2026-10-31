@@ -84,3 +84,9 @@ won't fit on screen.
 ## Out of scope
 
 Climate beyond deserts and rain shadow, seasons, and rivers changing course.
+
+## Decided
+
+- Desert is slow to cross. (M2 retro, owner note 1)
+- Hidden country is behind a View toggle, off by default. (#93)
+- Alerts are for the player's own civ: hunger, a cut line, a clan joining a rival, people leaving. (#93)

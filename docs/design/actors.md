@@ -52,3 +52,9 @@ territory the player has fixed; the actor divides its labour around it as any ac
   intensive farming makes the territory small. Farmed land doesn't deplete as gathered land
   does.
 - **The steward**, whose territory is the land he taxes, and a guard over the same land.
+
+## Decided
+
+- A clan takes a tile when it would feed its people better, and drops one when it has more than it needs. (#58, #61)
+- A camp marches at one person's pace. (#69)
+- Guarding held ground costs the camp labour, only while it's deployed. (#91)
