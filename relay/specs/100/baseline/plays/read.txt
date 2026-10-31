@@ -7,5 +7,5 @@ ok      Hidden country toggles off
 ok      a tile to march the camp out to
 {"turn":294,"alerts":["292 ·✚! Clan 732 joins Blue","292 ·✚! Clan 729 joins Blue","286 ·⇢! 1.3 people leave Red's clans for others"]}
 ok      an alert shows in the alerts box
-{"error":"this save is from an older build (no version); this build reads version 1"}
+{"error":"this save is from an older build (no version); this build reads version 2"}
 ok      #error names the version of an old save

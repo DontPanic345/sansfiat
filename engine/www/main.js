@@ -1,7 +1,7 @@
 import init, { Sim, terrain, goods, rules, sizes } from './pkg/web.js';
 import { MapView, hue } from './map-view.js';
 import { Feed } from './feed.js';
-import { f2, keyOf, tileOf, alive, candidates, describe, tileKind, marketOn, holders, clanRole } from './select.js';
+import { f2, keyOf, tileOf, alive, candidates, describe, tileKind, marketOn, holders, clanRole, unitOrder } from './select.js';
 
 await init();
 const TERRAIN = JSON.parse(terrain());
@@ -227,7 +227,7 @@ function onPaint(i) {
     zone.delete(i);
     zone = pruneZone(zone, u.tile);
   }
-  order({ type: 'zone', tiles: [...zone].filter((t) => t !== u.tile).sort((a, b) => a - b) });
+  order(unitOrder(u, { type: 'zone', tiles: [...zone].filter((t) => t !== u.tile).sort((a, b) => a - b) }));
 }
 
 /** A camp's line home, coloured by how much of its labour the line takes to feed it: green where a
@@ -319,7 +319,7 @@ function order(action) {
   try {
     sim.act(JSON.stringify(action));
     $('error').textContent = '';
-    if (action.type === 'setRoute' || action.type === 'clearRoute') {
+    if (action.type === 'order' && (action.order.type === 'route' || action.order.type === 'clearRoute')) {
       outcome = null;
       routing.arm = null;
       routing.start = null;
@@ -480,7 +480,7 @@ function armedPick(i) {
   }
   const u = v.units[routing.unit];
   if (!u) return;
-  order({ type: 'setRoute', from: routing.start ?? u.tile, to: i });
+  order(unitOrder(u, { type: 'route', from: routing.start ?? u.tile, to: i }));
 }
 
 /** Arms (or disarms, if it is armed already) a map click for the route: 'start' or 'to'. */
@@ -498,7 +498,7 @@ function syncArm() {
 function onCommand(i) {
   const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
   if (i < 0 || !u || u.civ !== v.player || u.kind !== 'camp') return;
-  order({ type: 'moveCamp', to: i });
+  order(unitOrder(u, { type: 'move', to: i }));
 }
 
 function onFeed(item) {

@@ -1,0 +1,25 @@
+ok       Raise warrior is enabled after 1 turns
+ok       Raise warrior: the camp takes people (3 -> 4)
+ok       Raise warrior: the page shows no error
+ok       Disband 1: one warrior goes (4 -> 3)
+ok       Raise 1: one warrior comes back (4)
+ok       Auto-forage switch flips (true -> false)
+ok       Auto-supply switch flips (true -> false)
+ok       the switches: the page shows no error
+ok       Resupply: the page shows no error
+ok       Forage: the page shows no error
+ok       painting a neighbour of the capital grows the zone (192)
+ok       Undeploy leaves the camp its own tile
+ok       Undeploy: the page shows no error
+ok       the camp can walk to a rival tile (443)
+ok       Stop clears the camp's destination
+ok       Stop: the page shows no error
+ok       the camp arrives on the rival tile 443
+ok       Pillage is enabled on a rival's land (the row reads: Pillage)
+ok       Pillage: the page shows no error
+ok       a route can be set three steps out from the capital (97)
+ok       Route to here sets the scout's route to 97
+ok       Clear route clears the scout's route
+ok       the route buttons: the page shows no error
+ok       the page throws no errors
+done

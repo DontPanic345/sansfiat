@@ -17,6 +17,11 @@ const civName = (ctx, id) => {
 };
 const hex = (ctx, i) => `${ctx.layout.q[i]}, ${ctx.layout.r[i]}`;
 
+/** A unit's order in the wire form: `unit` is the unit's object, and its civ gives the order. */
+export const unitOrder = (unit, order) => ({ type: 'order', civ: unit.civ, order: { ...order, unit: unit.id } });
+/** A civ's order (raising warriors for its camp): `civ` is the civ's id. */
+export const civOrder = (civ, order) => ({ type: 'order', civ, order });
+
 /** The key `body.dataset.selected` and the cycle use: `unit:40`, `capital:12` (the civ), `tile:812`. */
 export function keyOf(sel) {
   if (!sel) return '';
@@ -170,22 +175,22 @@ function campPanel(ctx, id) {
   html += whyHtml(ctx, id);
   const actions = [];
   if (mine) {
-    actions.push({ label: 'Raise 1', action: { type: 'raise', n: 1 } });
-    actions.push({ label: 'Disband 1', action: { type: 'disband', n: 1 } });
-    actions.push({ label: 'Disband all', action: { type: 'disband', n: null } });
-    actions.push({ label: 'Resupply', action: { type: 'resupply' } });
-    actions.push({ label: 'Forage', action: { type: 'forage' } });
-    actions.push({ label: 'Pillage', action: { type: 'pillage' } });
+    actions.push({ label: 'Raise 1', action: civOrder(u.civ, { type: 'raise', n: 1 }) });
+    actions.push({ label: 'Disband 1', action: unitOrder(u, { type: 'disband', n: 1 }) });
+    actions.push({ label: 'Disband all', action: unitOrder(u, { type: 'disband', n: null }) });
+    actions.push({ label: 'Resupply', action: unitOrder(u, { type: 'resupply' }) });
+    actions.push({ label: 'Forage', action: unitOrder(u, { type: 'forage' }) });
+    actions.push({ label: 'Pillage', action: unitOrder(u, { type: 'pillage' }) });
     actions.push({
       label: `Auto-forage: ${u.auto_forage ? 'on' : 'off'}`,
-      action: { type: 'setSwitches', forage: !u.auto_forage, supply: u.auto_supply },
+      action: unitOrder(u, { type: 'switches', forage: !u.auto_forage, supply: u.auto_supply }),
     });
     actions.push({
       label: `Auto-supply: ${u.auto_supply ? 'on' : 'off'}`,
-      action: { type: 'setSwitches', forage: u.auto_forage, supply: !u.auto_supply },
+      action: unitOrder(u, { type: 'switches', forage: u.auto_forage, supply: !u.auto_supply }),
     });
-    if (u.dest != null) actions.push({ label: 'Stop', action: { type: 'moveCamp', to: u.tile } });
-    if (u.territory.length > 1) actions.push({ label: 'Undeploy', action: { type: 'zone', tiles: [] } });
+    if (u.dest != null) actions.push({ label: 'Stop', action: unitOrder(u, { type: 'move', to: u.tile }) });
+    if (u.territory.length > 1) actions.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
   }
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 }
@@ -223,7 +228,7 @@ function scoutPanel(ctx, id) {
   if (mine) {
     actions.push({ label: 'Start here', arm: 'start' });
     actions.push({ label: 'Route to here', arm: 'to' });
-    actions.push({ label: 'Clear route', action: { type: 'clearRoute' } });
+    actions.push({ label: 'Clear route', action: unitOrder(u, { type: 'clearRoute' }) });
   }
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 }
@@ -282,7 +287,7 @@ function capitalPanel(ctx, id) {
     actions.push({ label: 'Keep +1', row: 'keep', action: { type: 'setKeep', food: c.keep + 1 } });
     if (c.keep_set != null) actions.push({ label: 'Keep default', row: 'keep', action: { type: 'setKeep', food: null } });
     html += '<div data-actions></div>';
-    actions.push({ label: 'Raise warrior', action: { type: 'raise', n: 1 } });
+    actions.push({ label: 'Raise warrior', action: civOrder(c.id, { type: 'raise', n: 1 }) });
   }
   html += leaningList(ctx, id);
   const units = Object.values(v.units).filter((u) => u.civ === id).sort((a, b) => a.id - b.id);

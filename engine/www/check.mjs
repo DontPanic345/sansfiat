@@ -324,6 +324,13 @@ assert.ok(route.cost > 0 && route.turns >= 1);
 assert.deepEqual(route, preview, 'the preview is the route');
 assert.equal(JSON.parse(sim.path(unit.tile, unit.tile + 1000000)), null);
 assert.ok(sim.check(ordered({ type: 'move', unit: unit.id, to: n + 5 })).length > 0, 'off the map is refused');
+// Another civ's unit, and another civ's order, are refused; so is the old action shape, which no longer parses.
+const rivalUnit = Object.values(w.units).find((u) => u.civ === rival.id);
+assert.ok(rivalUnit, 'the rival has a unit at the pick');
+assert.match(sim.check(ordered({ type: 'move', unit: rivalUnit.id, to: target })), /that unit is not yours/, 'a move for a unit that is not yours is refused');
+assert.match(sim.check(JSON.stringify({ type: 'order', civ: rival.id, order: { type: 'move', unit: unit.id, to: target } })), /that civ is not yours/, 'an order for a civ the player does not lead is refused');
+assert.notEqual(sim.check(JSON.stringify({ type: 'moveCamp', to: target })), '', 'the old moveCamp shape is refused');
+assert.throws(() => sim.act(JSON.stringify({ type: 'moveCamp', to: target })), /moveCamp|variant|unknown/i, 'the old moveCamp shape fails to parse');
 // A route from the capital three steps out on land, set and read back as the page reads it.
 const to = [...Array(n).keys()].find((i) => landOf(i) && hexSteps(i, scout.tile) === 3);
 assert.ok(to !== undefined, 'some land lies three steps out');
