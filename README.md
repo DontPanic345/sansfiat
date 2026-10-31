@@ -1,14 +1,14 @@
 # Sans Fiat
 
-Prototypes for a hex 4X with no money: goods are physical and worth what people will trade for them.
-Each folder stands alone. Live builds are on [GitHub Pages](https://dontpanic345.github.io/sansfiat/).
+A hex 4X with no money: goods are physical and worth what people will trade for them.
+
+[Play the game](https://dontpanic345.github.io/sansfiat/engine/) ·
+[Open pull requests](https://dontpanic345.github.io/sansfiat/), each playable
 
 | Folder | What |
 | --- | --- |
-| [`engine/`](engine/) | The game: a Rust engine with a CLI and a wasm web front end. New work goes here. |
-| [`scout/`](scout/) | Hidden trail costs and scouting routes. |
-| [`supply-lines/`](supply-lines/) | Archived: units carrying food, resupply lines, forage and pillage (the camp is in `engine/`, #29). |
+| [`engine/`](engine/) | The game: a Rust engine with a CLI and a wasm web front end. |
+| [`docs/`](docs/) | The design, proposals and owner notes. |
+| [`relay/`](relay/) | Relay, which builds the game in cold Claude Code sessions. |
 
-The prototypes not listed are archived under `prototype/<name>` tags.
-
-The JS prototypes are plain ES modules: `npm start`, `npm test`, `npm run sim`.
+The prototypes are archived under `prototype/<name>` tags.

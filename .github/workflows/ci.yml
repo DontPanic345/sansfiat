@@ -9,20 +9,6 @@ permissions:
   contents: read
 
 jobs:
-  js:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        prototype: [merge4, hex-economy, hex4x]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - run: npm test
-        working-directory: ${{ matrix.prototype }}
-
   relay:
     runs-on: ubuntu-latest
     steps:

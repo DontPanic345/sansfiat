@@ -21,9 +21,7 @@ while read -r pr; do
   if git fetch -q origin "+refs/heads/$b:refs/remotes/origin/$b" &&
      git checkout -qf --detach "origin/$b" &&
      git clean -qffdx -e engine/target; then
-    script=tools/site.sh
-    [ -f "$script" ] || script="$site"
-    bash "$script" "$dest" >"$dest/build.log" 2>&1 || build=failed
+    bash "$site" "$dest" >"$dest/build.log" 2>&1 || build=failed
     commit=$(git log -1 --format='%h%x1f%cs%x1f%s' | jq -Rc 'split("\u001f") | {sha: .[0], date: .[1], subject: .[2]}')
   else
     build=failed
@@ -45,7 +43,7 @@ jq -rs --argjson main "$main" '
   "<style>body{font-family:system-ui,sans-serif;margin:2rem}td,th{padding:.25rem .75rem;text-align:left}.failed,.failing{color:#b00}.pending{color:#a60}</style>",
   "<h1>Sans Fiat</h1><h2>main</h2><ul>",
   ($main[] | select(. != "b") | "<li><a href=\"\(@html)/\">\(@html)</a></li>"),
-  "<li><a href=\"merge4/docs/guide.html\">merge4 guide</a></li></ul>",
+  "</ul>",
   "<h2>Open pull requests</h2>",
   if length == 0 then "<p>None.</p>" else
     "<table><tr><th>Branch</th><th>PR</th><th>CI</th><th>Last commit</th><th>Play</th></tr>",
