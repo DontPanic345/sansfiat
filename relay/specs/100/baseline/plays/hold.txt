@@ -1,0 +1,10 @@
+{"raised":8,"turn":291}
+{"plan":{"rival":394,"civ":390,"name":"Blue","at":448,"ring":[480,416,415],"zone":[448,480],"line":[480,481]}}
+{"staged":111,"camp":{"id":392,"tile":111,"people":8,"dest":null,"hungry":0,"pack":25.070855781489847,"zone":[111],"held":[111],"guard":[8]}}
+{"arrived":true,"turn":325,"camp":{"id":392,"tile":448,"people":8,"dest":null,"hungry":2,"pack":0,"zone":[448],"held":[448],"guard":[8]}}
+{"painted":[415,416,448,480],"error":""}
+{"turn":1,"rival":{"tile":448,"people":2,"hungry":0,"cut_off":true,"cut_at":{"at":480,"by":389,"path":[480,481]},"pack":2.222539203153686,"zone":[448,480],"held":[],"guard":[],"line":null},"mine":{"people":7,"held":4,"hungry":3,"pack":0},"cut":true,"hungry":false}
+{"turn":2,"rival":{"tile":448,"people":2,"hungry":0,"cut_off":true,"cut_at":{"at":480,"by":389,"path":[480,481]},"pack":0.00028528283831708023,"zone":[448,480],"held":[],"guard":[],"line":null},"mine":{"people":6,"held":4,"hungry":4,"pack":0},"cut":true,"hungry":false}
+{"turn":3,"rival":{"tile":448,"people":2,"hungry":1,"cut_off":true,"cut_at":{"at":480,"by":389,"path":[480,481]},"pack":0,"zone":[448,480],"held":[],"guard":[],"line":null},"mine":{"people":5,"held":4,"hungry":5,"pack":0},"cut":true,"hungry":true}
+{"feed":["327 ·!Blue's camp at (1, 7) goes hungry","325 ·✂Blue's camp's line is cut by Red's army","323 ·!! Red's camp at (-2, 8) goes hungry","248 ·!Blue's camp at (0, 7) goes hungry","247 ·!Gold's scout at (14, 0) goes hungry","242 ·!! Red's scout at (-11, 11) goes hungry"]}
+cut: Blue's camp at its post is cut by our army and hungry

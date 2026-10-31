@@ -7,7 +7,8 @@ this step makes the repo easier to read for the sessions after.
 
 1. **`cli/src/main.rs` (≈1,000 lines) → a module per command** (item 19): `main.rs` keeps `USAGE`, `size`, `main` and
    the dispatch; `run.rs` (`run`, `Output`, `print_events`, `print_notes`), `map.rs`, `digest.rs`, `sweep.rs` (`Run`,
-   `Point`, `sweep_run`, `sweep`, `RETRO`, `retro_maps`, `CivArmy`, `MapRun`, `after_run`, `sweep_after`), `replay.rs`,
+   `Point`, `sweep_run`, `sweep`), `retro.rs` (`RETRO`, `retro_maps`, `CivArmy`, `MapRun`, `after_run`, `sweep_after`:
+   together with `sweep.rs` they are about 470 lines today), `replay.rs`,
    `bench.rs`, `clear.rs` (`basket_of`, `clear_file`), `report.rs` (`line`, `centres_text`, `report`, `civs_text`).
    Output is byte-identical: diff `run`, `run --why`, `sweep`, `sweep --after 200 --maps retro`, `replay`, `map` and
    `bench` output (timings aside) before and after on seeds 2 and 3, small.

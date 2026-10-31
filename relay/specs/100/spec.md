@@ -27,7 +27,7 @@ and safer on the one before:
 | build-3 | Shared actor behaviour: spoil, eat, walk once on `Actor`; the civ an actor | Every turn runs it, so it comes before the orders add more code to the same files |
 | build-4 | The orders: `Order`, `World::order`, `Action::Order`, the AI through it, `SAVE_VERSION` 2, tests | The one place a digest legitimately moves (the log's shape) |
 | build-5 | The scripted game into core, run by the CLI and the wasm build | Needs the orders |
-| build-6 | The page's order calls and the play scripts | Needs the orders; the headless-Chrome plays are its proof |
+| build-6 | The page's order calls and `check.mjs` | Needs the orders; the headless-Chrome plays, diffed with main's by `plays.sh`, are its proof |
 | build-7 | The CLI split, `tests/common`, `engine/CLAUDE.md` | Last, so nothing else edits the files it reshapes |
 
 ## The digests (read before any step)
@@ -63,11 +63,11 @@ world's JSON holds `log`**. So:
 4. **Files.**
    - `units/mod.rs`: `Unit`, `UnitState`, `UnitKind`, `Counters`, the queries (`camp`, `scout`,
      `pack_cap`, `leader`), raising and disbanding (`givers`, `home_clan`, `join`, `raise`,
-     `raise_at_founding`, `raise_scout_at_founding`, `disband`), and the `units` step.
+     `raise_at_founding`, `raise_scout_at_founding`, `disband`), what the camp and the scout both
+     use (`strip`, `supply`, `room`, `rival_of`, `name_of`), and the `units` step.
    - `units/line.rs`: `walkable`, `path_between`, `route`, `line`, `line_by`, `cut_off`, `cut_by`,
      `cutter`, `cut_at`, `turns`.
-   - `units/camp.rs`: the camp's turn: `camp_march`, `guarding`, `hold`, `camp_turn`, `strip`,
-     `supply`, `room`, the zone (`zone_of`, `zone_cap`, `zone_ok`, `set_zone`).
+   - `units/camp.rs`: the camp's turn: `camp_march`, `guarding`, `hold`, `camp_turn`, the zone (`zone_of`, `zone_cap`, `zone_ok`, `set_zone`).
    - `units/scout.rs`: the scout: `Plan`, `route_plan`, the trail pricing, `search`, `reveal`,
      `scout_turn`, `scout_event`.
    - `units/ai.rs`: `post`, `ai`, `ai_zone`.
@@ -85,8 +85,11 @@ world's JSON holds `log`**. So:
 6. **The JSON stays flat** (item 1): a unit still serialises as `id, civ, kind, people, home, store,
    territory, routes, market, dest, banked, hungry, auto_forage, auto_supply, resupply, forage,
    pillage, cut, foraging, supplying, held, guard, full, cut_by, route, heard, blocked`, a camp with
-   the scout's fields at their defaults and a scout with the camp's (`held: []`, `guard: []` …), as
-   today. `Sim.view()`'s `units` row is that JSON plus the extras it adds; the page reads it
+   the scout's fields at their defaults (`route: null`, `heard`, `blocked` false) and a scout with
+   the camp's at the values `raise_scout_at_founding` gives them, which nothing changes after:
+   `dest: null`, **`auto_forage: true`, `auto_supply: true`**, the five other flags `false`, `held: []`,
+   `guard: []`, `full: false`, `cut_by: null`. (Not `Default`: a scout written with `auto_forage: false`
+   moves every digest from the founding on. Checked on main's JSON by the spec-review.) `Sim.view()`'s `units` row is that JSON plus the extras it adds; the page reads it
    unchanged.
 
 ### Shared actor behaviour (build-3)
@@ -106,10 +109,14 @@ world's JSON holds `log`**. So:
      with the camp's. The scout marks `walked` on the tiles taken, as it does now. `units::walk`
      and `units::march`' loop go.
    Each must reproduce its caller's float operations in the same order: the digests are exact.
-8. **The civ is an actor.** `Civ` holds an `Actor` (home = the capital, `people` 0, the store the
-   civ's store), `Deref`s to it as `Unit` does, and `civs::upkeep` spoils through `Actor::spoil`
+8. **The civ is an actor.** `Civ` holds an `Actor` (`Actor::new(capital, 0.0)` with the civ's store:
+   home the capital, `people` 0, territory the capital, no routes, `market: None`), `Deref`s to it as
+   `Unit` does, and `civs::upkeep` spoils through `Actor::spoil`
    before the cap. Its JSON keeps `store` where it was and gains nothing (item 1, the flat mirror).
-   The civ gets no new behaviour: it does not eat, walk or trade differently.
+   The civ keeps its own `capital` and `market` (a `u32`) fields, which its call sites read; a
+   field of `Civ` shadows the `Actor` field of the same name through `Deref`, so `civ.market` is
+   still the founding market. The mirror keeps the `#[serde(default)]`s the fields have now. The civ
+   gets no new behaviour: it does not eat, walk or trade differently.
 9. **Basket helpers** (`take`, `add`, `total`, `sum`) move to `market.rs` beside `Basket` as free
    functions, once; `units::take`/`add`/`total` and `clans::sum` go.
 
@@ -126,8 +133,15 @@ world's JSON holds `log`**. So:
     (serde `tag = "type"`, camelCase.) The *design* says "raise names the civ"; the civ is the
     first argument of `order`, so `Raise` carries no `civ` field (a decision). Every other order
     carries its `unit`. Checks as today, taken from the civ and unit given instead of the player's
-    camp: the unit exists and belongs to `civ`; the phase is `Main`; plus each order's own check
-    (`check_move` and the rest move here, with the checks' text unchanged). `SetKeep` and `SetGift`
+    camp, in this order and with these refusals:
+    1. the phase is `Main`: "the game has not begun" (as `leader` says it now; `check.mjs` matches
+       /not begun/ for an order before the pick);
+    2. (`act`/`validate` only) the player leads `civ`: "you're watching: you lead no civ" when the
+       player leads none, "that civ is not yours" when it leads another;
+    3. the unit exists: "{id} is not a unit"; it is `civ`'s: "that unit is not yours"; it is the
+       order's kind: "that unit is not a camp" / "that unit is not a scout";
+    4. the order's own check (`check_move` and the rest move here, their text unchanged; "you have
+       no camp"/"you have no scout" stay only where nothing else says it, e.g. `Raise` has no unit). `SetKeep` and `SetGift`
     stay `Action`s: they set the civ, not a unit, and the AI never gives them.
 11. **`Action::Order { civ, order }`** replaces `Raise`, `Disband`, `MoveCamp`, `Zone`,
     `SetSwitches`, `Resupply`, `Forage`, `Pillage`, `SetRoute` and `ClearRoute`. Its wire form is
@@ -141,9 +155,12 @@ world's JSON holds `log`**. So:
     `VERSION` follow.
 13. **The AI gives its orders through `order`** (`units/ai.rs`): `Raise { n: UNIT.start }` when it
     has no camp (an `Err` ignored, as now), `Move` to its post, `Zone` over its line. Not logged:
-    a replay re-derives them from the world as it has always done. Validation must not change what
-    the AI does; if an AI order fails a check it used to skip, the digests show it at once, and the
-    fix is in the order's check or the AI's choice, never a relaxed player check. The note "posted
+    a replay re-derives them from the world as it has always done. Validation does not change what
+    the AI does: the spec-review instrumented main's `ai` and ran the five baseline runs and the retro
+    sweep, and no AI move failed `check_move`'s conditions (land, passable, a path from where the camp
+    stands); `ai_zone` already gates on `zone_ok`, and `raise` refuses what `check_raise` refuses (the
+    AI runs only with the army on). So the AI's choices are unchanged, and a digest that moves in
+    build-4 is a bug in the generalised checks, not a case to handle. The note "posted
     at …" is still written before the move.
 
 ### The scripted game (build-5)
@@ -179,8 +196,10 @@ world's JSON holds `log`**. So:
     defined once; the duplicated copies in `units.rs`, `civs.rs`, `scout.rs`, `alerts.rs`, `notes.rs`
     and the rest are removed. No test is deleted or weakened.
 19. **The CLI** splits into a module per command under `cli/src/`: `main.rs` (dispatch, USAGE,
-    `size`), `run.rs`, `map.rs`, `digest.rs`, `sweep.rs` (with `retro`), `replay.rs`, `bench.rs`,
-    `clear.rs`, and `report.rs` for the shared printers. Output is byte-identical.
+    `size`), `run.rs`, `map.rs`, `digest.rs`, `sweep.rs`, `retro.rs`, `replay.rs`, `bench.rs`,
+    `clear.rs`, and `report.rs` for the shared printers. `sweep.rs` (`Run`, `Point`, `sweep_run`,
+    `sweep`) and `retro.rs` (`RETRO`, `retro_maps`, `CivArmy`, `MapRun`, `after_run`, `sweep_after`) are
+    two files: together they are about 470 lines today. Output is byte-identical.
 20. **`engine/CLAUDE.md`**: one row per file in the layout table, one clause each, including the new
     files; under Adding a mechanic, "shared actor behaviour goes in `actors.rs`"; its item 3 says
     anything the player or an AI does to a unit is an `Order`; the invariant "the world changes only
@@ -209,8 +228,14 @@ is **main before the piece** (`baseline/`). The five scores of `process.md`:
 watching digests (the AI plays every turn of them) and the sweep prove.
 
 The page's proof is the plays: `www/play-camp.mjs`, `play-scout.mjs`, `play-hold.mjs`,
-`play-lean.mjs`, `play-read.mjs` each run to the end and print what they printed before. The orders
-the page sends are the wire form of item 11.
+`play-lean.mjs`, `play-read.mjs` each print what they printed on main and exit as they did there.
+`bash relay/specs/100/baseline/plays.sh` runs the five (in parallel, about 30 seconds) and diffs each
+one's stdout and exit code with `baseline/plays/`, taken from main by the spec-review: five `ok` lines.
+Two of them **fail on main** and are held to failing the same way: `play-camp` loses its camp to hunger
+on the way back and throws at its line 86 (exit 1), and `play-lean` finds no clan leaning towards the
+civ in 30 turns (exit 1). They were written against earlier rules; fixing them is not this piece (an
+idea for the owner). Their stdout up to the failure is still the comparison. The plays drive the page
+by its buttons and clicks, so they need no edits; the orders the page sends are the wire form of item 11.
 
 ### What the review must run
 
@@ -218,9 +243,9 @@ the page sends are the wire form of item 11.
 2. `bash relay/specs/100/baseline/compare.sh`: the digest comparison for all five baseline runs and the
    sweep diff, six `ok` lines.
 3. `bench` against build-1's number.
-4. The five plays in `engine/www/`; open their screenshots.
-5. Read: that no file this piece touched is over about 800 lines (`map.rs` and `data.rs` aside, which
-   it only renames in), that `engine/CLAUDE.md` has a row for every file in `core/src`, `core/src/units`,
+4. `bash relay/specs/100/baseline/plays.sh /tmp/plays`: five `ok` lines; open the screenshots.
+5. Read: that no source file this piece touched is over about 800 lines (`map.rs` and `data.rs`
+   aside, which it only renames in; tests aside), that `engine/CLAUDE.md` has a row for every file in `core/src`, `core/src/units`,
    `cli/src` and `web/src`, and that nothing under `relay/runs/` is committed.
 6. The decisions below go into the design's Decided ledger: `actors.md` takes items 7, 8 and 10–13.
 7. The PR description answers the question: the retro sweep and every digest are unchanged, the
@@ -238,10 +263,25 @@ the page sends are the wire form of item 11.
   AI's orders are not in the log; a led game's save replays to an equal world; the pinned test as in item
   2.
 - build-5: `Lead` run twice on equal worlds gives equal logs; cross-build passes.
-- build-6: `check.mjs` sends and refuses the new wire form.
+- build-6: `check.mjs` sends and refuses the new wire form; `plays.sh` prints five `ok` lines.
 
 ## Not in this piece
 
 Any rule or number. More than one camp per civ (the orders name a unit and the code looks a civ's camp up
 by `units::camp`, as before). Unit kinds. Goods other than food. `docs/architecture.md`'s table (the
 review notes in an idea which rows are now built).
+
+## What the spec-review ran
+
+On main at `25be2c6`, before any build:
+
+- `./check.sh`: green, about 4 minutes.
+- `compare.sh` with build-1's `--state` definition patched in for the run (then reverted): six `ok`
+  lines. The definition in build-1's brief reproduces `seed2-r16-t400-lead.state.txt` and
+  `seed1-r16-t400.state.txt`, and gives `46e67d48ffcbe520` at turn 303 of seed 2 small, led.
+- A unit's and a civ's JSON keys from `Sim.state()`: the 27 of item 6 for both kinds; a scout's
+  `auto_forage`/`auto_supply` are `true` (item 6 now says so).
+- `ai` instrumented on the five baseline runs and the retro sweep: no AI move fails `check_move`'s
+  conditions (item 13).
+- The five plays, twice: deterministic stdout; `play-camp` and `play-lean` exit 1 on main.
+  `baseline/plays/` and `plays.sh` hold them.

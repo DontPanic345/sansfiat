@@ -12,7 +12,8 @@ move and a reshape of state; **no rule changes**, and the world's JSON does not 
    `units::zone_cap`, `units::route_plan`, `units::raise_at_founding`, `units::raise_scout_at_founding`,
    `units::check_*`, `units::order_*`, `units::leader`, `units::ai`, `units::step`, `units::post`,
    `units::disband`, `units::raise`, `Counters`, `Unit`, `UnitKind`, `Plan` …); the rest is
-   `pub(super)`/private. Keep every function body as it is; this step moves code.
+   `pub(super)`/private. `strip`, `supply`, `room`, `rival_of` and `name_of` serve both the camp and the
+   scout, so they sit in `mod.rs`, not `camp.rs`. Keep every function body as it is; this step moves code.
 2. **`Unit` and `UnitState`** (item 5) in `units/mod.rs`. The shape:
 
    ```rust
@@ -24,10 +25,12 @@ move and a reshape of state; **no rule changes**, and the world's JSON does not 
    `scout_mut()`, `held()`, `tile()`. Camp code takes `&CampState` from `u.camp()`; `join` and
    `raise_scout_at_founding` build the two states. Do not leave dead fields on the wrong kind.
 3. **The JSON stays flat** (item 6, and "The digests" item 1): give `Unit` a private flat mirror
-   struct holding the old 27 fields in the old order (the order is `serde_json::to_string` of a camp
-   from `main`; check it against `baseline/` by running) and `#[serde(from = "UnitFlat", into =
-   "UnitFlat")]` (`Clone` is needed for `into`). `kind` is written from the state; reading a unit picks
-   the state by `kind` and drops the other kind's defaults. `#[serde(flatten)] actor` works inside the
+   struct holding the old 27 fields in the old order (spec item 6 has the list, read from main's JSON)
+   and `#[serde(from = "UnitFlat", into = "UnitFlat")]` (`Clone` is needed for `into`). `kind` is
+   written from the state; reading a unit picks the state by `kind` and drops the other kind's fields.
+   **A scout writes the camp's fields as `raise_scout_at_founding` sets them, not as `Default`:**
+   `auto_forage: true`, `auto_supply: true`, `dest: null`, the other flags `false`, `held: []`,
+   `guard: []`, `cut_by: null`. A camp writes `route: null`, `heard: false`, `blocked: false`. `#[serde(flatten)] actor` works inside the
    mirror as it does today.
 4. Fix the callers: `civs::holder` (`u.held()`), `civs`, `leaning`, `stats`, `web/src/lib.rs`
    (`u.route` for a scout → `u.scout()`; the view's JSON of a unit is built from `serde_json::to_value(u)`

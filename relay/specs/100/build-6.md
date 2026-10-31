@@ -17,13 +17,15 @@ shapes. **The page looks and behaves as it did.**
 3. **`www/check.mjs`**: every `sim.check`/`sim.act` of an old action (about twenty) uses the new form, and it
    gains: a `move` for a unit that is not yours is refused with "that unit is not yours"; an order for a civ the
    player doesn't lead is refused; the old `moveCamp` JSON fails to parse.
-4. **The play scripts** (`play-camp.mjs`, `play-hold.mjs`, `play-lean.mjs`, `play-read.mjs`, `play-scout.mjs`,
-   `play.mjs`) send the new form wherever they `act` directly; clicking through the page needs no change.
+4. **The play scripts** drive the page by its buttons and clicks and send no action JSON themselves (the
+   spec-review grepped them), so they need no edit. Leave them as they are.
 5. `web/src/lib.rs` doc comments name the new form where they name the old.
 
 ## Done
 
-`./check.sh` green. Each of the five plays runs to the end and prints what it printed on main
-(`node www/play-camp.mjs /tmp/out`, and the same for `play-hold`, `play-lean`, `play-read`, `play-scout`); open
-each screenshot and say in your summary what you saw in one clause each. The Raise, Disband, Resupply, Forage,
+`./check.sh` green (build it first: `./build-web.sh`, which `check.sh` runs). `bash relay/specs/100/baseline/plays.sh
+/tmp/plays` prints five `ok` lines: each play's stdout and exit code equal main's. Two plays fail on main and must
+fail the same way (`play-camp` exits 1 at its line 86 after its camp starves, `play-lean` exits 1 finding no leaning
+clan): do not fix them, that is not this piece. Open each screenshot under `/tmp/plays` and say in your summary what
+you saw in one clause each. The Raise, Disband, Resupply, Forage,
 Pillage, switches, Stop, Undeploy and route buttons all work from the panel (exercise the ones the plays don't).

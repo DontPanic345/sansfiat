@@ -12,16 +12,20 @@ is the one step where a digest legitimately moves: the led game's, and only thro
    `units/{mod,camp,scout}.rs` into it and generalise them from "the player's camp" to the unit named:
    `own(w)` and `leader(w)` give way to `unit_of(w, civ, id)` (the unit exists, is a camp for a camp
    order and a scout for a route order, and belongs to `civ`), and `Raise`'s check (givers, store, `army`
-   on) takes `civ`. Every check's refusal text stays as it is, so `check.mjs` and the tests still match;
-   add the two new refusals ("{id} is not a unit", "that unit is not yours"). `with_camp` goes.
-   `phase == Main` is checked for every order.
+   on) takes `civ`. The checks run in spec item 10's order with its refusals: phase first ("the game has
+   not begun": `check.mjs` matches /not begun/ for a raise before the pick); in `validate` only, the
+   player leads `civ` ("you're watching: you lead no civ" / "that civ is not yours"); then "{id} is not a
+   unit", "that unit is not yours", "that unit is not a camp" / "that unit is not a scout"; then each
+   order's own check with its text as it is. `with_camp` goes.
 2. **`Action::Order { civ, order }`** (item 11) replaces the ten camp/scout variants. `validate`:
    `Main` phase, `civ` is `w.player`, then `check_order`. `act` applies with `World::order` and logs. Keep
    `SetKeep`/`SetGift` as they are, using `leader` (keep it, in `units/mod.rs`).
 3. **The AI through `order`** (item 13), in `units/ai.rs`: `Raise`, `Move`, `Zone`. Write the
-   "posted at …" note before the move as now. If any digest moves in the watching runs, an AI order is
-   being refused that used to be applied (or the reverse): find which and fix the order's check or the
-   AI's choice, never the player's check. Say what you found in your summary.
+   "posted at …" note before the move as now. The spec-review checked on main that every AI move the
+   five baseline runs and the retro sweep make passes `check_move`'s conditions, `ai_zone` already gates
+   on `zone_ok`, and `raise` refuses what `check_raise` does: the AI's orders all pass. So if a watching
+   digest moves, the generalised check refuses what it shouldn't (or applies differently): fix the check
+   or the apply, never the AI's choice and never by relaxing a check.
 4. **`SAVE_VERSION = 2`**; update `core/tests/save.rs`'s expected messages and `cli/tests/save.rs`'s
    `VERSION`. Repin the led-game constant in `the_save_version_pins_the_rules` to the new value
    (`sansfiat digest --seed 2 --size small --turns 303 --lead`), keep the three watching constants

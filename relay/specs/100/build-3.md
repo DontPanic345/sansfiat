@@ -34,7 +34,11 @@ Today the pieces are duplicated:
    `units::walk` and the loop in `march`.
 4. **The civ is an actor** (item 8): `Civ` gets `actor: Actor` (`Actor::new(capital, 0.0)`; the store
    is its store), with `Deref`/`DerefMut` to `Actor` as `Unit` has so `civ.store` still reads at its call
-   sites. Its JSON keeps `store` where it was and gains no key — use a private flat mirror as build-2
+   sites. `Civ` keeps its own `capital` and `market: u32` fields, so every `c.capital`/`c.market` reads as now
+   (a field of `Civ` shadows the actor's `market` through `Deref`; the actor's `home` equals `capital`). The civ's JSON keys today,
+   in order, are `id,name,color,market,capital,founded,store,lost,clan,army,keep,gift,posted,given,joined,gifted,revealed`;
+   the mirror keeps them and each field's `#[serde(default)]`. Reading a civ builds its actor from
+   `capital` and `store`. Its JSON keeps `store` where it was and gains no key — use a private flat mirror as build-2
    did for `Unit` (`#[serde(from, into)]`), copying the civ's current field list and order from a run.
    `civs::upkeep` calls `civ.spoil()` then applies the cap as now. The civ gains no other behaviour.
    Everything that builds a `Civ` (`civs::found`, tests) sets the actor.

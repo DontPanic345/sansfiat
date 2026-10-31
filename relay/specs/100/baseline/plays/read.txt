@@ -1,0 +1,11 @@
+{"clan":1,"why":["116 · took in clan 403: 2.0 people","114 · sent clan 403 to (2, -12) with 3 people: it is starving","114 · began starving: fed 79% of its need, short of fruit","112 · took in clan 394: 1.9 people","108 · gave people to clans at its festival while starving"]}
+ok      the clan 1 panel lists reasons
+{"camp":["283 · its line brings food to the camp","282 · raised at (-8, -6) with 3 warriors from its clans"]}
+ok      the camp panel lists reasons
+ok      Hidden country is off by default
+ok      Hidden country toggles off
+ok      a tile to march the camp out to
+{"turn":294,"alerts":["292 ·✚! Clan 732 joins Blue","292 ·✚! Clan 729 joins Blue","286 ·⇢! 1.3 people leave Red's clans for others"]}
+ok      an alert shows in the alerts box
+{"error":"this save is from an older build (no version); this build reads version 1"}
+ok      #error names the version of an old save

@@ -1,0 +1,5 @@
+camp 1
+scout 0
+hold 0
+lean 1
+read 0

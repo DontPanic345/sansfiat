@@ -1,0 +1,11 @@
+{"camp":719,"target":117,"tile":166,"cut_off":false,"line":{"steps":0,"cost":0,"carry":null},"food_turns":4,"hungry":0}
+the camp has not reached its target yet
+{"out":1,"tile":168,"warriors":3,"hungry":0,"cut_off":true,"pack":7.800000000000001,"line":{"steps":2,"cost":14,"carry":2.25}}
+{"out":2,"tile":144,"warriors":3,"hungry":0,"cut_off":true,"pack":4.0200000000000005,"line":{"steps":3,"cost":12,"carry":2.625}}
+{"out":3,"tile":77,"warriors":3,"hungry":0,"cut_off":true,"pack":0.6180000000000004,"line":{"steps":6,"cost":20,"carry":1.575}}
+{"out":4,"tile":38,"warriors":3,"hungry":0,"cut_off":true,"pack":0.13904999999999956,"line":{"steps":8,"cost":24,"carry":1.3125}}
+{"out":5,"tile":38,"warriors":3,"hungry":1,"cut_off":true,"pack":0,"line":{"steps":8,"cost":24,"carry":1.3125}}
+{"back":1,"tile":38,"warriors":3,"hungry":2,"cut_off":true,"pack":0,"line":{"steps":8,"cost":24,"carry":1.3125}}
+{"back":2,"tile":38,"warriors":2,"hungry":3,"cut_off":true,"pack":0,"line":{"steps":8,"cost":24,"carry":0.875}}
+{"back":3,"tile":38,"warriors":1,"hungry":4,"cut_off":true,"pack":0,"line":{"steps":8,"cost":24,"carry":0.4375}}
+{"back":4}
