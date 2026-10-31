@@ -66,6 +66,10 @@ pub struct World {
     /// world began: the AI's and the player's alike. Derived, so not saved; a replay rebuilds it.
     #[serde(skip)]
     pub orders: BTreeMap<u32, BTreeMap<String, u32>>,
+    /// The turn of the pick (`ChooseCiv`), leading or watching; `None` before it. Derived, so not
+    /// saved; a replay rebuilds it.
+    #[serde(skip)]
+    pub picked: Option<u32>,
 }
 
 /// A reason: a line about a subject, written where a rule acted on it.
@@ -170,6 +174,7 @@ impl World {
             notes: BTreeMap::new(),
             candidates: Vec::new(),
             orders: BTreeMap::new(),
+            picked: None,
         };
         clans::seed(&mut w);
         w
@@ -208,6 +213,7 @@ impl World {
             Action::ChooseCiv { civ } => {
                 self.player = *civ;
                 self.phase = Phase::Main;
+                self.picked = Some(self.turn);
             }
             Action::Order { civ, order } => {
                 self.order(*civ, order.clone()).expect("validated: the order checks");

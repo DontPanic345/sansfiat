@@ -3,11 +3,13 @@ mod clear;
 mod digest;
 mod judge;
 mod map;
+mod play;
 mod replay;
 mod report;
 mod retro;
 mod run;
 mod sweep;
+mod view;
 
 use std::{env, process::exit};
 
@@ -17,7 +19,9 @@ use engine::GOODS;
 use bench::bench;
 use clear::clear_file;
 use digest::digest;
+use judge::judge_game;
 use map::map;
+use play::play;
 use replay::replay;
 use run::run;
 use sweep::sweep;
@@ -26,6 +30,8 @@ pub(crate) const USAGE: &str = "\
 sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json | --events-json] [--no-events] [--why ID]   (--why prints the reasons of a clan, market, civ or unit, newest first)
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
+sansfiat play --game FILE [--seed N --size NAME [--civ K]]   (a game a line at a time: the file is a save, resumed by each call; without --civ a new game prints the civs' cards; lines on stdin, the view after each accepted one; FILE.lines.jsonl records every line)
+sansfiat judge FILE [--json]   (a played game judged turn by turn, beside the same map with every civ on the AI: Standing, doubt, motion and the player's decisions)
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
 sansfiat sweep --judge [--bands FILE] [--json]   (the retro maps, every civ on the AI: the army run twice and the --no-army control, scored by the judge over 200 turns past the pick; reads judge.toml's bands, exits 1 on a fail)
 sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--no-zone] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army, --no-gifts and --no-zone (AI camps paint no zone) are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
@@ -53,6 +59,8 @@ fn main() {
         Some("bench") => bench(&args[1..]),
         Some("digest") => digest(&args[1..]),
         Some("map") => map(&args[1..]),
+        Some("play") => play(&args[1..]),
+        Some("judge") => judge_game(&args[1..]),
         Some("clear") => clear_file(args.get(1).map(String::as_str).unwrap_or("-")),
         Some("goods") => {
             println!("{}", GOODS.join(" "));
