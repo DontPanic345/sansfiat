@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::line::{line, path_between, walkable};
-use super::{leader, rival_of, room, scout, strip, supply, EPS};
+use super::{rival_of, room, strip, supply, EPS};
 use crate::actors::{stride, Route};
 use crate::data::*;
 use crate::events::{Event, EventKind};
@@ -455,47 +455,4 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
             w.units.remove(&id);
         }
     }
-}
-
-/// Checks `SetRoute`: the player leads a civ with a scout, and both tiles are different land or
-/// mountain tiles on the map.
-pub fn check_route(w: &World, from: usize, to: usize) -> Result<(), String> {
-    let civ = leader(w)?;
-    if scout(w, civ).is_none() {
-        return Err("you have no scout".to_string());
-    }
-    for t in [from, to] {
-        if t >= w.tiles.len() {
-            return Err(format!("{t} is not a tile"));
-        }
-        let terrain = w.tiles[t].terrain;
-        if !(TERRAIN[terrain].land || terrain == MOUNTAIN) {
-            return Err("a scout can only search land and mountains".to_string());
-        }
-    }
-    if from == to {
-        return Err("a route needs two different tiles".to_string());
-    }
-    Ok(())
-}
-
-/// Checks `ClearRoute`: the player leads a civ with a scout.
-pub fn check_scout(w: &World) -> Result<(), String> {
-    let civ = leader(w)?;
-    scout(w, civ).map(|_| ()).ok_or_else(|| "you have no scout".to_string())
-}
-
-/// Applies a route order to the player's scout: a new route replaces the old one.
-pub fn order_route(w: &mut World, route: Option<(usize, usize)>) {
-    let Some(civ) = w.player else { return };
-    let Some(id) = scout(w, civ).map(|u| u.id) else { return };
-    let s = sc_mut(w, id);
-    s.route = route;
-    s.heard = false;
-    s.blocked = false;
-    let text = match route {
-        Some((from, to)) => format!("route set from {} to {}", w.at(from), w.at(to)),
-        None => "route cleared".to_string(),
-    };
-    w.note(id, text);
 }

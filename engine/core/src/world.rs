@@ -17,6 +17,7 @@ use crate::land;
 use crate::leaning;
 use crate::map::{self, Tile};
 use crate::markets::{self, Market};
+use crate::orders::Order;
 use crate::pregame::{self, End};
 use crate::units::{self, Unit};
 
@@ -86,42 +87,12 @@ pub enum Action {
     ChooseCiv {
         civ: Option<u32>,
     },
-    /// Raise warriors for the camp (making it at the capital if there is none): one person from
-    /// each of up to `n` clans of the civ the player leads.
-    Raise {
-        n: u32,
+    /// An order to the civ's units, which the player leads: checked against the world and applied
+    /// by `World::order`, then logged.
+    Order {
+        civ: u32,
+        order: Order,
     },
-    /// Disband `n` warriors, or all with `None`, to the civ's own clan.
-    Disband {
-        n: Option<u32>,
-    },
-    /// Send the camp to a tile; it moves when the turn ends.
-    MoveCamp {
-        to: usize,
-    },
-    /// Spread the camp over a zone: the painted tiles (its own tile may be left out), which replace
-    /// the zone; none undeploys.
-    Zone {
-        tiles: Vec<usize>,
-    },
-    /// Set the camp's auto-forage and auto-supply.
-    SetSwitches {
-        forage: bool,
-        supply: bool,
-    },
-    /// This turn's end: put the labour left on the line.
-    Resupply,
-    /// This turn's end: forage the tile on the labour left.
-    Forage,
-    /// This turn's end: pillage the rival's tile on the labour left.
-    Pillage,
-    /// Set the scout's route: search from `from` for `to`, building trails as it goes.
-    SetRoute {
-        from: usize,
-        to: usize,
-    },
-    /// Stop the scout's search.
-    ClearRoute,
     /// Set the food the civ keeps in its store, or `None` for the default (its camp's pack).
     SetKeep {
         food: Option<f64>,
@@ -159,7 +130,7 @@ pub const TURN: &[Step] = &[
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
 /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
 /// into a different world.
-pub const SAVE_VERSION: u32 = 1;
+pub const SAVE_VERSION: u32 = 2;
 
 /// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -207,15 +178,12 @@ impl World {
             Action::ChooseCiv { .. } if self.phase != Phase::Choose => Err("there is no civ to choose now".to_string()),
             Action::ChooseCiv { civ: Some(id) } if !self.civs.contains_key(id) => Err(format!("{id} is not a civ")),
             Action::ChooseCiv { .. } => Ok(()),
-            Action::Raise { n } => units::check_raise(self, *n),
-            Action::Disband { n } => units::check_disband(self, *n),
-            Action::MoveCamp { to } => units::check_move(self, *to),
-            Action::Zone { tiles } => units::check_zone(self, tiles),
-            Action::SetSwitches { .. } | Action::Resupply => units::check_camp(self),
-            Action::Forage => units::check_take(self, false),
-            Action::Pillage => units::check_take(self, true),
-            Action::SetRoute { from, to } => units::check_route(self, *from, *to),
-            Action::ClearRoute => units::check_scout(self),
+            Action::Order { civ, order } => {
+                if units::leader(self)? != *civ {
+                    return Err("that civ is not yours".to_string());
+                }
+                self.check_order(*civ, order)
+            }
             Action::SetKeep { food: Some(f) } if !f.is_finite() || *f < 0.0 => {
                 Err("keep a number of food, 0 or more".to_string())
             }
@@ -236,33 +204,9 @@ impl World {
                 self.player = *civ;
                 self.phase = Phase::Main;
             }
-            Action::Raise { n } => {
-                let civ = self.player.expect("validated: the player leads a civ");
-                units::raise(self, civ, *n).expect("validated: a clan can give a person");
+            Action::Order { civ, order } => {
+                self.order(*civ, order.clone()).expect("validated: the order checks");
             }
-            Action::Disband { n } => {
-                let civ = self.player.expect("validated: the player leads a civ");
-                units::disband(self, civ, *n, false);
-            }
-            Action::MoveCamp { to } => {
-                let civ = self.player.expect("validated: the player leads a civ");
-                let id = units::camp(self, civ).expect("validated: there is a camp").id;
-                units::order_move(self, id, *to);
-            }
-            Action::Zone { tiles } => {
-                let civ = self.player.expect("validated: the player leads a civ");
-                let id = units::camp(self, civ).expect("validated: there is a camp").id;
-                units::set_zone(self, id, tiles);
-            }
-            Action::SetSwitches { forage, supply } => units::with_camp(self, |u| {
-                u.auto_forage = *forage;
-                u.auto_supply = *supply;
-            }),
-            Action::Resupply => units::with_camp(self, |u| u.resupply = true),
-            Action::Forage => units::with_camp(self, |u| u.forage = true),
-            Action::Pillage => units::with_camp(self, |u| u.pillage = true),
-            Action::SetRoute { from, to } => units::order_route(self, Some((*from, *to))),
-            Action::ClearRoute => units::order_route(self, None),
             Action::SetKeep { food } => {
                 let civ = self.player.expect("validated: the player leads a civ");
                 let text = match food {

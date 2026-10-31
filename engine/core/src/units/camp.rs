@@ -1,17 +1,16 @@
 //! The camp: a civ's army. Its warriors spread over its zone and hold it (`hold`), guarding it with
 //! labour set aside, so a rival's line can't pass them. At the end of the turn, on the labour its
 //! march and guarding left, it forages the tile (pillages a rival's) and resupplies along the line.
-//! Its orders are checked here (`check_disband`, `check_move`, `check_take`, `check_camp`, `check_zone`)
-//! and applied by `order_move`, `set_zone` and `with_camp`.
+//! Its orders are in `orders.rs`; the zone's rules (`zone_ok`) are here.
 
 use std::collections::BTreeMap;
 
-use super::line::{cut_by, cut_off, cutter, line, path_between, route, walkable};
-use super::{camp, disband, leader, name_of, rival_of, room, strip, supply, Unit, EPS};
+use super::line::{cut_by, cut_off, cutter, line, route, walkable};
+use super::{disband, name_of, rival_of, room, strip, supply, Unit, EPS};
 use crate::actors::{connected, divide, stride, Route, Walks};
 use crate::data::*;
 use crate::events::{Event, EventKind};
-use crate::land::{neighbours, passable};
+use crate::land::neighbours;
 use crate::market::total;
 use crate::world::World;
 
@@ -46,7 +45,7 @@ fn cs(w: &World, id: u32) -> &CampState {
     w.units[&id].camp().expect("a camp")
 }
 
-fn cs_mut(w: &mut World, id: u32) -> &mut CampState {
+pub(crate) fn cs_mut(w: &mut World, id: u32) -> &mut CampState {
     w.units.get_mut(&id).and_then(|u| u.camp_mut()).expect("a camp")
 }
 
@@ -307,77 +306,12 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
     }
     if hungry >= UNIT.hungry_turns {
         w.civs.get_mut(&civ).unwrap().army.starved += 1;
-        disband(w, civ, Some(1), true);
-    }
-}
-
-/// The player's camp, or why there is none.
-fn own(w: &World) -> Result<&Unit, String> {
-    let civ = leader(w)?;
-    camp(w, civ).ok_or_else(|| "you have no camp".to_string())
-}
-
-/// Checks `Disband`.
-pub fn check_disband(w: &World, n: Option<u32>) -> Result<(), String> {
-    own(w)?;
-    if n == Some(0) {
-        return Err("disband at least one warrior".to_string());
-    }
-    Ok(())
-}
-
-/// Checks `MoveCamp`.
-pub fn check_move(w: &World, to: usize) -> Result<(), String> {
-    let u = own(w)?;
-    if to >= w.tiles.len() {
-        return Err(format!("{to} is not a tile"));
-    }
-    if !(TERRAIN[w.tiles[to].terrain].land && passable(w, to)) {
-        return Err("a camp can only go over land".to_string());
-    }
-    path_between(w, u.home, to).map(|_| ()).ok_or_else(|| "no route there".to_string())
-}
-
-/// Checks `Forage` (`pillage` false) and `Pillage`: foraging needs land that isn't a rival's,
-/// pillaging a rival's.
-pub fn check_take(w: &World, pillage: bool) -> Result<(), String> {
-    let u = own(w)?;
-    match (pillage, rival_of(w, u)) {
-        (true, false) => Err("there is nothing to pillage here: it isn't a rival's land".to_string()),
-        (false, true) => Err("this is a rival's land: pillage it".to_string()),
-        _ => Ok(()),
-    }
-}
-
-/// Checks `SetSwitches` and `Resupply`: just that there is a camp.
-pub fn check_camp(w: &World) -> Result<(), String> {
-    own(w).map(|_| ())
-}
-
-/// Applies `MoveCamp`: a new destination and nothing banked; its own tile clears the order. Any
-/// move order undeploys: the zone and held ground go back to the camp's own tile.
-pub fn order_move(w: &mut World, unit: u32, to: usize) {
-    if let Some(u) = w.units.get_mut(&unit) {
-        u.banked = 0.0;
-        u.actor.territory = vec![u.actor.home];
-        let home = u.actor.home;
-        if let Some(c) = u.camp_mut() {
-            c.dest = if home == to { None } else { Some(to) };
-            let g = c.held.iter().position(|&t| t == home).map(|k| c.guard.get(k).copied().unwrap_or(0.0));
-            c.held = g.map(|_| vec![home]).unwrap_or_default();
-            c.guard = g.into_iter().collect();
-            c.full = false;
-        }
-    }
-    if let Some(home) = w.units.get(&unit).filter(|u| u.camp().is_some_and(|c| c.dest.is_some())).map(|u| u.home) {
-        let steps = path_between(w, home, to).map_or(0, |(p, _)| p.len());
-        let at = w.at(to);
-        w.note(unit, format!("marching to {at}, {steps} steps away"));
+        disband(w, id, Some(1), true);
     }
 }
 
 /// The zone `tiles` (the painted ones; the camp's own may be left out) with the camp's tile, sorted.
-pub(super) fn zone_of(home: usize, tiles: &[usize]) -> Vec<usize> {
+pub(crate) fn zone_of(home: usize, tiles: &[usize]) -> Vec<usize> {
     let mut zone: Vec<usize> = tiles.iter().copied().chain(std::iter::once(home)).collect();
     zone.sort_unstable();
     zone.dedup();
@@ -391,7 +325,7 @@ pub fn zone_cap(u: &Unit) -> usize {
 
 /// Whether `tiles` may be camp `u`'s zone: walkable land that is no civ's capital, at most
 /// `zone_cap` tiles with the camp's own, connected to it.
-pub(super) fn zone_ok(w: &World, u: &Unit, tiles: &[usize]) -> Result<Vec<usize>, String> {
+pub(crate) fn zone_ok(w: &World, u: &Unit, tiles: &[usize]) -> Result<Vec<usize>, String> {
     if let Some(&t) = tiles.iter().find(|&&t| t >= w.tiles.len()) {
         return Err(format!("{t} is not a tile"));
     }
@@ -409,44 +343,4 @@ pub(super) fn zone_ok(w: &World, u: &Unit, tiles: &[usize]) -> Result<Vec<usize>
         return Err("a zone must be connected to the camp".to_string());
     }
     Ok(zone)
-}
-
-/// Checks `Zone`.
-pub fn check_zone(w: &World, tiles: &[usize]) -> Result<(), String> {
-    let u = own(w)?;
-    zone_ok(w, u, tiles).map(|_| ())
-}
-
-/// Applies `Zone` (and the AI's): the zone is the camp's territory; held tiles outside it stop
-/// being held at once. A zone beyond the camp's tile is a deployment.
-pub fn set_zone(w: &mut World, unit: u32, tiles: &[usize]) {
-    let Some(u) = w.units.get(&unit) else { return };
-    let zone = zone_of(u.home, tiles);
-    let (tile, civ) = (u.home, u.civ);
-    let Some(c) = w.units.get_mut(&unit).and_then(|u| u.camp_mut()) else { return };
-    let keep: Vec<(usize, f64)> = c
-        .held
-        .iter()
-        .copied()
-        .zip(c.guard.iter().copied().chain(std::iter::repeat(0.0)))
-        .filter(|(t, _)| zone.binary_search(t).is_ok())
-        .collect();
-    c.held = keep.iter().map(|&(t, _)| t).collect();
-    c.guard = keep.iter().map(|&(_, g)| g).collect();
-    c.full = false;
-    let size = zone.len();
-    w.units.get_mut(&unit).unwrap().actor.territory = zone;
-    if size > 1 {
-        w.emit(Event::new(EventKind::Deployed, tile).civ(civ).unit(unit).other(size as u32));
-        w.note(unit, format!("deployed over {size} tiles, its warriors spreading to hold them"));
-    }
-}
-
-/// Applies the player's order to the camp's state, through `f`.
-pub fn with_camp(w: &mut World, f: impl FnOnce(&mut CampState)) {
-    if let Some(civ) = w.player {
-        if let Some(id) = camp(w, civ).map(|u| u.id) {
-            f(cs_mut(w, id));
-        }
-    }
 }

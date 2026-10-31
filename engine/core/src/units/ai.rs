@@ -1,13 +1,13 @@
 //! The AI's camps: each civ the player doesn't lead raises its camp, posts it on its way to a
-//! rival or its farthest clan, and zones it along its line home. The AI gives its orders directly
-//! (`raise`, `order_move`, `set_zone`), not logged: a replay re-derives them.
+//! rival or its farthest clan, and zones it along its line home. The AI gives its orders through
+//! `World::order` (`Raise`, `Move`, `Zone`), not logged: a replay re-derives them.
 
-use super::camp::{order_move, set_zone, zone_cap, zone_of, zone_ok};
 use super::line::{line_by, path_between};
-use super::{camp, raise, EPS};
+use super::{camp, zone_cap, zone_of, zone_ok, EPS};
 use crate::civs;
 use crate::data::*;
 use crate::land::steps;
+use crate::orders::Order;
 use crate::world::{Phase, World};
 
 /// Where the AI posts `civ`'s camp: up to `UNIT.post` steps along the way from the capital to the
@@ -49,7 +49,7 @@ pub fn ai(w: &mut World) {
     let ids: Vec<u32> = w.civs.keys().copied().filter(|&c| Some(c) != w.player).collect();
     for civ in ids {
         if camp(w, civ).is_none() {
-            let _ = raise(w, civ, UNIT.start);
+            let _ = w.order(civ, Order::Raise { n: UNIT.start });
         }
         let Some(u) = camp(w, civ) else { continue };
         if u.camp().is_some_and(|c| c.dest.is_some()) {
@@ -60,9 +60,9 @@ pub fn ai(w: &mut World) {
         if at != here {
             let text = format!("posted at {}, on the way to its nearest rival or its farthest clan", w.at(at));
             w.note(id, text);
-            order_move(w, id, at);
+            w.order(civ, Order::Move { unit: id, to: at }).expect("the AI's posts pass the camp's move check");
         } else if w.config.zone {
-            ai_zone(w, id);
+            ai_zone(w, civ, id);
         }
     }
 }
@@ -71,7 +71,7 @@ pub fn ai(w: &mut World) {
 /// than its warriors less one, never the capital), when it can afford it: its line, read without
 /// held ground, still carries a turn's food on the labour guarding leaves. Otherwise it undeploys.
 /// Kept as it is while a rival's ground cuts the line.
-fn ai_zone(w: &mut World, id: u32) {
+fn ai_zone(w: &mut World, civ: u32, id: u32) {
     let u = &w.units[&id];
     let Some((p, _, carry)) = line_by(w, id, false) else { return };
     let afford = carry * (1.0 - UNIT.guarding / UNIT.labour) + EPS >= u.people * UNIT.food;
@@ -79,6 +79,6 @@ fn ai_zone(w: &mut World, id: u32) {
     let k = UNIT.zone.min(zone_cap(u).saturating_sub(1));
     let tiles: Vec<usize> = if afford { p.into_iter().filter(|&t| t != capital).take(k).collect() } else { Vec::new() };
     if zone_of(u.home, &tiles) != u.actor.territory && zone_ok(w, u, &tiles).is_ok() {
-        set_zone(w, id, &tiles);
+        w.order(civ, Order::Zone { unit: id, tiles }).expect("checked: the zone is one the camp can hold");
     }
 }

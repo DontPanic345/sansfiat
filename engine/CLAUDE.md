@@ -35,8 +35,9 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `core/src/leaning.rs` | Unaligned clans leaning toward and joining a civ: `give` and the `lean` step. |
 | `core/src/units/mod.rs` | `Unit` and `UnitState` (its flat JSON), `Counters`, the queries (`camp`, `scout`, `pack_cap`, `leader`), raising and disbanding, `strip` and `supply`, and the `units` step. |
 | `core/src/units/line.rs` | What a camp may walk, `path_between`, `route`, the line to the capital (`line`, `cut_off`, `cut_at`) and `turns`. |
-| `core/src/units/camp.rs` | `CampState`, the camp's turn (march, `hold`, forage, supply, eat), its orders (`check_*`, `order_move`, `set_zone`, `with_camp`) and its zone. |
-| `core/src/units/scout.rs` | `ScoutState`, the scout's route search (`route_plan`, trails, reveals), `scout_turn` and the route orders. |
+| `core/src/units/camp.rs` | `CampState`, the camp's turn (march, `hold`, forage, supply, eat) and its zone (`zone_ok`). |
+| `core/src/units/scout.rs` | `ScoutState`, the scout's route search (`route_plan`, trails, reveals) and `scout_turn`. |
+| `core/src/orders.rs` | `Order` (the wire form of a unit's order), `World::order` and `check_order`: every order's checks and its applying, the player's and the AI's. |
 | `core/src/units/ai.rs` | The AI's `post` and `ai`, and its zone (`ai_zone`). |
 | `core/src/stats.rs` | `summary`, the evidence reports, and `digest` and `state_digest` to compare builds. |
 | `core/src/hex.rs`, `rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |

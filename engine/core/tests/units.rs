@@ -6,7 +6,7 @@ use engine::clans::{adjust, eat, harvest};
 use engine::data::*;
 use engine::land::regrow;
 use engine::units::{self, Unit, UnitKind};
-use engine::{Action, Config, End, EventKind, Phase, World};
+use engine::{Action, Config, End, EventKind, Order, Phase, World};
 
 /// Markets for three civs on the big world, 10 or more steps apart.
 fn markets3(w: &mut World) -> [u32; 3] {
@@ -220,7 +220,7 @@ fn raising_drops_n_clans_by_one_each() {
     let before = [people(&w, clans[0]), people(&w, b), people(&w, c), people(&w, d)];
     w.civs.get_mut(&red).unwrap().store = CIV.endowment;
     let (camp_before, store_before) = (units::camp(&w, red).unwrap().people, total(&w.civs[&red].store));
-    w.act(Action::Raise { n: 2 }).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 2 })).unwrap();
     // The two biggest that can give gave one each; the third gave nothing, nor the one under UNIT.min_clan.
     let able = [clans[0], b, c];
     let mut order = [0, 1, 2];
@@ -238,18 +238,18 @@ fn raising_drops_n_clans_by_one_each() {
     assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 3, "still one camp a civ");
     // The store can't fill the packs.
     w.civs.get_mut(&red).unwrap().store = [0.0; N];
-    assert!(w.act(Action::Raise { n: 1 }).is_err());
-    assert!(w.act(Action::Raise { n: 0 }).is_err());
+    assert!(w.act(led_order(&w, Order::Raise { n: 1 })).is_err());
+    assert!(w.act(led_order(&w, Order::Raise { n: 0 })).is_err());
 }
 
 #[test]
 fn raising_with_no_camp_makes_one_at_the_capital() {
     let (mut w, ids, _) = led();
     let red = ids[0];
-    w.act(Action::Disband { n: None }).unwrap();
+    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None })).unwrap();
     assert!(units::camp(&w, red).is_none());
     fill_stores(&mut w);
-    w.act(Action::Raise { n: 3 }).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 3 })).unwrap();
     let camp = units::camp(&w, red).unwrap();
     assert_eq!(camp.tile(), w.civs[&red].capital);
     assert_eq!(camp.people, 1.0, "only one clan to give");
@@ -267,21 +267,24 @@ fn disbanding_returns_the_warriors_to_the_civs_clan() {
     put_camp(&mut w, red, at_big(-2, 1));
     let own = w.clans[&clans[0]].people;
     let held = total(&units::camp(&w, red).unwrap().store);
-    w.act(Action::Disband { n: Some(2) }).unwrap();
+    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: Some(2) })).unwrap();
     assert_eq!(w.clans[&clans[0]].people, own + 2.0);
     assert_eq!(w.clans[&near].people, 9.0);
     let camp = units::camp(&w, red).unwrap();
     assert_eq!(camp.people, 1.0);
     assert!((total(&w.clans[&clans[0]].store) - held * 2.0 / 3.0).abs() < 1e-9, "their share of the pack went too");
     assert!((total(&camp.store) - held / 3.0).abs() < 1e-9);
-    w.act(Action::Disband { n: None }).unwrap();
+    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None })).unwrap();
     assert!(units::camp(&w, red).is_none());
     assert_eq!(w.clans[&clans[0]].people, own + 3.0);
     assert_eq!(w.civs[&red].army.lost, 0, "disbanding is not starving");
     assert_eq!(kinds(&w, EventKind::WarriorsDisbanded), 2);
-    assert!(w.act(Action::Disband { n: None }).is_err(), "no camp");
+    assert_eq!(
+        w.act(led_order(&w, Order::Disband { unit: led_scout(&w), n: None })),
+        Err("that unit is not a camp".to_string())
+    );
     fill_stores(&mut w);
-    w.act(Action::Raise { n: 1 }).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 1 })).unwrap();
 }
 
 #[test]
@@ -442,9 +445,13 @@ fn pillage_yields_more_than_forage() {
         w.tiles[t].stock = [0.0, 100.0, 0.0, 0.0, 0.0];
         let id = put_camp(&mut w, red, t);
         camp_mut(&mut w, id).store = [0.0; N];
-        w.act(Action::SetSwitches { forage: false, supply: false }).unwrap();
-        assert!(w.act(if pillage { Action::Forage } else { Action::Pillage }).is_err(), "the wrong one is refused");
-        w.act(if pillage { Action::Pillage } else { Action::Forage }).unwrap();
+        let unit = led_camp(&w);
+        w.act(led_order(&w, Order::Switches { unit, forage: false, supply: false })).unwrap();
+        assert!(
+            w.act(led_order(&w, if pillage { Order::Forage { unit } } else { Order::Pillage { unit } })).is_err(),
+            "the wrong one is refused"
+        );
+        w.act(led_order(&w, if pillage { Order::Pillage { unit } } else { Order::Forage { unit } })).unwrap();
         end_turn(&mut w);
         let a = &w.civs[&red].army;
         (a.foraged, a.pillaged, w.tiles[t].fallow)
@@ -464,7 +471,7 @@ fn with_the_switches_off_it_neither_forages_nor_supplies() {
     w.tiles[t].stock = [0.0, 10.0, 0.0, 0.0, 0.0];
     let id = put_camp(&mut w, red, t);
     camp_mut(&mut w, id).store = [0.0; N];
-    w.act(Action::SetSwitches { forage: false, supply: false }).unwrap();
+    w.act(led_order(&w, Order::Switches { unit: led_camp(&w), forage: false, supply: false })).unwrap();
     fill_stores(&mut w);
     let store = w.civs[&red].store;
     units::step(&mut w);
@@ -473,13 +480,13 @@ fn with_the_switches_off_it_neither_forages_nor_supplies() {
     let camp = units::camp(&w, red).unwrap();
     assert_eq!((total(&camp.store), camp.hungry), (0.0, 1));
     // The one-shot resupply works with the switch off.
-    w.act(Action::Resupply).unwrap();
+    w.act(led_order(&w, Order::Resupply { unit: led_camp(&w) })).unwrap();
     units::step(&mut w);
     assert!(w.civs[&red].army.resupplied > 0.0, "it brought food along the line");
     assert!(total(&w.civs[&red].store) < total(&store));
     // With the switches on, the empty pack is covered by foraging.
     camp_mut(&mut w, id).store = [0.0; N];
-    w.act(Action::SetSwitches { forage: true, supply: true }).unwrap();
+    w.act(led_order(&w, Order::Switches { unit: led_camp(&w), forage: true, supply: true })).unwrap();
     units::step(&mut w);
     assert!(w.civs[&red].army.foraged > 0.0);
 }
@@ -513,7 +520,7 @@ fn hunger_loses_warriors() {
     assert_eq!(w.clans[&clans[0]].people, own + 3.0, "they went home");
     // Fed again, the count starts over.
     fill_stores(&mut w);
-    w.act(Action::Raise { n: 1 }).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 1 })).unwrap();
 }
 
 #[test]
@@ -551,7 +558,7 @@ fn with_the_army_off_no_camp_is_founded_and_nothing_is_levied() {
     assert_eq!(w.civs[&red].store, [0.0; N]);
     assert_eq!(w.clans[&a].harvest, HARVEST);
     w.act(Action::ChooseCiv { civ: Some(red) }).unwrap();
-    assert!(w.act(Action::Raise { n: 1 }).is_err(), "armies are off");
+    assert!(w.act(led_order(&w, Order::Raise { n: 1 })).is_err(), "armies are off");
     w.act(Action::ChooseCiv { civ: None }).unwrap_err();
     // The AI raises none either.
     let mut v = big();
@@ -570,7 +577,7 @@ fn the_ai_raises_a_lost_camp_and_posts_it_off_the_capital() {
     w.phase = Phase::Main;
     // The AI leads Blue and Gold; Red is the player's: its camp is left alone.
     w.player = Some(ids[0]);
-    w.act(Action::Disband { n: None }).unwrap();
+    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None })).unwrap();
     w.units.remove(&camp_id(&w, ids[1]));
     fill_stores(&mut w);
     units::ai(&mut w);
@@ -605,24 +612,25 @@ fn a_real_map_replays_with_the_camp_under_orders() {
     let pick = w.turn;
     for _ in 0..120 {
         let n = w.turn - pick;
+        let camp = units::camp(&w, me).map(|u| u.id);
         if n > 0 && n.is_multiple_of(20) {
-            let _ = w.act(Action::Raise { n: 1 });
+            let _ = w.act(led_order(&w, Order::Raise { n: 1 }));
         }
-        if n == 3 {
+        if let (3, Some(unit)) = (n, camp) {
             let to = w.civs.values().find(|c| c.id != me).unwrap().capital;
-            let _ = w.act(Action::MoveCamp { to });
+            let _ = w.act(led_order(&w, Order::Move { unit, to }));
         }
-        if n == 1 {
-            let _ = w.act(Action::SetSwitches { forage: false, supply: false });
+        if let (1, Some(unit)) = (n, camp) {
+            let _ = w.act(led_order(&w, Order::Switches { unit, forage: false, supply: false }));
         }
-        if n == 2 {
-            let _ = w.act(Action::SetSwitches { forage: true, supply: true });
+        if let (2, Some(unit)) = (n, camp) {
+            let _ = w.act(led_order(&w, Order::Switches { unit, forage: true, supply: true }));
         }
-        if n == 4 {
-            let _ = w.act(Action::Resupply);
+        if let (4, Some(unit)) = (n, camp) {
+            let _ = w.act(led_order(&w, Order::Resupply { unit }));
         }
-        if n == 5 {
-            let _ = w.act(Action::Disband { n: Some(1) });
+        if let (5, Some(unit)) = (n, camp) {
+            let _ = w.act(led_order(&w, Order::Disband { unit, n: Some(1) }));
         }
         end_turn(&mut w);
         for u in w.units.values() {
@@ -632,23 +640,38 @@ fn a_real_map_replays_with_the_camp_under_orders() {
             assert!(total(&c.store) <= CIV.store_cap + 1e-9);
         }
     }
-    assert!(w.log.iter().any(|a| matches!(a, Action::MoveCamp { .. })));
-    assert!(w.log.iter().any(|a| matches!(a, Action::Disband { .. })));
+    assert!(w.log.iter().any(|a| matches!(a, Action::Order { order: Order::Move { .. }, .. })));
+    assert!(w.log.iter().any(|a| matches!(a, Action::Order { order: Order::Disband { .. }, .. })));
     assert!(w.events.iter().any(|e| e.kind == EventKind::CampRaised));
     let json = serde_json::to_string(&w.save()).unwrap();
     let save: engine::Save = serde_json::from_str(&json).unwrap();
     let r = World::replay(&save).unwrap();
     assert_eq!(r, w);
     assert_eq!(r.events, w.events);
-    // The orders' JSON is the page's.
-    assert_eq!(serde_json::to_string(&Action::Raise { n: 2 }).unwrap(), r#"{"type":"raise","n":2}"#);
-    assert_eq!(serde_json::to_string(&Action::Disband { n: None }).unwrap(), r#"{"type":"disband","n":null}"#);
-    assert_eq!(serde_json::to_string(&Action::MoveCamp { to: 812 }).unwrap(), r#"{"type":"moveCamp","to":812}"#);
+    // The orders' JSON is the page's: one `order` action naming its civ, and the order's own `type`.
+    let order = |o: Order| Action::Order { civ: 1, order: o };
     assert_eq!(
-        serde_json::to_string(&Action::SetSwitches { forage: true, supply: false }).unwrap(),
-        r#"{"type":"setSwitches","forage":true,"supply":false}"#
+        serde_json::to_string(&order(Order::Move { unit: 12, to: 5 })).unwrap(),
+        r#"{"type":"order","civ":1,"order":{"type":"move","unit":12,"to":5}}"#
     );
-    assert_eq!(serde_json::to_string(&Action::Pillage).unwrap(), r#"{"type":"pillage"}"#);
+    assert_eq!(
+        serde_json::to_string(&order(Order::Raise { n: 2 })).unwrap(),
+        r#"{"type":"order","civ":1,"order":{"type":"raise","n":2}}"#
+    );
+    assert_eq!(
+        serde_json::to_string(&order(Order::Disband { unit: 12, n: None })).unwrap(),
+        r#"{"type":"order","civ":1,"order":{"type":"disband","unit":12,"n":null}}"#
+    );
+    assert_eq!(
+        serde_json::to_string(&order(Order::Switches { unit: 12, forage: true, supply: false })).unwrap(),
+        r#"{"type":"order","civ":1,"order":{"type":"switches","unit":12,"forage":true,"supply":false}}"#
+    );
+    assert_eq!(
+        serde_json::to_string(&order(Order::Pillage { unit: 12 })).unwrap(),
+        r#"{"type":"order","civ":1,"order":{"type":"pillage","unit":12}}"#
+    );
+    let wire = r#"{"type":"order","civ":1,"order":{"type":"move","unit":12,"to":5}}"#;
+    assert_eq!(serde_json::from_str::<Action>(wire).unwrap(), order(Order::Move { unit: 12, to: 5 }));
     // An old save, with no army field, loads with the army on.
     let old = r#"{"seed":1,"radius":16}"#;
     assert!(serde_json::from_str::<Config>(old).unwrap().army);
@@ -693,19 +716,21 @@ fn held(w: &World, civ: u32) -> Vec<usize> {
 fn a_zone_must_be_connected_within_its_cap_and_clear_of_capitals() {
     let (mut w, ids, _) = led();
     put_camp(&mut w, ids[0], at_big(-4, 0));
-    let zone = |tiles: &[(i32, i32)]| Action::Zone { tiles: tiles.iter().map(|&(q, r)| at_big(q, r)).collect() };
+    let zone = |w: &World, tiles: &[(i32, i32)]| {
+        led_order(w, Order::Zone { unit: led_camp(w), tiles: tiles.iter().map(|&(q, r)| at_big(q, r)).collect() })
+    };
     let err = |w: &World, a: Action| w.validate(&a).unwrap_err();
-    assert!(err(&w, zone(&[(-5, 0)])).contains("capital"));
-    assert!(err(&w, zone(&[(-2, 0)])).contains("connected"));
-    assert!(err(&w, zone(&[(-3, 0), (-2, 0), (-1, 0)])).contains("at most 3"), "three warriors, three tiles");
+    assert!(err(&w, zone(&w, &[(-5, 0)])).contains("capital"));
+    assert!(err(&w, zone(&w, &[(-2, 0)])).contains("connected"));
+    assert!(err(&w, zone(&w, &[(-3, 0), (-2, 0), (-1, 0)])).contains("at most 3"), "three warriors, three tiles");
     w.tiles[at_big(-3, 1)].terrain = SEA;
-    assert!(err(&w, zone(&[(-3, 1)])).contains("land"));
+    assert!(err(&w, zone(&w, &[(-3, 1)])).contains("land"));
     // The camp's own tile may be listed or left out.
-    w.act(zone(&[(-3, 0), (-2, 0)])).unwrap();
-    w.act(zone(&[(-4, 0), (-3, 0), (-2, 0)])).unwrap();
+    w.act(zone(&w, &[(-3, 0), (-2, 0)])).unwrap();
+    w.act(zone(&w, &[(-4, 0), (-3, 0), (-2, 0)])).unwrap();
     assert_eq!(units::camp(&w, ids[0]).unwrap().territory, vec![at_big(-4, 0), at_big(-3, 0), at_big(-2, 0)]);
     assert_eq!(kinds(&w, EventKind::Deployed), 2);
-    w.act(Action::Zone { tiles: Vec::new() }).unwrap();
+    w.act(led_order(&w, Order::Zone { unit: led_camp(&w), tiles: Vec::new() })).unwrap();
     assert_eq!(units::camp(&w, ids[0]).unwrap().territory, vec![at_big(-4, 0)], "none undeploys");
 }
 
@@ -715,7 +740,7 @@ fn the_camps_tile_is_held_and_the_spread_fills_one_ring_a_turn_until_a_move_clea
     let red = ids[0];
     let home = at_big(-3, 0);
     put_camp(&mut w, red, home);
-    w.act(Action::Zone { tiles: vec![at_big(-2, 0), at_big(-1, 0)] }).unwrap();
+    w.act(led_order(&w, Order::Zone { unit: led_camp(&w), tiles: vec![at_big(-2, 0), at_big(-1, 0)] })).unwrap();
     assert_eq!(held(&w, red), vec![home], "only its own tile at first");
     units::step(&mut w);
     assert_eq!(held(&w, red), vec![home, at_big(-2, 0)], "one ring");
@@ -730,10 +755,10 @@ fn the_camps_tile_is_held_and_the_spread_fills_one_ring_a_turn_until_a_move_clea
     units::step(&mut w);
     assert_eq!(kinds(&w, EventKind::Held), 1, "announced once");
     // Unpainting drops a tile at once.
-    w.act(Action::Zone { tiles: vec![at_big(-2, 0)] }).unwrap();
+    w.act(led_order(&w, Order::Zone { unit: led_camp(&w), tiles: vec![at_big(-2, 0)] })).unwrap();
     assert_eq!(held(&w, red), vec![home, at_big(-2, 0)]);
     // Moving undeploys.
-    w.act(Action::MoveCamp { to: at_big(-3, 3) }).unwrap();
+    w.act(led_order(&w, Order::Move { unit: led_camp(&w), to: at_big(-3, 3) })).unwrap();
     let u = units::camp(&w, red).unwrap();
     assert_eq!((u.territory.clone(), u.held().to_vec()), (vec![home], vec![home]));
 }
@@ -747,7 +772,7 @@ fn guarding_costs_labour_only_when_deployed() {
         camp_mut(&mut w, id).store = [0.0; N];
         w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0];
         if deploy {
-            w.act(Action::Zone { tiles: vec![at_big(-1, 0)] }).unwrap();
+            w.act(led_order(&w, Order::Zone { unit: led_camp(&w), tiles: vec![at_big(-1, 0)] })).unwrap();
         }
         units::step(&mut w);
         w.civs[&ids[0]].army.resupplied
@@ -849,7 +874,7 @@ fn a_deployed_camp_on_rival_land_still_pillages() {
     w.tiles[t].stock = [0.0, 50.0, 0.0, 0.0, 0.0];
     let id = put_camp(&mut w, red, t);
     camp_mut(&mut w, id).store = [0.0; N];
-    w.act(Action::Zone { tiles: vec![at_big(3, 1)] }).unwrap();
+    w.act(led_order(&w, Order::Zone { unit: led_camp(&w), tiles: vec![at_big(3, 1)] })).unwrap();
     units::step(&mut w);
     assert!(held(&w, red).contains(&t));
     assert!(w.civs[&red].army.pillaged > 0.0 && w.civs[&red].army.foraged == 0.0);

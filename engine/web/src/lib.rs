@@ -24,7 +24,8 @@ impl Sim {
         Ok(Sim { world: World::replay(&save)? })
     }
 
-    /// Applies an action given as JSON, such as `{"type":"endTurn"}`. `Err` says why not.
+    /// Applies an action given as JSON, such as `{"type":"endTurn"}`, or a unit's order, such as
+    /// `{"type":"order","civ":1,"order":{"type":"move","unit":12,"to":5}}`. `Err` says why not.
     pub fn act(&mut self, action: &str) -> Result<(), String> {
         let action: Action = serde_json::from_str(action).map_err(|e| e.to_string())?;
         self.world.act(action)

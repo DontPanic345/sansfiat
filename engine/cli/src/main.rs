@@ -5,7 +5,8 @@ use engine::land::is_depleted;
 use engine::map::{self, Country};
 use engine::units;
 use engine::{
-    civs, clear, land, pregame, stats, utility, Action, Basket, Config, Params, Phase, Save, World, GOODS, N, TERRAIN,
+    civs, clear, land, pregame, stats, utility, Action, Basket, Config, Order, Params, Phase, Save, World, GOODS, N,
+    TERRAIN,
 };
 
 const USAGE: &str = "\
@@ -252,21 +253,22 @@ fn digest(args: &[String]) -> Result<(), String> {
 }
 
 /// The scripted game of `digest --lead`, between turns and before each `EndTurn`; `cross-build.mjs`
-/// plays the same rule. `pick` is the turn `ChooseCiv` was acted, and `n` the turns since.
+/// plays the same rule. `pick` is the turn `ChooseCiv` was acted, and `n` the turns since. Each order
+/// is the led civ's `Action::Order`; its camp or scout is the unit it names.
 /// 1. At `Choose`: lead the lowest civ id.
-/// 2. In `Main`, when `n > 0 && n.is_multiple_of(20)`: `Raise { n: 1 }` (a refusal is ignored).
-/// 3. When `n == 30`: `SetSwitches` both off; when `n == 40`: both on. When `n > 0 &&
-///    n.is_multiple_of(25)`: `Resupply` (a refusal is ignored).
-/// 4. If the player's camp has no `dest`: `MoveCamp` to the first accepted of the other civs'
+/// 2. In `Main`, when `n > 0 && n.is_multiple_of(20)`: `Order::Raise { n: 1 }` (a refusal is ignored).
+/// 3. When `n == 30`: `Order::Switches` both off; when `n == 40`: both on. When `n > 0 &&
+///    n.is_multiple_of(25)`: `Order::Resupply` (a refusal is ignored).
+/// 4. If the player's camp has no `dest`: `Order::Move` to the first accepted of the other civs'
 ///    capitals in civ id order, then its own capital.
-/// 5. When `n == 60`: `Disband { n: Some(1) }`, if there is a camp.
+/// 5. When `n == 60`: `Order::Disband { n: Some(1) }`, if there is a camp.
 /// 6. When `n == 10`: `SetGift` twice the default (`2 × LEANING.gift_default`); when `n == 50`:
 ///    `SetKeep { food: Some(5.0) }`; when `n == 70`: `SetKeep { food: None }`.
-/// 7. When `n == 2`: `SetRoute` for the scout from the capital to the first forest or hills tile by
+/// 7. When `n == 2`: `Order::Route` for the scout from the capital to the first forest or hills tile by
 ///    index seven steps out (ignored when there is none).
-/// 8. When `n == 45`, if there is a camp: `MoveCamp` to its own tile (it halts), then `Zone` over the
-///    first `people − 1` tiles of its line (the capital left out; a refusal is ignored). Rule 4 rests
-///    while `45 <= n < 55`, so the zone spreads and is held.
+/// 8. When `n == 45`, if there is a camp: `Order::Move` to its own tile (it halts), then `Order::Zone`
+///    over the first `people − 1` tiles of its line (the capital left out; a refusal is ignored). Rule 4
+///    rests while `45 <= n < 55`, so the zone spreads and is held.
 fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
     if w.phase == Phase::Choose {
         let first = w.civs.keys().next().copied();
@@ -278,17 +280,20 @@ fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
         return;
     }
     let n = w.turn - pick;
+    let order = |order: Order| Action::Order { civ: me, order };
+    let camp = |w: &World| units::camp(w, me).map(|u| u.id);
+    let scout = |w: &World| units::scout(w, me).map(|u| u.id);
     if n > 0 && n.is_multiple_of(20) {
-        let _ = w.act(Action::Raise { n: 1 });
+        let _ = w.act(order(Order::Raise { n: 1 }));
     }
-    if n == 30 {
-        let _ = w.act(Action::SetSwitches { forage: false, supply: false });
+    if let (30, Some(unit)) = (n, camp(w)) {
+        let _ = w.act(order(Order::Switches { unit, forage: false, supply: false }));
     }
-    if n == 40 {
-        let _ = w.act(Action::SetSwitches { forage: true, supply: true });
+    if let (40, Some(unit)) = (n, camp(w)) {
+        let _ = w.act(order(Order::Switches { unit, forage: true, supply: true }));
     }
-    if n > 0 && n.is_multiple_of(25) {
-        let _ = w.act(Action::Resupply);
+    if let (true, Some(unit)) = (n > 0 && n.is_multiple_of(25), camp(w)) {
+        let _ = w.act(order(Order::Resupply { unit }));
     }
     let targets: Vec<usize> =
         w.civs.values().filter(|c| c.id != me).map(|c| c.capital).chain(std::iter::once(w.civs[&me].capital)).collect();
@@ -297,30 +302,32 @@ fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
         let cap = w.civs[&me].capital;
         let target =
             (0..w.tiles.len()).find(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && land::steps(w, i, cap) == 7);
-        if let Some(to) = target {
-            let _ = w.act(Action::SetRoute { from: cap, to });
+        if let (Some(to), Some(unit)) = (target, scout(w)) {
+            let _ = w.act(order(Order::Route { unit, from: cap, to }));
         }
     }
-    if !(45..55).contains(&n) && w.units.values().any(|u| u.civ == me && u.camp().is_some_and(|c| c.dest.is_none())) {
+    if let Some(unit) =
+        camp(w).filter(|&id| w.units[&id].camp().is_some_and(|c| c.dest.is_none())).filter(|_| !(45..55).contains(&n))
+    {
         for &to in &targets {
-            if w.act(Action::MoveCamp { to }).is_ok() {
+            if w.act(order(Order::Move { unit, to })).is_ok() {
                 break;
             }
         }
     }
     if n == 45 {
         if let Some((id, home, people)) = units::camp(w, me).map(|u| (u.id, u.home, u.people)) {
-            let _ = w.act(Action::MoveCamp { to: home });
+            let _ = w.act(order(Order::Move { unit: id, to: home }));
             if let Some((path, _, _)) = units::line(w, id) {
                 let capital = w.civs[&me].capital;
                 let k = (people as usize).saturating_sub(1);
                 let tiles: Vec<usize> = path.into_iter().filter(|&t| t != capital).take(k).collect();
-                let _ = w.act(Action::Zone { tiles });
+                let _ = w.act(order(Order::Zone { unit: id, tiles }));
             }
         }
     }
-    if n == 60 {
-        let _ = w.act(Action::Disband { n: Some(1) });
+    if let (60, Some(unit)) = (n, camp(w)) {
+        let _ = w.act(order(Order::Disband { unit, n: Some(1) }));
     }
     if n == 10 {
         let _ = w.act(Action::SetGift { food: 2.0 * LEANING.gift_default });
@@ -684,12 +691,13 @@ fn after_run(
     while w.turn < pick + after {
         if let Some(civ) = led.filter(|_| army) {
             if units::camp(&w, civ).is_none() {
-                let _ = w.act(Action::Raise { n: UNIT.start });
+                let _ = w.act(Action::Order { civ, order: Order::Raise { n: UNIT.start } });
             }
             if let Some(u) = units::camp(&w, civ).filter(|u| u.camp().is_some_and(|c| c.dest.is_none())) {
                 let at = units::post(&w, civ);
                 if at != u.home {
-                    let _ = w.act(Action::MoveCamp { to: at });
+                    let unit = u.id;
+                    let _ = w.act(Action::Order { civ, order: Order::Move { unit, to: at } });
                 }
             }
             w.act(Action::EndTurn).expect("ending a turn is allowed");

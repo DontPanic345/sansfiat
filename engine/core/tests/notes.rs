@@ -6,7 +6,7 @@ mod common;
 use common::*;
 use engine::data::{FOREST, HILLS, NOTES};
 use engine::units::{self, UnitKind};
-use engine::{Action, Config, EventKind, World};
+use engine::{Action, Config, EventKind, Order, World};
 
 /// A watched game on the small map, run to the pick and `after` turns on.
 fn watched(seed: u32, after: u32) -> World {
@@ -40,7 +40,7 @@ fn a_led_scouts_reasons_follow_its_route() {
     let to = (0..w.tiles.len())
         .find(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && w.tiles[i].hex().distance(w.tiles[cap].hex()) == 7)
         .expect("a forest or hills tile seven steps out");
-    w.act(Action::SetRoute { from: cap, to }).unwrap();
+    w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to })).unwrap();
     w.run(60);
     let scout = units::scout(&w, red).expect("a scout").id;
     let texts: Vec<&str> = w.notes[&scout].iter().map(|n| n.text.as_str()).collect();

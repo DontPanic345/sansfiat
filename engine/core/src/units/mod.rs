@@ -28,11 +28,10 @@ use crate::market::{add, take, total, Basket};
 use crate::world::{Phase, World};
 
 pub use ai::{ai, post};
-pub use camp::{
-    check_camp, check_disband, check_move, check_take, check_zone, order_move, set_zone, with_camp, zone_cap, CampState,
-};
+pub(crate) use camp::{cs_mut, zone_of, zone_ok};
+pub use camp::{zone_cap, CampState};
 pub use line::{cut_at, cut_off, line, path_between, route, turns};
-pub use scout::{check_route, check_scout, order_route, route_plan, Plan, ScoutState};
+pub use scout::{route_plan, Plan, ScoutState};
 
 use camp::{camp_march, camp_turn, hold};
 use scout::scout_turn;
@@ -281,7 +280,7 @@ impl Unit {
     }
 }
 
-const EPS: f64 = 1e-9;
+pub(crate) const EPS: f64 = 1e-9;
 
 /// `civ`'s camp, if it has one.
 pub fn camp(w: &World, civ: u32) -> Option<&Unit> {
@@ -304,7 +303,7 @@ fn name_of(w: &World, civ: u32) -> String {
 }
 
 /// The clans of `civ` that can give a person, biggest first (ties to the lower id).
-fn givers(w: &World, civ: u32) -> Vec<u32> {
+pub(crate) fn givers(w: &World, civ: u32) -> Vec<u32> {
     let mut ids: Vec<u32> =
         w.clans.values().filter(|c| c.civ == Some(civ) && c.people >= UNIT.min_clan).map(|c| c.id).collect();
     ids.sort_by(|a, b| w.clans[b].people.total_cmp(&w.clans[a].people).then(a.cmp(b)));
@@ -454,11 +453,11 @@ pub fn raise(w: &mut World, civ: u32, n: u32) -> Result<u32, String> {
     Ok(from.len() as u32)
 }
 
-/// Sends `n` of `civ`'s warriors (all with `None`) back to the civ's own clan, with their share of the
-/// pack; with no clan to take them they are lost. All of them removes the camp. `starved` picks the
-/// event and, if it empties the camp, counts it lost.
-pub fn disband(w: &mut World, civ: u32, n: Option<u32>, starved: bool) {
-    let Some(id) = camp(w, civ).map(|u| u.id) else { return };
+/// Sends `n` of camp `id`'s warriors (all with `None`) back to its civ's own clan, with their share of
+/// the pack; with no clan to take them they are lost. All of them removes the camp. `starved` picks
+/// the event and, if it empties the camp, counts it lost.
+pub fn disband(w: &mut World, id: u32, n: Option<u32>, starved: bool) {
+    let Some(civ) = w.units.get(&id).map(|u| u.civ) else { return };
     let people = w.units[&id].people;
     let k = n.map_or(people, |n| f64::from(n).min(people));
     if k <= 0.0 {
@@ -491,7 +490,7 @@ pub fn disband(w: &mut World, civ: u32, n: Option<u32>, starved: bool) {
     w.note(id, text);
 }
 /// The civ whose land the camp stands on, if it isn't its own.
-fn rival_of(w: &World, u: &Unit) -> bool {
+pub(crate) fn rival_of(w: &World, u: &Unit) -> bool {
     civs::tile_civ(w, u.home).is_some_and(|c| c != u.civ)
 }
 
@@ -570,23 +569,4 @@ pub fn leader(w: &World) -> Result<u32, String> {
         return Err("the game has not begun".to_string());
     }
     w.player.ok_or_else(|| "you're watching: you lead no civ".to_string())
-}
-
-/// Checks `Raise`.
-pub fn check_raise(w: &World, n: u32) -> Result<(), String> {
-    let civ = leader(w)?;
-    if !w.config.army {
-        return Err("armies are off".to_string());
-    }
-    if n == 0 {
-        return Err("raise at least one warrior".to_string());
-    }
-    let k = givers(w, civ).len().min(n as usize);
-    if k == 0 {
-        return Err("no clan has a person to spare".to_string());
-    }
-    if total(&w.civs[&civ].store) + EPS < pack_cap(k as f64) {
-        return Err("the store can't fill their packs".to_string());
-    }
-    Ok(())
 }

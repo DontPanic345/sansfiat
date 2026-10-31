@@ -6,7 +6,7 @@ use std::process::Command;
 use engine::world::SAVE_VERSION;
 
 /// The version these digests are for.
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 
 /// `sansfiat digest` for `seed` on the small map, from turn 0 to `turn`, and the digest it prints
 /// for that turn (the last line).
@@ -41,7 +41,7 @@ fn the_save_version_pins_the_rules() {
     assert_eq!(digest("1", "336", false), "be1197ab970402b9");
     assert_eq!(digest("2", "303", false), "8b866f497fb07b8d");
     assert_eq!(digest("3", "239", false), "85468f7177213aab");
-    assert_eq!(digest("2", "303", true), "ed8f01e25fd6433b");
+    assert_eq!(digest("2", "303", true), "ea1c746b5be2e2b2");
 }
 
 #[test]

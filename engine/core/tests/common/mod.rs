@@ -6,9 +6,24 @@ use engine::clans::new_clan;
 use engine::data::*;
 use engine::hex::{Hex, DIRS};
 use engine::map::{index, Country};
-use engine::{Config, Market, World};
+use engine::{units, Action, Config, Market, Order, World};
 
 pub const R: i32 = 6;
+
+/// The order the player gives the civ it leads, as `act` takes it.
+pub fn led_order(w: &World, order: Order) -> Action {
+    Action::Order { civ: w.player.expect("a civ is led"), order }
+}
+
+/// The unit id of the camp of the civ the player leads.
+pub fn led_camp(w: &World) -> u32 {
+    units::camp(w, w.player.expect("a civ is led")).expect("a camp").id
+}
+
+/// The unit id of the scout of the civ the player leads.
+pub fn led_scout(w: &World) -> u32 {
+    units::scout(w, w.player.expect("a civ is led")).expect("a scout").id
+}
 
 /// A world of bare plains with sea at the rim: no food, no clans, no markets. Its random state
 /// and next id are what the placeholder generator left, so every test's draws and ids hold; no

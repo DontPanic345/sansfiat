@@ -11,7 +11,7 @@ fn a_save_carries_its_version_and_round_trips() {
     let save = w.save();
     assert_eq!(save.version, SAVE_VERSION);
     let json = serde_json::to_string(&save).unwrap();
-    assert!(json.starts_with("{\"version\":1,"), "the version comes first: {json}");
+    assert!(json.starts_with("{\"version\":2,"), "the version comes first: {json}");
     let back: Save = serde_json::from_str(&json).unwrap();
     assert_eq!(World::replay(&back).unwrap(), w);
 }
@@ -23,13 +23,13 @@ fn a_save_without_a_version_is_refused_naming_it() {
     let save: Save = serde_json::from_value(json).unwrap();
     assert_eq!(save.version, 0, "a save without a version reads as 0");
     let err = World::replay(&save).unwrap_err();
-    assert_eq!(err, "this save is from an older build (no version); this build reads version 1");
+    assert_eq!(err, "this save is from an older build (no version); this build reads version 2");
 }
 
 #[test]
 fn a_save_of_another_version_is_refused_naming_both() {
     let mut save = World::new(Config::default()).save();
-    save.version = 2;
+    save.version = 1;
     let err = World::replay(&save).unwrap_err();
-    assert_eq!(err, "this save is version 2; this build reads version 1");
+    assert_eq!(err, "this save is version 1; this build reads version 2");
 }
