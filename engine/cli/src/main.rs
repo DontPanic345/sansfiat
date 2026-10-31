@@ -301,9 +301,7 @@ fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
             let _ = w.act(Action::SetRoute { from: cap, to });
         }
     }
-    if !(45..55).contains(&n)
-        && w.units.values().any(|u| u.civ == me && u.dest.is_none() && u.kind == units::UnitKind::Camp)
-    {
+    if !(45..55).contains(&n) && w.units.values().any(|u| u.civ == me && u.camp().is_some_and(|c| c.dest.is_none())) {
         for &to in &targets {
             if w.act(Action::MoveCamp { to }).is_ok() {
                 break;
@@ -688,7 +686,7 @@ fn after_run(
             if units::camp(&w, civ).is_none() {
                 let _ = w.act(Action::Raise { n: UNIT.start });
             }
-            if let Some(u) = units::camp(&w, civ).filter(|u| u.dest.is_none()) {
+            if let Some(u) = units::camp(&w, civ).filter(|u| u.camp().is_some_and(|c| c.dest.is_none())) {
                 let at = units::post(&w, civ);
                 if at != u.home {
                     let _ = w.act(Action::MoveCamp { to: at });

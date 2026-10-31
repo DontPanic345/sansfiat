@@ -52,10 +52,10 @@ fn starve_camp_on(w: &mut World, civ: u32, tile: usize) {
     let u = w.units.get_mut(&id).unwrap();
     u.actor.home = tile;
     u.actor.territory = vec![tile];
-    u.held = vec![tile];
+    u.camp_mut().unwrap().held = vec![tile];
     u.actor.store = [0.0; N];
-    u.auto_forage = false;
-    u.auto_supply = false;
+    u.camp_mut().unwrap().auto_forage = false;
+    u.camp_mut().unwrap().auto_supply = false;
 }
 
 /// The events of `kind` about `civ`'s camp or scout, in order.

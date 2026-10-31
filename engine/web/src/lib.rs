@@ -152,7 +152,7 @@ impl Sim {
                 row["cut_at"] = units::cut_at(w, u.id)
                     .map(|(path, at, by)| serde_json::json!({ "path": path, "at": at, "by": by }))
                     .into();
-                if let (UnitKind::Scout, Some((from, to))) = (u.kind, u.route) {
+                if let (UnitKind::Scout, Some((from, to))) = (u.kind(), u.scout().and_then(|s| s.route)) {
                     let plan = units::route_plan(w, u.civ, from, to);
                     let way = |p: &Option<(Vec<usize>, f64)>| p.as_ref().map(|(path, cost)| serde_json::json!({ "path": path, "cost": cost }));
                     row["plan"] = serde_json::json!({ "known": way(&plan.known), "possible": way(&plan.possible), "candidates": plan.candidates });

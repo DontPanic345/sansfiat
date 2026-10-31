@@ -24,7 +24,7 @@ fn a_watched_game_gives_reasons_to_clans_markets_civs_and_camps() {
     assert!(w.clans.keys().any(|id| w.notes.contains_key(id)), "a clan has a reason");
     assert!(w.markets.keys().any(|id| w.notes.contains_key(id)), "a market has a reason");
     assert!(w.civs.keys().all(|id| w.notes.contains_key(id)), "every civ has a reason: it was founded");
-    let camps: Vec<u32> = w.units.values().filter(|u| u.kind == UnitKind::Camp).map(|u| u.id).collect();
+    let camps: Vec<u32> = w.units.values().filter(|u| u.kind() == UnitKind::Camp).map(|u| u.id).collect();
     assert!(!camps.is_empty() && camps.iter().all(|id| w.notes.contains_key(id)), "every camp has a reason");
 }
 

@@ -63,7 +63,7 @@ fn put_camp(w: &mut World, civ: u32, tile: usize) -> u32 {
     let u = w.units.get_mut(&id).unwrap();
     u.actor.home = tile;
     u.actor.territory = vec![tile];
-    u.held = vec![tile];
+    u.camp_mut().unwrap().held = vec![tile];
     id
 }
 
@@ -107,7 +107,7 @@ fn founding_with_no_centre_clan_makes_the_biggest_near_clan_the_civ_and_moves_no
     let scout = units::scout(&w, red.id).unwrap();
     assert!((total(&red.store) + total(&scout.store) + total(&camp.store) - total(&CIV.endowment)).abs() < 1e-9);
     // The civs with no clan in reach are left without a camp, but Blue and Gold had no clans at all.
-    assert_eq!(w.units.values().filter(|u| u.kind == UnitKind::Camp).count(), 1);
+    assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 1);
 }
 
 fn pack_total(people: f64) -> f64 {
@@ -235,7 +235,7 @@ fn raising_drops_n_clans_by_one_each() {
         "their packs came from the store"
     );
     assert_eq!(kinds(&w, EventKind::WarriorsRaised), 1);
-    assert_eq!(w.units.values().filter(|u| u.kind == UnitKind::Camp).count(), 3, "still one camp a civ");
+    assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 3, "still one camp a civ");
     // The store can't fill the packs.
     w.civs.get_mut(&red).unwrap().store = [0.0; N];
     assert!(w.act(Action::Raise { n: 1 }).is_err());
@@ -310,7 +310,7 @@ fn marcher(people: f64, tile: usize, dest: usize) -> (World, u32) {
     let id = put_camp(&mut w, ids[0], tile);
     let c = camp_mut(&mut w, id);
     c.people = people;
-    c.dest = Some(dest);
+    c.camp_mut().unwrap().dest = Some(dest);
     (w, ids[0])
 }
 
@@ -408,7 +408,7 @@ fn foraging_strips_a_tile_so_a_clan_harvests_nothing_there_for_fallow_turns() {
     {
         let c = camp_mut(&mut w, id);
         c.store = [0.0; N];
-        c.auto_supply = false;
+        c.camp_mut().unwrap().auto_supply = false;
     }
     let clan = put(&mut w, &[t], 6.0);
     units::step(&mut w);
@@ -492,8 +492,8 @@ fn hunger_loses_warriors() {
     {
         let c = camp_mut(&mut w, id);
         c.store = [0.0; N];
-        c.auto_forage = false;
-        c.auto_supply = false;
+        c.camp_mut().unwrap().auto_forage = false;
+        c.camp_mut().unwrap().auto_supply = false;
     }
     let own = w.clans[&clans[0]].people;
     for _ in 1..UNIT.hungry_turns {
@@ -539,7 +539,7 @@ fn with_the_army_off_no_camp_is_founded_and_nothing_is_levied() {
     found(&mut w, &ms);
     let red = *w.civs.keys().next().unwrap();
     // No camp, but the one civ with a clan to give has its scout.
-    assert!(w.units.values().all(|u| u.kind == UnitKind::Scout), "no camp");
+    assert!(w.units.values().all(|u| u.kind() == UnitKind::Scout), "no camp");
     assert_eq!(w.units.len(), 1);
     // The scout's two people come from the civ's only clan, and its pack from the store.
     assert_eq!(w.clans[&a].people, 8.0 - SCOUT.people as f64);
@@ -561,7 +561,7 @@ fn with_the_army_off_no_camp_is_founded_and_nothing_is_levied() {
     found(&mut v, &ms);
     v.phase = Phase::Main;
     units::ai(&mut v);
-    assert!(v.units.values().all(|u| u.kind == UnitKind::Scout), "the AI raises no camp");
+    assert!(v.units.values().all(|u| u.kind() == UnitKind::Scout), "the AI raises no camp");
 }
 
 #[test]
@@ -578,7 +578,7 @@ fn the_ai_raises_a_lost_camp_and_posts_it_off_the_capital() {
     let blue = units::camp(&w, ids[1]).expect("the AI raised its camp");
     assert_eq!(w.civs[&ids[1]].army.raised, 2);
     let id = blue.id;
-    let dest = units::camp(&w, ids[1]).unwrap().dest.expect("posted");
+    let dest = units::camp(&w, ids[1]).unwrap().camp().unwrap().dest.expect("posted");
     assert_ne!(dest, w.civs[&ids[1]].capital);
     assert!(steps(&w, dest, w.civs[&ids[1]].capital) <= UNIT.post as i32);
     assert_eq!(civs::tile_civ(&w, dest), Some(ids[1]), "on its own land");
@@ -594,8 +594,8 @@ fn a_real_map_replays_with_the_camp_under_orders() {
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }
-    assert_eq!(w.units.values().filter(|u| u.kind == UnitKind::Camp).count(), 3, "a camp each at the pick");
-    for u in w.units.values().filter(|u| u.kind == UnitKind::Camp) {
+    assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 3, "a camp each at the pick");
+    for u in w.units.values().filter(|u| u.kind() == UnitKind::Camp) {
         assert_eq!(u.tile(), w.civs[&u.civ].capital);
         assert_eq!(u.people, f64::from(UNIT.start));
         assert_eq!(w.civs[&u.civ].army.raised, 1);
@@ -686,7 +686,7 @@ fn on_a_real_map_every_ai_civ_keeps_the_camp_it_raised_at_the_pick_on_a_line_fro
 }
 
 fn held(w: &World, civ: u32) -> Vec<usize> {
-    units::camp(w, civ).unwrap().held.clone()
+    units::camp(w, civ).unwrap().held().to_vec()
 }
 
 #[test]
@@ -724,8 +724,8 @@ fn the_camps_tile_is_held_and_the_spread_fills_one_ring_a_turn_until_a_move_clea
     assert_eq!(held(&w, red), vec![home, at_big(-2, 0), at_big(-1, 0)], "two rings");
     assert_eq!(kinds(&w, EventKind::Held), 1);
     let u = units::camp(&w, red).unwrap();
-    assert_eq!(u.guard.len(), 3);
-    assert!(u.guard.iter().all(|&g| g >= UNIT.guard), "{:?}", u.guard);
+    assert_eq!(u.camp().unwrap().guard.len(), 3);
+    assert!(u.camp().unwrap().guard.iter().all(|&g| g >= UNIT.guard), "{:?}", u.camp().unwrap().guard);
     assert_eq!(w.civs[&red].army.held, 1 + 2);
     units::step(&mut w);
     assert_eq!(kinds(&w, EventKind::Held), 1, "announced once");
@@ -735,7 +735,7 @@ fn the_camps_tile_is_held_and_the_spread_fills_one_ring_a_turn_until_a_move_clea
     // Moving undeploys.
     w.act(Action::MoveCamp { to: at_big(-3, 3) }).unwrap();
     let u = units::camp(&w, red).unwrap();
-    assert_eq!((u.territory.clone(), u.held.clone()), (vec![home], vec![home]));
+    assert_eq!((u.territory.clone(), u.held().to_vec()), (vec![home], vec![home]));
 }
 
 #[test]
@@ -806,8 +806,8 @@ fn a_rivals_held_tile_blocks_the_line_and_ones_own_on_rival_land_does_not() {
     assert!(!blues.is_empty());
     assert_eq!(units::line(&w, id), None, "Blue's land blocks it");
     let c = camp_mut(&mut w, id);
-    c.held = blues.iter().copied().chain(std::iter::once(at_big(9, 0))).collect();
-    c.held.sort_unstable();
+    c.camp_mut().unwrap().held = blues.iter().copied().chain(std::iter::once(at_big(9, 0))).collect();
+    c.camp_mut().unwrap().held.sort_unstable();
     assert!(units::line(&w, id).is_some(), "Red's own held tiles on Blue's land let it through");
 }
 
@@ -823,7 +823,7 @@ fn the_larger_guard_share_takes_a_contested_tile_and_a_tie_stays_with_the_holder
         camp_mut(&mut w, r).actor.territory = vec![at_big(0, 3), mid];
         camp_mut(&mut w, b).actor.territory = vec![mid, at_big(2, 3)];
         if blue_holds {
-            camp_mut(&mut w, b).held = vec![mid, at_big(2, 3)];
+            camp_mut(&mut w, b).camp_mut().unwrap().held = vec![mid, at_big(2, 3)];
         }
         units::step(&mut w);
         (held(&w, red).contains(&mid), held(&w, blue).contains(&mid), units::camp(&w, red).unwrap().territory.clone())
@@ -877,4 +877,93 @@ fn a_camp_cut_by_an_army_eats_its_pack_then_forages() {
     assert!(turns >= 3, "the pack lasted {turns} turns first");
     assert_eq!(w.civs[&red].army.resupplied, 0.0);
     assert!(w.units.contains_key(&id));
+}
+
+/// The keys of the top-level object in `json`, in the order they are written (`serde_json::Value`
+/// sorts them, so the text is read).
+fn keys_in_order(json: &str) -> Vec<String> {
+    let (mut keys, mut depth, mut in_str, mut escaped) = (Vec::new(), 0, false, false);
+    let (mut word, mut last) = (String::new(), None::<String>);
+    for c in json.chars() {
+        if in_str {
+            if escaped {
+                escaped = false;
+                word.push(c);
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                in_str = false;
+                last = Some(std::mem::take(&mut word));
+            } else {
+                word.push(c);
+            }
+            continue;
+        }
+        match c {
+            '"' => in_str = true,
+            '{' | '[' => depth += 1,
+            '}' | ']' => depth -= 1,
+            ':' if depth == 1 => keys.push(last.take().expect("a key")),
+            _ => {}
+        }
+    }
+    keys
+}
+
+#[test]
+fn a_unit_serialises_its_27_flat_fields_in_the_old_order_whatever_its_kind() {
+    const KEYS: [&str; 27] = [
+        "id",
+        "civ",
+        "kind",
+        "people",
+        "home",
+        "store",
+        "territory",
+        "routes",
+        "market",
+        "dest",
+        "banked",
+        "hungry",
+        "auto_forage",
+        "auto_supply",
+        "resupply",
+        "forage",
+        "pillage",
+        "cut",
+        "foraging",
+        "supplying",
+        "held",
+        "guard",
+        "full",
+        "cut_by",
+        "route",
+        "heard",
+        "blocked",
+    ];
+    let (w, ids, _) = three();
+    let camp = units::camp(&w, ids[0]).expect("a camp");
+    let scout = units::scout(&w, ids[0]).expect("a scout");
+    for u in [camp, scout] {
+        let json = serde_json::to_string(u).unwrap();
+        assert_eq!(keys_in_order(&json), KEYS.map(String::from), "{json}");
+        let back: Unit = serde_json::from_str(&json).unwrap();
+        assert_eq!(serde_json::to_string(&back).unwrap(), json, "a unit reads back to what it wrote");
+    }
+    // A camp writes the scout's fields at their defaults; a scout writes the camp's as they were set.
+    let v: serde_json::Value = serde_json::to_value(camp).unwrap();
+    assert_eq!((&v["route"], &v["heard"], &v["blocked"]), (&serde_json::Value::Null, &false.into(), &false.into()));
+    let v: serde_json::Value = serde_json::to_value(scout).unwrap();
+    assert_eq!(
+        (&v["dest"], &v["auto_forage"], &v["auto_supply"], &v["held"], &v["guard"], &v["full"], &v["cut_by"]),
+        (
+            &serde_json::Value::Null,
+            &true.into(),
+            &true.into(),
+            &serde_json::json!([]),
+            &serde_json::json!([]),
+            &false.into(),
+            &serde_json::Value::Null,
+        )
+    );
 }

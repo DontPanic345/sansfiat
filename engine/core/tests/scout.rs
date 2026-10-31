@@ -80,7 +80,7 @@ fn has_event(w: &World, kind: EventKind) -> bool {
 fn until_route_done(w: &mut World, max: u32) -> u32 {
     for turn in 1..=max {
         w.act(Action::EndTurn).unwrap();
-        if scout(w).route.is_none() {
+        if scout(w).scout().unwrap().route.is_none() {
             return turn;
         }
     }
@@ -92,10 +92,10 @@ fn the_scout_is_made_at_the_capital_with_its_packs_from_the_store() {
     let w = lead(2);
     let me = w.player.unwrap();
     let (cap, _) = capital(&w);
-    let scouts: Vec<_> = w.units.values().filter(|u| u.kind == UnitKind::Scout).collect();
+    let scouts: Vec<_> = w.units.values().filter(|u| u.kind() == UnitKind::Scout).collect();
     assert_eq!(scouts.len(), w.civs.len(), "one scout per civ");
     let s = units::scout(&w, me).unwrap();
-    assert_eq!((s.home, s.people, s.route), (cap, SCOUT.people as f64, None));
+    assert_eq!((s.home, s.people, s.scout().unwrap().route), (cap, SCOUT.people as f64, None));
     assert!(units::camp(&w, me).is_some_and(|c| c.id != s.id), "the scout is not the camp");
 }
 
@@ -174,7 +174,7 @@ fn a_sealed_scout_searches_the_range_from_inside_the_valley() {
         if !w.tiles[pass].trail {
             assert!(s.home == cap || w.tiles[s.home].hex().distance(ch) < 3, "it searched from outside the valley");
         }
-        if s.route.is_none() {
+        if s.scout().unwrap().route.is_none() {
             break;
         }
     }
@@ -251,7 +251,7 @@ fn an_idle_scout_at_the_capital_neither_forages_nor_starves() {
     let (cap, _) = capital(&w);
     w.run(50);
     let s = scout(&w);
-    assert_eq!((s.home, s.route, s.hungry), (cap, None, 0));
+    assert_eq!((s.home, s.scout().unwrap().route, s.hungry), (cap, None, 0));
     assert_eq!(s.people, SCOUT.people as f64);
     assert!(!has_event(&w, EventKind::ScoutHungry) && !has_event(&w, EventKind::ScoutStarved));
     assert!(w.events.iter().all(|e| e.kind != EventKind::CampForaged || e.unit != Some(s.id)));

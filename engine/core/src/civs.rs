@@ -235,7 +235,7 @@ pub fn tile_civ(w: &World, i: usize) -> Option<u32> {
 /// The civ tile `i` counts for in a camp's line: the civ whose camp holds it, else its land's
 /// (`tile_civ`). Clans' claims, forage and pillage, and the AI's post read land without holding.
 pub fn holder(w: &World, i: usize) -> Option<u32> {
-    w.units.values().find(|u| u.held.contains(&i)).map(|u| u.civ).or_else(|| tile_civ(w, i))
+    w.units.values().find(|u| u.held().contains(&i)).map(|u| u.civ).or_else(|| tile_civ(w, i))
 }
 
 /// Every tile whose civ is `civ` (see `tile_civ`), sorted.
