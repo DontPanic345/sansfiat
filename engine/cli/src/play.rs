@@ -196,6 +196,7 @@ fn apply(w: &mut World, text: &str, since: usize) -> String {
         }
         "why" => match rest.parse::<u32>() {
             Ok(id) => {
+                println!("why {id}: its reasons, newest first");
                 print_notes(w, id);
                 "ok".to_string()
             }

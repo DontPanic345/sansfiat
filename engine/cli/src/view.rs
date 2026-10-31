@@ -96,7 +96,7 @@ pub(crate) fn text(w: &World, since: usize) -> String {
         out += &format!("  clan {} at {}: {:.1} people, fed {:.2}\n", k.id, tile(w, k.home), k.people, k.fed_ratio);
     }
 
-    out += &format!("unaligned clans in reach of your market, leaning to each civ (join at {:.1}):\n", LEANING.join);
+    out += &format!("unaligned clans in reach of your market, leaning to each civ (join at {:.1}; a gift reaches only those that trade there):\n", LEANING.join);
     let reach = w.markets.get(&c.market).map(|m| markets::in_reach(w, m.tile).0).unwrap_or_default();
     let mut loose: Vec<(f64, u32)> = reach
         .iter()
@@ -114,7 +114,12 @@ pub(crate) fn text(w: &World, since: usize) -> String {
         let k = &w.clans[&id];
         let legs: Vec<String> =
             w.civs.keys().map(|c| format!("civ {c} {:.2}", k.leaning.get(c).copied().unwrap_or(0.0))).collect();
-        out += &format!("  clan {id} at {}, {:.1} people: {}\n", tile(w, k.home), k.people, legs.join(", "));
+        let trades = match k.market {
+            Some(m) if m == c.market => "trades at your market, so your gift reaches it".to_string(),
+            Some(m) => format!("trades at market {m}, so your gift doesn't reach it"),
+            None => "trades at no market, so your gift doesn't reach it".to_string(),
+        };
+        out += &format!("  clan {id} at {}, {:.1} people: {}; {trades}\n", tile(w, k.home), k.people, legs.join(", "));
     }
     if loose.len() > REACH_NAMED {
         out += &format!("  and {} more\n", loose.len() - REACH_NAMED);

@@ -161,3 +161,17 @@ fn judge_prints_a_score_line_and_the_control_for_the_led_civ() {
     assert!(led.contains("with every civ on the AI"), "{led}");
     assert!(out.contains("player orders: 1 (move 1)"), "{out}");
 }
+
+#[test]
+fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
+    // The trial game (relay/specs/101/play.md): at its last turn clan 321 is in reach of Red's
+    // market but trades at another, so Red's gift never reaches it.
+    let (_dir, game) = game_in("reach");
+    let trial = concat!(env!("CARGO_MANIFEST_DIR"), "/../../relay/specs/101/trial/g.json");
+    fs::copy(trial, &game).unwrap();
+    let out = sansfiat(&["play", "--game", &game], "why 321\n");
+    assert!(out.contains("a gift reaches only those that trade there"), "{out}");
+    let clan = out.lines().find(|l| l.starts_with("  clan 321 at")).expect("clan 321 is in reach");
+    assert!(clan.contains("so your gift doesn't reach it"), "{clan}");
+    assert!(out.contains("why 321: its reasons, newest first"), "{out}");
+}
