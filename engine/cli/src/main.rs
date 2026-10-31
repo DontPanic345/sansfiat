@@ -1,6 +1,7 @@
 mod bench;
 mod clear;
 mod digest;
+mod judge;
 mod map;
 mod replay;
 mod report;
@@ -26,6 +27,7 @@ sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
+sansfiat sweep --judge [--bands FILE] [--json]   (the retro maps, every civ on the AI: the army run twice and the --no-army control, scored by the judge over 200 turns past the pick; reads judge.toml's bands, exits 1 on a fail)
 sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--no-zone] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army, --no-gifts and --no-zone (AI camps paint no zone) are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
 sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
 sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead] [--state]   (prints turn and digest, from turn 0; --lead plays the scripted game: picks the first civ and gives orders; --state hashes the world without its log)

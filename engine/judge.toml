@@ -1,0 +1,19 @@
+# The judge's bands: each `[group.metric]` names a number of `sweep --judge`'s total (its JSON's
+# `total`). A value outside a fail bound fails CI; outside a warn bound it warns and passes. Bounds
+# are inclusive. A band is a promise about the game, so a piece that moves one says so in its PR,
+# with the new numbers, and the bands move with it.
+
+# A map whose run panics is a game that can't be played.
+[health.panics]
+fail_max = 0
+note = "a map that panics is a game that can't be played"
+
+# The two army runs of a map must end on the same digest: the game is deterministic.
+[health.digest_mismatches]
+fail_max = 0
+note = "the two army runs of a map must end on the same digest"
+
+# The pre-game must end by the centres on all seven retro maps, not at its turn limit.
+[health.pregame_by_centres]
+fail_min = 7
+note = "the pre-game must end by the centres on every retro map"

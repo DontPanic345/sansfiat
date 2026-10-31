@@ -1,6 +1,8 @@
 //! Numbers read off a world: a summary line, and the evidence that centres form around fertile
 //! land. Nothing here changes the world.
 
+use std::collections::BTreeMap;
+
 use serde::Serialize;
 
 use crate::data::*;
@@ -36,6 +38,8 @@ pub struct Summary {
     pub centres: Vec<u32>,
     pub cover: f64,
     pub end: Option<End>,
+    /// Each civ's Standing: see `standing`. Empty before founding.
+    pub standing: BTreeMap<u32, f64>,
 }
 
 pub fn summary(w: &World) -> Summary {
@@ -67,7 +71,27 @@ pub fn summary(w: &World) -> Summary {
         centres,
         cover,
         end: w.end.clone(),
+        standing: standing(w),
     }
+}
+
+/// Each civ's Standing: the people of its clans and of its units over the people of every clan and
+/// every unit. Warriors and scouts are people the civ took from its clans, so raising a camp moves
+/// nobody between civs. Every civ is there, at 0 when the world has nobody.
+pub fn standing(w: &World) -> BTreeMap<u32, f64> {
+    let mut mine: BTreeMap<u32, f64> = w.civs.keys().map(|&c| (c, 0.0)).collect();
+    let clans = w.clans.values().filter_map(|k| k.civ.map(|c| (c, k.people)));
+    let units = w.units.values().map(|u| (u.civ, u.people));
+    for (civ, people) in clans.chain(units) {
+        *mine.entry(civ).or_insert(0.0) += people;
+    }
+    let all: f64 = w.clans.values().map(|k| k.people).sum::<f64>() + w.units.values().map(|u| u.people).sum::<f64>();
+    if all > 0.0 {
+        for share in mine.values_mut() {
+            *share /= all;
+        }
+    }
+    mine
 }
 
 /// Hex steps from a centre's market within which fertility is compared.

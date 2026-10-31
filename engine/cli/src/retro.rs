@@ -18,6 +18,21 @@ pub(crate) fn retro_maps() -> Result<Vec<(String, i32, u32)>, String> {
     Ok(maps)
 }
 
+/// A world run through its pre-game to the pick, where the player is asked for a civ.
+pub(crate) fn to_pick(config: Config) -> World {
+    let mut w = World::new(config);
+    while w.phase == Phase::Pregame {
+        w.run(1);
+    }
+    w
+}
+
+/// Whether `civ` kept its first camp to the end: no camp lost, and at least the warriors it started with.
+pub(crate) fn kept_camp(w: &World, civ: u32) -> bool {
+    let warriors = units::camp(w, civ).map_or(0.0, |u| u.people);
+    w.civs[&civ].army.lost == 0 && warriors >= f64::from(UNIT.start)
+}
+
 /// What the camp sweep reports for one civ at the end: its line, whether it kept its first camp, and
 /// its clans' people.
 pub(crate) struct CivArmy {
@@ -53,10 +68,7 @@ pub(crate) fn after_run(
     zone: bool,
     lever: Option<f64>,
 ) -> MapRun {
-    let mut w = World::new(Config { seed, radius, army, gifts, zone });
-    while w.phase == Phase::Pregame {
-        w.run(1);
-    }
+    let mut w = to_pick(Config { seed, radius, army, gifts, zone });
     let led = lever.and_then(|_| w.civs.keys().next().copied());
     w.act(Action::ChooseCiv { civ: led }).expect("a civ can be chosen at the pick");
     if let Some(g) = lever {
@@ -96,7 +108,7 @@ pub(crate) fn after_run(
                 Some((_, cost, _)) => format!("cost {cost:.2} carry unlimited"),
                 None => "no line".to_string(),
             };
-            let kept = a.lost == 0 && warriors >= f64::from(UNIT.start);
+            let kept = kept_camp(&w, civ);
             let civ_state = &w.civs[&civ];
             let leaning = w
                 .clans
