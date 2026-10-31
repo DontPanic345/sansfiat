@@ -21,3 +21,15 @@ The same command, the same runner, after the `--state` flag, `events.rs`, the Ba
 | 3 | 1.710 | 1.712 | 1.719, 1.714, 1.712 | +0.1% |
 
 Every seed is within 10% of its "before" number (the limits are 1.714, 3.818 and 1.881).
+
+# After build-3
+
+The same command on the release build after the actor behaviour (`Actor::{spoil, eat_by_share, eat_by_diet}`, `actors::stride`, the civ an actor). Three runs of `sansfiat bench 1 2 3`; best ms a turn.
+
+| Seed | Before, build-1 (best) | After (best) | After runs | Change |
+|---|---|---|---|---|
+| 1 | 1.558 | 1.552 | 1.566, 1.558, 1.552 | −0.4% |
+| 2 | 3.471 | 3.473 | 3.473, 3.476, 3.475 | +0.1% |
+| 3 | 1.710 | 1.708 | 1.709, 1.708, 1.711 | −0.1% |
+
+Every seed is within 10% of its "before" number (the limits are 1.714, 3.818 and 1.881).

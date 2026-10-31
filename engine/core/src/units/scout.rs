@@ -7,11 +7,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::line::{line, path_between, walkable};
 use super::{leader, rival_of, room, scout, strip, supply, EPS};
-use crate::actors::Route;
+use crate::actors::{stride, Route};
 use crate::data::*;
 use crate::events::{Event, EventKind};
-use crate::land::{self, build_trail, cost_map, path_by, step_cost, steps, trailable};
-use crate::market::{take, total};
+use crate::land::{self, build_trail, cost_map, path_by, steps, trailable};
+use crate::market::total;
 use crate::world::World;
 
 /// A scout's own state: its route (the tile it searches from and the tile it searches for), and what
@@ -229,20 +229,14 @@ fn ordered(w: &World, civ: u32, plan: &Plan, from: usize, to: usize, costs: &BTr
 /// what is left. A step part-paid carries to next turn as `banked`. Returns whether it reached the
 /// end of the path.
 fn march(w: &mut World, id: u32, path: &[usize], left: &mut f64, banked: &mut f64) -> bool {
-    let mut at = w.units[&id].home;
-    let mut taken = 0;
-    for &next in path {
-        let Some(cost) = step_cost(w, at, next) else { break };
-        if cost > *left + EPS {
-            break;
-        }
-        *left -= cost;
-        at = next;
-        taken += 1;
-        w.tiles[next].walked = true;
+    let (taken, rest) = stride(w, w.units[&id].home, path, *left, EPS);
+    for &t in &path[..taken] {
+        w.tiles[t].walked = true;
     }
+    *left = rest;
     let u = w.units.get_mut(&id).unwrap();
     if taken > 0 {
+        let at = path[taken - 1];
         u.actor.home = at;
         u.actor.territory = vec![at];
     }
@@ -402,10 +396,7 @@ fn reveal(w: &mut World, id: u32, civ: u32, j: usize) {
 /// camp's do; a scout that starves to nothing is gone.
 pub(super) fn scout_turn(w: &mut World, id: u32) {
     let civ = w.units[&id].civ;
-    {
-        let u = w.units.get_mut(&id).unwrap();
-        u.store = u.store.map(|v| v * (1.0 - CLAN.spoilage));
-    }
+    w.units.get_mut(&id).unwrap().spoil();
     let people = w.units[&id].people;
     let need = people * UNIT.food;
     let mut left = people * UNIT.labour + w.units[&id].banked;
@@ -449,7 +440,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
 
     // Eating, and hunger.
     let u = w.units.get_mut(&id).unwrap();
-    let eaten = take(&mut u.store, need);
+    let eaten = u.eat_by_share(need);
     let fed = total(&eaten) + EPS >= need;
     u.hungry = if fed { 0 } else { u.hungry + 1 };
     let (hungry, tile) = (u.hungry, u.home);

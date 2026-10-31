@@ -6,13 +6,13 @@
 
 use std::collections::BTreeMap;
 
-use super::line::{cut_by, cut_off, cutter, line, path_between, route, walk, walkable};
+use super::line::{cut_by, cut_off, cutter, line, path_between, route, walkable};
 use super::{camp, disband, leader, name_of, rival_of, room, strip, supply, Unit, EPS};
-use crate::actors::{connected, divide, Route, Walks};
+use crate::actors::{connected, divide, stride, Route, Walks};
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::{neighbours, passable};
-use crate::market::{take, total};
+use crate::market::total;
 use crate::world::World;
 
 /// A camp's own state: its orders, its zone (`held` and `guard` are the tiles its warriors hold),
@@ -53,10 +53,7 @@ fn cs_mut(w: &mut World, id: u32) -> &mut CampState {
 /// One camp's march. Returns the labour the march left.
 pub(super) fn camp_march(w: &mut World, id: u32) -> f64 {
     let people = w.units[&id].people;
-    {
-        let u = w.units.get_mut(&id).unwrap();
-        u.store = u.store.map(|v| v * (1.0 - CLAN.spoilage));
-    }
+    w.units.get_mut(&id).unwrap().spoil();
 
     // The march. Every warrior walks, so a step costs one warrior's labour and the camp's labour
     // left is that, times the warriors. A march not done leaves nothing.
@@ -64,7 +61,7 @@ pub(super) fn camp_march(w: &mut World, id: u32) -> f64 {
     let mut arrived = false;
     if let Some((tiles, _)) = route(w, id) {
         let u = &w.units[&id];
-        let (taken, rest) = walk(w, u.home, &tiles, u.banked);
+        let (taken, rest) = stride(w, u.home, &tiles, u.banked + UNIT.labour, 0.0);
         if taken > 0 {
             let u = w.units.get_mut(&id).unwrap();
             u.actor.home = tiles[taken - 1];
@@ -296,7 +293,7 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
 
     // Eating, from the pack in proportion to what it holds.
     let u = w.units.get_mut(&id).unwrap();
-    let eaten = take(&mut u.store, need);
+    let eaten = u.eat_by_share(need);
     let covered = total(&eaten) / need;
     let fed = total(&eaten) + EPS >= need;
     u.hungry = if fed { 0 } else { u.hungry + 1 };

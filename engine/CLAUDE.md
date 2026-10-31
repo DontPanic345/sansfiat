@@ -26,12 +26,12 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `core/src/data.rs` | Every rule's numbers and `Config`; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs. |
 | `core/src/land.rs` | Neighbours, move costs, `path`, `steps` (the tile distance), and the `regrow`, `wear` and `tend` steps. |
-| `core/src/actors.rs` | `Actor`, `walk_cost`, `Walks`, `divide` and the add/drop rule `change`. |
+| `core/src/actors.rs` | `Actor` and what every actor does once: `spoil`, `eat_by_share`, `eat_by_diet`, `stride` (walking a path on labour), `walk_cost`, `Walks`, `divide` and the add/drop rule `change`. |
 | `core/src/clans.rs` | Clans on the actor: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
 | `core/src/market.rs` | `Basket` and its helpers (`total`, `take`, `add`, `sum`); `clear`: barter exchange ratios by tâtonnement. |
 | `core/src/markets.rs` | Festivals (markets in code): reach, the `go` step, trading, forming and fading, people moving. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
-| `core/src/civs.rs` | Civs: `found`, the `levy`, `keep`, the `civs` step, territory and the pick's `cards`. |
+| `core/src/civs.rs` | Civs, each an actor (its store is the civ's): `found`, the `levy`, `keep`, the `civs` step, territory and the pick's `cards`. |
 | `core/src/leaning.rs` | Unaligned clans leaning toward and joining a civ: `give` and the `lean` step. |
 | `core/src/units/mod.rs` | `Unit` and `UnitState` (its flat JSON), `Counters`, the queries (`camp`, `scout`, `pack_cap`, `leader`), raising and disbanding, `strip` and `supply`, and the `units` step. |
 | `core/src/units/line.rs` | What a camp may walk, `path_between`, `route`, the line to the capital (`line`, `cut_off`, `cut_at`) and `turns`. |

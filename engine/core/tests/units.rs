@@ -879,37 +879,6 @@ fn a_camp_cut_by_an_army_eats_its_pack_then_forages() {
     assert!(w.units.contains_key(&id));
 }
 
-/// The keys of the top-level object in `json`, in the order they are written (`serde_json::Value`
-/// sorts them, so the text is read).
-fn keys_in_order(json: &str) -> Vec<String> {
-    let (mut keys, mut depth, mut in_str, mut escaped) = (Vec::new(), 0, false, false);
-    let (mut word, mut last) = (String::new(), None::<String>);
-    for c in json.chars() {
-        if in_str {
-            if escaped {
-                escaped = false;
-                word.push(c);
-            } else if c == '\\' {
-                escaped = true;
-            } else if c == '"' {
-                in_str = false;
-                last = Some(std::mem::take(&mut word));
-            } else {
-                word.push(c);
-            }
-            continue;
-        }
-        match c {
-            '"' => in_str = true,
-            '{' | '[' => depth += 1,
-            '}' | ']' => depth -= 1,
-            ':' if depth == 1 => keys.push(last.take().expect("a key")),
-            _ => {}
-        }
-    }
-    keys
-}
-
 #[test]
 fn a_unit_serialises_its_27_flat_fields_in_the_old_order_whatever_its_kind() {
     const KEYS: [&str; 27] = [

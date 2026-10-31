@@ -233,14 +233,9 @@ pub fn eat(w: &mut World) {
     for c in w.clans.values_mut() {
         let was_starving = c.starving;
         let need = c.people;
-        let k = CLAN.diet_share * need;
-        let mut got: f64 = c.basket.iter().map(|&v| v.min(k)).sum();
-        let left: Basket = c.basket.map(|v| (v - k).max(0.0));
-        let total: f64 = left.iter().sum();
-        let eaten = total.min((need - got).max(0.0) / CLAN.excess_value);
-        got += eaten * CLAN.excess_value;
-        let keep = if total > 0.0 { 1.0 - eaten / total } else { 0.0 };
-        c.store = left.map(|v| v * keep * (1.0 - CLAN.spoilage));
+        c.store = c.basket;
+        let got = c.eat_by_diet(need);
+        c.spoil();
         c.fed_ratio = if need > 0.0 { got / need } else { 1.0 };
         c.fed = c.fed_ratio >= 0.999;
         c.starving = c.fed_ratio < CLAN.stable_at;

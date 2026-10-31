@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::data::*;
 use crate::land::{neighbours, passable, step_cost, steps};
-use crate::market::Basket;
+use crate::market::{take, Basket};
 use crate::world::World;
 
 /// A walk beyond the territory, made there and back once a turn.
@@ -43,6 +43,51 @@ impl Actor {
     pub fn trip(&self) -> f64 {
         self.routes.iter().map(|r| r.cost).sum()
     }
+
+    /// The store spoils a turn: each good keeps `1 - CLAN.spoilage` of itself.
+    pub fn spoil(&mut self) {
+        self.store = self.store.map(|v| v * (1.0 - CLAN.spoilage));
+    }
+
+    /// Eats `need` from the store in proportion to what it holds, and returns what was eaten.
+    pub fn eat_by_share(&mut self, need: f64) -> Basket {
+        take(&mut self.store, need)
+    }
+
+    /// Eats for a diet from the store, which holds what the people have to eat this turn: each good
+    /// up to `CLAN.diet_share × need`, then the excess at `CLAN.excess_value` a unit until `need` is
+    /// met. What is left stays in the store, each good kept in the share the excess took. Returns
+    /// what the people got, in need units.
+    pub fn eat_by_diet(&mut self, need: f64) -> f64 {
+        let k = CLAN.diet_share * need;
+        let mut got: f64 = self.store.iter().map(|&v| v.min(k)).sum();
+        let left: Basket = self.store.map(|v| (v - k).max(0.0));
+        let total: f64 = left.iter().sum();
+        let eaten = total.min((need - got).max(0.0) / CLAN.excess_value);
+        got += eaten * CLAN.excess_value;
+        let keep = if total > 0.0 { 1.0 - eaten / total } else { 0.0 };
+        self.store = left.map(|v| v * keep);
+        got
+    }
+}
+
+/// Walks `path` from `from` on `labour`: each step is taken while its cost is no more than what is
+/// left plus `slack`, and its cost comes off what is left. Returns the steps taken and the labour
+/// left. A step that cannot be paid, or is not a step, ends the walk.
+pub fn stride(w: &World, from: usize, path: &[usize], labour: f64, slack: f64) -> (usize, f64) {
+    let mut left = labour;
+    let mut at = from;
+    let mut taken = 0;
+    for &next in path {
+        let Some(cost) = step_cost(w, at, next) else { break };
+        if cost > left + slack {
+            break;
+        }
+        left -= cost;
+        at = next;
+        taken += 1;
+    }
+    (taken, left)
 }
 
 /// The labour of a walk of `path_cost` made there and back once a turn, at `weight`: 1 for a

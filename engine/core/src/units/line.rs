@@ -3,10 +3,10 @@
 //! the walking the camp's labour pays for.
 
 use super::{UnitKind, EPS};
-use crate::actors::walk_cost;
+use crate::actors::{stride, walk_cost};
 use crate::civs;
 use crate::data::*;
-use crate::land::{passable, path, step_cost};
+use crate::land::{passable, path};
 use crate::world::World;
 
 /// Whether a camp may walk onto tile `i`: passable land, or a built pass over a mountain.
@@ -61,31 +61,13 @@ pub(super) fn cut_by(w: &World, unit: u32, hold: bool) -> bool {
     }
 }
 
-/// One turn's walking along `path` from `from`: spends `banked + UNIT.labour` (one warrior's) on
-/// steps while the next one costs no more than what is left. Returns the steps taken and the
-/// labour left. Every warrior walks, so the camp moves at one person's pace whatever its size.
-pub(super) fn walk(w: &World, from: usize, path: &[usize], banked: f64) -> (usize, f64) {
-    let mut left = banked + UNIT.labour;
-    let mut at = from;
-    let mut taken = 0;
-    for &next in path {
-        let Some(cost) = step_cost(w, at, next) else { break };
-        if cost > left {
-            break;
-        }
-        left -= cost;
-        at = next;
-        taken += 1;
-    }
-    (taken, left)
-}
-
 /// How many turns it takes to walk `path` from `from` with `banked` already banked, as the
 /// `units` step does it; 0 for an empty path.
 pub fn turns(w: &World, path: &[usize], from: usize, banked: f64) -> u32 {
     let (mut rest, mut at, mut banked, mut n) = (path, from, banked, 0);
     while !rest.is_empty() {
-        let (taken, left) = walk(w, at, rest, banked);
+        // Every warrior walks, so the camp moves at one person's pace whatever its size.
+        let (taken, left) = stride(w, at, rest, banked + UNIT.labour, 0.0);
         if taken > 0 {
             at = rest[taken - 1];
         }
