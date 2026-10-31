@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::data::*;
-use crate::land::{neighbours, passable, step_cost};
+use crate::land::{neighbours, passable, step_cost, steps};
 use crate::market::Basket;
 use crate::world::World;
 
@@ -142,10 +142,6 @@ pub fn divide(labour: f64, routes: &[Route], walks: &[f64]) -> Vec<f64> {
 /// Whether `territory` (sorted) is connected over its own passable tiles and holds `home`.
 pub fn connected(w: &World, home: usize, territory: &[usize]) -> bool {
     territory.binary_search(&home).is_ok() && Walks::new(w, home, territory).connected()
-}
-
-fn steps(w: &World, a: usize, b: usize) -> i32 {
-    w.tiles[a].hex().distance(w.tiles[b].hex())
 }
 
 /// Tiles a territory could add, sorted: passable land next to it, held by nobody, within `radius`

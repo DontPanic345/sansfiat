@@ -8,12 +8,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::actors::{walk_cost, Route};
 use crate::data::*;
-use crate::land::{cost_map, is_hearth, neighbours, passable, path};
+use crate::events::{Event, EventKind};
+use crate::land::{cost_map, is_hearth, neighbours, passable, path, steps};
 use crate::map;
 use crate::market::Basket;
 use crate::markets::reach;
 use crate::units::{self, Counters};
-use crate::world::{EventKind, Phase, World};
+use crate::world::{Phase, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,10 +91,6 @@ fn switch_to_capitals(w: &mut World) {
     }
 }
 
-fn steps(w: &World, a: usize, b: usize) -> i32 {
-    w.tiles[a].hex().distance(w.tiles[b].hex())
-}
-
 /// Founding, once, as the pre-game ends: a civ on each centre's site market (the k-th takes
 /// `CIVS[k]`), clans in reach joining the nearest, a civ with no clan taking the nearest unaligned
 /// one, each civ's own clan, and the phase `Choose`. Draws no random numbers.
@@ -126,7 +123,7 @@ pub fn found(w: &mut World) {
             gifted: 0.0,
         };
         w.civs.insert(id, civ);
-        w.civ_event(EventKind::CivFounded, capital, id, Some(mid));
+        w.emit(Event::new(EventKind::CivFounded, capital).civ(id).market(mid));
         owns.push((id, centre_clans.get(k).copied().flatten().filter(|c| w.clans.contains_key(c))));
     }
 

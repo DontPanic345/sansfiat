@@ -4,6 +4,37 @@ use crate::data::N;
 
 pub type Basket = [f64; N];
 
+/// The amount of food in a basket.
+pub fn total(b: &Basket) -> f64 {
+    b.iter().sum()
+}
+
+/// Takes up to `amount` of food from `from`, in proportion to what it holds.
+pub fn take(from: &mut Basket, amount: f64) -> Basket {
+    let held = total(from);
+    if held <= 0.0 || amount <= 0.0 {
+        return [0.0; N];
+    }
+    let share = (amount / held).min(1.0);
+    let out = from.map(|v| v * share);
+    for f in 0..N {
+        from[f] -= out[f];
+    }
+    out
+}
+
+/// Adds `b` into `to`, good by good.
+pub fn add(to: &mut Basket, b: &Basket) {
+    for f in 0..N {
+        to[f] += b[f];
+    }
+}
+
+/// The sum of the takes, good by good.
+pub fn sum(takes: &[Basket]) -> Basket {
+    std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum())
+}
+
 /// Each trader values a basket at Σ sqrt(amount), so given exchange ratios `prices` it wants
 /// amount_g ∝ 1/p_g² of each good, spending exactly what its own basket is worth.
 pub fn demand(basket: &Basket, prices: &Basket, goods: &[usize]) -> Basket {

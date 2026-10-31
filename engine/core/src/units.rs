@@ -15,9 +15,10 @@ use serde::{Deserialize, Serialize};
 use crate::actors::{connected, divide, walk_cost, Actor, Route, Walks};
 use crate::civs;
 use crate::data::*;
-use crate::land::{self, build_trail, cost_map, neighbours, passable, path, path_by, step_cost, trailable};
-use crate::market::Basket;
-use crate::world::{EventKind, Phase, World};
+use crate::events::{Event, EventKind};
+use crate::land::{self, build_trail, cost_map, neighbours, passable, path, path_by, step_cost, steps, trailable};
+use crate::market::{add, take, total, Basket};
+use crate::world::{Phase, World};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -134,10 +135,6 @@ impl Unit {
 
 const EPS: f64 = 1e-9;
 
-fn steps(w: &World, a: usize, b: usize) -> i32 {
-    w.tiles[a].hex().distance(w.tiles[b].hex())
-}
-
 /// `civ`'s camp, if it has one.
 pub fn camp(w: &World, civ: u32) -> Option<&Unit> {
     w.units.values().find(|u| u.civ == civ && u.kind == UnitKind::Camp)
@@ -153,33 +150,9 @@ pub fn pack_cap(people: f64) -> f64 {
     people * UNIT.pack * UNIT.food
 }
 
-fn total(b: &Basket) -> f64 {
-    b.iter().sum()
-}
-
 /// The name of `civ`, for a note.
 fn name_of(w: &World, civ: u32) -> String {
     w.civs.get(&civ).map_or_else(|| "a rival".to_string(), |c| c.name.clone())
-}
-
-/// Takes up to `amount` of food from `from`, in proportion to what it holds.
-pub(crate) fn take(from: &mut Basket, amount: f64) -> Basket {
-    let held = total(from);
-    if held <= 0.0 || amount <= 0.0 {
-        return [0.0; N];
-    }
-    let share = (amount / held).min(1.0);
-    let out = from.map(|v| v * share);
-    for f in 0..N {
-        from[f] -= out[f];
-    }
-    out
-}
-
-fn add(to: &mut Basket, b: &Basket) {
-    for f in 0..N {
-        to[f] += b[f];
-    }
 }
 
 /// The clans of `civ` that can give a person, biggest first (ties to the lower id).
@@ -251,7 +224,7 @@ fn join(w: &mut World, civ: u32, k: f64, pack: Basket) -> u32 {
     };
     let kind = if existing.is_some() { EventKind::WarriorsRaised } else { EventKind::CampRaised };
     let tile = w.units[&id].home;
-    w.unit_event(kind, tile, civ, id, None);
+    w.emit(Event::new(kind, tile).civ(civ).unit(id));
     let text = if existing.is_some() {
         format!("raised {k:.0} more warriors: {:.0} in its camp", w.units[&id].people)
     } else {
@@ -378,7 +351,7 @@ pub fn disband(w: &mut World, civ: u32, n: Option<u32>, starved: bool) {
         w.units.get_mut(&id).unwrap().people -= k;
     }
     let kind = if starved { EventKind::WarriorsStarved } else { EventKind::WarriorsDisbanded };
-    w.unit_event(kind, tile, civ, id, clan);
+    w.emit(Event::new(kind, tile).civ(civ).unit(id).clan(clan));
     let home = clan.map_or_else(|| "they are lost".to_string(), |c| format!("they rejoin clan {c}"));
     let text = if starved {
         format!("lost {k:.0} warrior(s) to hunger; {home}")
@@ -647,7 +620,7 @@ fn camp_turn(w: &mut World, id: u32, left: f64) {
         u.full = full;
         w.civs.get_mut(&civ).unwrap().army.held += beyond;
         if first {
-            w.unit_event_other(EventKind::Held, tile, civ, id, size as u32);
+            w.emit(Event::new(EventKind::Held, tile).civ(civ).unit(id).other(size as u32));
             w.note(id, format!("holds its zone of {size} tiles"));
         }
     }
@@ -671,12 +644,12 @@ fn camp_turn(w: &mut World, id: u32, left: f64) {
     if let Some(by) = by {
         w.civs.get_mut(&civ).unwrap().army.cut_by_army += 1;
         if w.units[&id].cut_by != Some(by) {
-            w.unit_event_other(EventKind::LineCut, tile, civ, id, by);
+            w.emit(Event::new(EventKind::LineCut, tile).civ(civ).unit(id).other(by));
             let name = name_of(w, by);
             w.note(id, format!("its line is cut by {name}'s army"));
         }
     } else if cut && (!w.units[&id].cut || w.units[&id].cut_by.is_some()) {
-        w.unit_event(EventKind::CampCutOff, tile, civ, id, None);
+        w.emit(Event::new(EventKind::CampCutOff, tile).civ(civ).unit(id));
         w.note(id, "its line is cut: it can't carry a turn's food for its warriors".to_string());
     }
     {
@@ -754,12 +727,12 @@ fn camp_turn(w: &mut World, id: u32, left: f64) {
     let at = w.at(tile);
     if now_foraging && !was_foraging {
         let kind = if pillaged > 0.0 { EventKind::CampPillaged } else { EventKind::CampForaged };
-        w.unit_event(kind, tile, civ, id, None);
+        w.emit(Event::new(kind, tile).civ(civ).unit(id));
         let verb = if pillaged > 0.0 { "pillages" } else { "forages" };
         w.note(id, format!("{verb} at {at}"));
     }
     if now_supplying && !was_supplying {
-        w.unit_event(EventKind::CampResupplied, tile, civ, id, None);
+        w.emit(Event::new(EventKind::CampResupplied, tile).civ(civ).unit(id));
         w.note(id, "its line brings food to the camp".to_string());
     }
     {
@@ -779,7 +752,7 @@ fn camp_turn(w: &mut World, id: u32, left: f64) {
         w.civs.get_mut(&civ).unwrap().army.hungry += 1;
     }
     if hungry == 1 {
-        w.unit_event(EventKind::CampHungry, tile, civ, id, None);
+        w.emit(Event::new(EventKind::CampHungry, tile).civ(civ).unit(id));
         w.note(id, format!("went hungry: its pack covered {:.0}% of its need", covered * 100.0));
     }
     if hungry >= UNIT.hungry_turns {
@@ -1041,10 +1014,7 @@ fn march(w: &mut World, id: u32, path: &[usize], left: &mut f64, banked: &mut f6
 
 /// Logs a scout's event about its tile, with a route cost where it has one.
 fn scout_event(w: &mut World, kind: EventKind, tile: usize, civ: u32, id: u32, cost: Option<f64>) {
-    w.unit_event(kind, tile, civ, id, None);
-    if let Some(e) = w.events.last_mut() {
-        e.cost = cost;
-    }
+    w.emit(Event::new(kind, tile).civ(civ).unit(id).cost(cost));
     let at = w.at(tile);
     let text = match kind {
         EventKind::ScoutRouteFound => format!("has its route: cost {:.1}", cost.unwrap_or(0.0)),
@@ -1544,7 +1514,7 @@ pub fn set_zone(w: &mut World, unit: u32, tiles: &[usize]) {
     let size = zone.len();
     u.actor.territory = zone;
     if size > 1 {
-        w.unit_event_other(EventKind::Deployed, tile, civ, unit, size as u32);
+        w.emit(Event::new(EventKind::Deployed, tile).civ(civ).unit(unit).other(size as u32));
         w.note(unit, format!("deployed over {size} tiles, its warriors spreading to hold them"));
     }
 }

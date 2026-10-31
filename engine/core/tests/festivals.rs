@@ -4,7 +4,7 @@ use common::*;
 use engine::clans::{surplus, Clan};
 use engine::data::*;
 use engine::markets::{fade, form, people, trade};
-use engine::world::EventKind;
+use engine::EventKind;
 use engine::{Config, World};
 
 fn sum_people(w: &World) -> f64 {

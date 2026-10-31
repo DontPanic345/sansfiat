@@ -3,7 +3,7 @@ mod common;
 use common::*;
 use engine::clans::eat;
 use engine::data::*;
-use engine::land::hold;
+use engine::land::tend;
 use engine::markets::fade;
 use engine::pregame::check_end;
 use engine::stats::digest;
@@ -107,18 +107,18 @@ fn a_tile_reaching_full_tame_is_a_hearth_event() {
     put(&mut w, &[at(0, 0), at(1, 0)], 3.0);
     for t in [at(0, 0), at(1, 0)] {
         w.tiles[t].wild_grain = 4.0;
-        w.tiles[t].held = TENDING.after;
+        w.tiles[t].claim_run = TENDING.after;
     }
     w.tiles[at(0, 0)].tame = TENDING.tame_turns - 1;
     w.tiles[at(1, 0)].tame = 3;
     w.turn = 7;
-    hold(&mut w);
+    tend(&mut w);
     assert_eq!(w.events.len(), 1);
     let e = &w.events[0];
     assert_eq!((e.kind, e.tile, e.turn, e.clan), (EventKind::HearthTamed, at(0, 0), 7, None));
     assert_eq!(e.text(&w), "A hearth is tamed at (0, 0)");
     // Already a hearth: no second event.
-    hold(&mut w);
+    tend(&mut w);
     assert_eq!(w.events.len(), 1);
 }
 

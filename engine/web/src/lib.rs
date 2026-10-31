@@ -51,7 +51,7 @@ impl Sim {
             "flow": col(&|t| t.flow.map_or(-1, |f| f as i64).into()),
             "lake": col(&|t| u8::from(t.lake).into()),
             "flood": col(&|t| u8::from(t.flood).into()),
-            "zone": col(&|t| (t.zone as u8).into()),
+            "zone": col(&|t| (t.country as u8).into()),
             "pass": col(&|t| u8::from(t.pass).into()),
             "wild_grain": col(&|t| t.wild_grain.into()),
             "trail_cost": col(&|t| t.trail_cost.into()),

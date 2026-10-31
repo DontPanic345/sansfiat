@@ -4,7 +4,7 @@ use common::*;
 use engine::actors::{walk_cost, Walks};
 use engine::clans::harvest;
 use engine::data::*;
-use engine::land::{hold, is_hearth, step_cost};
+use engine::land::{is_hearth, step_cost, tend};
 use engine::markets::{choose, desire, gain, go, worths};
 use engine::World;
 
@@ -37,11 +37,11 @@ fn a_walked_tile_wears_a_trail_and_an_unwalked_one_wears_away() {
     // The clan walks its territory each turn: the harvest marks the walk, `hold` counts it.
     for _ in 1..TRAIL.after {
         harvest(&mut w);
-        hold(&mut w);
+        tend(&mut w);
     }
     assert!(!w.tiles[f].trail);
     harvest(&mut w);
-    hold(&mut w);
+    tend(&mut w);
     assert!(w.tiles[f].trail, "walked {} turns", w.tiles[f].walk_run);
     assert!(!w.tiles[o].trail, "home is held but never walked");
     assert_eq!(step_cost(&w, o, f), Some(1.0));
@@ -51,11 +51,11 @@ fn a_walked_tile_wears_a_trail_and_an_unwalked_one_wears_away() {
     free(&mut w, id);
     for _ in 1..TRAIL.fade {
         harvest(&mut w);
-        hold(&mut w);
+        tend(&mut w);
     }
     assert!(w.tiles[f].trail);
     harvest(&mut w);
-    hold(&mut w);
+    tend(&mut w);
     assert!(!w.tiles[f].trail, "unwalked {} turns", w.tiles[f].rest_run);
     assert_eq!(step_cost(&w, o, f), Some(2.0));
 }
@@ -68,12 +68,12 @@ fn held_grain_tames_into_a_hearth_and_left_grain_goes_wild() {
     w.tiles[o].cap[GRAIN] = 4.0;
     let id = put(&mut w, &[o], 3.0);
     for _ in 1..TENDING.after {
-        hold(&mut w);
+        tend(&mut w);
     }
     assert_eq!((w.tiles[o].tame, w.tiles[o].cap[GRAIN]), (0, 4.0));
     let mut cap = 4.0;
     for k in 1..=5 {
-        hold(&mut w);
+        tend(&mut w);
         let t = &w.tiles[o];
         assert_eq!(t.tame, k);
         let want = round1(4.0 * (1.0 + (TENDING.domestic - 1.0) * k as f64 / TENDING.tame_turns as f64));
@@ -83,25 +83,25 @@ fn held_grain_tames_into_a_hearth_and_left_grain_goes_wild() {
     }
     assert!(cap > 4.0);
     for _ in 5..TENDING.tame_turns {
-        hold(&mut w);
+        tend(&mut w);
     }
     assert!(is_hearth(&w.tiles[o]));
     assert_eq!(w.tiles[o].cap[GRAIN], 10.0);
     // Past a hearth taming goes on, and the grain keeps rising, more slowly.
     for _ in 0..TENDING.tame_turns {
-        hold(&mut w);
+        tend(&mut w);
     }
     assert_eq!(w.tiles[o].tame, 2 * TENDING.tame_turns, "taming has no ceiling");
     assert!((w.tiles[o].cap[GRAIN] - 4.0 * (TENDING.domestic + TENDING.beyond)).abs() < 1e-9);
 
     free(&mut w, id);
     for _ in 0..TENDING.tame_turns {
-        hold(&mut w);
+        tend(&mut w);
     }
     assert_eq!(w.tiles[o].tame, TENDING.tame_turns, "unheld, it tames back a step a turn");
     assert!(is_hearth(&w.tiles[o]));
-    hold(&mut w);
-    hold(&mut w);
+    tend(&mut w);
+    tend(&mut w);
     assert_eq!(w.tiles[o].tame, TENDING.tame_turns - 2);
     assert!(!is_hearth(&w.tiles[o]));
     assert!(w.tiles[o].cap[GRAIN] < 10.0);

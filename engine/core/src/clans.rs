@@ -10,11 +10,12 @@ use serde::{Deserialize, Serialize};
 use crate::actors::{self, Actor, Route, Walks};
 use crate::civs;
 use crate::data::*;
-use crate::land::{neighbours, passable};
-use crate::map::{self, Zone};
-use crate::market::Basket;
+use crate::events::{Event, EventKind};
+use crate::land::{neighbours, passable, steps};
+use crate::map::{self, Country};
+use crate::market::{sum, Basket};
 use crate::rng::{rand, rand_index};
-use crate::world::{EventKind, World};
+use crate::world::World;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Clan {
@@ -69,7 +70,8 @@ fn shuffled(w: &mut World) -> Vec<u32> {
 /// then more on random free land tiles with food until there are `seeds`; never in a sealed valley.
 pub fn seed(w: &mut World) {
     // Nobody starts in a sealed valley: it stays empty until a scout bridges its wall.
-    let has_food = |w: &World, i: usize| w.tiles[i].cap.iter().any(|&c| c > 0.0) && w.tiles[i].zone != Zone::Sealed;
+    let has_food =
+        |w: &World, i: usize| w.tiles[i].cap.iter().any(|&c| c > 0.0) && w.tiles[i].country != Country::Sealed;
     let mut homes: Vec<usize> = Vec::new();
     for mass in map::landmasses(&w.tiles, w.config.radius) {
         if mass.len() < CLAN.min_landmass {
@@ -168,11 +170,6 @@ pub fn at_target(w: &World, clan: &Clan, territory: &[usize]) -> bool {
     food.iter().sum::<f64>() >= budget - 1e-9
 }
 
-/// The sum of the takes.
-fn sum(takes: &[Basket]) -> Basket {
-    std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum())
-}
-
 /// How well `territory` (sorted) from `home` would feed `people` with `store`, paying `routes`,
 /// this turn from the current stock: the nutrition per person of the store and the harvest.
 fn worth(w: &World, people: f64, store: &Basket, routes: &[Route], home: usize, territory: &[usize]) -> f64 {
@@ -265,7 +262,7 @@ pub fn eat(w: &mut World) {
         }
     }
     for (id, home, fed, short) in starving {
-        w.event(EventKind::ClanStarving, home, Some(id), None, None);
+        w.emit(Event::new(EventKind::ClanStarving, home).clan(id));
         w.note(id, format!("began starving: fed {:.0}% of its need, short of {}", fed * 100.0, GOODS[short]));
     }
     for id in dead {
@@ -276,7 +273,7 @@ pub fn eat(w: &mut World) {
     for id in ids {
         let c = &w.clans[&id];
         if c.people >= CLAN.split_at && c.territory.len() >= 2 {
-            divide(w, id);
+            divide_land(w, id);
         } else if c.people >= CLAN.split_at || (c.starving && c.people >= CLAN.hungry_split) {
             split(w, id);
         }
@@ -335,10 +332,6 @@ pub fn pick_site(w: &mut World, scored: &[(usize, f64)], min: f64) -> Option<usi
     ok.last().map(|&(site, _)| site)
 }
 
-fn steps(w: &World, a: usize, b: usize) -> i32 {
-    w.tiles[a].hex().distance(w.tiles[b].hex())
-}
-
 /// Moving on: after `patience` starving turns, a clan settles a site within `move_range` worth
 /// more than its territory by `move_margin`. It frees its territory; home and territory become
 /// the site.
@@ -356,7 +349,7 @@ fn move_on(w: &mut World, c: &Clan, now: f64) -> bool {
     m.territory = vec![site];
     m.since = 0;
     m.hungry = 0;
-    w.event(EventKind::ClanMoved, site, Some(c.id), None, None);
+    w.emit(Event::new(EventKind::ClanMoved, site).clan(c.id));
     w.note(
         c.id,
         format!("left {from} for {to} after starving {} turns: worth {worth:.1} there against {now:.1}", c.hungry),
@@ -460,7 +453,7 @@ fn halve(w: &World, tiles: &[usize]) -> [Vec<usize>; 2] {
 /// A big clan divides like a cell: the daughter takes the half of the territory away from home,
 /// with half the people and half the store, and settles its middle. Each half keeps only the
 /// tiles connected to its home; the rest are freed.
-fn divide(w: &mut World, id: u32) {
+fn divide_land(w: &mut World, id: u32) {
     let c = w.clans[&id].clone();
     let [a, b] = halve(w, &c.territory);
     let (keep, give) = if a.contains(&c.home) { (a, b) } else { (b, a) };
@@ -491,7 +484,7 @@ fn divide(w: &mut World, id: u32) {
     m.people -= d.people;
     m.store = std::array::from_fn(|f| m.store[f] - d.store[f]);
     w.clans.insert(did, d);
-    w.event(EventKind::ClanDivided, home, Some(id), None, Some(did));
+    w.emit(Event::new(EventKind::ClanDivided, home).clan(id).other(did));
     w.note(
         id,
         format!(
@@ -523,7 +516,7 @@ fn split(w: &mut World, id: u32) {
     m.people -= people;
     m.store = std::array::from_fn(|f| m.store[f] - d.store[f]);
     m.hungry = 0;
-    w.event(EventKind::ClanDivided, site, Some(id), None, Some(d.id));
+    w.emit(Event::new(EventKind::ClanDivided, site).clan(id).other(d.id));
     let why = if c.starving { "it is starving" } else { "it has no land to divide" };
     let at = w.at(site);
     w.note(id, format!("sent clan {} to {at} with {people:.0} people: {why}", d.id));

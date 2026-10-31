@@ -2,7 +2,7 @@ mod common;
 
 use common::*;
 use engine::data::*;
-use engine::map::Zone;
+use engine::map::Country;
 use engine::pregame::{centres, check_end, homes, is_centre, land_cover};
 use engine::{Config, World};
 
@@ -308,12 +308,12 @@ fn a_sealed_or_too_close_candidate_is_skipped() {
     let a = market(&mut w, at_big(8, 0), 5);
     // Busier, but in a sealed valley; and one too close to the first.
     let sealed = market(&mut w, at_big(-8, 8), 4);
-    w.tiles[at_big(-8, 8)].zone = Zone::Sealed;
+    w.tiles[at_big(-8, 8)].country = Country::Sealed;
     let close = market(&mut w, at_big(2, 0), 3);
     let valley = market(&mut w, at_big(0, -8), 2);
-    w.tiles[at_big(0, -8)].zone = Zone::Valley;
+    w.tiles[at_big(0, -8)].country = Country::Valley;
     let neck = market(&mut w, at_big(-9, 9), 1);
-    w.tiles[at_big(-9, 9)].zone = Zone::Neck;
+    w.tiles[at_big(-9, 9)].country = Country::Neck;
     at_the_limit(&mut w);
     let end = w.end.clone().expect("ended");
     assert_eq!(end.centres, vec![a, valley, neck], "valleys and necks are allowed");
@@ -322,7 +322,7 @@ fn a_sealed_or_too_close_candidate_is_skipped() {
     let mut w = big();
     grain(&mut w, at_big(8, 0), 0, 1.0);
     grain(&mut w, at_big(-8, 8), 0, 2.0);
-    w.tiles[at_big(-8, 8)].zone = Zone::Sealed;
+    w.tiles[at_big(-8, 8)].country = Country::Sealed;
     grain(&mut w, at_big(0, -8), 0, 0.5);
     grain(&mut w, at_big(-9, 9), 0, 0.4);
     at_the_limit(&mut w);

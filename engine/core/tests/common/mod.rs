@@ -5,7 +5,7 @@ use engine::actors::connected;
 use engine::clans::new_clan;
 use engine::data::*;
 use engine::hex::{Hex, DIRS};
-use engine::map::{index, Zone};
+use engine::map::{index, Country};
 use engine::{Config, Market, World};
 
 pub const R: i32 = 6;
@@ -50,14 +50,14 @@ fn flat_radius(radius: i32) -> World {
         t.walked = false;
         t.walk_run = 0;
         t.rest_run = 0;
-        t.held = 0;
-        t.unheld = 0;
+        t.claim_run = 0;
+        t.free_run = 0;
         t.trail = false;
         t.river = 0;
         t.flow = None;
         t.lake = false;
         t.flood = false;
-        t.zone = Zone::Open;
+        t.country = Country::Open;
         t.pass = false;
         t.trail_cost = None;
         t.span = None;

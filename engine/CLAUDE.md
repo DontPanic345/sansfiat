@@ -10,7 +10,7 @@ cargo run -p sansfiat -- map [--seed N] [--size small|medium|large]   # the map 
 cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--save game.json] [--why ID]   # to the pick unless --turns; --why prints a subject's reasons
 cargo run -p sansfiat -- sweep [seed ...] [--size small|medium|large|all] [--turns N]   # the pre-game, seeds in parallel
 cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army] [--no-gifts] [--no-zone] [--lever G]   # the retro maps past the pick, one line per civ and the totals; the --no-* flags are controls
-cargo run -p sansfiat -- replay game.json | bench | digest [--lead]   # replay a save; time turns; digests to compare builds
+cargo run -p sansfiat -- replay game.json | bench | digest [--lead] [--state]   # replay a save; time turns; digests to compare builds (--state: the world without its log)
 node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in headless Chrome; import { open } from it to click
 node www/play-<area>.mjs [out-dir]           # leads a civ through one area and screenshots it; one per area in www/
 ```
@@ -21,19 +21,20 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 
 | Path | What |
 | --- | --- |
-| `core/src/world.rs` | `World`, `phase`, `Action`, the `TURN` steps, `act`/`run`/`save`/`replay`, `Event`s, reasons (`World::note`), alerts (`flag_alerts`), `SAVE_VERSION`. |
+| `core/src/world.rs` | `World`, `phase`, `Action`, the `TURN` steps, `act`/`run`/`save`/`replay`, reasons (`World::note`), alerts (`flag_alerts`), `SAVE_VERSION`. |
+| `core/src/events.rs` | `Event` and `EventKind`, their wording (`text`), `Event::new` and its setters, and `World::emit`. |
 | `core/src/data.rs` | Every rule's numbers and `Config`; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs. |
-| `core/src/land.rs` | Neighbours, move costs, `path`, and the `regrow`, `wear` and `hold` steps. |
+| `core/src/land.rs` | Neighbours, move costs, `path`, `steps` (the tile distance), and the `regrow`, `wear` and `tend` steps. |
 | `core/src/actors.rs` | `Actor`, `walk_cost`, `Walks`, `divide` and the add/drop rule `change`. |
 | `core/src/clans.rs` | Clans on the actor: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
-| `core/src/market.rs` | `clear`: barter exchange ratios by tâtonnement. |
+| `core/src/market.rs` | `Basket` and its helpers (`total`, `take`, `add`, `sum`); `clear`: barter exchange ratios by tâtonnement. |
 | `core/src/markets.rs` | Festivals (markets in code): reach, the `go` step, trading, forming and fading, people moving. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
 | `core/src/civs.rs` | Civs: `found`, the `levy`, `keep`, the `civs` step, territory and the pick's `cards`. |
 | `core/src/leaning.rs` | Unaligned clans leaning toward and joining a civ: `give` and the `lean` step. |
 | `core/src/units.rs` | The camp and the scout: raising, the pack, the line and `cut_off`, the zone, forage, the AI, the scout's route search. |
-| `core/src/stats.rs` | `summary`, the evidence reports, and `digest` to compare builds. |
+| `core/src/stats.rs` | `summary`, the evidence reports, and `digest` and `state_digest` to compare builds. |
 | `core/src/hex.rs`, `rng.rs` | Axial pointy-top hexes; mulberry32, matching the JS prototypes bit for bit. |
 | `cli/` | The `sansfiat` binary. |
 | `web/` | The wasm-bindgen `Sim` the page drives: `layout()`, `view()`, `act`/`check`. |

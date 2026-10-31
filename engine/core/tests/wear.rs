@@ -3,7 +3,7 @@ mod common;
 
 use common::{at, flat, put};
 use engine::data::*;
-use engine::land::{build_trail, domestic, hold, wear};
+use engine::land::{build_trail, domestic, tend, wear};
 use engine::stats::summary;
 use engine::{EventKind, World};
 
@@ -25,7 +25,7 @@ fn walk(w: &mut World, walked: &[usize]) {
     for &i in walked {
         w.tiles[i].walked = true;
     }
-    hold(w);
+    tend(w);
 }
 
 #[test]
@@ -136,7 +136,7 @@ fn holding_a_tile_long_makes_no_trail() {
         walk(&mut w, &[]);
     }
     assert!(tiles.iter().all(|&t| !w.tiles[t].trail));
-    assert!(tiles.iter().all(|&t| w.tiles[t].held >= 3 * TRAIL.after));
+    assert!(tiles.iter().all(|&t| w.tiles[t].claim_run >= 3 * TRAIL.after));
 }
 
 #[test]
@@ -151,16 +151,16 @@ fn taming_keeps_raising_grain_past_a_hearth_and_falls_back_unheld() {
         tile.unworn[GRAIN] = 4.0;
         tile.cap[GRAIN] = 4.0;
         tile.stock[GRAIN] = 4.0;
-        tile.held = TENDING.after;
+        tile.claim_run = TENDING.after;
     }
     for _ in 0..turns {
-        hold(&mut w);
+        tend(&mut w);
     }
     assert_eq!(w.tiles[t].tame, turns);
     assert!((w.tiles[t].cap[GRAIN] - 4.0 * TENDING.domestic).abs() < 1e-9, "a hearth's grain is domestic");
 
     for _ in 0..turns {
-        hold(&mut w);
+        tend(&mut w);
     }
     let tile = &w.tiles[t];
     assert_eq!(tile.tame, 2 * turns, "taming has no ceiling");
@@ -171,7 +171,7 @@ fn taming_keeps_raising_grain_past_a_hearth_and_falls_back_unheld() {
 
     w.tiles[t].claim = None;
     for _ in 0..turns {
-        hold(&mut w);
+        tend(&mut w);
     }
     let tile = &w.tiles[t];
     assert_eq!(tile.tame, turns, "unheld, it tames back a step a turn");
@@ -203,7 +203,7 @@ fn a_built_trail_survives_the_turn_it_is_built_then_decays_unwalked() {
     w.tiles[t].rest_run = 200;
     assert!(build_trail(&mut w, t, TRAIL.work[0].1));
     walk(&mut w, &[]);
-    assert!(w.tiles[t].trail, "built this turn, it survives the turn's hold");
+    assert!(w.tiles[t].trail, "built this turn, it survives the turn's tend");
     for _ in 0..TRAIL.fade - 2 {
         walk(&mut w, &[]);
         assert!(w.tiles[t].trail, "the trail holds until it has been unwalked for {}", TRAIL.fade);

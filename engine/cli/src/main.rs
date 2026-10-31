@@ -2,7 +2,7 @@ use std::{env, fs, io::Read, process::exit, time::Instant};
 
 use engine::data::{size_radius, DESERT, FOREST, HILLS, LEANING, MARSH, MOUNTAIN, PREGAME, SEA, SIZES, UNIT};
 use engine::land::is_depleted;
-use engine::map::{self, Zone};
+use engine::map::{self, Country};
 use engine::units;
 use engine::{
     civs, clear, land, pregame, stats, utility, Action, Basket, Config, Params, Phase, Save, World, GOODS, N, TERRAIN,
@@ -15,7 +15,7 @@ sansfiat replay <file.json> [--json | --events-json] [--no-events]
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
 sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--no-zone] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army, --no-gifts and --no-zone (AI camps paint no zone) are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
 sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
-sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead]   (prints turn and digest, from turn 0; --lead plays the scripted game: picks the first civ and gives orders)
+sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead] [--state]   (prints turn and digest, from turn 0; --lead plays the scripted game: picks the first civ and gives orders; --state hashes the world without its log)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
 sansfiat goods";
 
@@ -196,27 +196,33 @@ fn map(args: &[String]) -> Result<(), String> {
         count(DESERT),
         count(FOREST)
     );
-    let zones = |zone: Zone| map::zone_groups(&w.tiles, config.radius, zone).len();
+    let zones = |zone: Country| map::zone_groups(&w.tiles, config.radius, zone).len();
     let passes = w.tiles.iter().filter(|t| t.pass).count();
     let sites = map::open_sites(&w.tiles, config.radius);
     println!(
         "closed country: {} valleys ({passes} passes), {} sealed valleys, {} necks; open sites at {sites:?}",
-        zones(Zone::Valley),
-        zones(Zone::Sealed),
-        zones(Zone::Neck)
+        zones(Country::Valley),
+        zones(Country::Sealed),
+        zones(Country::Neck)
     );
     Ok(())
 }
 
-/// Prints `<turn> <digest>` for turn 0 and after each of `--turns` turns (400), end or not.
+/// Prints `<turn> <digest>` for turn 0 and after each of `--turns` turns (400), end or not; `--state`
+/// prints `stats::state_digest` instead.
 fn digest(args: &[String]) -> Result<(), String> {
     let mut config = Config::default();
     let mut turns = 400u32;
     let mut lead = false;
+    let mut state = false;
     let mut it = args.iter();
     while let Some(flag) = it.next() {
         if flag == "--lead" {
             lead = true;
+            continue;
+        }
+        if flag == "--state" {
+            state = true;
             continue;
         }
         let value = it.next().ok_or(format!("{flag} needs a value\n{USAGE}"))?;
@@ -230,7 +236,8 @@ fn digest(args: &[String]) -> Result<(), String> {
         }
     }
     let mut w = World::new(config);
-    println!("{} {}", w.turn, stats::digest(&w));
+    let hash = |w: &World| if state { stats::state_digest(w) } else { stats::digest(w) };
+    println!("{} {}", w.turn, hash(&w));
     let mut pick = None;
     for _ in 0..turns {
         if lead {
@@ -239,7 +246,7 @@ fn digest(args: &[String]) -> Result<(), String> {
         } else {
             w.run(1);
         }
-        println!("{} {}", w.turn, stats::digest(&w));
+        println!("{} {}", w.turn, hash(&w));
     }
     Ok(())
 }
@@ -288,9 +295,8 @@ fn lead_orders(w: &mut World, pick: &mut Option<u32>) {
     if n == 2 {
         // The scout searches for a rough tile seven steps out: the first forest or hills tile by index.
         let cap = w.civs[&me].capital;
-        let target = (0..w.tiles.len()).find(|&i| {
-            matches!(w.tiles[i].terrain, FOREST | HILLS) && w.tiles[i].hex().distance(w.tiles[cap].hex()) == 7
-        });
+        let target =
+            (0..w.tiles.len()).find(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && land::steps(w, i, cap) == 7);
         if let Some(to) = target {
             let _ = w.act(Action::SetRoute { from: cap, to });
         }
@@ -460,7 +466,7 @@ fn sweep_run(seed: u32, radius: i32, turns: u32, every: u32) -> Run {
             }] += 1;
         }
     }
-    let zones = |zone: Zone| map::zone_groups(&w.tiles, radius, zone).len();
+    let zones = |zone: Country| map::zone_groups(&w.tiles, radius, zone).len();
     Run {
         seed,
         ended,
@@ -474,7 +480,7 @@ fn sweep_run(seed: u32, radius: i32, turns: u32, every: u32) -> Run {
         depleted: s.depleted,
         markets: s.markets,
         hearths: s.hearths,
-        closed: [zones(Zone::Valley), zones(Zone::Sealed), zones(Zone::Neck)],
+        closed: [zones(Country::Valley), zones(Country::Sealed), zones(Country::Neck)],
         ms,
         series,
         level,

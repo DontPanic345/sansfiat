@@ -6,7 +6,7 @@ use engine::hex::{Hex, DIRS};
 use engine::map::index;
 use engine::stats::digest;
 use engine::units::{self, UnitKind};
-use engine::world::{Action, EventKind, Phase};
+use engine::{Action, EventKind, Phase};
 use engine::{Config, World};
 
 const RADIUS: i32 = 16;

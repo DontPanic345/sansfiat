@@ -13,7 +13,7 @@ use crate::rng::{rand, rand_index};
 
 /// What kind of country a tile is in. Only `Open` until closed country is built.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Zone {
+pub enum Country {
     #[default]
     Open,
     Valley,
@@ -49,8 +49,10 @@ pub struct Tile {
     pub walk_run: u32,
     pub rest_run: u32,
     /// Turns in a row held, and held by nobody.
-    pub held: u32,
-    pub unheld: u32,
+    #[serde(rename = "held")]
+    pub claim_run: u32,
+    #[serde(rename = "unheld")]
+    pub free_run: u32,
     pub trail: bool,
     /// Labour put into a trail not yet built on this tile; reset when it is built.
     #[serde(default)]
@@ -63,7 +65,8 @@ pub struct Tile {
     pub lake: bool,
     /// A floodplain.
     pub flood: bool,
-    pub zone: Zone,
+    #[serde(rename = "zone")]
+    pub country: Country,
     /// A gap in a ridge that a valley is entered by.
     pub pass: bool,
     /// Hidden: the cost a trail brings a forest, hills or crossable mountain tile to (`step_cost`).
@@ -121,7 +124,7 @@ pub fn generate_with(radius: i32, rng: &mut u32, salt: u32) -> Generated {
         hexes,
     };
     let n = geo.hexes.len();
-    let open = |n: usize| (vec![Zone::Open; n], vec![false; n]);
+    let open = |n: usize| (vec![Country::Open; n], vec![false; n]);
     let mut tries = Tries::default();
     let (mut tiles, wind) = loop {
         let base = base_land(&geo, rng);
@@ -159,7 +162,7 @@ pub fn generate_with(radius: i32, rng: &mut u32, salt: u32) -> Generated {
     roll_trails(&mut tiles, &mut hidden);
     // A sealed valley's wall can always be bridged somewhere: if no wall mountain rolled a span
     // of 1, one of them (picked on the hidden stream) gets it.
-    for group in zone_groups(&tiles, radius, Zone::Sealed) {
+    for group in zone_groups(&tiles, radius, Country::Sealed) {
         let walls: Vec<usize> = group.into_iter().filter(|&i| tiles[i].terrain == MOUNTAIN).collect();
         if !walls.is_empty() && walls.iter().all(|&i| tiles[i].span != Some(1)) {
             let i = walls[rand_index(&mut hidden, walls.len())];
@@ -279,7 +282,14 @@ fn base_land(geo: &Geo, rng: &mut u32) -> Base {
 }
 
 /// The tiles from finished land: coast, lakes, fertility, rivers, floodplains and deltas, food.
-fn finish(geo: &Geo, rng: &mut u32, base: &Base, mut terrain: Vec<usize>, zone: &[Zone], pass: &[bool]) -> Vec<Tile> {
+fn finish(
+    geo: &Geo,
+    rng: &mut u32,
+    base: &Base,
+    mut terrain: Vec<usize>,
+    zone: &[Country],
+    pass: &[bool],
+) -> Vec<Tile> {
     let (nbrs, edge) = (&geo.nbrs, &geo.edge);
     let n = terrain.len();
     let shore: Vec<usize> = (0..n)
@@ -328,15 +338,15 @@ fn finish(geo: &Geo, rng: &mut u32, base: &Base, mut terrain: Vec<usize>, zone: 
             walked: false,
             walk_run: 0,
             rest_run: 0,
-            held: 0,
-            unheld: 0,
+            claim_run: 0,
+            free_run: 0,
             trail: false,
             trail_work: 0.0,
             river: river[i],
             flow: flow[i],
             lake: lake[i],
             flood: flooded[i],
-            zone: zone[i],
+            country: zone[i],
             pass: pass[i],
             trail_cost: None,
             span: None,
@@ -404,14 +414,14 @@ fn still_joined(geo: &Geo, terrain: &[usize], main: &[bool], footprint: &[usize]
 /// Closed country on `terrain` (the base land, before coast and rivers): sealed valleys, valleys
 /// behind a pass, and peninsulas on a neck, as many as fit up to their counts, each in a few
 /// random tries. Gives each tile's zone and which tiles are passes.
-fn close_country(geo: &Geo, rng: &mut u32, base: &Base, terrain: &mut [usize]) -> (Vec<Zone>, Vec<bool>) {
+fn close_country(geo: &Geo, rng: &mut u32, base: &Base, terrain: &mut [usize]) -> (Vec<Country>, Vec<bool>) {
     let n = terrain.len();
-    let mut built = Closed { zone: vec![Zone::Open; n], pass: vec![false; n], blocked: vec![false; n] };
+    let mut built = Closed { zone: vec![Country::Open; n], pass: vec![false; n], blocked: vec![false; n] };
     // Taken in turns, so each kind gets its share of the room.
     let mut left = [
-        (Zone::Sealed, scaled(MAP.sealed, n).max(MAP.sealed_floor)),
-        (Zone::Neck, scaled(MAP.necks, n).max(MAP.necks_floor)),
-        (Zone::Valley, scaled(MAP.valleys, n).max(MAP.valleys_floor)),
+        (Country::Sealed, scaled(MAP.sealed, n).max(MAP.sealed_floor)),
+        (Country::Neck, scaled(MAP.necks, n).max(MAP.necks_floor)),
+        (Country::Valley, scaled(MAP.valleys, n).max(MAP.valleys_floor)),
     ];
     while left.iter().any(|k| k.1 > 0) {
         for (kind, count) in left.iter_mut().filter(|k| k.1 > 0) {
@@ -419,8 +429,8 @@ fn close_country(geo: &Geo, rng: &mut u32, base: &Base, terrain: &mut [usize]) -
             for _ in 0..MAP.closed_tries_each {
                 let before = (terrain.to_vec(), built.clone());
                 let ok = match kind {
-                    Zone::Neck => neck(geo, rng, terrain, &mut built),
-                    _ => valley(geo, rng, &base.m, terrain, &mut built, *kind == Zone::Sealed),
+                    Country::Neck => neck(geo, rng, terrain, &mut built),
+                    _ => valley(geo, rng, &base.m, terrain, &mut built, *kind == Country::Sealed),
                 };
                 // Never where a centre has to be: a feature that leaves the open land short of
                 // sites (as near as the land shows before coast and rivers) is taken down again.
@@ -439,7 +449,7 @@ fn close_country(geo: &Geo, rng: &mut u32, base: &Base, terrain: &mut [usize]) -
 /// Closed country built so far, and the tiles too near it for another feature.
 #[derive(Clone)]
 struct Closed {
-    zone: Vec<Zone>,
+    zone: Vec<Country>,
     pass: Vec<bool>,
     blocked: Vec<bool>,
 }
@@ -532,7 +542,7 @@ fn valley(geo: &Geo, rng: &mut u32, m: &[f64], terrain: &mut [usize], built: &mu
         undo(terrain);
         return false;
     }
-    let kind = if sealed { Zone::Sealed } else { Zone::Valley };
+    let kind = if sealed { Country::Sealed } else { Country::Valley };
     for &i in footprint.iter().filter(|&&i| terrain[i] != SEA) {
         built.zone[i] = kind;
     }
@@ -626,7 +636,7 @@ fn neck(geo: &Geo, rng: &mut u32, terrain: &mut [usize], built: &mut Closed) -> 
         return false;
     }
     for &i in &blob {
-        built.zone[i] = Zone::Neck;
+        built.zone[i] = Country::Neck;
     }
     built.block(geo, &footprint);
     true
@@ -665,7 +675,7 @@ pub fn open_sites(tiles: &[Tile], radius: i32) -> Vec<usize> {
     pick_sites(
         radius,
         tiles.len(),
-        |i| tiles[i].zone == Zone::Open && is_land(tiles[i].terrain),
+        |i| tiles[i].country == Country::Open && is_land(tiles[i].terrain),
         |i| tiles[i].cap[GRAIN] > 0.0 || tiles[i].cap[FRUIT] > 0.0,
         |i| tiles[i].fertility,
     )
@@ -673,14 +683,20 @@ pub fn open_sites(tiles: &[Tile], radius: i32) -> Vec<usize> {
 
 /// How many sites `open_sites` will likely find once coast, rivers and food are added to
 /// `terrain`: food is guessed from the terrain (plains and forest away from the water, hills).
-fn likely_sites(geo: &Geo, base: &Base, terrain: &[usize], zone: &[Zone]) -> usize {
+fn likely_sites(geo: &Geo, base: &Base, terrain: &[usize], zone: &[Country]) -> usize {
     let food = |i: usize| match terrain[i] {
         HILLS | MARSH => true,
         PLAINS | FOREST => geo.nbrs[i].iter().all(|&j| terrain[j] != SEA),
         _ => false,
     };
-    pick_sites(geo.radius, terrain.len(), |i| zone[i] == Zone::Open && is_land(terrain[i]), food, |i| base.fertility[i])
-        .len()
+    pick_sites(
+        geo.radius,
+        terrain.len(),
+        |i| zone[i] == Country::Open && is_land(terrain[i]),
+        food,
+        |i| base.fertility[i],
+    )
+    .len()
 }
 
 /// `open_sites` on any land: `open` tiles, which have `food` and `fertility`.
@@ -745,18 +761,18 @@ fn pick_sites(
 }
 
 /// The connected groups of tiles in `zone`, each sorted, the groups in order of their lowest tile.
-pub fn zone_groups(tiles: &[Tile], radius: i32, zone: Zone) -> Vec<Vec<usize>> {
+pub fn zone_groups(tiles: &[Tile], radius: i32, zone: Country) -> Vec<Vec<usize>> {
     let mut seen = vec![false; tiles.len()];
     let mut out = Vec::new();
     for start in 0..tiles.len() {
-        if seen[start] || tiles[start].zone != zone {
+        if seen[start] || tiles[start].country != zone {
             continue;
         }
         seen[start] = true;
         let (mut group, mut todo) = (vec![start], vec![start]);
         while let Some(i) = todo.pop() {
             for j in tiles[i].hex().neighbors().filter_map(|n| index(radius, n)) {
-                if !seen[j] && tiles[j].zone == zone {
+                if !seen[j] && tiles[j].country == zone {
                     seen[j] = true;
                     group.push(j);
                     todo.push(j);
@@ -1148,9 +1164,9 @@ fn roll_trails(tiles: &mut [Tile], sub: &mut u32) {
 pub fn glyph(t: &Tile) -> char {
     match t.terrain {
         _ if t.pass => 'P',
-        _ if TERRAIN[t.terrain].land && t.zone != Zone::Open => match t.zone {
-            Zone::Valley => 'V',
-            Zone::Sealed => 'S',
+        _ if TERRAIN[t.terrain].land && t.country != Country::Open => match t.country {
+            Country::Valley => 'V',
+            Country::Sealed => 'S',
             _ => 'N',
         },
         SEA if t.lake => '=',

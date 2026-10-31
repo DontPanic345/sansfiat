@@ -11,10 +11,18 @@ const VERSION: u32 = 1;
 /// `sansfiat digest` for `seed` on the small map, from turn 0 to `turn`, and the digest it prints
 /// for that turn (the last line).
 fn digest(seed: &str, turn: &str, lead: bool) -> String {
+    digest_with(seed, turn, lead, false)
+}
+
+/// As `digest`, with `--state` when `state` is set (the world hashed without its log).
+fn digest_with(seed: &str, turn: &str, lead: bool, state: bool) -> String {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_sansfiat"));
     cmd.args(["digest", "--seed", seed, "--size", "small", "--turns", turn]);
     if lead {
         cmd.arg("--lead");
+    }
+    if state {
+        cmd.arg("--state");
     }
     let out = cmd.output().expect("the sansfiat binary runs");
     assert!(out.status.success(), "digest failed: {}", String::from_utf8_lossy(&out.stderr));
@@ -34,4 +42,10 @@ fn the_save_version_pins_the_rules() {
     assert_eq!(digest("2", "303", false), "8b866f497fb07b8d");
     assert_eq!(digest("3", "239", false), "85468f7177213aab");
     assert_eq!(digest("2", "303", true), "ed8f01e25fd6433b");
+}
+
+#[test]
+fn the_led_game_state_digest_is_its_baseline() {
+    // The led game's world without its log: the rules' fingerprint, which the log's shape does not move.
+    assert_eq!(digest_with("2", "303", true, true), "46e67d48ffcbe520");
 }

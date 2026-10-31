@@ -144,8 +144,21 @@ pub fn mean_ratio(reports: &[CentreReport]) -> Option<f64> {
 /// One value that changes if any bit of the world does, so two builds (native and wasm) can be
 /// compared turn by turn: FNV-1a 64 over the world's JSON, as 16 lowercase hex digits.
 pub fn digest(w: &World) -> String {
+    fnv(&serde_json::to_string(w).unwrap())
+}
+
+/// The digest of the world without its `log`: the same FNV-1a 64 over the world's JSON as a
+/// `serde_json::Value` with the `log` key removed. A scripted game's orders are in its log, so
+/// this is the digest that stays put when the log's shape changes.
+pub fn state_digest(w: &World) -> String {
+    let mut v = serde_json::to_value(w).unwrap();
+    v.as_object_mut().unwrap().remove("log");
+    fnv(&serde_json::to_string(&v).unwrap())
+}
+
+fn fnv(text: &str) -> String {
     let mut h: u64 = 0xcbf29ce484222325;
-    for b in serde_json::to_string(w).unwrap().bytes() {
+    for b in text.bytes() {
         h = (h ^ b as u64).wrapping_mul(0x100000001b3);
     }
     format!("{h:016x}")

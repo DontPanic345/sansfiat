@@ -11,11 +11,11 @@ use crate::actors::{walk_cost, Route};
 use crate::civs;
 use crate::clans::{nutrition, surplus, Clan};
 use crate::data::*;
+use crate::events::{Event, EventKind};
 use crate::land::{cost_map, passable, path};
 use crate::leaning;
-use crate::market::{clear, demand, Basket, Params};
-use crate::units::take;
-use crate::world::{EventKind, Phase, World};
+use crate::market::{clear, demand, take, Basket, Params};
+use crate::world::{Phase, World};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Market {
@@ -274,7 +274,7 @@ pub fn people(w: &mut World) {
     for (civ, n) in leaving {
         if n >= PEOPLE_LEFT_MIN {
             let tile = w.civs[&civ].capital;
-            w.civ_amount_event(EventKind::PeopleLeft, tile, civ, n);
+            w.emit(Event::new(EventKind::PeopleLeft, tile).civ(civ).amount(n));
         }
     }
 }
@@ -313,7 +313,7 @@ fn merge(w: &mut World, leaving: &mut BTreeMap<u32, f64>) {
         if let Some(civ) = c.civ.filter(|&civ| other != Some(civ)) {
             *leaving.entry(civ).or_insert(0.0) += c.people;
         }
-        w.event(EventKind::ClanMerged, c.home, Some(id), None, Some(into));
+        w.emit(Event::new(EventKind::ClanMerged, c.home).clan(id).other(into));
         w.note(into, format!("took in clan {id}: {:.1} people", c.people));
     }
 }
@@ -337,7 +337,7 @@ pub fn fade(w: &mut World) {
         .collect();
     for mid in gone {
         let m = w.markets.remove(&mid).unwrap();
-        w.event(EventKind::MarketFaded, m.tile, None, Some(mid), None);
+        w.emit(Event::new(EventKind::MarketFaded, m.tile).market(mid));
         for c in w.clans.values_mut() {
             if c.market == Some(mid) {
                 c.market = None;
@@ -376,7 +376,7 @@ pub fn form(w: &mut World) {
         }
         let (near, _) = in_reach(w, tile);
         let mid = raise(w, tile);
-        w.event(EventKind::MarketFormed, tile, None, Some(mid), None);
+        w.emit(Event::new(EventKind::MarketFormed, tile).market(mid));
         w.note(mid, format!("formed: {} clan(s) in reach", near.len()));
     }
 }

@@ -3,10 +3,11 @@
 
 use engine::data::*;
 use engine::hex::Hex;
-use engine::map::{generate_with, index, open_sites, zone_groups, Generated, Tile, Zone};
+use engine::map::{generate_with, index, open_sites, zone_groups, Country, Generated, Tile};
 use engine::{Config, World};
 
-const KINDS: [(Zone, &str); 3] = [(Zone::Valley, "valleys"), (Zone::Sealed, "sealed"), (Zone::Neck, "necks")];
+const KINDS: [(Country, &str); 3] =
+    [(Country::Valley, "valleys"), (Country::Sealed, "sealed"), (Country::Neck, "necks")];
 
 fn made(radius: i32, seed: u32) -> Generated {
     let mut rng = seed;
@@ -14,10 +15,10 @@ fn made(radius: i32, seed: u32) -> Generated {
 }
 
 /// The per-small count of a kind and its floor.
-fn target(zone: Zone, tiles: usize) -> usize {
+fn target(zone: Country, tiles: usize) -> usize {
     match zone {
-        Zone::Valley => scaled(MAP.valleys, tiles).max(MAP.valleys_floor),
-        Zone::Sealed => scaled(MAP.sealed, tiles).max(MAP.sealed_floor),
+        Country::Valley => scaled(MAP.valleys, tiles).max(MAP.valleys_floor),
+        Country::Sealed => scaled(MAP.sealed, tiles).max(MAP.sealed_floor),
         _ => scaled(MAP.necks, tiles).max(MAP.necks_floor),
     }
 }
@@ -50,7 +51,7 @@ fn reach(tiles: &[Tile], radius: i32, from: &[usize], barred: impl Fn(usize) -> 
 
 /// The largest connected group of passable open tiles: the open outside.
 fn outside(tiles: &[Tile], radius: i32) -> Vec<usize> {
-    let open = |i: usize| tiles[i].zone == Zone::Open && TERRAIN[tiles[i].terrain].land;
+    let open = |i: usize| tiles[i].country == Country::Open && TERRAIN[tiles[i].terrain].land;
     let mut seen = vec![false; tiles.len()];
     let mut best = Vec::new();
     for s in 0..tiles.len() {
@@ -128,7 +129,7 @@ fn a_valley_is_entered_only_by_its_passes() {
             let g = made(radius, seed);
             let tiles = &g.tiles;
             let out = outside(tiles, radius);
-            for group in zone_groups(tiles, radius, Zone::Valley) {
+            for group in zone_groups(tiles, radius, Country::Valley) {
                 let say = format!("{name} seed {seed} valley at {}", group[0]);
                 let passes: Vec<usize> = group.iter().copied().filter(|&i| tiles[i].pass).collect();
                 assert!((1..=2).contains(&passes.len()), "{say}: {} passes", passes.len());
@@ -147,7 +148,7 @@ fn a_valley_is_entered_only_by_its_passes() {
                             TERRAIN[t.terrain].name
                         );
                         if t.terrain == MOUNTAIN || t.pass {
-                            assert_eq!(t.zone, Zone::Valley, "{say}: wall {j} untagged");
+                            assert_eq!(t.country, Country::Valley, "{say}: wall {j} untagged");
                         }
                     }
                 }
@@ -158,7 +159,7 @@ fn a_valley_is_entered_only_by_its_passes() {
                 seen += 1;
             }
             // Passes are on valley walls only.
-            assert!(tiles.iter().all(|t| !t.pass || t.zone == Zone::Valley));
+            assert!(tiles.iter().all(|t| !t.pass || t.country == Country::Valley));
         }
     }
     println!("{seen} valleys checked");
@@ -173,7 +174,7 @@ fn a_sealed_valley_has_no_way_in_but_a_bridge() {
             let tiles = &g.tiles;
             let out = outside(tiles, radius);
             let from_out = reach(tiles, radius, &out, |_| false);
-            for group in zone_groups(tiles, radius, Zone::Sealed) {
+            for group in zone_groups(tiles, radius, Country::Sealed) {
                 let say = format!("{name} seed {seed} sealed valley at {}", group[0]);
                 assert!(group.iter().all(|&i| !tiles[i].pass), "{say}: a pass");
                 let inside: Vec<usize> = group.iter().copied().filter(|&i| TERRAIN[tiles[i].terrain].land).collect();
@@ -215,14 +216,16 @@ fn a_peninsula_hangs_on_a_neck_one_or_two_wide() {
             let tiles = &g.tiles;
             let land = |i: usize| TERRAIN[tiles[i].terrain].land;
             let from_out = reach(tiles, radius, &outside(tiles, radius), |_| false);
-            for group in zone_groups(tiles, radius, Zone::Neck) {
+            for group in zone_groups(tiles, radius, Country::Neck) {
                 let say = format!("{name} seed {seed} neck at {}", group[0]);
                 assert!(group.iter().all(|&i| land(i)), "{say}: tagged water or mountain");
                 // The neck: its tiles with land outside the zone.
                 let neck: Vec<usize> = group
                     .iter()
                     .copied()
-                    .filter(|&i| nbrs(tiles, radius, i).into_iter().any(|j| land(j) && tiles[j].zone != Zone::Neck))
+                    .filter(|&i| {
+                        nbrs(tiles, radius, i).into_iter().any(|j| land(j) && tiles[j].country != Country::Neck)
+                    })
                     .collect();
                 assert!((1..=2).contains(&neck.len()), "{say}: neck {} wide", neck.len());
                 widths[neck.len()] += 1;
@@ -249,7 +252,7 @@ fn the_open_land_always_holds_three_sites() {
             let sites = open_sites(tiles, radius);
             assert_eq!(sites.len(), 3, "{name} seed {seed}: {sites:?}");
             for &s in &sites {
-                assert_eq!(tiles[s].zone, Zone::Open, "{name} seed {seed}");
+                assert_eq!(tiles[s].country, Country::Open, "{name} seed {seed}");
                 assert!(TERRAIN[tiles[s].terrain].land);
             }
             for (a, &s) in sites.iter().enumerate() {
@@ -274,7 +277,7 @@ fn the_open_land_always_holds_three_sites() {
 fn small_radii_have_no_closed_country() {
     for radius in [0, 1, 6, 12, MAP.closed_from - 1] {
         let g = made(radius, 3);
-        assert!(g.tiles.iter().all(|t| t.zone == Zone::Open && !t.pass), "radius {radius}");
+        assert!(g.tiles.iter().all(|t| t.country == Country::Open && !t.pass), "radius {radius}");
         assert_eq!((g.tries.layouts, g.tries.dropped, g.tries.maps), (0, 0, 0));
     }
 }
@@ -284,9 +287,9 @@ fn nobody_is_seeded_in_a_sealed_valley() {
     let mut sealed = 0;
     for seed in 1..=40 {
         let w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
-        sealed += w.tiles.iter().any(|t| t.zone == Zone::Sealed) as usize;
+        sealed += w.tiles.iter().any(|t| t.country == Country::Sealed) as usize;
         for c in w.clans.values() {
-            assert_ne!(w.tiles[c.home].zone, Zone::Sealed, "seed {seed}: clan {}", c.id);
+            assert_ne!(w.tiles[c.home].country, Country::Sealed, "seed {seed}: clan {}", c.id);
         }
     }
     assert!(sealed >= 30, "only {sealed} of 40 small maps have a sealed valley");
@@ -296,15 +299,21 @@ fn nobody_is_seeded_in_a_sealed_valley() {
 fn a_sealed_valley_stays_empty_through_the_pregame() {
     for seed in 1..=5 {
         let mut w = World::new(Config { seed, radius: 16, army: true, gifts: true, zone: true });
-        assert!(w.tiles.iter().any(|t| t.zone == Zone::Sealed), "seed {seed}: no sealed valley");
+        assert!(w.tiles.iter().any(|t| t.country == Country::Sealed), "seed {seed}: no sealed valley");
         while w.end.is_none() && w.turn < PREGAME.max_turns {
             w.run(1);
             for c in w.clans.values() {
                 for &t in c.territory.iter().chain([&c.home]) {
-                    assert_ne!(w.tiles[t].zone, Zone::Sealed, "seed {seed} turn {}: clan {} at {t}", w.turn, c.id);
+                    assert_ne!(
+                        w.tiles[t].country,
+                        Country::Sealed,
+                        "seed {seed} turn {}: clan {} at {t}",
+                        w.turn,
+                        c.id
+                    );
                 }
             }
-            assert!(w.tiles.iter().all(|t| t.zone != Zone::Sealed || t.claim.is_none()));
+            assert!(w.tiles.iter().all(|t| t.country != Country::Sealed || t.claim.is_none()));
         }
         println!("seed {seed}: ended turn {}", w.turn);
     }
