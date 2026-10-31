@@ -16,6 +16,7 @@ pub mod markets;
 pub mod orders;
 pub mod pregame;
 pub mod rng;
+pub mod script;
 pub mod stats;
 pub mod units;
 pub mod world;

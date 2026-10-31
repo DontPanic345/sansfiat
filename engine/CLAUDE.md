@@ -37,6 +37,7 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `core/src/units/line.rs` | What a camp may walk, `path_between`, `route`, the line to the capital (`line`, `cut_off`, `cut_at`) and `turns`. |
 | `core/src/units/camp.rs` | `CampState`, the camp's turn (march, `hold`, forage, supply, eat) and its zone (`zone_ok`). |
 | `core/src/units/scout.rs` | `ScoutState`, the scout's route search (`route_plan`, trails, reveals) and `scout_turn`. |
+| `core/src/script.rs` | `Lead`, the scripted game (`digest --lead`, `Sim::lead_orders`): the engine's second player. |
 | `core/src/orders.rs` | `Order` (the wire form of a unit's order), `World::order` and `check_order`: every order's checks and its applying, the player's and the AI's. |
 | `core/src/units/ai.rs` | The AI's `post` and `ai`, and its zone (`ai_zone`). |
 | `core/src/stats.rs` | `summary`, the evidence reports, and `digest` and `state_digest` to compare builds. |

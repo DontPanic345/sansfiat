@@ -1,6 +1,6 @@
 // Plays a scout in the page, headless: leads the first civ, selects its scout (it shares the capital with
 // its camp, so clicks there until the scout is selected), picks the route's start and end only by clicking
-// the map (seed 2, small map: the capital to tile 58, hills seven steps out, as `lead_orders` gives), ends
+// the map (seed 2, small map: the capital to tile 58, hills seven steps out, as `core/src/script.rs` gives), ends
 // turns until the route is found or no route can exist, and screenshots into the out dir: while both
 // routes show, and after a trail on the route is built. Usage:
 //
