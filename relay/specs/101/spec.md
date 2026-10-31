@@ -184,9 +184,14 @@ today (`probe.md`), and six after every step.
     choice, a reason missing or wrong, an order with no visible result, a turn the player did nothing.
     Each finding names its turn and its evidence. Praise isn't a finding.
 19. **The trial** plays one game on a retro map, 100 turns from the pick, with the player on Sonnet,
-    then judges it on Sonnet (a judge, so not at low effort), each a nested `claude -p` session the
-    canvas starts. It records in `relay/specs/101/play.md`: cost in dollars, minutes, plan points (from
-    `node relay/usage.mjs` before and after), the turns reached, the decisions, `sansfiat judge`'s
+    then judges it on Sonnet at medium effort (a judge, so not at low), each a fresh subagent the
+    canvas starts with its Agent tool (`subagent_type: "general-purpose"`, `model: "sonnet"`), given
+    the prompt file's text and nothing of the canvas's context. A nested `claude -p` can't: inside a
+    Relay session it isn't logged in, and `node relay/usage.mjs` can't read the plan's windows either
+    (spec-review ran both; `probe.md`). So it records in `relay/specs/101/play.md`, for the player and
+    for the judge: the tokens, tool calls and minutes the Agent tool reports, and the list dollars
+    those tokens come to at Sonnet's price, said as an estimate; the plan points are build-3's own,
+    which the crew records on its step. Then the turns reached, the decisions, `sansfiat judge`'s
     score lines, the judge's findings, and what the player said it couldn't tell.
 20. **Root `CLAUDE.md`** gains, under Checks, the judge line (`sweep --judge`, the bands in
     `engine/judge.toml`, how a piece moves a band) and the play line (`sansfiat play`, the game file,
@@ -230,8 +235,8 @@ moves.
 4. Play twenty turns itself: `sansfiat play --game /tmp/r.json --seed 2 --size small --civ 1`, then a
    move, a zone, a gift, `end 5`, `why` on its camp, a refused order; then `sansfiat judge /tmp/r.json`.
    Is the view under 80 lines, and does it say what the page says?
-5. Read `play.md`: the cost, the turns reached, the findings; the PR description carries them and
-   answers the question.
+5. Read `play.md`: the cost (with build-3's points from its step), the turns reached, the findings;
+   the PR description carries them and answers the question.
 6. The decisions below go into the design's Decided ledgers: `vision.md` takes items 1, 4 and 9;
    nothing else in `docs/design/` is touched by this piece. `process.md` isn't a design file: the review
    notes in an idea anything it should say now.

@@ -27,18 +27,24 @@ the player prompt is written, and do the bands while it plays.
 ## 2. The trial
 
 One game on **small seed 2** (the retro map where Standing moves most on main, `probe.md`), leading the
-civ you choose from the cards and say why. Start the player as a nested session, for example
-`timeout 45m claude -p --model sonnet --output-format json --permission-mode auto "$(cat
-relay/players/player.md) …"` in a scratch directory, with the binary built in release first and its
-path given; restrict its tools to what playing needs if the CLI lets you. Take `node relay/usage.mjs`
-before and after for the plan points; the JSON gives `total_cost_usd` and `duration_ms`. Then judge it
-with `judge.md` on Sonnet the same way, and run `sansfiat judge` yourself.
+civ you choose from the cards and say why. Build the binary in release first.
+
+Start the player with your **Agent tool**: `subagent_type: "general-purpose"`, `model: "sonnet"`,
+in the background, with the text of `player.md` and the binary's path and the game file's path in a
+scratch directory (not the repo) as its prompt. It is a fresh session: it knows only that prompt. Do
+not use `claude -p`: inside a Relay session the nested CLI isn't logged in, and `node
+relay/usage.mjs` can't read the plan's windows (spec-review tried both). The Agent tool's result
+gives the subagent's tokens, tool calls and minutes: record those, and the list dollars the tokens
+come to at Sonnet's price, marked as an estimate. The plan points are this step's own; the crew
+records them. Give the player a time in its prompt (about 45 minutes); if it is still playing at
+55, stop it and judge what there is. Then judge the game with `judge.md` the same way, `model:
+"sonnet"`, `effort: "medium"` (a judge doesn't run at low), and run `sansfiat judge` yourself.
 
 If the player stops short of +100 (time, a crash, it gives up), that is a result: record the turn it
 reached and why, and judge what there is. Don't run a second game unless the first failed for a cause
 in the easel that you fixed, and there is time.
 
-Record **`relay/specs/101/play.md`**: the map and civ; cost, minutes and points for the player and for
+Record **`relay/specs/101/play.md`**: the map and civ; tokens, tool calls, minutes and estimated list dollars for the player and for
 the judge; the turns reached and the decisions made; `sansfiat judge`'s score lines and the led civ's
 Standing against the control's; the judge's findings; the player's last note on what it couldn't tell;
 and your answer to the piece's question in two or three sentences. Copy the game and lines files into

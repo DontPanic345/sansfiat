@@ -31,3 +31,17 @@ What it settles:
   and large seed 8 to +100 takes 11.5 s, so `play` can rebuild its world by replay on every call.
 - `bash relay/specs/100/baseline/compare.sh` prints six `ok` lines on main today (27 s), so #100's
   baseline is still main's, and it is this piece's digest proof.
+
+## Spec-review's runs
+
+- **A nested `claude -p` isn't logged in inside a Relay session.** `claude -p --model haiku "…"`
+  from the session's shell returns `Not logged in` (an `api_error`, no cost), and `node
+  relay/usage.mjs` fails the same way (no OAuth access token). The Agent tool does work:
+  a `general-purpose` subagent with `model: "sonnet"` ran a shell command and reported its tokens,
+  tool calls and minutes. So build-3 starts the player and the judge as Agent subagents, records what
+  the Agent tool reports, and leaves the plan points to the crew's record of build-3's step.
+- The AI's orders all pass through `World::order` (`units/ai.rs`: `Raise` under `let _`, `Move` and
+  `Zone` expected to pass), and the player's through `act` into the same call, so counting in
+  `World::order` on `Ok` counts both, as item 2 says. The wire names match `Order`'s serde names.
+- `civs::tile_civ` is a hex distance per civ and a claim lookup, so item 6's `land_changed` over
+  every tile every turn costs little beside a turn.
