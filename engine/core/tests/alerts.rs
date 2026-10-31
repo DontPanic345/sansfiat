@@ -4,43 +4,11 @@
 mod common;
 
 use common::*;
-use engine::civs;
 use engine::clans::surplus;
 use engine::data::*;
 use engine::markets;
 use engine::units::{self, Unit};
-use engine::{Action, End, Event, EventKind, World};
-
-/// Markets for three civs on the big world, 10 or more steps apart.
-fn markets3(w: &mut World) -> [u32; 3] {
-    [open(w, at_big(-5, 0)), open(w, at_big(5, 0)), open(w, at_big(0, -10))]
-}
-
-/// Ends the pre-game on `centres` by hand and founds the civs.
-fn found(w: &mut World, centres: &[u32]) {
-    w.end = Some(End {
-        turn: w.turn,
-        centres: centres.to_vec(),
-        clans: Vec::new(),
-        cover: 1.0,
-        by_limit: false,
-        topped_up: Vec::new(),
-    });
-    civs::found(w);
-}
-
-/// A big world of three civs, each with a clan of 8 on its market's tile and a camp. Returns the
-/// world and the civs (in id order).
-fn three() -> (World, [u32; 3]) {
-    let mut w = big();
-    let ms = markets3(&mut w);
-    put(&mut w, &[at_big(-5, 0)], 8.0);
-    put(&mut w, &[at_big(5, 0)], 8.0);
-    put(&mut w, &[at_big(0, -10)], 8.0);
-    found(&mut w, &ms);
-    let ids: Vec<u32> = w.civs.keys().copied().collect();
-    (w, [ids[0], ids[1], ids[2]])
-}
+use engine::{Action, Event, EventKind, World};
 
 fn camp_of(w: &World, civ: u32) -> &Unit {
     units::camp(w, civ).expect("a camp")
@@ -65,7 +33,7 @@ fn about(w: &World, kind: EventKind, civ: u32) -> Vec<&Event> {
 
 #[test]
 fn a_led_camp_going_hungry_alerts_once_and_its_starving_once_per_loss() {
-    let (mut w, ids) = three();
+    let (mut w, ids, _) = three();
     let red = ids[0];
     w.act(Action::ChooseCiv { civ: Some(red) }).unwrap();
     starve_camp_on(&mut w, red, at_big(-5, 8));
@@ -84,7 +52,7 @@ fn a_led_camp_going_hungry_alerts_once_and_its_starving_once_per_loss() {
 
 #[test]
 fn nothing_is_an_alert_when_watching() {
-    let (mut w, ids) = three();
+    let (mut w, ids, _) = three();
     let red = ids[0];
     w.act(Action::ChooseCiv { civ: None }).unwrap();
     starve_camp_on(&mut w, red, at_big(-5, 8));
@@ -97,7 +65,7 @@ fn nothing_is_an_alert_when_watching() {
 
 #[test]
 fn a_rival_clan_joining_alerts_and_the_players_does_not() {
-    let (mut w, ids) = three();
+    let (mut w, ids, _) = three();
     let (red, blue) = (ids[0], ids[1]);
     w.act(Action::ChooseCiv { civ: Some(red) }).unwrap();
     let mine = put(&mut w, &[at_big(-2, 9)], 8.0);
@@ -134,7 +102,7 @@ fn festival(w: &mut World, civs: [u32; 2], mid: u32) -> (u32, u32, u32) {
 
 #[test]
 fn people_leaving_a_civs_clans_for_another_civ_are_one_event_and_sum_what_moved() {
-    let (mut w, ids) = three();
+    let (mut w, ids, _) = three();
     let (red, blue) = (ids[0], ids[1]);
     let mid = w.civs[&red].market;
     let (starving, rich_blue, rich_red) = festival(&mut w, [red, blue], mid);
@@ -162,7 +130,7 @@ fn people_leaving_a_civs_clans_for_another_civ_are_one_event_and_sum_what_moved(
 
 #[test]
 fn a_clan_merged_into_another_civs_clan_is_people_leaving_its_civ() {
-    let (mut w, ids) = three();
+    let (mut w, ids, _) = three();
     let (red, blue) = (ids[0], ids[1]);
     let mid = w.civs[&red].market;
     let small = put(&mut w, &[at_big(-5, 2)], 1.0);

@@ -5,8 +5,9 @@ use engine::actors::connected;
 use engine::clans::new_clan;
 use engine::data::*;
 use engine::hex::{Hex, DIRS};
-use engine::map::{index, Country};
-use engine::{units, Action, Config, Market, Order, World};
+use engine::map::{generate, index, Country, Tile};
+use engine::units::{self, Unit};
+use engine::{civs, Action, Config, End, EventKind, Market, Order, World};
 
 pub const R: i32 = 6;
 
@@ -166,6 +167,108 @@ pub fn hearth(w: &mut World, tile: usize, wild: f64) {
     t.tame = TENDING.tame_turns;
     t.unworn[GRAIN] = wild * TENDING.domestic;
     t.cap[GRAIN] = t.unworn[GRAIN];
+}
+
+/// Markets for three civs on the big world, 10 or more steps apart.
+pub fn markets3(w: &mut World) -> [u32; 3] {
+    [open(w, at_big(-5, 0)), open(w, at_big(5, 0)), open(w, at_big(0, -10))]
+}
+
+/// Refills every civ's store: founding's scouts take their packs and feeding from it.
+pub fn fill_stores(w: &mut World) {
+    for c in w.civs.values_mut() {
+        c.store = CIV.endowment;
+    }
+}
+
+/// Ends the pre-game on `centres` by hand and founds the civs.
+pub fn found(w: &mut World, centres: &[u32]) {
+    w.end = Some(End {
+        turn: w.turn,
+        centres: centres.to_vec(),
+        clans: Vec::new(),
+        cover: 1.0,
+        by_limit: false,
+        topped_up: Vec::new(),
+    });
+    civs::found(w);
+}
+
+/// A big world of three civs, each with a clan of 8 on its market's tile. Returns the world, the
+/// civs and their clans.
+pub fn three() -> (World, [u32; 3], [u32; 3]) {
+    let mut w = big();
+    let ms = markets3(&mut w);
+    let clans =
+        [put(&mut w, &[at_big(-5, 0)], 8.0), put(&mut w, &[at_big(5, 0)], 8.0), put(&mut w, &[at_big(0, -10)], 8.0)];
+    found(&mut w, &ms);
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    (w, [ids[0], ids[1], ids[2]], clans)
+}
+
+/// As `three`, led by the first civ.
+pub fn led() -> (World, [u32; 3], [u32; 3]) {
+    let (mut w, ids, clans) = three();
+    w.act(Action::ChooseCiv { civ: Some(ids[0]) }).unwrap();
+    w.events.clear();
+    (w, ids, clans)
+}
+
+/// The unit id of `civ`'s camp.
+pub fn camp_id(w: &World, civ: u32) -> u32 {
+    units::camp(w, civ).expect("a camp").id
+}
+
+/// Moves `civ`'s camp onto `tile`.
+pub fn put_camp(w: &mut World, civ: u32, tile: usize) -> u32 {
+    let id = camp_id(w, civ);
+    let u = w.units.get_mut(&id).unwrap();
+    u.actor.home = tile;
+    u.actor.territory = vec![tile];
+    u.camp_mut().unwrap().held = vec![tile];
+    id
+}
+
+pub fn camp_mut(w: &mut World, id: u32) -> &mut Unit {
+    w.units.get_mut(&id).unwrap()
+}
+
+/// The sum of a basket's goods.
+pub fn total(b: &[f64; N]) -> f64 {
+    b.iter().sum()
+}
+
+/// How many events of `kind` the world holds.
+pub fn kinds(w: &World, kind: EventKind) -> usize {
+    w.events.iter().filter(|e| e.kind == kind).count()
+}
+
+pub fn end_turn(w: &mut World) {
+    w.act(Action::EndTurn).unwrap();
+}
+
+/// The tiles of a generated map of `radius` for `seed`.
+pub fn made(radius: i32, seed: u32) -> Vec<Tile> {
+    let mut rng = seed;
+    generate(radius, &mut rng)
+}
+
+/// The indices of the tiles next to tile `i` on a map of `radius`.
+pub fn nbrs(tiles: &[Tile], radius: i32, i: usize) -> Vec<usize> {
+    tiles[i].hex().neighbors().filter_map(|h| index(radius, h)).collect()
+}
+
+/// Makes `tile` a centre: a hearth, a clan of `people` on it, and its market with the pre-game's
+/// traders. Returns the clan and the market.
+pub fn centre(w: &mut World, tile: usize, people: f64) -> (u32, u32) {
+    hearth(w, tile, 4.0);
+    let c = put(w, &[tile], people);
+    let m = open(w, tile);
+    w.markets.get_mut(&m).unwrap().traders = PREGAME.centre_clans;
+    let clan = w.clans.get_mut(&c).unwrap();
+    clan.market = Some(m);
+    clan.since = PREGAME.centre_age;
+    (c, m)
 }
 
 /// The keys of the top-level object in `json`, in the order they are written (`serde_json::Value`

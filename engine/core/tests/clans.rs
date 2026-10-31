@@ -1,6 +1,6 @@
 mod common;
 
-use common::{at, check_territories, flat, out, put, steps};
+use common::{at, check_territories, flat, out, put, steps, total};
 use engine::clans::{adjust, eat, growth, harvest, nutrition, reap, site_value, surplus, value, walks};
 use engine::data::*;
 use engine::land::neighbours;
@@ -24,10 +24,6 @@ fn bare() -> (World, usize, usize) {
     let i = (0..w.tiles.len()).find(|&i| land(&w, i) && neighbours(&w, i).all(|j| land(&w, j))).unwrap();
     let j = neighbours(&w, i).next().unwrap();
     (w, i, j)
-}
-
-fn total(b: &Basket) -> f64 {
-    b.iter().sum()
 }
 
 #[test]

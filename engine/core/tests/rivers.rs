@@ -8,20 +8,11 @@ use common::*;
 use engine::actors::Walks;
 use engine::data::*;
 use engine::land::{cost_map, step_cost};
-use engine::map::{generate, index, Tile};
+use engine::map::Tile;
 use engine::markets::reach;
 use engine::World;
 
 const SEEDS: std::ops::RangeInclusive<u32> = 1..=15;
-
-fn made(radius: i32, seed: u32) -> Vec<Tile> {
-    let mut rng = seed;
-    generate(radius, &mut rng)
-}
-
-fn nbrs(tiles: &[Tile], radius: i32, i: usize) -> Vec<usize> {
-    tiles[i].hex().neighbors().filter_map(|n| index(radius, n)).collect()
-}
 
 fn land(t: &Tile) -> bool {
     TERRAIN[t.terrain].land

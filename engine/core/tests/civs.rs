@@ -4,26 +4,7 @@ use common::*;
 use engine::civs::{self, cards, tile_civ, Civ};
 use engine::clans::eat;
 use engine::data::*;
-use engine::{Action, Config, End, EventKind, Phase, Save, World};
-
-/// Three markets on the big world, 10 or more steps apart: Red's at (-5, 0), Blue's at (5, 0)
-/// and Gold's at (0, -10).
-fn markets3(w: &mut World) -> [u32; 3] {
-    [open(w, at_big(-5, 0)), open(w, at_big(5, 0)), open(w, at_big(0, -10))]
-}
-
-/// Ends the pre-game on `centres` by hand, as the end step would, and founds the civs.
-fn found(w: &mut World, centres: &[u32]) {
-    w.end = Some(End {
-        turn: w.turn,
-        centres: centres.to_vec(),
-        clans: Vec::new(),
-        cover: 1.0,
-        by_limit: false,
-        topped_up: Vec::new(),
-    });
-    civs::found(w);
-}
+use engine::{Action, Config, EventKind, Phase, Save, World};
 
 /// A big world with three markets, ended by hand: the civs in `End.centres` order.
 fn founded() -> (World, [u32; 3]) {

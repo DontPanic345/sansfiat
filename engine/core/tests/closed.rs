@@ -1,15 +1,18 @@
 //! Closed country: valleys behind a pass, sealed valleys, peninsulas on a neck, and the open land
 //! that always holds three sites for a centre.
 
+mod common;
+
+use common::nbrs;
 use engine::data::*;
 use engine::hex::Hex;
-use engine::map::{generate_with, index, open_sites, zone_groups, Country, Generated, Tile};
+use engine::map::{generate_with, open_sites, zone_groups, Country, Generated, Tile};
 use engine::{Config, World};
 
 const KINDS: [(Country, &str); 3] =
     [(Country::Valley, "valleys"), (Country::Sealed, "sealed"), (Country::Neck, "necks")];
 
-fn made(radius: i32, seed: u32) -> Generated {
+fn generated(radius: i32, seed: u32) -> Generated {
     let mut rng = seed;
     generate_with(radius, &mut rng, 0x5bd1e995)
 }
@@ -21,10 +24,6 @@ fn target(zone: Country, tiles: usize) -> usize {
         Country::Sealed => scaled(MAP.sealed, tiles).max(MAP.sealed_floor),
         _ => scaled(MAP.necks, tiles).max(MAP.necks_floor),
     }
-}
-
-fn nbrs(tiles: &[Tile], radius: i32, i: usize) -> Vec<usize> {
-    tiles[i].hex().neighbors().filter_map(|h| index(radius, h)).collect()
 }
 
 fn passable(t: &Tile) -> bool {
@@ -80,7 +79,7 @@ fn every_size_has_each_kind_kept_apart() {
             let (mut pooled, mut maps) = (0, 0);
             let mut want = 0;
             for seed in 1..=15 {
-                let g = made(radius, seed);
+                let g = generated(radius, seed);
                 want = target(zone, g.tiles.len());
                 let k = zone_groups(&g.tiles, radius, zone).len();
                 pooled += k;
@@ -99,7 +98,7 @@ fn every_size_has_each_kind_kept_apart() {
     // Features don't touch or overlap: tiles of different features are 3+ steps apart, and 3+ from the rim.
     for &(name, radius) in &SIZES {
         for seed in 1..=15 {
-            let g = made(radius, seed);
+            let g = generated(radius, seed);
             let groups: Vec<Vec<usize>> = KINDS.iter().flat_map(|&(z, _)| zone_groups(&g.tiles, radius, z)).collect();
             for (a, ga) in groups.iter().enumerate() {
                 for &i in ga {
@@ -126,7 +125,7 @@ fn a_valley_is_entered_only_by_its_passes() {
     let mut seen = 0;
     for &(name, radius) in &SIZES {
         for seed in 1..=15 {
-            let g = made(radius, seed);
+            let g = generated(radius, seed);
             let tiles = &g.tiles;
             let out = outside(tiles, radius);
             for group in zone_groups(tiles, radius, Country::Valley) {
@@ -170,7 +169,7 @@ fn a_sealed_valley_has_no_way_in_but_a_bridge() {
     let mut seen = 0;
     for &(name, radius) in &SIZES {
         for seed in 1..=15 {
-            let g = made(radius, seed);
+            let g = generated(radius, seed);
             let tiles = &g.tiles;
             let out = outside(tiles, radius);
             let from_out = reach(tiles, radius, &out, |_| false);
@@ -212,7 +211,7 @@ fn a_peninsula_hangs_on_a_neck_one_or_two_wide() {
     let mut widths = [0; 3];
     for &(name, radius) in &SIZES {
         for seed in 1..=15 {
-            let g = made(radius, seed);
+            let g = generated(radius, seed);
             let tiles = &g.tiles;
             let land = |i: usize| TERRAIN[tiles[i].terrain].land;
             let from_out = reach(tiles, radius, &outside(tiles, radius), |_| false);
@@ -247,7 +246,7 @@ fn the_open_land_always_holds_three_sites() {
     for &(name, radius) in &SIZES {
         let (mut rerolled, mut dropped, mut maps, mut layouts) = (0, 0, 0, 0);
         for seed in 1..=40 {
-            let g = made(radius, seed);
+            let g = generated(radius, seed);
             let tiles = &g.tiles;
             let sites = open_sites(tiles, radius);
             assert_eq!(sites.len(), 3, "{name} seed {seed}: {sites:?}");
@@ -276,7 +275,7 @@ fn the_open_land_always_holds_three_sites() {
 #[test]
 fn small_radii_have_no_closed_country() {
     for radius in [0, 1, 6, 12, MAP.closed_from - 1] {
-        let g = made(radius, 3);
+        let g = generated(radius, 3);
         assert!(g.tiles.iter().all(|t| t.country == Country::Open && !t.pass), "radius {radius}");
         assert_eq!((g.tries.layouts, g.tries.dropped, g.tries.maps), (0, 0, 0));
     }

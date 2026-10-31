@@ -36,10 +36,6 @@ fn visitor(w: &mut World, mid: u32, tile: usize, people: f64, basket: Basket) ->
     id
 }
 
-fn total(b: &Basket) -> f64 {
-    b.iter().sum()
-}
-
 /// Every good held by the civ's store and the clans' baskets.
 fn goods(w: &World, civ: u32) -> Basket {
     std::array::from_fn(|f| w.civs[&civ].store[f] + w.clans.values().map(|c| c.basket[f]).sum::<f64>())

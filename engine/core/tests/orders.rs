@@ -18,7 +18,7 @@ fn at_pick() -> World {
 }
 
 /// The same map with the first civ led.
-fn led() -> World {
+fn led_game() -> World {
     let mut w = at_pick();
     let me = *w.civs.keys().next().unwrap();
     w.act(Action::ChooseCiv { civ: Some(me) }).unwrap();
@@ -71,7 +71,7 @@ fn every_order_has_its_wire_name() {
 
 #[test]
 fn every_order_is_refused_for_a_unit_of_another_civ() {
-    let mut w = led();
+    let mut w = led_game();
     let me = w.player.unwrap();
     let rival = *w.civs.keys().find(|&&c| c != me).unwrap();
     let camp = units::camp(&w, rival).unwrap().id;
@@ -91,7 +91,7 @@ fn every_order_is_refused_for_a_unit_of_another_civ() {
 
 #[test]
 fn every_order_is_refused_for_a_unit_that_is_not_there() {
-    let w = led();
+    let w = led_game();
     let me = w.player.unwrap();
     let missing = 999_999;
     for order in camp_orders(missing).into_iter().chain(scout_orders(missing)) {
@@ -101,7 +101,7 @@ fn every_order_is_refused_for_a_unit_that_is_not_there() {
 
 #[test]
 fn every_order_is_refused_for_a_unit_of_the_wrong_kind() {
-    let w = led();
+    let w = led_game();
     let me = w.player.unwrap();
     let (camp, scout) = (led_camp(&w), led_scout(&w));
     for order in camp_orders(scout) {
@@ -133,7 +133,7 @@ fn every_order_is_refused_before_the_game_has_begun() {
 
 #[test]
 fn the_players_order_is_logged_and_act_refuses_a_civ_it_does_not_lead() {
-    let mut w = led();
+    let mut w = led_game();
     let me = w.player.unwrap();
     let rival = *w.civs.keys().find(|&&c| c != me).unwrap();
     let camp = led_camp(&w);
@@ -179,7 +179,7 @@ fn the_ais_orders_are_not_in_the_log() {
 
 #[test]
 fn world_order_works_for_an_ai_civ_while_the_player_leads_another() {
-    let mut w = led();
+    let mut w = led_game();
     let me = w.player.unwrap();
     let ai = *w.civs.keys().find(|&&c| c != me).unwrap();
     let camp = units::camp(&w, ai).unwrap().id;
