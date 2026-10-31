@@ -5,7 +5,9 @@ name: relay
 #
 # Start a run: Actions → relay → Run workflow, or comment `/relay run` on a piece.
 # Stop now: cancel the run; the step stays open and the next run starts it again.
-# Runs every six hours on the schedule below; comment it out to turn it off.
+# Runs every six hours on the schedule below; comment it out to turn it off. A run that stops
+# on the 5-hour window starts a `wait` run, which sleeps until the window resets and then
+# starts a crew run.
 
 on:
   schedule:
@@ -13,20 +15,41 @@ on:
   workflow_dispatch:
     inputs:
       command:
-        description: "run, or status to print the next step and the pacing without running anything"
+        description: "run; status to print the next step and the pacing without running anything; wait to start a run at `until`"
         type: choice
-        options: [run, status]
+        options: [run, status, wait]
         default: run
-
-concurrency:
-  group: relay
-  cancel-in-progress: false
+      until:
+        description: "for wait: when to start the run, as an ISO time"
+        required: false
 
 permissions:
   contents: read # the crew writes with the sansfiat-relay App's token, not this one
+  actions: write # a budget stop starts a wait run, and a wait run starts a crew run
 
 jobs:
+  # Outside the crew's concurrency group, so a reply or `/relay run` isn't queued behind it.
+  wait:
+    if: inputs.command == 'wait'
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - name: Sleep until the window resets
+        env:
+          UNTIL: ${{ inputs.until }}
+        run: |
+          secs=$(( $(date -d "$UNTIL" +%s) - $(date +%s) + 120 ))
+          if [ "$secs" -gt 0 ]; then sleep "$secs"; fi
+      - name: Start a crew run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run relay.yml --repo "${{ github.repository }}" --ref main -f command=run
+
   relay:
+    if: inputs.command != 'wait'
+    concurrency:
+      group: relay
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 345
     environment: relay
@@ -35,6 +58,7 @@ jobs:
       RELAY_APP_KEY: ${{ secrets.RELAY_APP_KEY }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       RELAY_BOARD_TOKEN: ${{ secrets.RELAY_BOARD_TOKEN }}
+      DISPATCH_TOKEN: ${{ github.token }}
     steps:
       # The crew sets up git's credentials itself, from a token file sessions can read
       # without holding the App's key.

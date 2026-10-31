@@ -46,17 +46,32 @@ export const SECRETS = ["CLAUDE_CODE_OAUTH_TOKEN", "RELAY_APP_KEY", "DISPATCH_TO
 export const MODELS = ["haiku", "sonnet", "opus"];
 export const EFFORTS = ["low", "medium", "high"];
 // A build step's part in its piece's shape (prompts/spec.md).
-export const PARTS = ["ford", "easel", "canvas", "clay", "kiln", "magnum"];
+export const PARTS = ["ford", "easel", "canvas", "clay", "kiln", "glaze", "magnum"];
+// The steps that judge, which never run at low effort.
+const JUDGES = ["spec-review", "review"];
+
+// The 5-hour points a step is expected to take, by model and effort: M2's medians, rounded up.
+export const EXPECTED_POINTS = {
+    opus: { low: 13, medium: 25, high: 35 },
+    sonnet: { low: 5, medium: 8, high: 10 },
+    haiku: { low: 4, medium: 5, high: 6 },
+};
+export const expectedPoints = (meta) => EXPECTED_POINTS[meta.model]?.[meta.effort] ?? 25;
+const SESSION_STOP = 80;
 
 // ---- Pure logic (covered by relay.test.mjs) ----
 
-// Continue while the 5-hour window is under 50% and the weekly window is under
-// day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`, where that's known.
-export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now) => {
+// Start a step only while the 5-hour window plus its expected points stays under 80%, and
+// the weekly window is under day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`,
+// where that's known.
+export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now, expected = 0) => {
     const cycleStart = weeklyResetsAt.getTime() - 7 * 86400_000;
     const day = Math.min(7, Math.max(1, Math.floor((now.getTime() - cycleStart) / 86400_000) + 1));
     const weeklyLimit = (day / 7) * 95;
-    if (session >= 50) return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${session}% ≥ 50%` };
+    if (session + expected >= SESSION_STOP) {
+        const resets = sessionResetsAt ? `, resets ${sessionResetsAt.toISOString()}` : "";
+        return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${session}% + ${expected} expected ≥ ${SESSION_STOP}%${resets}` };
+    }
     if (weekly >= weeklyLimit) {
         const lifts = Math.floor((weekly * 7) / 95) + 1;
         const until = lifts > 7 ? weeklyResetsAt : new Date(cycleStart + (lifts - 1) * 86400_000);
@@ -155,7 +170,8 @@ export const checkSteps = (text) => {
     for (const s of steps) {
         if (!MODELS.includes(s.model)) return { error: `${s.id}: model must be one of ${MODELS.join(", ")}` };
         if (!EFFORTS.includes(s.effort)) return { error: `${s.id}: effort must be one of ${EFFORTS.join(", ")}` };
-        if (!Number.isInteger(s.points) || s.points < 0 || s.points > 15) return { error: `${s.id}: points must be a whole number from 0 to 15` };
+        if (s.id !== "review" && (!Number.isInteger(s.points) || s.points < 0 || s.points > 12)) return { error: `${s.id}: points must be a whole number from 0 to 12` };
+        if (JUDGES.includes(s.id) && s.effort === "low") return { error: `${s.id}: a step that judges never runs at low effort` };
         if (s.id !== "review" && !PARTS.includes(s.part)) return { error: `${s.id}: part must be one of ${PARTS.join(", ")}` };
         if (!s.title) return { error: `${s.id}: no title` };
         if (!s.why) return { error: `${s.id}: no why for its model and effort` };
@@ -216,9 +232,11 @@ export const atLevel = (md, level = 2) => {
         .join("\n");
 };
 
-// A finished step's summary and decisions, as later steps see them.
+// A finished step's summary and decisions, as later steps see them. The spec's and
+// spec-review's decisions are in spec.md, so only their summaries come here.
 export const soFar = (s) => {
-    const decided = (s.meta.decisions ?? []).map((d) => `\n  - Decided: ${d.decision}${d.why ? ` (${d.why})` : ""}`).join("");
+    const own = !["spec", "spec-review"].includes(s.meta.id);
+    const decided = (own ? s.meta.decisions ?? [] : []).map((d) => `\n  - Decided: ${d.decision}${d.why ? ` (${d.why})` : ""}`).join("");
     return `- **${s.meta.id}**: ${s.meta.summary}${decided}`;
 };
 
@@ -235,7 +253,8 @@ export const PROMPTS_FOR = {
 // the step on that.
 // `files` holds `prompts` (name → text), `brief` and `spec` (null when missing), `design`
 // (path → text, null for a named file that doesn't exist), `designFiles` (every path in
-// docs/design/), and `diffStat` (review only).
+// docs/design/), `diffStat` (review only) and `lastSpec` (spec only: the folder of the latest
+// other piece's spec, or null).
 export const sessionPrompt = (piece, step, files) => {
     const kind = stepKind(step.meta.id);
     const parts = [
@@ -253,11 +272,17 @@ export const sessionPrompt = (piece, step, files) => {
             "spec-review": "Review the spec, the briefs and steps.json for this piece",
             review: "Review this piece as built",
         }[kind];
-        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what}, as agreed with the owner:`);
+        const like = kind === "spec" && files.lastSpec ? ` Write \`spec.md\` and the briefs as \`${files.lastSpec}/\` did.` : "";
+        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what}, as agreed with the owner.${like} The piece:`);
         parts.push(atLevel(`# The piece\n\n${piece.body.trim()}`));
     }
     if (step.meta.note) parts.push(`# The last attempt didn't finish\n\nPick up from here.\n\n${step.meta.note}`);
-    if (step.meta.reply) parts.push(`# The owner's reply to this step's blocker\n\nAct on it.\n\n"""${step.meta.reply}"""`);
+    if (step.meta.reply) {
+        parts.push(
+            `# The owner's reply to this step's blocker\n\nThe earlier attempt's commits are on the branch. Act on the reply for this step, ` +
+                `\`${step.meta.id}\`, only: a later step is another session's, even if the reply says to carry on.\n\n"""${step.meta.reply}"""`,
+        );
+    }
     if (kind !== "build") {
         const named = Object.entries(files.design ?? {});
         const builds = named.length
@@ -317,9 +342,9 @@ export const dollars = (n) => `$${(n ?? 0).toFixed(2)}`;
 export const cents = (n) => Math.round((n ?? 0) * 100) / 100;
 
 // The usage points a step took: the rise in each window from before the session to after.
-// A window that reset in between gives null, since its rise can't be known.
+// A window that reset in between counts what was used since the reset, a floor.
 export const usagePoints = (before, after) => {
-    const rise = (a, b) => (a == null || b == null || b < a ? null : Math.round(b - a));
+    const rise = (a, b) => (a == null || b == null ? null : Math.round(b < a ? b : b - a));
     return { fiveHour: rise(before?.session, after?.session), weekly: rise(before?.weekly, after?.weekly) };
 };
 
@@ -419,12 +444,12 @@ export const stepsTable = (steps) => {
     const total = sorted.reduce((n, s) => n + (s.meta.cost ?? 0), 0);
     const num = (n, f = String) => (n != null ? f(n) : "");
     return [
-        "| Step | State | Part | Model | Effort | Points | Attempts | List $ | Minutes | 5-hour | Weekly |",
+        "| Step | State | Part | Model | Effort | Points | Sessions | List $ | Minutes | 5-hour | Weekly |",
         "|---|---|---|---|---|---|---|---|---|---|---|",
         ...sorted.map((s) => {
             const m = s.meta;
             const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : "done") : m.status ?? "pending";
-            return `| #${s.number} ${m.id} | ${state} | ${m.part ?? ""} | ${m.model} | ${m.effort} | ${num(m.points)} | ${m.attempts ?? 0} | ${num(m.cost, dollars)} | ${num(m.minutes, Math.round)} | ${num(m.fiveHour)} | ${num(m.weekly)} |`;
+            return `| #${s.number} ${m.id} | ${state} | ${m.part ?? ""} | ${m.model} | ${m.effort} | ${num(m.points)} | ${m.sessions ?? m.attempts ?? 0} | ${num(m.cost, dollars)} | ${num(m.minutes, Math.round)} | ${num(m.fiveHour)} | ${num(m.weekly)} |`;
         }),
         "",
         `${dollars(total)} at list price so far.`,
@@ -789,6 +814,14 @@ const runSession = (piece, step, prompt) =>
         });
     });
 
+// The latest other piece's spec folder, for the designer to write theirs like it.
+const lastSpec = (piece) => {
+    const dir = path.join(REPO, "relay/specs");
+    const pieces = fs.existsSync(dir) ? fs.readdirSync(dir).map(Number).filter((n) => n && n !== piece.number) : [];
+    const n = pieces.filter((n) => fs.existsSync(path.join(dir, String(n), "spec.md"))).sort((a, b) => b - a)[0];
+    return n ? `relay/specs/${n}` : null;
+};
+
 // The files a step's prompt draws on, read from the piece's branch.
 const stepPrompt = (piece, step) => {
     const kind = stepKind(step.meta.id);
@@ -801,6 +834,7 @@ const stepPrompt = (piece, step) => {
         design: Object.fromEntries(designPaths(piece.body).map((f) => [f, readRepo(f)])),
         designFiles: fs.existsSync(designDir) ? fs.readdirSync(designDir).map((f) => `docs/design/${f}`) : [],
         diffStat: kind === "review" ? git("diff", "--stat=120", "origin/main...HEAD") : "",
+        lastSpec: kind === "spec" ? lastSpec(piece) : null,
     };
     return sessionPrompt(piece, step, files);
 };
@@ -844,7 +878,7 @@ const plan = async (piece) => {
     checkoutPiece(piece);
     const review = piece.steps.find((s) => s.meta.id === "spec-review");
     if (!review) {
-        const choice = specReviewChoice(piece.body) ?? { model: "sonnet", effort: "medium", why: "The piece names no spec-review, so the datum." };
+        const choice = specReviewChoice(piece.body) ?? { model: "opus", effort: "medium", why: "The piece names no spec-review, so the default." };
         await createStep(piece, { id: "spec-review", title: "Review the spec", ...choice });
         await setStatus(piece, "Spec");
         return;
@@ -869,17 +903,28 @@ const blockStep = async (piece, step, why) => {
     await setStatus(piece, "Waiting", "your answer");
 };
 
-// Merges the PR when the review says merge and CI is green. Returns why it didn't, or null.
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Merges the PR when the review says merge and CI on its head commit is green, waiting up to
+// ten minutes for CI to finish and the merge to go through. Returns why it didn't, or null.
 const autoMerge = async (piece, pr, result) => {
     if (!pr) return "there's no PR";
     if (result.merge !== true) return "its verdict isn't merge";
-    const { check_runs } = await github("GET", `/commits/${pr.head.sha}/check-runs?per_page=100`);
-    if (!checksGreen(check_runs)) return "CI isn't green";
-    try {
-        await github("PUT", `/pulls/${pr.number}/merge`, { sha: pr.head.sha, merge_method: "squash", commit_title: `${piece.title} (#${pr.number})` });
-    } catch (e) {
-        return `merging failed: ${e.message}`;
+    let why = "CI didn't finish in ten minutes";
+    for (let i = 0; i < 20; i++, await sleep(30_000)) {
+        const head = (await github("GET", `/pulls/${pr.number}`)).head.sha;
+        const { check_runs } = await github("GET", `/commits/${head}/check-runs?per_page=100`);
+        if (check_runs.some((c) => c.status === "completed" && !["success", "neutral", "skipped"].includes(c.conclusion))) return "CI failed";
+        if (!checksGreen(check_runs)) continue;
+        try {
+            await github("PUT", `/pulls/${pr.number}/merge`, { sha: head, merge_method: "squash", commit_title: `${piece.title} (#${pr.number})` });
+            why = null;
+            break;
+        } catch (e) {
+            why = `merging failed: ${e.message}`;
+        }
     }
+    if (why) return why;
     log(`#${piece.number}: merged PR #${pr.number}`);
     await comment(piece.number, `🔀 The review's verdict is merge and CI is green, so ${pr.html_url} is merged.`);
     return null;
@@ -926,6 +971,10 @@ const afterStep = async (piece, step, result) => {
 // `before` is the usage the crew paced on, so the step's points are the rise from it.
 const runStep = async (piece, step, before) => {
     const branch = checkoutPiece(piece);
+    const tracked = git("ls-files", "relay/runs");
+    if (tracked) {
+        throw Object.assign(new Error(`#${piece.number}'s branch tracks ${tracked.split("\n").join(", ")}; \`git rm --cached\` it before a session runs`), { refused: true });
+    }
     const kind = stepKind(step.meta.id);
     await setStatus(piece, { review: "Review", build: "Building" }[kind] ?? "Spec");
     let prompt;
@@ -936,7 +985,7 @@ const runStep = async (piece, step, before) => {
         step.body = withStatus(step.body, `blocked: ${e.message} (see #${piece.number})`);
         await saveMeta(step, { ...step.meta, status: "blocked" });
         await blockStep(piece, step, e.message);
-        return `#${piece.number} ${step.meta.id}: blocked (${e.message})`;
+        return { line: `#${piece.number} ${step.meta.id}: blocked (${e.message})`, after: before };
     }
     await writeTokenFile();
     log(`start #${piece.number} ${step.meta.id} on ${step.meta.model}/${step.meta.effort} with Claude Code ${cliVersion()}`);
@@ -970,7 +1019,9 @@ const runStep = async (piece, step, before) => {
     meta.minutes = Math.round(((step.meta.minutes ?? 0) + stats.minutes) * 10) / 10;
     meta.fiveHour = add(step.meta.fiveHour, points.fiveHour);
     meta.weekly = add(step.meta.weekly, points.weekly);
-    meta.usage = [...(step.meta.usage ?? []), { before: before && { session: before.session, weekly: before.weekly }, after: after && { session: after.session, weekly: after.weekly } }];
+    const rounded = (u) => u && { session: Math.round(u.session), weekly: Math.round(u.weekly) };
+    meta.sessions = (step.meta.sessions ?? 0) + 1;
+    meta.usage = [...(step.meta.usage ?? []), { before: rounded(before), after: rounded(after) }];
     meta.context = stats.context;
     meta.compactions = (step.meta.compactions ?? 0) + stats.compactions;
     meta.cli = cliVersion();
@@ -978,7 +1029,7 @@ const runStep = async (piece, step, before) => {
     await saveMeta(step, meta);
     await setBoard(step.nodeId, {
         Status: outcome === "done" ? "Done" : outcome === "blocked" ? "Waiting" : "Building",
-        Attempts: meta.attempts ?? 0,
+        Attempts: meta.sessions,
         "List $": meta.cost,
         Minutes: Math.round(meta.minutes),
         "5-hour points": meta.fiveHour,
@@ -990,7 +1041,7 @@ const runStep = async (piece, step, before) => {
     } else if (outcome === "blocked") {
         await blockStep(piece, step, why);
     }
-    return `#${piece.number} ${step.meta.id}: ${outcome}`;
+    return { line: `#${piece.number} ${step.meta.id}: ${outcome}`, after };
 };
 
 // ---- Commands ----
@@ -1017,8 +1068,19 @@ const logIssue = async () => {
     return issue.number;
 };
 
-// Runs steps until something stops it, and says why.
+// Starts a run that waits for the 5-hour window to reset, then starts a crew run.
+const dispatchWait = (until) =>
+    github(
+        "POST",
+        `/actions/workflows/${WORKFLOW}/dispatches`,
+        { ref: "main", inputs: { command: "wait", until: until.toISOString() } },
+        process.env.DISPATCH_TOKEN,
+    );
+
+// Runs steps until something stops it, and says why. The usage read after one step paces the
+// next, so each step boundary costs one probe.
 const runSteps = async (ran) => {
+    let reading = null;
     for (;;) {
         if (Date.now() - STARTED > DEADLINE_MS) return "deadline: no time for another step in this job";
         const pieces = await loadPieces();
@@ -1034,14 +1096,24 @@ const runSteps = async (ran) => {
             ran.push(`#${next.piece.number}: steps made`);
             continue;
         }
-        const before = await usage();
-        const verdict = pace(before, new Date());
+        const before = reading ?? (await usage());
+        reading = null;
+        const verdict = pace(before, new Date(), expectedPoints(next.step.meta));
         if (!verdict.ok) {
             await setBoard(next.piece.nodeId, { "Waiting on": waitingOn(verdict) });
+            if (verdict.window === "5-hour" && verdict.until) {
+                try {
+                    await dispatchWait(verdict.until);
+                } catch (e) {
+                    log(`couldn't start a run for the reset: ${e.message}`);
+                }
+            }
             return `budget stop: ${verdict.reason}`;
         }
         log(verdict.reason);
-        ran.push(await runStep(next.piece, next.step, before));
+        const { line, after } = await runStep(next.piece, next.step, before);
+        ran.push(line);
+        reading = after;
     }
 };
 
@@ -1069,7 +1141,7 @@ const status = async () => {
     for (const p of pieces) console.log(`#${p.number} ${p.title}: ${holdReason(p) ?? JSON.stringify(pieceAction(p)?.action ?? "finished")}`);
     const next = nextWork(pieces);
     console.log(next ? `next: #${next.piece.number} ${next.action}${next.step ? ` ${next.step.meta.id}` : ""}` : "next: nothing");
-    console.log(`pacing: ${JSON.stringify(pace(await usage(), new Date()))}`);
+    console.log(`pacing: ${JSON.stringify(pace(await usage(), new Date(), next?.step ? expectedPoints(next.step.meta) : 0))}`);
 };
 
 // For the workflow to report a failure the crew couldn't, e.g. the job timing out.
@@ -1157,6 +1229,22 @@ const closePiece = async (number) => {
         }
     }
     await setStatus(piece, "Done");
+    await tagMilestone(piece);
+};
+
+// When a piece closes the last open issue of a milestone titled `M<n>`, main is tagged `m<n>`.
+const tagMilestone = async (piece) => {
+    const m = /^M(\d+)\b/i.exec(piece.milestone?.title ?? "");
+    if (!m) return;
+    const milestone = await github("GET", `/milestones/${piece.milestone.number}`);
+    if (milestone.open_issues > 0) return;
+    try {
+        const main = await github("GET", "/git/ref/heads/main");
+        await github("POST", "/git/refs", { ref: `refs/tags/m${m[1]}`, sha: main.object.sha });
+        log(`${milestone.title} closed: tagged main m${m[1]}`);
+    } catch (e) {
+        log(`couldn't tag m${m[1]}: ${e.message}`);
+    }
 };
 
 const event = async () => {

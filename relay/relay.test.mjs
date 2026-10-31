@@ -29,6 +29,7 @@ import {
     stepComment,
     stepsTable,
     usagePoints,
+    expectedPoints,
     waitingOn,
     withStatus,
     writeMeta,
@@ -37,9 +38,11 @@ import {
 const resets = new Date("2026-10-17T09:00:00Z");
 const day = (n) => new Date(resets.getTime() - 7 * 86400_000 + (n - 1) * 86400_000 + 3600_000);
 
-test("pace stops at half the 5-hour window", () => {
-    assert.equal(pace({ session: 49, weekly: 0, weeklyResetsAt: resets }, day(1)).ok, true);
-    assert.equal(pace({ session: 50, weekly: 0, weeklyResetsAt: resets }, day(1)).ok, false);
+test("pace starts a step only if its expected points keep the 5-hour window under 80%", () => {
+    assert.equal(pace({ session: 54, weekly: 0, weeklyResetsAt: resets }, day(1), 25).ok, true);
+    assert.equal(pace({ session: 55, weekly: 0, weeklyResetsAt: resets }, day(1), 25).ok, false);
+    assert.equal(pace({ session: 70, weekly: 0, weeklyResetsAt: resets }, day(1), expectedPoints({ model: "haiku", effort: "medium" })).ok, true);
+    assert.equal(pace({ session: 70, weekly: 0, weeklyResetsAt: resets }, day(1), expectedPoints({ model: "opus", effort: "low" })).ok, false);
 });
 
 test("pace spreads the weekly budget across the cycle", () => {
@@ -51,8 +54,9 @@ test("pace spreads the weekly budget across the cycle", () => {
 
 test("a stop says when it lifts", () => {
     const at = new Date("2026-10-11T02:20:00Z");
-    const five = pace({ session: 60, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: at }, day(1));
+    const five = pace({ session: 60, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: at }, day(1), 25);
     assert.equal(waitingOn(five), "5-hour usage, until 15:20");
+    assert.match(five.reason, /resets 2026-10-11T02:20:00\.000Z/);
     // 14% on day 1 lifts on day 2, when the ramp reaches 27.1%.
     const weekly = pace({ session: 0, weekly: 14, weeklyResetsAt: resets }, day(1));
     assert.equal(weekly.until.getTime(), resets.getTime() - 6 * 86400_000);
@@ -101,8 +105,11 @@ test("checkSteps wants builds in order, then the review, each with points and a 
     assert.match(checkSteps(ok("build-1", "build-2")).error, /review/);
     assert.match(checkSteps(ok(s("build-1", { model: "gpt" }), "review")).error, /model/);
     assert.match(checkSteps(ok(s("build-1", { effort: "max" }), "review")).error, /effort/);
-    assert.match(checkSteps(ok(s("build-1", { points: 16 }), "review")).error, /points/);
-    assert.match(checkSteps(ok("build-1", s("review", { points: undefined }))).error, /points/);
+    assert.match(checkSteps(ok(s("build-1", { points: 13 }), "review")).error, /points/);
+    assert.match(checkSteps(ok(s("build-1", { points: undefined }), "review")).error, /points/);
+    assert.ok(checkSteps(ok("build-1", s("review", { points: undefined, model: "sonnet", effort: "high" }))).steps);
+    assert.match(checkSteps(ok("build-1", s("review", { effort: "low" }))).error, /low effort/);
+    assert.ok(checkSteps(ok(s("build-1", { part: "glaze", model: "opus", effort: "low" }), "review")).steps);
     assert.match(checkSteps(ok(s("build-1", { why: "" }), "review")).error, /no why/);
 });
 
@@ -210,9 +217,9 @@ test("sessionStats measures the last turn's context", () => {
     assert.equal(dollars(2.143), "$2.14");
 });
 
-test("usagePoints is each window's rise, unknown across a reset", () => {
+test("usagePoints is each window's rise, and what was used since a reset", () => {
     assert.deepEqual(usagePoints({ session: 20, weekly: 9 }, { session: 38.4, weekly: 11 }), { fiveHour: 18, weekly: 2 });
-    assert.deepEqual(usagePoints({ session: 45, weekly: 9 }, { session: 3, weekly: 10 }), { fiveHour: null, weekly: 1 });
+    assert.deepEqual(usagePoints({ session: 45, weekly: 9 }, { session: 3, weekly: 10 }), { fiveHour: 3, weekly: 1 });
     assert.deepEqual(usagePoints(null, { session: 3, weekly: 10 }), { fiveHour: null, weekly: null });
 });
 
@@ -283,13 +290,19 @@ test("a spec session gets the piece, its design files and the spec prompt", () =
 });
 
 test("a build session gets its brief, not the design, and the owner's reply", () => {
-    const p = piece(4, [], [step("spec", "closed", { summary: "Wrote the spec.", decisions: [{ decision: "Rivers flow east", why: "the map tilts" }] })]);
+    const p = piece(4, [], [
+        step("spec", "closed", { summary: "Wrote the spec.", decisions: [{ decision: "Rivers flow south", why: "" }] }),
+        step("build-1", "closed", { summary: "Built rivers.", decisions: [{ decision: "Rivers flow east", why: "the map tilts" }] }),
+    ]);
     const text = sessionPrompt(p, step("build-1", "open", { reply: "Use 0.5", note: "tests half done" }), files());
     assert.match(text, /^# build-1: Rivers/m);
     assert.doesNotMatch(text, /Rivers run downhill/);
     assert.match(text, /Use 0\.5/);
+    assert.match(text, /commits are on the branch/);
     assert.match(text, /tests half done/);
-    assert.match(text, /\*\*spec\*\*: Wrote the spec\.\n  - Decided: Rivers flow east \(the map tilts\)/);
+    assert.match(text, /\*\*spec\*\*: Wrote the spec\.\n- \*\*build-1\*\*/);
+    assert.doesNotMatch(text, /Rivers flow south/);
+    assert.match(text, /\*\*build-1\*\*: Built rivers\.\n  - Decided: Rivers flow east \(the map tilts\)/);
     assert.throws(() => sessionPrompt(p, step("build-2"), files({ brief: null })), /build-2\.md is missing/);
 });
 
@@ -305,7 +318,7 @@ test("a review session gets the piece, the diff, the whole spec and the steps, w
 test("stepsTable shows each step's state and spend", () => {
     const table = stepsTable([
         step("review"),
-        { ...step("build-1", "closed", { model: "opus", effort: "low", part: "canvas", points: 10, cost: 1.5, minutes: 12.6, fiveHour: 8, weekly: 1, attempts: 1 }), stateReason: "completed" },
+        { ...step("build-1", "closed", { model: "opus", effort: "low", part: "canvas", points: 10, cost: 1.5, minutes: 12.6, fiveHour: 8, weekly: 1, attempts: 0, sessions: 1 }), stateReason: "completed" },
         { ...step("spec", "closed", { cost: 2 }), stateReason: "completed" },
     ]);
     const rows = table.split("\n");

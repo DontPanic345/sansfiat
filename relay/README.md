@@ -17,9 +17,9 @@ opens it as an issue labelled `kind:piece` and `relay:ready`, and starts a run. 
 these lines from its body, in any order:
 
 ```
-**Goal:** what the piece delivers, and the question it answers if it has one
-**Spec:** opus medium, by coin
-**Spec-review:** opus low, by coin
+**Goal:** what the piece delivers, and its question in the scores with its control
+**Spec:** opus medium
+**Spec-review:** opus medium
 **Shape:** Easel and Canvas: why
 **Design:** docs/design/clans.md
 **Decided:** …
@@ -45,9 +45,9 @@ the briefs and `steps.json` live on the piece's branch, `relay/<number>`, in
 | Step | What it does |
 |---|---|
 | `spec` | The designer settles what it can, picks a shape, and writes the spec, a brief per build, and `steps.json` with each build's part and each step's model, effort, points and why (`prompts/spec.md` has the shapes and the ladder). Runs on the model the piece's `Spec` line names |
-| `spec-review` | Reads the piece, the design and the code first, then looks for what the designer didn't consider, and fixes the plan. Runs on the model the piece's `Spec-review` line names |
+| `spec-review` | Reads the code each settled rule touches, runs the sweep or a play script where minutes settle a number, and fixes the plan where the run disagrees with the reading. Runs on the model the piece's `Spec-review` line names, never at low effort |
 | `build-N` | Builds what its brief says |
-| `review` | Merges `main` in, reviews the whole piece against the piece and its design, fixes what matters, writes the PR description with the steps table and a verdict (merge, or don't and why), and waits for CI to go green. On a merge verdict with CI green, the crew merges the PR |
+| `review` | Merges `main` in, reviews the whole piece against the piece and its design, fixes what is small, appends the piece's decisions to each design file's `## Decided` ledger, writes the PR description for the owner to read on a phone (the steps table, the answer in the scores, the ledger lines, screenshots and a verdict), and waits for CI on its own head commit. On a merge verdict, the crew waits up to ten minutes for CI to go green and merges the PR |
 
 The crew makes spec-review once the spec closes, and the builds and the review once
 spec-review closes, from `steps.json` as spec-review left it. Spec-review isn't done until
@@ -113,13 +113,14 @@ points it rose by, the context its last turn held as a share of the window, and 
 times it compacted. On a subscription the cost isn't money spent; it makes steps, models and
 pieces comparable. The usage probe reads the whole account, so the owner's own sessions in
 the same hours land on Relay's steps. A crashed attempt has no result frame and records no
-cost. Usage is paced as in Jogging: no step starts once the 5-hour
-window passes 50% or the weekly window passes its share of the week.
+cost. Usage is read once at each step boundary and rounded.
 
-The 50% stop is checked between steps, so a step can run past it: an Opus build can take
-about 20% of the 5-hour window in one session, which still leaves room. The weekly window is
-the real limit on how much Relay gets done. Raising the 5-hour stop for a run is an exception
-for getting a piece over a line, not a setting to keep.
+A step starts only if the 5-hour window plus the points it's expected to take stays under
+80%. The expected points are by model and effort, from M2's medians (`EXPECTED_POINTS` in
+`relay.mjs`). The weekly window must also be under its share of the week. A 5-hour stop logs
+when the window resets and starts a `wait` run, which sleeps until then and starts a crew
+run, so a stop costs the window, not the schedule's lateness. The weekly window is the real
+limit on how much Relay gets done. The owner's own sessions share both windows.
 
 ## The board
 
@@ -138,7 +139,7 @@ with Status first, so one that fails doesn't stop the rest:
 | Step | Single select | spec, spec-review, build, review |
 | Model | Single select | haiku, sonnet, opus |
 | Effort | Single select | low, medium, high |
-| Attempts, List $, Minutes, Points, 5-hour points, Weekly points | Number | |
+| Attempts (sessions run), List $, Minutes, Points, 5-hour points, Weekly points | Number | |
 | Waiting on | Text | Set on a piece: "5-hour usage, until 14:20", "weekly usage, until Thu 09:00", "your answer", "your merge" |
 
 The board is for watching. The retro reads the step blocks, which carry the same figures.
@@ -150,7 +151,7 @@ table grouped by parent issue, summing List $ and the points.
 | File | Written by |
 |---|---|
 | `relay.mjs`, `token.mjs`, `usage.mjs`, tests | Claude Code sessions, by hand |
-| `prompts/*.md` | The owner. How the flow works, for the sessions in it |
+| `prompts/*.md` | The owner. How the flow works, for the sessions in it. `retro.md` is for the planning sessions after a milestone |
 | `specs/<n>/` | Spec and spec-review sessions, on the piece's branch |
 | `runs/` | The crew and sessions: prompts, transcripts, `result.json`. Not committed |
 
@@ -159,7 +160,9 @@ table grouped by parent issue, summing List $ and the points.
 ## Running it
 
 A run starts every six hours (`schedule` in `.github/workflows/relay.yml`), from Actions →
-relay → Run workflow, or from `/relay run`, `/relay retry` or a reply to a blocked step. The
+relay → Run workflow, from `/relay run`, `/relay retry` or a reply to a blocked step, or
+when a `wait` run's window resets. The crew refuses to start a session while the branch
+tracks anything under `relay/runs/`. The
 `relay` environment holds `RELAY_APP_ID`, `RELAY_APP_KEY`, `CLAUDE_CODE_OAUTH_TOKEN` and, for
 the board, `RELAY_BOARD_TOKEN`.
 
@@ -168,4 +171,7 @@ and model a session ran on. If a session never sends the init frame the crew
 reads (the CLI's stream-json changed, or it failed to start), the run stops without counting
 an attempt, and the Relay log issue says why.
 
-Not built yet: the retro after a milestone, milestone play checks, tags and releases.
+When a piece closes the last open issue of a milestone titled `M<n>`, the crew tags main
+`m<n>`.
+
+Not built yet: the `play` step and milestone play checks, and releases.

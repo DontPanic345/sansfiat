@@ -2,4 +2,5 @@
 
 Your brief is the job: build what it says, with its tests, and leave every check passing
 after your last edit. When the brief or the spec turns out wrong, correct them in your
-commit and say so in your summary, since later steps read them.
+commit and say so in your summary, since later steps read them. Do only your step's work:
+the next steps are other sessions'.
