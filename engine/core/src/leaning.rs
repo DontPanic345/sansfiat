@@ -4,9 +4,9 @@
 //! once that reaches `LEANING.join`.
 
 use crate::data::*;
-use crate::market::Basket;
-use crate::units::take;
-use crate::world::{EventKind, Phase, World};
+use crate::events::{Event, EventKind};
+use crate::market::{take, Basket};
+use crate::world::{Phase, World};
 
 /// The leaning a gift of `g` food buys a clan of `people`: `v × LEANING.gift × ln(1 + g /
 /// (LEANING.gift_scale × people))`, where `v` is `LEANING.starving` for a starving clan, else 1.
@@ -76,7 +76,7 @@ pub fn lean(w: &mut World) {
         c.leaning.clear();
         let home = c.home;
         w.civs.get_mut(&civ).unwrap().joined += 1;
-        w.civ_clan_event(EventKind::ClanJoined, home, civ, id);
+        w.emit(Event::new(EventKind::ClanJoined, home).civ(civ).clan(id));
         let name = w.civs[&civ].name.clone();
         w.note(id, format!("joined {name}: its leaning reached {lean:.2}"));
         w.note(civ, format!("clan {id} joined it"));

@@ -3,20 +3,24 @@
 //! civ; the civ keeps one store, which its fed clans levy into and which spoils and is capped.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::actors::{walk_cost, Route};
+use crate::actors::{walk_cost, Actor, Route};
 use crate::data::*;
-use crate::land::{cost_map, is_hearth, neighbours, passable, path};
+use crate::events::{Event, EventKind};
+use crate::land::{cost_map, is_hearth, neighbours, passable, path, steps};
 use crate::map;
 use crate::market::Basket;
 use crate::markets::reach;
 use crate::units::{self, Counters};
-use crate::world::{EventKind, Phase, World};
+use crate::world::{Phase, World};
 
+/// A civ. Its store is its actor's (`Deref` to `Actor`), so it spoils as every actor does; its
+/// JSON is one flat object (see `CivFlat`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(from = "CivFlat", into = "CivFlat")]
 pub struct Civ {
     pub id: u32,
     pub name: String,
@@ -27,38 +31,123 @@ pub struct Civ {
     pub capital: usize,
     /// The turn it was founded.
     pub founded: u32,
-    /// Every good the civ holds.
-    pub store: Basket,
+    /// The civ as an actor: its store, with home the capital.
+    pub actor: Actor,
     /// Goods cut by the cap last turn.
     pub lost: f64,
     /// The civ's own clan: its home is the capital and stays there. If it goes, the civ's biggest
     /// clan takes its place.
-    #[serde(default)]
     pub clan: u32,
     /// What its army has done, kept here so it outlives any one camp.
-    #[serde(default)]
     pub army: Counters,
     /// The food the player has set it to keep; `None` is the default (see `keep`).
-    #[serde(default)]
     pub keep: Option<f64>,
     /// The most food it gives a turn to unaligned clans at its market.
-    #[serde(default)]
     pub gift: f64,
     /// Food it posted to its market's clearing last turn.
-    #[serde(default)]
     pub posted: f64,
     /// Food it gave last turn.
-    #[serde(default)]
     pub given: f64,
     /// Clans that have joined it since founding.
-    #[serde(default)]
     pub joined: u32,
     /// Food it has given since founding.
-    #[serde(default)]
     pub gifted: f64,
     /// The tiles the civ has revealed: their hidden trail costs are known to it.
-    #[serde(default)]
     pub revealed: BTreeSet<usize>,
+}
+
+impl Deref for Civ {
+    type Target = Actor;
+    fn deref(&self) -> &Actor {
+        &self.actor
+    }
+}
+
+impl DerefMut for Civ {
+    fn deref_mut(&mut self) -> &mut Actor {
+        &mut self.actor
+    }
+}
+
+/// A civ's JSON: the fields a civ has always written, in that order. `store` is the actor's, and
+/// the civ's home is its `capital`, so the actor is built from those two when the civ is read.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CivFlat {
+    id: u32,
+    name: String,
+    color: String,
+    market: u32,
+    capital: usize,
+    founded: u32,
+    store: Basket,
+    lost: f64,
+    #[serde(default)]
+    clan: u32,
+    #[serde(default)]
+    army: Counters,
+    #[serde(default)]
+    keep: Option<f64>,
+    #[serde(default)]
+    gift: f64,
+    #[serde(default)]
+    posted: f64,
+    #[serde(default)]
+    given: f64,
+    #[serde(default)]
+    joined: u32,
+    #[serde(default)]
+    gifted: f64,
+    #[serde(default)]
+    revealed: BTreeSet<usize>,
+}
+
+impl From<Civ> for CivFlat {
+    fn from(c: Civ) -> Self {
+        CivFlat {
+            id: c.id,
+            name: c.name,
+            color: c.color,
+            market: c.market,
+            capital: c.capital,
+            founded: c.founded,
+            store: c.actor.store,
+            lost: c.lost,
+            clan: c.clan,
+            army: c.army,
+            keep: c.keep,
+            gift: c.gift,
+            posted: c.posted,
+            given: c.given,
+            joined: c.joined,
+            gifted: c.gifted,
+            revealed: c.revealed,
+        }
+    }
+}
+
+impl From<CivFlat> for Civ {
+    fn from(f: CivFlat) -> Self {
+        Civ {
+            id: f.id,
+            name: f.name,
+            color: f.color,
+            market: f.market,
+            capital: f.capital,
+            founded: f.founded,
+            actor: Actor { store: f.store, ..Actor::new(f.capital, 0.0) },
+            lost: f.lost,
+            clan: f.clan,
+            army: f.army,
+            keep: f.keep,
+            gift: f.gift,
+            posted: f.posted,
+            given: f.given,
+            joined: f.joined,
+            gifted: f.gifted,
+            revealed: f.revealed,
+        }
+    }
 }
 
 /// At founding, each clan going to a festival that isn't a capital's switches to the capital
@@ -90,10 +179,6 @@ fn switch_to_capitals(w: &mut World) {
     }
 }
 
-fn steps(w: &World, a: usize, b: usize) -> i32 {
-    w.tiles[a].hex().distance(w.tiles[b].hex())
-}
-
 /// Founding, once, as the pre-game ends: a civ on each centre's site market (the k-th takes
 /// `CIVS[k]`), clans in reach joining the nearest, a civ with no clan taking the nearest unaligned
 /// one, each civ's own clan, and the phase `Choose`. Draws no random numbers.
@@ -113,7 +198,7 @@ pub fn found(w: &mut World) {
             market: mid,
             capital,
             founded: w.turn,
-            store: CIV.endowment,
+            actor: Actor { store: CIV.endowment, ..Actor::new(capital, 0.0) },
             lost: 0.0,
             clan: 0,
             army: Counters::default(),
@@ -126,7 +211,7 @@ pub fn found(w: &mut World) {
             gifted: 0.0,
         };
         w.civs.insert(id, civ);
-        w.civ_event(EventKind::CivFounded, capital, id, Some(mid));
+        w.emit(Event::new(EventKind::CivFounded, capital).civ(id).market(mid));
         owns.push((id, centre_clans.get(k).copied().flatten().filter(|c| w.clans.contains_key(c))));
     }
 
@@ -238,7 +323,7 @@ pub fn tile_civ(w: &World, i: usize) -> Option<u32> {
 /// The civ tile `i` counts for in a camp's line: the civ whose camp holds it, else its land's
 /// (`tile_civ`). Clans' claims, forage and pillage, and the AI's post read land without holding.
 pub fn holder(w: &World, i: usize) -> Option<u32> {
-    w.units.values().find(|u| u.held.contains(&i)).map(|u| u.civ).or_else(|| tile_civ(w, i))
+    w.units.values().find(|u| u.held().contains(&i)).map(|u| u.civ).or_else(|| tile_civ(w, i))
 }
 
 /// Every tile whose civ is `civ` (see `tile_civ`), sorted.
@@ -342,16 +427,15 @@ pub fn upkeep(w: &mut World) {
     repair(w);
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     for id in ids {
-        let mut store = w.civs[&id].store.map(|v| v * (1.0 - CLAN.spoilage));
-        let total: f64 = store.iter().sum();
+        let civ = w.civs.get_mut(&id).unwrap();
+        civ.spoil();
+        let total: f64 = civ.store.iter().sum();
         let mut lost = 0.0;
         if total > CIV.store_cap {
             let keep = CIV.store_cap / total;
-            store = store.map(|v| v * keep);
+            civ.store = civ.store.map(|v| v * keep);
             lost = total - CIV.store_cap;
         }
-        let civ = w.civs.get_mut(&id).unwrap();
-        civ.store = store;
         civ.lost = lost;
         if lost > 0.0 {
             w.note(id, "its store is over its cap: food is lost".to_string());

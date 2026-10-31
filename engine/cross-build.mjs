@@ -1,7 +1,7 @@
 // Prints "<turn> <digest>" for turn 0 and after each turn, from the wasm build under Node.
 // Usage: node cross-build.mjs <seed> <radius> <turns> [lead]. Needs www/pkg (./build-web.sh).
-// With `lead` it plays the scripted game of `sansfiat digest --lead` (see lead() below); without it,
-// it watches at the pick.
+// With `lead` it plays the scripted game of `sansfiat digest --lead`, which lives in core/src/script.rs
+// and runs through `sim.lead_orders()`; without it, it watches at the pick.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -12,84 +12,10 @@ initSync({ module: readFileSync(`${here}www/pkg/web_bg.wasm`) });
 const [seed, radius, turns] = process.argv.slice(2, 5).map(Number);
 const lead = process.argv[5] === 'lead';
 
-// The scripted game, between turns and before each endTurn (the same rule as the CLI's
-// lead_orders). `pick` is the turn chooseCiv was acted, and n the turns since.
-//   1. At the pick: lead the lowest civ id.
-//   2. In the main game, when n > 0 and n % 20 == 0: raise one warrior (a refusal is ignored).
-//   3. When n == 30: setSwitches both off; when n == 40: both on. When n > 0 and n % 25 == 0: resupply.
-//   4. If the player's camp has no dest: moveCamp to the first accepted of the other civs' capitals
-//      in civ id order, then its own capital.
-//   5. When n == 60: disband one warrior (ignored without a camp).
-//   6. When n == 10: setGift twice the default (2 * LEANING.gift_default); when n == 50: setKeep 5;
-//      when n == 70: setKeep null.
-//   7. When n == 2: the scout searches from the capital for the first forest or hills tile by index
-//      seven steps out (ignored when there is none).
-//   8. When n == 45, if there is a camp: moveCamp to its own tile (it halts), then zone over the first
-//      people - 1 tiles of its line (the capital left out; a refusal is ignored). Rule 4 rests while
-//      45 <= n < 55, so the zone spreads and is held.
-// The state is read only on the pick turn and the turns after it (the camp's dest needs it).
-const GIFT_DEFAULT = 2.0; // LEANING.gift_default
-let pick = null;
-const act = (a) => {
-  try {
-    sim.act(JSON.stringify(a));
-    return true;
-  } catch {
-    return false;
-  }
-};
-const byId = (o) => Object.values(o).sort((a, b) => a.id - b.id);
-function leadOrders(turn) {
-  if (sim.phase() === 'choose') {
-    const first = byId(JSON.parse(sim.state()).civs)[0];
-    act({ type: 'chooseCiv', civ: first.id });
-    pick = turn;
-  }
-  if (pick === null || sim.phase() !== 'main') return;
-  const n = turn - pick;
-  if (n > 0 && n % 20 === 0) act({ type: 'raise', n: 1 });
-  if (n === 30) act({ type: 'setSwitches', forage: false, supply: false });
-  if (n === 40) act({ type: 'setSwitches', forage: true, supply: true });
-  if (n > 0 && n % 25 === 0) act({ type: 'resupply' });
-  const state = JSON.parse(sim.state());
-  const me = state.player;
-  const civs = byId(state.civs);
-  const targets = civs.filter((c) => c.id !== me).map((c) => c.capital).concat(state.civs[me].capital);
-  if (n === 2) {
-    const layout = JSON.parse(sim.layout());
-    const cap = state.civs[me].capital;
-    const dist = (a, b) => {
-      const dq = layout.q[a] - layout.q[b];
-      const dr = layout.r[a] - layout.r[b];
-      return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
-    };
-    const to = layout.terrain.findIndex((t, i) => (t === 3 || t === 4) && dist(i, cap) === 7);
-    if (to >= 0) act({ type: 'setRoute', from: cap, to });
-  }
-  if (!(n >= 45 && n < 55) && byId(state.units).some((u) => u.civ === me && u.dest === null && u.kind === 'camp')) {
-    for (const to of targets) if (act({ type: 'moveCamp', to })) break;
-  }
-  if (n === 45) {
-    const camp = byId(state.units).find((u) => u.civ === me);
-    if (camp) {
-      act({ type: 'moveCamp', to: camp.home });
-      const line = JSON.parse(sim.view()).units[camp.id].line;
-      if (line) {
-        const capital = state.civs[me].capital;
-        const k = Math.max(0, Math.floor(camp.people) - 1);
-        act({ type: 'zone', tiles: line.path.filter((t) => t !== capital).slice(0, k) });
-      }
-    }
-  }
-  if (n === 60) act({ type: 'disband', n: 1 });
-  if (n === 10) act({ type: 'setGift', food: 2 * GIFT_DEFAULT });
-  if (n === 50) act({ type: 'setKeep', food: 5 });
-  if (n === 70) act({ type: 'setKeep', food: null });
-}
 const sim = new Sim(seed, radius);
 const lines = [`0 ${sim.digest()}`];
 for (let turn = 1; turn <= turns; turn++) {
-  if (lead) leadOrders(turn - 1);
+  if (lead) sim.lead_orders();
   // As native World::run does at the pick: watch.
   else if (sim.phase() === 'choose') sim.act('{"type":"chooseCiv","civ":null}');
   sim.act('{"type":"endTurn"}');

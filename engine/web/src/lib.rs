@@ -1,5 +1,6 @@
 use engine::data::{CIV, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
+use engine::script::Lead;
 use engine::units::UnitKind;
 use engine::{civs, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
 use std::collections::BTreeMap;
@@ -9,25 +10,33 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub struct Sim {
     world: World,
+    lead: Lead,
 }
 
 #[wasm_bindgen]
 impl Sim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, radius: i32) -> Sim {
-        Sim { world: World::new(Config { seed, radius, army: true, gifts: true, zone: true }) }
+        Sim { world: World::new(Config { seed, radius, army: true, gifts: true, zone: true }), lead: Lead::default() }
     }
 
     /// Rebuilds the world from a save's JSON.
     pub fn load(save: &str) -> Result<Sim, String> {
         let save: Save = serde_json::from_str(save).map_err(|e| e.to_string())?;
-        Ok(Sim { world: World::replay(&save)? })
+        Ok(Sim { world: World::replay(&save)?, lead: Lead::default() })
     }
 
-    /// Applies an action given as JSON, such as `{"type":"endTurn"}`. `Err` says why not.
+    /// Applies an action given as JSON, such as `{"type":"endTurn"}`, or a unit's order, such as
+    /// `{"type":"order","civ":1,"order":{"type":"move","unit":12,"to":5}}`. `Err` says why not.
     pub fn act(&mut self, action: &str) -> Result<(), String> {
         let action: Action = serde_json::from_str(action).map_err(|e| e.to_string())?;
         self.world.act(action)
+    }
+
+    /// The scripted game, for the cross-build check and scripts: gives the led civ's orders for the
+    /// turn, as `core/src/script.rs` does (the caller then ends the turn).
+    pub fn lead_orders(&mut self) {
+        self.lead.orders(&mut self.world);
     }
 
     /// The whole world as JSON.
@@ -51,7 +60,7 @@ impl Sim {
             "flow": col(&|t| t.flow.map_or(-1, |f| f as i64).into()),
             "lake": col(&|t| u8::from(t.lake).into()),
             "flood": col(&|t| u8::from(t.flood).into()),
-            "zone": col(&|t| (t.zone as u8).into()),
+            "zone": col(&|t| (t.country as u8).into()),
             "pass": col(&|t| u8::from(t.pass).into()),
             "wild_grain": col(&|t| t.wild_grain.into()),
             "trail_cost": col(&|t| t.trail_cost.into()),
@@ -152,7 +161,7 @@ impl Sim {
                 row["cut_at"] = units::cut_at(w, u.id)
                     .map(|(path, at, by)| serde_json::json!({ "path": path, "at": at, "by": by }))
                     .into();
-                if let (UnitKind::Scout, Some((from, to))) = (u.kind, u.route) {
+                if let (UnitKind::Scout, Some((from, to))) = (u.kind(), u.scout().and_then(|s| s.route)) {
                     let plan = units::route_plan(w, u.civ, from, to);
                     let way = |p: &Option<(Vec<usize>, f64)>| p.as_ref().map(|(path, cost)| serde_json::json!({ "path": path, "cost": cost }));
                     row["plan"] = serde_json::json!({ "known": way(&plan.known), "possible": way(&plan.possible), "candidates": plan.candidates });

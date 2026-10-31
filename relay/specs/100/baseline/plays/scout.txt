@@ -1,0 +1,2 @@
+{"scout":720,"capital":166,"target":58,"route":[166,58],"known":11,"possible":7,"steps":7}
+{"turns":2,"routeState":"found","shotTrail":true,"turn":285,"trails":290,"scout":{"people":2,"hungry":0,"tile":168}}

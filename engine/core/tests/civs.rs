@@ -1,29 +1,10 @@
 mod common;
 
 use common::*;
-use engine::civs::{self, cards, tile_civ};
+use engine::civs::{self, cards, tile_civ, Civ};
 use engine::clans::eat;
 use engine::data::*;
-use engine::{Action, Config, End, EventKind, Phase, Save, World};
-
-/// Three markets on the big world, 10 or more steps apart: Red's at (-5, 0), Blue's at (5, 0)
-/// and Gold's at (0, -10).
-fn markets3(w: &mut World) -> [u32; 3] {
-    [open(w, at_big(-5, 0)), open(w, at_big(5, 0)), open(w, at_big(0, -10))]
-}
-
-/// Ends the pre-game on `centres` by hand, as the end step would, and founds the civs.
-fn found(w: &mut World, centres: &[u32]) {
-    w.end = Some(End {
-        turn: w.turn,
-        centres: centres.to_vec(),
-        clans: Vec::new(),
-        cover: 1.0,
-        by_limit: false,
-        topped_up: Vec::new(),
-    });
-    civs::found(w);
-}
+use engine::{Action, Config, EventKind, Phase, Save, World};
 
 /// A big world with three markets, ended by hand: the civs in `End.centres` order.
 fn founded() -> (World, [u32; 3]) {
@@ -419,4 +400,22 @@ fn at_founding_a_clan_as_close_to_a_capital_as_its_festival_switches_to_it() {
     assert_eq!(w.clans[&near].market, Some(fest));
     // Traders are counted again as the clans now stand.
     assert_eq!((w.markets[&red.market].traders, w.markets[&fest].traders), (2, 1));
+}
+
+#[test]
+fn a_civ_serialises_its_store_where_it_always_was_and_reads_back() {
+    const KEYS: [&str; 17] = [
+        "id", "name", "color", "market", "capital", "founded", "store", "lost", "clan", "army", "keep", "gift",
+        "posted", "given", "joined", "gifted", "revealed",
+    ];
+    let (w, ids) = founded();
+    let civ = &w.civs[&ids[0]];
+    let json = serde_json::to_string(civ).unwrap();
+    assert_eq!(keys_in_order(&json), KEYS.map(String::from), "{json}");
+    let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(v["store"], serde_json::to_value(civ.store).unwrap());
+    // The actor is read from the capital (its home) and the store, and it writes back what it read.
+    let back: Civ = serde_json::from_str(&json).unwrap();
+    assert_eq!((back.home, back.store), (civ.capital, civ.store));
+    assert_eq!(serde_json::to_string(&back).unwrap(), json);
 }

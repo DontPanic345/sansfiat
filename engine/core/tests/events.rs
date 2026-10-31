@@ -3,7 +3,7 @@ mod common;
 use common::*;
 use engine::clans::eat;
 use engine::data::*;
-use engine::land::hold;
+use engine::land::tend;
 use engine::markets::fade;
 use engine::pregame::check_end;
 use engine::stats::digest;
@@ -16,7 +16,7 @@ fn run(seed: u32, turns: u32) -> World {
     w
 }
 
-fn kinds(w: &World) -> Vec<EventKind> {
+fn all_kinds(w: &World) -> Vec<EventKind> {
     w.events.iter().map(|e| e.kind).collect()
 }
 
@@ -40,13 +40,13 @@ fn every_kind_fires_in_real_runs() {
     // Seed 3 ends on the turn limit with a top-up; the others end on their own.
     for seed in [1, 3, 5] {
         let w = run(seed, 500);
-        for k in kinds(&w) {
+        for k in all_kinds(&w) {
             // Hungry and starved warriors also show up in these runs; units.rs holds those.
             if let Some(p) = all.iter().position(|&a| a == k) {
                 seen[p] += 1;
             }
         }
-        assert_eq!(kinds(&w).iter().filter(|&&k| k == PregameEnded).count(), 1, "seed {seed}: one end");
+        assert_eq!(all_kinds(&w).iter().filter(|&&k| k == PregameEnded).count(), 1, "seed {seed}: one end");
     }
     for (k, n) in all.iter().zip(&seen) {
         assert!(*n > 0, "{k:?} never fired over three small runs");
@@ -107,18 +107,18 @@ fn a_tile_reaching_full_tame_is_a_hearth_event() {
     put(&mut w, &[at(0, 0), at(1, 0)], 3.0);
     for t in [at(0, 0), at(1, 0)] {
         w.tiles[t].wild_grain = 4.0;
-        w.tiles[t].held = TENDING.after;
+        w.tiles[t].claim_run = TENDING.after;
     }
     w.tiles[at(0, 0)].tame = TENDING.tame_turns - 1;
     w.tiles[at(1, 0)].tame = 3;
     w.turn = 7;
-    hold(&mut w);
+    tend(&mut w);
     assert_eq!(w.events.len(), 1);
     let e = &w.events[0];
     assert_eq!((e.kind, e.tile, e.turn, e.clan), (EventKind::HearthTamed, at(0, 0), 7, None));
     assert_eq!(e.text(&w), "A hearth is tamed at (0, 0)");
     // Already a hearth: no second event.
-    hold(&mut w);
+    tend(&mut w);
     assert_eq!(w.events.len(), 1);
 }
 
@@ -219,7 +219,7 @@ fn a_clan_that_becomes_a_centre_is_announced_once() {
         let tiles = [at(5, 0), at(-5, 5), at(0, -5)];
         let mut ids = [0; 3];
         for k in 0..3 {
-            ids[k] = centre(&mut w, tiles[k]);
+            ids[k] = centre(&mut w, tiles[k], 4.0).0;
         }
         (w, ids)
     };
@@ -237,7 +237,7 @@ fn a_clan_that_becomes_a_centre_is_announced_once() {
 fn a_centre_that_dropped_out_and_is_topped_up_is_announced_once() {
     let mut w = big();
     w.turn = 40;
-    let clan = centre(&mut w, at_big(8, 0));
+    let clan = centre(&mut w, at_big(8, 0), 4.0).0;
     let a = w.clans[&clan].market.unwrap();
     let b = open(&mut w, at_big(-8, 8));
     let c = open(&mut w, at_big(0, -8));
@@ -254,17 +254,4 @@ fn a_centre_that_dropped_out_and_is_topped_up_is_announced_once() {
     for id in [b, c] {
         assert_eq!(formed.iter().filter(|e| e.market == Some(id)).count(), 1, "market {id} announced once");
     }
-}
-
-/// A centre clan at `tile`: a hearth on its home, settled `centre_age` turns, going to a festival
-/// on its home that had `centre_clans` traders last turn.
-fn centre(w: &mut World, tile: usize) -> u32 {
-    hearth(w, tile, 4.0);
-    let c = put(w, &[tile], 4.0);
-    let m = open(w, tile);
-    w.markets.get_mut(&m).unwrap().traders = PREGAME.centre_clans;
-    let clan = w.clans.get_mut(&c).unwrap();
-    clan.market = Some(m);
-    clan.since = PREGAME.centre_age;
-    c
 }

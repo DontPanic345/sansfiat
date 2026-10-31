@@ -1,12 +1,15 @@
 //! The scout: a civ's route search over known and possible costs, its reveals and trails, and its
 //! feeding. The maps are the real pre-game's, with their land painted into the case a test needs.
 
+mod common;
+
+use common::{led_order, led_scout};
 use engine::data::*;
 use engine::hex::{Hex, DIRS};
 use engine::map::index;
 use engine::stats::digest;
 use engine::units::{self, UnitKind};
-use engine::world::{Action, EventKind, Phase};
+use engine::{Action, EventKind, Order, Phase};
 use engine::{Config, World};
 
 const RADIUS: i32 = 16;
@@ -80,7 +83,7 @@ fn has_event(w: &World, kind: EventKind) -> bool {
 fn until_route_done(w: &mut World, max: u32) -> u32 {
     for turn in 1..=max {
         w.act(Action::EndTurn).unwrap();
-        if scout(w).route.is_none() {
+        if scout(w).scout().unwrap().route.is_none() {
             return turn;
         }
     }
@@ -92,10 +95,10 @@ fn the_scout_is_made_at_the_capital_with_its_packs_from_the_store() {
     let w = lead(2);
     let me = w.player.unwrap();
     let (cap, _) = capital(&w);
-    let scouts: Vec<_> = w.units.values().filter(|u| u.kind == UnitKind::Scout).collect();
+    let scouts: Vec<_> = w.units.values().filter(|u| u.kind() == UnitKind::Scout).collect();
     assert_eq!(scouts.len(), w.civs.len(), "one scout per civ");
     let s = units::scout(&w, me).unwrap();
-    assert_eq!((s.home, s.people, s.route), (cap, SCOUT.people as f64, None));
+    assert_eq!((s.home, s.people, s.scout().unwrap().route), (cap, SCOUT.people as f64, None));
     assert!(units::camp(&w, me).is_some_and(|c| c.id != s.id), "the scout is not the camp");
 }
 
@@ -134,7 +137,7 @@ fn a_route_across_rough_country_is_searched_and_its_trails_built() {
         let terrain = if k % 2 == 0 { FOREST } else { HILLS };
         paint(&mut w, i, terrain, Some(1.0), None);
     }
-    w.act(Action::SetRoute { from: cap, to: line[5] }).unwrap();
+    w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: line[5] })).unwrap();
     let turns = until_route_done(&mut w, 20);
     assert!(turns <= 20, "a 6-tile route within 20 turns, took {turns}");
     let built: Vec<usize> = line.iter().copied().filter(|&i| w.tiles[i].trail).collect();
@@ -165,7 +168,7 @@ fn a_sealed_scout_searches_the_range_from_inside_the_valley() {
     let line = open_ray(&w, cap, 6);
     let (pass, target) = (line[2], line[5]);
     sealed_valley(&mut w, Some(pass));
-    w.act(Action::SetRoute { from: cap, to: target }).unwrap();
+    w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     // The scout reveals the range from where it stands, inside the ring, and only leaves it once the
     // pass is built and the walk out is open.
     for _ in 0..40 {
@@ -174,7 +177,7 @@ fn a_sealed_scout_searches_the_range_from_inside_the_valley() {
         if !w.tiles[pass].trail {
             assert!(s.home == cap || w.tiles[s.home].hex().distance(ch) < 3, "it searched from outside the valley");
         }
-        if s.route.is_none() {
+        if s.scout().unwrap().route.is_none() {
             break;
         }
     }
@@ -189,7 +192,7 @@ fn a_sealed_valley_gets_its_pass_built_and_its_route_found() {
     let line = open_ray(&w, cap, 6);
     let (pass, target) = (line[2], line[5]);
     sealed_valley(&mut w, Some(pass));
-    w.act(Action::SetRoute { from: cap, to: target }).unwrap();
+    w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     let turns = until_route_done(&mut w, 40);
     assert!(turns <= 40, "a mountain pass within 40 turns, took {turns}");
     assert!(w.tiles[pass].trail, "the pass is built");
@@ -206,7 +209,7 @@ fn no_route_can_exist_through_a_wall_no_mountain_of_which_can_be_bridged() {
     let (cap, _) = capital(&w);
     let target = open_ray(&w, cap, 6)[5];
     sealed_valley(&mut w, None);
-    w.act(Action::SetRoute { from: cap, to: target }).unwrap();
+    w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     until_route_done(&mut w, 60);
     assert!(has_event(&w, EventKind::ScoutNoRoute), "the scout says no route can exist");
     assert!(!w.tiles.iter().any(|t| t.trail && t.terrain == MOUNTAIN), "no pass is built");
@@ -251,7 +254,7 @@ fn an_idle_scout_at_the_capital_neither_forages_nor_starves() {
     let (cap, _) = capital(&w);
     w.run(50);
     let s = scout(&w);
-    assert_eq!((s.home, s.route, s.hungry), (cap, None, 0));
+    assert_eq!((s.home, s.scout().unwrap().route, s.hungry), (cap, None, 0));
     assert_eq!(s.people, SCOUT.people as f64);
     assert!(!has_event(&w, EventKind::ScoutHungry) && !has_event(&w, EventKind::ScoutStarved));
     assert!(w.events.iter().all(|e| e.kind != EventKind::CampForaged || e.unit != Some(s.id)));
@@ -262,11 +265,14 @@ fn a_route_order_replays_to_the_same_world() {
     let mut w = lead(2);
     let (cap, _) = capital(&w);
     let target = open_ray(&w, cap, 6)[5];
-    w.act(Action::SetRoute { from: cap, to: target }).unwrap();
+    w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     w.run(15);
-    w.act(Action::ClearRoute).expect("the scout is still there");
+    w.act(led_order(&w, Order::ClearRoute { unit: led_scout(&w) })).expect("the scout is still there");
     w.run(5);
     let again = World::replay(&w.save()).unwrap();
     assert_eq!(digest(&again), digest(&w));
-    assert!(w.act(Action::SetRoute { from: cap, to: cap }).is_err(), "a route needs two tiles");
+    assert!(
+        w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: cap })).is_err(),
+        "a route needs two tiles"
+    );
 }

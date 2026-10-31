@@ -12,10 +12,12 @@ use serde::{Deserialize, Serialize};
 use crate::civs::{self, Civ};
 use crate::clans::{self, Clan};
 use crate::data::{Config, CIV, NOTES};
+use crate::events::{Event, EventKind};
 use crate::land;
 use crate::leaning;
 use crate::map::{self, Tile};
 use crate::markets::{self, Market};
+use crate::orders::Order;
 use crate::pregame::{self, End};
 use crate::units::{self, Unit};
 
@@ -77,268 +79,6 @@ pub enum Phase {
     Main,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EventKind {
-    ClanDivided,
-    ClanStarving,
-    ClanMoved,
-    ClanMerged,
-    MarketFormed,
-    MarketFaded,
-    HearthTamed,
-    CentreFormed,
-    PregameEnded,
-    CivFounded,
-    CampRaised,
-    WarriorsRaised,
-    WarriorsDisbanded,
-    CampResupplied,
-    CampCutOff,
-    CampHungry,
-    WarriorsStarved,
-    CampForaged,
-    CampPillaged,
-    ScoutRouteFound,
-    ScoutNoRoute,
-    ScoutTrailBuilt,
-    ScoutPassFound,
-    ScoutBlocked,
-    ScoutHungry,
-    ScoutStarved,
-    ClanJoined,
-    Deployed,
-    Held,
-    LineCut,
-    PeopleLeft,
-}
-
-/// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
-/// zone's size (`Deployed`, `Held`) or the civ whose army cut a line (`LineCut`); `unit` is for units.
-/// `alert` marks the events the led civ must hear of as they start (`flag_alerts`); the page and
-/// the CLI read it from the JSON as they read the rest.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Event {
-    pub turn: u32,
-    pub kind: EventKind,
-    pub tile: usize,
-    pub clan: Option<u32>,
-    pub market: Option<u32>,
-    pub other: Option<u32>,
-    pub civ: Option<u32>,
-    pub unit: Option<u32>,
-    /// A route's cost, for the scout's route events.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cost: Option<f64>,
-    /// A number of people, for `PeopleLeft`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub amount: Option<f64>,
-    #[serde(default)]
-    pub alert: bool,
-}
-
-impl Event {
-    /// The one wording of an event, for the CLI and the page.
-    pub fn text(&self, w: &World) -> String {
-        let h = w.tiles[self.tile].hex();
-        let at = format!("({}, {})", h.q, h.r);
-        let clan = self.clan.unwrap_or(0);
-        let market = self.market.unwrap_or(0);
-        match self.kind {
-            EventKind::ClanDivided => {
-                format!("Clan {clan} divides; clan {} settles at {at}", self.other.unwrap_or(0))
-            }
-            EventKind::ClanStarving => format!("Clan {clan} is starving"),
-            EventKind::ClanMerged => format!("Clan {clan} merges into clan {}", self.other.unwrap_or(0)),
-            EventKind::ClanMoved => format!("Clan {clan} moves on to {at}"),
-            EventKind::MarketFormed => format!("A market forms at {at}"),
-            EventKind::MarketFaded => format!("Market {market} fades"),
-            EventKind::HearthTamed => format!("A hearth is tamed at {at}"),
-            EventKind::CentreFormed => match self.clan {
-                Some(c) => format!("Clan {c} becomes a centre"),
-                None => format!("Market {market} becomes a centre"),
-            },
-            EventKind::CivFounded => {
-                let name = self.civ.and_then(|id| w.civs.get(&id)).map_or("A civ", |c| c.name.as_str());
-                format!("{name} is founded at {at}, on market {market}")
-            }
-            EventKind::CampRaised => format!("{} raises a camp at {at}", self.civ_name(w)),
-            EventKind::WarriorsRaised => format!("{} raises more warriors for its camp", self.civ_name(w)),
-            EventKind::WarriorsDisbanded | EventKind::WarriorsStarved => {
-                let why = if self.kind == EventKind::WarriorsStarved { " from hunger" } else { "" };
-                let person = match self.clan {
-                    Some(c) => format!("they rejoin clan {c}"),
-                    None => "they are lost".to_string(),
-                };
-                format!("{}'s warriors disband{why} at {at}; {person}", self.civ_name(w))
-            }
-            EventKind::CampResupplied => format!("{}'s camp at {at} is resupplied", self.civ_name(w)),
-            EventKind::CampCutOff => format!("{}'s camp at {at} is cut off from its capital", self.civ_name(w)),
-            EventKind::CampHungry => format!("{}'s camp at {at} goes hungry", self.civ_name(w)),
-            EventKind::CampForaged => format!("{}'s camp forages at {at}", self.civ_name(w)),
-            EventKind::CampPillaged => format!("{}'s camp pillages at {at}", self.civ_name(w)),
-            EventKind::ScoutRouteFound => {
-                format!("{}'s scout has its route, cost {:.1}", self.civ_name(w), self.cost.unwrap_or(0.0))
-            }
-            EventKind::ScoutNoRoute => format!("{}'s scout: no route can exist", self.civ_name(w)),
-            EventKind::ScoutTrailBuilt => format!("{}'s scout builds a trail at {at}", self.civ_name(w)),
-            EventKind::ScoutPassFound => format!("{}'s scout finds a pass at {at}", self.civ_name(w)),
-            EventKind::ScoutBlocked => format!("{}'s scout is blocked at {at}", self.civ_name(w)),
-            EventKind::ScoutHungry => format!("{}'s scout at {at} goes hungry", self.civ_name(w)),
-            EventKind::ScoutStarved => format!("{}'s scout at {at} loses a person to hunger", self.civ_name(w)),
-            EventKind::ClanJoined => format!("Clan {clan} joins {}", self.civ_name(w)),
-            EventKind::PeopleLeft => {
-                format!("{:.1} people leave {}'s clans for others", self.amount.unwrap_or(0.0), self.civ_name(w))
-            }
-            EventKind::Deployed => {
-                format!("{}'s camp at {at} deploys over {} tiles", self.civ_name(w), self.other.unwrap_or(0))
-            }
-            EventKind::Held => {
-                format!("{}'s camp at {at} holds its zone of {} tiles", self.civ_name(w), self.other.unwrap_or(0))
-            }
-            EventKind::LineCut => {
-                let by = self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str());
-                format!("{}'s camp's line is cut by {by}'s army", self.civ_name(w))
-            }
-            EventKind::PregameEnded => match &w.end {
-                Some(e) => {
-                    let n = e.centres.len();
-                    let centres = format!("{n} centre{}", if n == 1 { "" } else { "s" });
-                    if e.topped_up.is_empty() {
-                        format!("The pre-game ends: {centres}")
-                    } else {
-                        format!("The pre-game ends: {centres}, {} topped up", e.topped_up.len())
-                    }
-                }
-                None => "The pre-game ends".to_string(),
-            },
-        }
-    }
-}
-
-impl Event {
-    /// The name of the event's civ; civs never go away.
-    fn civ_name<'a>(&self, w: &'a World) -> &'a str {
-        self.civ.and_then(|id| w.civs.get(&id)).map_or("A civ", |c| c.name.as_str())
-    }
-
-    /// The event as JSON, with its wording in `text`.
-    pub fn json(&self, w: &World) -> serde_json::Value {
-        let mut v = serde_json::to_value(self).unwrap();
-        v["text"] = self.text(w).into();
-        v
-    }
-}
-
-impl World {
-    /// Records an event at the current turn.
-    pub fn event(&mut self, kind: EventKind, tile: usize, clan: Option<u32>, market: Option<u32>, other: Option<u32>) {
-        self.events.push(Event {
-            turn: self.turn,
-            kind,
-            tile,
-            clan,
-            market,
-            other,
-            civ: None,
-            unit: None,
-            cost: None,
-            amount: None,
-            alert: false,
-        });
-    }
-
-    /// Records an event about a civ, with the number of people it concerns (`PeopleLeft`), at the
-    /// current turn.
-    pub fn civ_amount_event(&mut self, kind: EventKind, tile: usize, civ: u32, amount: f64) {
-        self.events.push(Event {
-            turn: self.turn,
-            kind,
-            tile,
-            clan: None,
-            market: None,
-            other: None,
-            civ: Some(civ),
-            unit: None,
-            cost: None,
-            amount: Some(amount),
-            alert: false,
-        });
-    }
-
-    /// Records an event about a civ (and its market, if any) at the current turn.
-    pub fn civ_event(&mut self, kind: EventKind, tile: usize, civ: u32, market: Option<u32>) {
-        self.events.push(Event {
-            turn: self.turn,
-            kind,
-            tile,
-            clan: None,
-            market,
-            other: None,
-            civ: Some(civ),
-            unit: None,
-            cost: None,
-            amount: None,
-            alert: false,
-        });
-    }
-}
-
-impl World {
-    /// Records an event about a clan joining a civ, at the clan's home.
-    pub fn civ_clan_event(&mut self, kind: EventKind, tile: usize, civ: u32, clan: u32) {
-        self.events.push(Event {
-            turn: self.turn,
-            kind,
-            tile,
-            clan: Some(clan),
-            market: None,
-            other: None,
-            civ: Some(civ),
-            unit: None,
-            cost: None,
-            amount: None,
-            alert: false,
-        });
-    }
-}
-
-impl World {
-    /// Records an event about a unit of a civ (and the clan that gave or took its person).
-    pub fn unit_event(&mut self, kind: EventKind, tile: usize, civ: u32, unit: u32, clan: Option<u32>) {
-        self.events.push(Event {
-            turn: self.turn,
-            kind,
-            tile,
-            clan,
-            market: None,
-            other: None,
-            civ: Some(civ),
-            unit: Some(unit),
-            cost: None,
-            amount: None,
-            alert: false,
-        });
-    }
-
-    /// Records an event about a unit of a civ, with `other` (a zone's size, or the civ that cut it).
-    pub fn unit_event_other(&mut self, kind: EventKind, tile: usize, civ: u32, unit: u32, other: u32) {
-        self.events.push(Event {
-            turn: self.turn,
-            kind,
-            tile,
-            clan: None,
-            market: None,
-            other: Some(other),
-            civ: Some(civ),
-            unit: Some(unit),
-            cost: None,
-            amount: None,
-            alert: false,
-        });
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Action {
@@ -347,42 +87,12 @@ pub enum Action {
     ChooseCiv {
         civ: Option<u32>,
     },
-    /// Raise warriors for the camp (making it at the capital if there is none): one person from
-    /// each of up to `n` clans of the civ the player leads.
-    Raise {
-        n: u32,
+    /// An order to the civ's units, which the player leads: checked against the world and applied
+    /// by `World::order`, then logged.
+    Order {
+        civ: u32,
+        order: Order,
     },
-    /// Disband `n` warriors, or all with `None`, to the civ's own clan.
-    Disband {
-        n: Option<u32>,
-    },
-    /// Send the camp to a tile; it moves when the turn ends.
-    MoveCamp {
-        to: usize,
-    },
-    /// Spread the camp over a zone: the painted tiles (its own tile may be left out), which replace
-    /// the zone; none undeploys.
-    Zone {
-        tiles: Vec<usize>,
-    },
-    /// Set the camp's auto-forage and auto-supply.
-    SetSwitches {
-        forage: bool,
-        supply: bool,
-    },
-    /// This turn's end: put the labour left on the line.
-    Resupply,
-    /// This turn's end: forage the tile on the labour left.
-    Forage,
-    /// This turn's end: pillage the rival's tile on the labour left.
-    Pillage,
-    /// Set the scout's route: search from `from` for `to`, building trails as it goes.
-    SetRoute {
-        from: usize,
-        to: usize,
-    },
-    /// Stop the scout's search.
-    ClearRoute,
     /// Set the food the civ keeps in its store, or `None` for the default (its camp's pack).
     SetKeep {
         food: Option<f64>,
@@ -412,7 +122,7 @@ pub const TURN: &[Step] = &[
     Step { name: "civs", run: civs::upkeep },
     Step { name: "ai", run: units::ai },
     Step { name: "units", run: units::step },
-    Step { name: "hold", run: land::hold },
+    Step { name: "hold", run: land::tend },
     Step { name: "markets", run: markets::form_and_fade },
     Step { name: "end", run: pregame::check_end },
 ];
@@ -420,7 +130,7 @@ pub const TURN: &[Step] = &[
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
 /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
 /// into a different world.
-pub const SAVE_VERSION: u32 = 1;
+pub const SAVE_VERSION: u32 = 2;
 
 /// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -468,15 +178,12 @@ impl World {
             Action::ChooseCiv { .. } if self.phase != Phase::Choose => Err("there is no civ to choose now".to_string()),
             Action::ChooseCiv { civ: Some(id) } if !self.civs.contains_key(id) => Err(format!("{id} is not a civ")),
             Action::ChooseCiv { .. } => Ok(()),
-            Action::Raise { n } => units::check_raise(self, *n),
-            Action::Disband { n } => units::check_disband(self, *n),
-            Action::MoveCamp { to } => units::check_move(self, *to),
-            Action::Zone { tiles } => units::check_zone(self, tiles),
-            Action::SetSwitches { .. } | Action::Resupply => units::check_camp(self),
-            Action::Forage => units::check_take(self, false),
-            Action::Pillage => units::check_take(self, true),
-            Action::SetRoute { from, to } => units::check_route(self, *from, *to),
-            Action::ClearRoute => units::check_scout(self),
+            Action::Order { civ, order } => {
+                if units::leader(self)? != *civ {
+                    return Err("that civ is not yours".to_string());
+                }
+                self.check_order(*civ, order)
+            }
             Action::SetKeep { food: Some(f) } if !f.is_finite() || *f < 0.0 => {
                 Err("keep a number of food, 0 or more".to_string())
             }
@@ -497,33 +204,9 @@ impl World {
                 self.player = *civ;
                 self.phase = Phase::Main;
             }
-            Action::Raise { n } => {
-                let civ = self.player.expect("validated: the player leads a civ");
-                units::raise(self, civ, *n).expect("validated: a clan can give a person");
+            Action::Order { civ, order } => {
+                self.order(*civ, order.clone()).expect("validated: the order checks");
             }
-            Action::Disband { n } => {
-                let civ = self.player.expect("validated: the player leads a civ");
-                units::disband(self, civ, *n, false);
-            }
-            Action::MoveCamp { to } => {
-                let civ = self.player.expect("validated: the player leads a civ");
-                let id = units::camp(self, civ).expect("validated: there is a camp").id;
-                units::order_move(self, id, *to);
-            }
-            Action::Zone { tiles } => {
-                let civ = self.player.expect("validated: the player leads a civ");
-                let id = units::camp(self, civ).expect("validated: there is a camp").id;
-                units::set_zone(self, id, tiles);
-            }
-            Action::SetSwitches { forage, supply } => units::with_camp(self, |u| {
-                u.auto_forage = *forage;
-                u.auto_supply = *supply;
-            }),
-            Action::Resupply => units::with_camp(self, |u| u.resupply = true),
-            Action::Forage => units::with_camp(self, |u| u.forage = true),
-            Action::Pillage => units::with_camp(self, |u| u.pillage = true),
-            Action::SetRoute { from, to } => units::order_route(self, Some((*from, *to))),
-            Action::ClearRoute => units::order_route(self, None),
             Action::SetKeep { food } => {
                 let civ = self.player.expect("validated: the player leads a civ");
                 let text = match food {

@@ -9,10 +9,11 @@ use serde::{Deserialize, Serialize};
 use crate::civs;
 use crate::clans::Clan;
 use crate::data::*;
-use crate::land::{is_hearth, neighbours, passable};
-use crate::map::{Tile, Zone};
+use crate::events::{Event, EventKind};
+use crate::land::{is_hearth, neighbours, passable, steps};
+use crate::map::{Country, Tile};
 use crate::markets::{raise, Market};
-use crate::world::{EventKind, World};
+use crate::world::World;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct End {
@@ -27,10 +28,6 @@ pub struct End {
     pub by_limit: bool,
     /// The market ids added to reach `players` centres at the limit, in order; a subset of `centres`.
     pub topped_up: Vec<u32>,
-}
-
-fn steps(w: &World, a: usize, b: usize) -> i32 {
-    w.tiles[a].hex().distance(w.tiles[b].hex())
 }
 
 /// A clan settled at home `centre_age` turns, going to a festival that had `centre_clans` traders
@@ -164,7 +161,7 @@ fn plan(w: &World, centres: &[u32], label: &[usize], region: usize) -> Vec<Pick>
     let fits = |taken: &mut Vec<usize>, i: usize| {
         let ok = label[i] != usize::MAX
             && label[i] == region
-            && w.tiles[i].zone != Zone::Sealed
+            && w.tiles[i].country != Country::Sealed
             && taken.iter().all(|&k| steps(w, k, i) >= PREGAME.centre_spacing);
         if ok {
             taken.push(i);
@@ -292,7 +289,7 @@ pub fn check_end(w: &mut World) {
     for &id in &centres {
         if !w.centres_seen.contains(&id) {
             let home = w.clans[&id].home;
-            w.event(EventKind::CentreFormed, home, Some(id), None, None);
+            w.emit(Event::new(EventKind::CentreFormed, home).clan(id));
             w.note(id, "became a centre of the pre-game".to_string());
         }
     }
@@ -324,7 +321,7 @@ pub fn check_end(w: &mut World) {
         // A clan that was a centre before and dropped out of the greedy set was announced then.
         if clan.is_none_or(|id| !w.centres_seen.contains(&id)) {
             let tile = w.markets[&mid].tile;
-            w.event(EventKind::CentreFormed, tile, clan, Some(mid), None);
+            w.emit(Event::new(EventKind::CentreFormed, tile).clan(clan).market(mid));
             w.note(mid, "became a centre of the pre-game, topped up".to_string());
             if let Some(id) = clan {
                 w.note(id, "became a centre of the pre-game".to_string());
@@ -338,6 +335,6 @@ pub fn check_end(w: &mut World) {
     let cover = land_cover(w, &self::sites(w, &centres));
     let first = centres.first().map_or(0, |id| w.markets[id].tile);
     w.end = Some(End { turn: w.turn, centres, clans, cover, by_limit: !by_centres, topped_up });
-    w.event(EventKind::PregameEnded, first, None, None, None);
+    w.emit(Event::new(EventKind::PregameEnded, first));
     civs::found(w);
 }

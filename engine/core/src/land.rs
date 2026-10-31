@@ -5,8 +5,9 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap};
 
 use crate::data::*;
+use crate::events::{Event, EventKind};
 use crate::map::{self, Tile};
-use crate::world::{Event, EventKind, World};
+use crate::world::World;
 
 /// On-map neighbours of tile `i`, in `DIRS` order.
 pub fn neighbours(w: &World, i: usize) -> impl Iterator<Item = usize> + '_ {
@@ -19,6 +20,11 @@ pub fn neighbours(w: &World, i: usize) -> impl Iterator<Item = usize> + '_ {
 pub fn passable(w: &World, i: usize) -> bool {
     let t = &w.tiles[i];
     TERRAIN[t.terrain].move_cost.is_some() || (t.trail && t.trail_cost.is_some())
+}
+
+/// The steps between tiles `a` and `b` as the crow flies: the hex distance.
+pub fn steps(w: &World, a: usize, b: usize) -> i32 {
+    w.tiles[a].hex().distance(w.tiles[b].hex())
 }
 
 /// Whether a trail can be built on tile `i`: it has a hidden trail cost, and a mountain's span is
@@ -46,7 +52,7 @@ pub fn step_cost(w: &World, from: usize, to: usize) -> Option<f64> {
 
 /// Puts `labour` into a trail on tile `i`, which must be `trailable`. It is finished when its work
 /// reaches `TRAIL.work` for its terrain: then it has its trail, its work starts again from nothing
-/// and its `rest_run` is 0, so `hold` doesn't wear it away on the turn it is built. Returns whether
+/// and its `rest_run` is 0, so `tend` doesn't wear it away on the turn it is built. Returns whether
 /// it is finished.
 pub fn build_trail(w: &mut World, i: usize, labour: f64) -> bool {
     let terrain = w.tiles[i].terrain;
@@ -241,22 +247,22 @@ pub fn wear(w: &mut World) {
     }
 }
 
-/// The `hold` step, after eating: each tile counts the turns in a row it was walked, and the turns
+/// The `tend` step, after eating: each tile counts the turns in a row it was walked, and the turns
 /// in a row it wasn't. Walked `TRAIL.after` turns in a row it gets a trail; unwalked `TRAIL.fade`
 /// turns in a row the trail wears away. Holding a tile makes no trail. Each tile also counts the
 /// turns it has been held, or held by nobody: grain held `TENDING.after` turns tames a step a turn
 /// with no ceiling, unheld it goes wild a step a turn; its unworn grain cap follows `domestic`.
-pub fn hold(w: &mut World) {
+pub fn tend(w: &mut World) {
     let round1 = |v: f64| (v * 10.0).round() / 10.0;
-    let turn = w.turn;
+    let mut tamed = Vec::new();
     for (i, t) in w.tiles.iter_mut().enumerate() {
         let held = t.claim.is_some();
         if held {
-            t.held += 1;
-            t.unheld = 0;
+            t.claim_run += 1;
+            t.free_run = 0;
         } else {
-            t.held = 0;
-            t.unheld += 1;
+            t.claim_run = 0;
+            t.free_run += 1;
         }
         if t.walked {
             t.walk_run += 1;
@@ -274,28 +280,19 @@ pub fn hold(w: &mut World) {
         if t.wild_grain <= 0.0 {
             continue;
         }
-        if held && t.held >= TENDING.after {
+        if held && t.claim_run >= TENDING.after {
             let before = t.tame;
             t.tame += 1;
             if before < TENDING.tame_turns && t.tame == TENDING.tame_turns {
-                w.events.push(Event {
-                    turn,
-                    kind: EventKind::HearthTamed,
-                    tile: i,
-                    clan: None,
-                    market: None,
-                    other: None,
-                    civ: None,
-                    unit: None,
-                    cost: None,
-                    amount: None,
-                    alert: false,
-                });
+                tamed.push(i);
             }
         } else if !held {
             t.tame = t.tame.saturating_sub(1);
         }
         t.unworn[GRAIN] = round1(t.wild_grain * domestic(t.tame));
         settle_caps(t);
+    }
+    for i in tamed {
+        w.emit(Event::new(EventKind::HearthTamed, i));
     }
 }

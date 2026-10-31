@@ -174,7 +174,7 @@ for (const c of cards) {
 }
 assert.throws(() => sim.act('{"type":"endTurn"}'), /choose/, 'endTurn is refused at the pick');
 assert.match(sim.check('{"type":"endTurn"}'), /choose/, 'check names the pick');
-assert.match(sim.check('{"type":"raise","n":1}'), /not begun/, 'no orders before the pick');
+assert.match(sim.check(JSON.stringify({ type: 'order', civ: cards[0].civ, order: { type: 'raise', n: 1 } })), /not begun/, 'no orders before the pick');
 assert.ok(sim.check('{"nonsense":1}').length > 0, 'check says why an action does not parse');
 assert.equal(sim.check(JSON.stringify({ type: 'chooseCiv', civ: cards[0].civ })), '');
 
@@ -261,6 +261,8 @@ const rival = Object.values(w.civs).find((c) => c.id !== w.player);
 // The scout: one per civ, at its capital with people and a pack, and no route until one is set.
 const scoutOf = (view) => Object.values(view.units).find((u) => u.civ === view.player && u.kind === 'scout');
 const scout = scoutOf(w);
+// The led civ's order, as the page sends it: the civ, and for a unit's order the unit.
+const ordered = (order) => JSON.stringify({ type: 'order', civ: w.player, order });
 assert.ok(scout && scout.tile === w.civs[w.player].capital, 'the led civ has a scout at its capital');
 assert.ok(scout.people > 0 && scout.store.length === GOODS.length, 'the scout has people and a pack');
 assert.equal(scout.route, null, 'the scout has no route yet');
@@ -268,10 +270,10 @@ assert.equal(scout.plan, undefined, 'a scout without a route has no plan');
 assert.ok(w.revealed.length === 0, 'nothing is revealed at the pick');
 const landOf = (i) => TERRAIN[layout.terrain[i]].land;
 const water = layout.terrain.findIndex((_, i) => !landOf(i));
-assert.ok(water >= 0 && sim.check(JSON.stringify({ type: 'setRoute', from: scout.tile, to: water })).length > 0, 'a scout does not search water');
-assert.ok(sim.check(JSON.stringify({ type: 'setRoute', from: scout.tile, to: scout.tile })).length > 0, 'a route needs two different tiles');
-assert.ok(sim.check(JSON.stringify({ type: 'setRoute', from: scout.tile, to: n + 3 })).length > 0, 'a route ends on the map');
-assert.ok(sim.check(JSON.stringify({ type: 'clearRoute' })) === '', 'a scout can be told to clear its route');
+assert.ok(water >= 0 && sim.check(ordered({ type: 'route', unit: scout.id, from: scout.tile, to: water })).length > 0, 'a scout does not search water');
+assert.ok(sim.check(ordered({ type: 'route', unit: scout.id, from: scout.tile, to: scout.tile })).length > 0, 'a route needs two different tiles');
+assert.ok(sim.check(ordered({ type: 'route', unit: scout.id, from: scout.tile, to: n + 3 })).length > 0, 'a route ends on the map');
+assert.ok(sim.check(ordered({ type: 'clearRoute', unit: scout.id })) === '', 'a scout can be told to clear its route');
 
 // The leader sets its gift and keep; a gift is refused above the store's cap, or below nothing.
 assert.equal(sim.check('{"type":"setGift","food":3}'), '', 'a leader can set its gift');
@@ -291,11 +293,11 @@ assert.equal(w.civs[w.player].keep_set, null, 'keep returns to the default');
 assert.ok(w.civs[w.player].keep > 0, 'the default keep is the camp\'s pack');
 
 // Warriors raised, if the civ can spare a person.
-const made = sim.check('{"type":"raise","n":1}');
+const made = sim.check(ordered({ type: 'raise', n: 1 }));
 assert.ok(made === '' || made.length > 0);
 if (made === '') {
   const before = Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'camp').people;
-  sim.act('{"type":"raise","n":1}');
+  sim.act(ordered({ type: 'raise', n: 1 }));
   w = JSON.parse(sim.view());
   assert.ok(Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'camp').people > before, 'warriors raised');
 }
@@ -312,7 +314,7 @@ if (JSON.parse(sim.path(unit.tile, target)) === null) {
   target = [...Array(n).keys()].find((i) => hexSteps(i, unit.tile) >= 5 && JSON.parse(sim.path(unit.tile, i)) !== null);
 }
 assert.ok(target !== undefined, 'some land is reachable');
-const go = JSON.stringify({ type: 'moveCamp', to: target });
+const go = ordered({ type: 'move', unit: unit.id, to: target });
 assert.equal(sim.check(go), '', 'the camp can go there');
 const preview = JSON.parse(sim.path(unit.tile, target));
 sim.act(go);
@@ -321,11 +323,18 @@ assert.ok(route.path.length > 0 && route.path.at(-1) === target, 'the route ends
 assert.ok(route.cost > 0 && route.turns >= 1);
 assert.deepEqual(route, preview, 'the preview is the route');
 assert.equal(JSON.parse(sim.path(unit.tile, unit.tile + 1000000)), null);
-assert.ok(sim.check(JSON.stringify({ type: 'moveCamp', to: n + 5 })).length > 0, 'off the map is refused');
+assert.ok(sim.check(ordered({ type: 'move', unit: unit.id, to: n + 5 })).length > 0, 'off the map is refused');
+// Another civ's unit, and another civ's order, are refused; so is the old action shape, which no longer parses.
+const rivalUnit = Object.values(w.units).find((u) => u.civ === rival.id);
+assert.ok(rivalUnit, 'the rival has a unit at the pick');
+assert.match(sim.check(ordered({ type: 'move', unit: rivalUnit.id, to: target })), /that unit is not yours/, 'a move for a unit that is not yours is refused');
+assert.match(sim.check(JSON.stringify({ type: 'order', civ: rival.id, order: { type: 'move', unit: unit.id, to: target } })), /that civ is not yours/, 'an order for a civ the player does not lead is refused');
+assert.notEqual(sim.check(JSON.stringify({ type: 'moveCamp', to: target })), '', 'the old moveCamp shape is refused');
+assert.throws(() => sim.act(JSON.stringify({ type: 'moveCamp', to: target })), /moveCamp|variant|unknown/i, 'the old moveCamp shape fails to parse');
 // A route from the capital three steps out on land, set and read back as the page reads it.
 const to = [...Array(n).keys()].find((i) => landOf(i) && hexSteps(i, scout.tile) === 3);
 assert.ok(to !== undefined, 'some land lies three steps out');
-const set = JSON.stringify({ type: 'setRoute', from: scout.tile, to });
+const set = ordered({ type: 'route', unit: scout.id, from: scout.tile, to });
 assert.equal(sim.check(set), '', 'the route is accepted');
 sim.act(set);
 const routed = scoutOf(JSON.parse(sim.view()));
@@ -333,7 +342,7 @@ assert.deepEqual(routed.route, [scout.tile, to], 'the route is the scout\'s');
 assert.ok(routed.plan.known && routed.plan.known.path.at(-1) === to, 'the known path ends at the route\'s end');
 assert.ok(routed.plan.possible && routed.plan.possible.cost <= routed.plan.known.cost, 'the possible path costs no more than the known');
 assert.ok(routed.plan.candidates.every((i) => i < n), 'candidates are tiles');
-sim.act('{"type":"clearRoute"}');
+sim.act(ordered({ type: 'clearRoute', unit: scout.id }));
 assert.equal(scoutOf(JSON.parse(sim.view())).route, null, 'the route is cleared');
 sim.act(set);
 for (let i = 0; i < 10; i++) {
@@ -355,13 +364,13 @@ assert.ok(again === null || again.path.length < route.path.length, 'the route sh
 
 // The switches, the zone and the one-shot orders are checked while there is a camp to give them to.
 if (moved) {
-  sim.act(JSON.stringify({ type: 'moveCamp', to: moved.tile }));
-  const here = Object.values(JSON.parse(sim.view()).units).find((u) => u.civ === w.player);
-  assert.notEqual(sim.check(JSON.stringify({ type: 'zone', tiles: [here.tile + 1000000] })), '', 'a zone off the map is refused');
+  sim.act(ordered({ type: 'move', unit: moved.id, to: moved.tile }));
+  const here = Object.values(JSON.parse(sim.view()).units).find((u) => u.civ === w.player && u.kind === 'camp');
+  assert.notEqual(sim.check(ordered({ type: 'zone', unit: here.id, tiles: [here.tile + 1000000] })), '', 'a zone off the map is refused');
   const capitals = Object.values(w.civs).map((c) => c.capital);
   const first = (here.line?.path ?? []).filter((t) => !capitals.includes(t)).slice(0, 1);
   if (first.length && here.people >= 2) {
-    const zone = JSON.stringify({ type: 'zone', tiles: first });
+    const zone = ordered({ type: 'zone', unit: here.id, tiles: first });
     assert.equal(sim.check(zone), '', 'a zone over the line\'s first tile');
     sim.act(zone);
     sim.act('{"type":"endTurn"}');
@@ -372,29 +381,29 @@ if (moved) {
       checkCamps(JSON.parse(sim.view()));
     }
   }
-  assert.equal(sim.check('{"type":"setSwitches","forage":false,"supply":true}'), '');
-  sim.act('{"type":"setSwitches","forage":false,"supply":true}');
+  assert.equal(sim.check(ordered({ type: 'switches', unit: moved.id, forage: false, supply: true })), '');
+  sim.act(ordered({ type: 'switches', unit: moved.id, forage: false, supply: true }));
   const switched = Object.values(JSON.parse(sim.view()).units).find((u) => u.civ === w.player && u.kind === 'camp');
   assert.ok(switched && switched.auto_forage === false && switched.auto_supply === true, 'the switches are set');
-  assert.equal(sim.check('{"type":"resupply"}'), '');
+  assert.equal(sim.check(ordered({ type: 'resupply', unit: moved.id })), '');
   // Disband it.
-  assert.equal(sim.check('{"type":"disband","n":null}'), '');
-  sim.act('{"type":"disband","n":null}');
+  assert.equal(sim.check(ordered({ type: 'disband', unit: moved.id, n: null })), '');
+  sim.act(ordered({ type: 'disband', unit: moved.id, n: null }));
   w = JSON.parse(sim.view());
   assert.ok(!Object.values(w.units).some((u) => u.civ === w.player && u.kind === 'camp'), 'the camp is gone');
 }
-assert.ok(sim.check('{"type":"disband","n":null}').length > 0, 'it cannot be disbanded twice');
+assert.ok(sim.check(ordered({ type: 'disband', unit: unit.id, n: null })).length > 0, 'it cannot be disbanded twice');
 const kinds = new Set(JSON.parse(sim.events(0)).map((e) => e.kind));
 for (const k of ['civFounded', 'campRaised']) assert.ok(kinds.has(k), `${k} appears`);
 for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.has(e.kind));
 
 // A save carries its version, and one without it is refused with a reason that names the version.
 const save = JSON.parse(sim.save());
-assert.equal(save.version, 1, 'a save carries its version');
+assert.equal(save.version, 2, 'a save carries its version');
 assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
 const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');
-assert.throws(() => Sim.load(JSON.stringify({ ...save, version: 2 })), /version 2/, 'a save of another version fails, naming it');
+assert.throws(() => Sim.load(JSON.stringify({ ...save, version: 1 })), /version 1/, 'a save of another version fails, naming it');
 
 // Watching (all three on the AI, as the page's "Watch all three" sends): a gift is refused while nobody leads.
 const watch = new Sim(seed, medium.radius);

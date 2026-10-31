@@ -1,10 +1,10 @@
 mod common;
 
-use common::{at, check_territories, flat, out, put, steps};
+use common::{at, check_territories, flat, out, put, steps, total};
 use engine::clans::{adjust, eat, growth, harvest, nutrition, reap, site_value, surplus, value, walks};
 use engine::data::*;
 use engine::land::neighbours;
-use engine::map::{landmasses, Zone};
+use engine::map::{landmasses, Country};
 use engine::{Basket, Config, World, CLAN, TERRAIN};
 
 const EPS: f64 = 1e-9;
@@ -26,10 +26,6 @@ fn bare() -> (World, usize, usize) {
     (w, i, j)
 }
 
-fn total(b: &Basket) -> f64 {
-    b.iter().sum()
-}
-
 #[test]
 fn seeds_land_on_every_big_landmass() {
     for seed in 1..=8 {
@@ -37,7 +33,7 @@ fn seeds_land_on_every_big_landmass() {
         // A sealed valley is a landmass of its own, and nobody is seeded there.
         let big: Vec<Vec<usize>> = landmasses(&w.tiles, 16)
             .into_iter()
-            .filter(|m| m.len() >= CLAN.min_landmass && m.iter().any(|&i| w.tiles[i].zone != Zone::Sealed))
+            .filter(|m| m.len() >= CLAN.min_landmass && m.iter().any(|&i| w.tiles[i].country != Country::Sealed))
             .collect();
         assert_eq!(w.clans.len(), CLAN.seeds.max(big.len()), "seed {seed}");
         let mut homes: Vec<usize> = w.clans.values().map(|c| c.home).collect();
