@@ -12,7 +12,7 @@ use crate::world::{Phase, World};
 
 /// Where the AI posts `civ`'s camp: up to `UNIT.post` steps along the way from the capital to the
 /// nearest rival capital reachable by land, or with none, to its farthest clan, keeping to its
-/// own land. The capital when there is nowhere to go.
+/// own land and on land (not on a built pass). The capital when there is nowhere to go.
 pub fn post(w: &World, civ: u32) -> usize {
     let c = &w.civs[&civ];
     let to_rival = w
@@ -32,7 +32,8 @@ pub fn post(w: &World, civ: u32) -> usize {
     });
     let mut at = c.capital;
     for t in way.unwrap_or_default().into_iter().take(UNIT.post) {
-        if civs::tile_civ(w, t) != Some(civ) {
+        // A camp stands only on land (`check_move`), so a built pass over a mountain ends the way.
+        if civs::tile_civ(w, t) != Some(civ) || !TERRAIN[w.tiles[t].terrain].land {
             break;
         }
         at = t;
