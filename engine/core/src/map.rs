@@ -1186,12 +1186,24 @@ pub fn glyph(t: &Tile) -> char {
 
 /// The map as text, a character a tile, each row of the hex half a tile to the right of the one above.
 pub fn ascii(tiles: &[Tile], radius: i32) -> String {
+    ascii_marked(tiles, radius, &[])
+}
+
+/// As `ascii`, with the tiles in `marks` (by index) drawn as their chars instead.
+pub fn ascii_marked(tiles: &[Tile], radius: i32, marks: &[(usize, char)]) -> String {
     let mut out = String::new();
     for r in -radius..=radius {
         let (lo, hi) = ((-radius).max(-r - radius), radius.min(-r + radius));
         out += &" ".repeat((2 * lo + r + 2 * radius) as usize);
-        let row: Vec<String> =
-            (lo..=hi).map(|q| glyph(&tiles[index(radius, Hex { q, r }).unwrap()]).to_string()).collect();
+        let row: Vec<String> = (lo..=hi)
+            .map(|q| {
+                let i = index(radius, Hex { q, r }).unwrap();
+                match marks.iter().find(|m| m.0 == i) {
+                    Some(&(_, c)) => c.to_string(),
+                    None => glyph(&tiles[i]).to_string(),
+                }
+            })
+            .collect();
         out += &row.join(" ");
         out.push('\n');
     }

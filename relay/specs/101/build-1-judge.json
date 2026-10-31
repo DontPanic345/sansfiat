@@ -1,0 +1,467 @@
+{
+  "maps": [
+    {
+      "size": "small",
+      "seed": 2,
+      "pick": 283,
+      "standing": {
+        "civs": [
+          {
+            "id": 716,
+            "at_100": 0.08828367123801796,
+            "at_200": 0.08772414350936376
+          },
+          {
+            "id": 717,
+            "at_100": 0.175867013266913,
+            "at_200": 0.21196485625777473
+          },
+          {
+            "id": 718,
+            "at_100": 0.061982253736298044,
+            "at_200": 0.05969426362326488
+          }
+        ],
+        "top_200": 0.21196485625777473,
+        "aligned_200": 0.3593832633904034
+      },
+      "doubt": {
+        "lead_changes": 1,
+        "spread_100": 0.11388475953061497,
+        "spread_200": 0.15227059263450984,
+        "spread_min": 0.028581628974323314,
+        "spread_max": 0.15422869429278124,
+        "swings": 3
+      },
+      "decisions": {
+        "orders_per_100": 2.1666666666666665,
+        "by_kind": {
+          "move": 1.8333333333333333,
+          "zone": 0.3333333333333333
+        },
+        "levers_repeated": 0.6666666666666666
+      },
+      "motion": {
+        "clans_changed": 33,
+        "people_changed": 149.64416809095857,
+        "land_changed": 679
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "camps_kept": 3,
+        "camps_of": 3,
+        "warriors_starved": 0,
+        "camps_lost": 0,
+        "people_at_200": 764.0471483212157,
+        "control_people_at_200": 804.7150206472205,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "small",
+      "seed": 3,
+      "pick": 219,
+      "standing": {
+        "civs": [
+          {
+            "id": 245,
+            "at_100": 0.0580098063335745,
+            "at_200": 0.05811699109259466
+          },
+          {
+            "id": 246,
+            "at_100": 0.06399147544404896,
+            "at_200": 0.06393289907714989
+          },
+          {
+            "id": 247,
+            "at_100": 0.0583844383865584,
+            "at_200": 0.05833099457610715
+          }
+        ],
+        "top_200": 0.06393289907714989,
+        "aligned_200": 0.1803808847458517
+      },
+      "doubt": {
+        "lead_changes": 1,
+        "spread_100": 0.005981669110474458,
+        "spread_200": 0.005815907984555224,
+        "spread_min": 0.001983331734653135,
+        "spread_max": 0.010780931577623318,
+        "swings": 0
+      },
+      "decisions": {
+        "orders_per_100": 1.1666666666666667,
+        "by_kind": {
+          "move": 0.8333333333333334,
+          "zone": 0.3333333333333333
+        },
+        "levers_repeated": 0.3333333333333333
+      },
+      "motion": {
+        "clans_changed": 0,
+        "people_changed": 0.0,
+        "land_changed": 21
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "camps_kept": 2,
+        "camps_of": 3,
+        "warriors_starved": 2,
+        "camps_lost": 0,
+        "people_at_200": 469.1221355854225,
+        "control_people_at_200": 479.3741146442921,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "small",
+      "seed": 6,
+      "pick": 267,
+      "standing": {
+        "civs": [
+          {
+            "id": 435,
+            "at_100": 0.08820070140506552,
+            "at_200": 0.13222749215714208
+          },
+          {
+            "id": 436,
+            "at_100": 0.06761251691707623,
+            "at_200": 0.09398174793866633
+          },
+          {
+            "id": 437,
+            "at_100": 0.04162871517711867,
+            "at_200": 0.04132184307297808
+          }
+        ],
+        "top_200": 0.13222749215714208,
+        "aligned_200": 0.2675310831687865
+      },
+      "doubt": {
+        "lead_changes": 4,
+        "spread_100": 0.046571986227946845,
+        "spread_200": 0.090905649084164,
+        "spread_min": 0.025293196045557603,
+        "spread_max": 0.09090864922040982,
+        "swings": 9
+      },
+      "decisions": {
+        "orders_per_100": 2.5,
+        "by_kind": {
+          "move": 1.3333333333333333,
+          "zone": 1.1666666666666667
+        },
+        "levers_repeated": 1.3333333333333333
+      },
+      "motion": {
+        "clans_changed": 15,
+        "people_changed": 71.44309396839328,
+        "land_changed": 358
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "camps_kept": 1,
+        "camps_of": 3,
+        "warriors_starved": 4,
+        "camps_lost": 0,
+        "people_at_200": 597.880420978299,
+        "control_people_at_200": 597.4231823415532,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "small",
+      "seed": 9,
+      "pick": 216,
+      "standing": {
+        "civs": [
+          {
+            "id": 293,
+            "at_100": 0.12592077316097,
+            "at_200": 0.12465540356783317
+          },
+          {
+            "id": 294,
+            "at_100": 0.06111163557418805,
+            "at_200": 0.0607526860598551
+          },
+          {
+            "id": 295,
+            "at_100": 0.05915491671503738,
+            "at_200": 0.05876282765460532
+          }
+        ],
+        "top_200": 0.12465540356783317,
+        "aligned_200": 0.24417091728229356
+      },
+      "doubt": {
+        "lead_changes": 0,
+        "spread_100": 0.06676585644593262,
+        "spread_200": 0.06589257591322785,
+        "spread_min": 0.047172808692321634,
+        "spread_max": 0.08077871561756174,
+        "swings": 2
+      },
+      "decisions": {
+        "orders_per_100": 1.0,
+        "by_kind": {
+          "move": 0.6666666666666666,
+          "zone": 0.3333333333333333
+        },
+        "levers_repeated": 0.3333333333333333
+      },
+      "motion": {
+        "clans_changed": 4,
+        "people_changed": 26.031516128586997,
+        "land_changed": 608
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "camps_kept": 3,
+        "camps_of": 3,
+        "warriors_starved": 0,
+        "camps_lost": 0,
+        "people_at_200": 599.0904533176198,
+        "control_people_at_200": 630.8752442875959,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "medium",
+      "seed": 8,
+      "pick": 296,
+      "standing": {
+        "civs": [
+          {
+            "id": 651,
+            "at_100": 0.03414167050370971,
+            "at_200": 0.034015436465633354
+          },
+          {
+            "id": 652,
+            "at_100": 0.024699121753232255,
+            "at_200": 0.02459876208387881
+          },
+          {
+            "id": 653,
+            "at_100": 0.03834814535392867,
+            "at_200": 0.03825048940504423
+          }
+        ],
+        "top_200": 0.03825048940504423,
+        "aligned_200": 0.0968646879545564
+      },
+      "doubt": {
+        "lead_changes": 1,
+        "spread_100": 0.013649023600696416,
+        "spread_200": 0.013651727321165423,
+        "spread_min": 0.005732876119063712,
+        "spread_max": 0.013694345714706947,
+        "swings": 0
+      },
+      "decisions": {
+        "orders_per_100": 4.0,
+        "by_kind": {
+          "move": 2.3333333333333335,
+          "raise": 0.16666666666666666,
+          "zone": 1.5
+        },
+        "levers_repeated": 1.0
+      },
+      "motion": {
+        "clans_changed": 3,
+        "people_changed": 15.672689394898384,
+        "land_changed": 75
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "camps_kept": 2,
+        "camps_of": 3,
+        "warriors_starved": 6,
+        "camps_lost": 2,
+        "people_at_200": 1398.9821894138397,
+        "control_people_at_200": 1419.7239400966582,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "medium",
+      "seed": 9,
+      "pick": 380,
+      "standing": {
+        "civs": [
+          {
+            "id": 852,
+            "at_100": 0.027236071744423596,
+            "at_200": 0.019390348970872336
+          },
+          {
+            "id": 853,
+            "at_100": 0.025877764429678596,
+            "at_200": 0.025703702897516095
+          },
+          {
+            "id": 854,
+            "at_100": 0.030954489420031327,
+            "at_200": 0.03096656750352139
+          }
+        ],
+        "top_200": 0.03096656750352139,
+        "aligned_200": 0.07606061937190982
+      },
+      "doubt": {
+        "lead_changes": 0,
+        "spread_100": 0.005076724990352732,
+        "spread_200": 0.011576218532649056,
+        "spread_min": 0.0027089753882910406,
+        "spread_max": 0.014314572428181498,
+        "swings": 2
+      },
+      "decisions": {
+        "orders_per_100": 1.8333333333333333,
+        "by_kind": {
+          "move": 0.6666666666666666,
+          "raise": 0.16666666666666666,
+          "zone": 1.0
+        },
+        "levers_repeated": 1.0
+      },
+      "motion": {
+        "clans_changed": 0,
+        "people_changed": 0.0,
+        "land_changed": 360
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "camps_kept": 1,
+        "camps_of": 3,
+        "warriors_starved": 7,
+        "camps_lost": 1,
+        "people_at_200": 924.0248566597417,
+        "control_people_at_200": 931.8977833514052,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "large",
+      "seed": 8,
+      "pick": 374,
+      "standing": {
+        "civs": [
+          {
+            "id": 2750,
+            "at_100": 0.03370064760220919,
+            "at_200": 0.03756537717231126
+          },
+          {
+            "id": 2751,
+            "at_100": 0.009641135066900942,
+            "at_200": 0.010023344160258555
+          },
+          {
+            "id": 2752,
+            "at_100": 0.01772955373035427,
+            "at_200": 0.017584814013185224
+          }
+        ],
+        "top_200": 0.03756537717231126,
+        "aligned_200": 0.06517353534575504
+      },
+      "doubt": {
+        "lead_changes": 0,
+        "spread_100": 0.02405951253530825,
+        "spread_200": 0.027542033012052707,
+        "spread_min": 0.011607464317967043,
+        "spread_max": 0.02790253706457075,
+        "swings": 0
+      },
+      "decisions": {
+        "orders_per_100": 3.3333333333333335,
+        "by_kind": {
+          "move": 3.0,
+          "zone": 0.3333333333333333
+        },
+        "levers_repeated": 1.0
+      },
+      "motion": {
+        "clans_changed": 27,
+        "people_changed": 135.4645648410431,
+        "land_changed": 421
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "camps_kept": 3,
+        "camps_of": 3,
+        "warriors_starved": 0,
+        "camps_lost": 0,
+        "people_at_200": 3404.254293252971,
+        "control_people_at_200": 3428.277742857899,
+        "digest_mismatches": 0
+      }
+    }
+  ],
+  "panics": [],
+  "total": {
+    "standing": {
+      "top_200": 0.09136615502011096,
+      "aligned_200": 0.18422357017993662
+    },
+    "doubt": {
+      "lead_changes": 7,
+      "maps_with_lead_change": 4,
+      "spread_100": 0.039427076063046615,
+      "spread_200": 0.05252210064033202,
+      "swings": 16
+    },
+    "decisions": {
+      "ai_orders_per_100": 2.2857142857142856,
+      "by_kind": {
+        "move": 1.523809523809524,
+        "raise": 0.047619047619047616,
+        "zone": 0.7142857142857144
+      },
+      "levers_repeated": 0.8095238095238094
+    },
+    "motion": {
+      "clans_changed": 82,
+      "people_changed": 398.25603242388036,
+      "land_changed": 2522
+    },
+    "health": {
+      "pregame_by_centres": 7,
+      "camps_kept": 15,
+      "camps_of": 21,
+      "warriors_starved": 19,
+      "camps_lost": 3,
+      "people_vs_control": 0.9837336153176597,
+      "panics": 0,
+      "digest_mismatches": 0
+    }
+  },
+  "bands": [
+    {
+      "name": "health.digest_mismatches",
+      "value": 0.0,
+      "status": "ok",
+      "bounds": "fail_max 0",
+      "note": "the two army runs of a map must end on the same digest"
+    },
+    {
+      "name": "health.panics",
+      "value": 0.0,
+      "status": "ok",
+      "bounds": "fail_max 0",
+      "note": "a map that panics is a game that can't be played"
+    },
+    {
+      "name": "health.pregame_by_centres",
+      "value": 7.0,
+      "status": "ok",
+      "bounds": "fail_min 7",
+      "note": "the pre-game must end by the centres on every retro map"
+    }
+  ],
+  "seconds": 51.118309062
+}

@@ -4,6 +4,7 @@ use engine::map::{self, Country};
 use engine::{stats, Config, World};
 use std::time::Instant;
 
+use crate::judge::judge;
 use crate::retro::{retro_maps, sweep_after};
 use crate::{size, USAGE};
 
@@ -144,9 +145,13 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
     let (mut after, mut army, mut retro) = (None, true, false);
     let (mut gifts, mut lever): (bool, Option<f64>) = (true, None);
     let mut zone = true;
+    let (mut judging, mut json, mut bands) = (false, false, None::<String>);
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
+            "--judge" => judging = true,
+            "--json" => json = true,
+            "--bands" => bands = Some(it.next().ok_or("--bands needs a file")?.clone()),
             "--after" => after = Some(it.next().and_then(|v| v.parse().ok()).ok_or("--after needs a number")?),
             "--no-army" => army = false,
             "--no-gifts" => gifts = false,
@@ -177,6 +182,17 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
             },
             s => seeds.push(s.parse().map_err(|_| format!("not a seed: {s}\n{USAGE}"))?),
         }
+    }
+    if judging {
+        if after.is_some() || lever.is_some() || !army || !gifts || !zone || !seeds.is_empty() {
+            return Err(format!(
+                "--judge runs the retro maps, all on the AI: it takes only --bands and --json\n{USAGE}"
+            ));
+        }
+        return judge(bands.as_deref(), json);
+    }
+    if json || bands.is_some() {
+        return Err(format!("--json and --bands need --judge\n{USAGE}"));
     }
     if let Some(after) = after {
         let maps = if retro {

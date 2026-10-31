@@ -1,0 +1,41 @@
+{"turn":283,"line":"note meant: start feeding clans did: forage with camp and set gift 4 surprised: store is empty at the pick","result":"noted"}
+{"turn":283,"line":"{\"type\":\"forage\",\"unit\":719}","result":"ok"}
+{"turn":283,"line":"note meant: gift food to nearby clans did: setGift 4 surprised: nothing","result":"noted"}
+{"turn":283,"line":"{\"type\":\"setGift\",\"food\":4}","result":"ok"}
+{"turn":283,"line":"note meant: let foraging build the store did: end 5 surprised: nothing","result":"noted"}
+{"turn":288,"line":"end 5","result":"ok"}
+{"turn":288,"line":"note meant: actually give food, gave 0 so far did: gift 12 surprised: store grows but gave 0.0","result":"noted"}
+{"turn":288,"line":"{\"type\":\"setGift\",\"food\":12}","result":"ok"}
+{"turn":288,"line":"note meant: watch gifts land did: end 5 surprised: nothing","result":"noted"}
+{"turn":293,"line":"end 5","result":"ok"}
+{"turn":293,"line":"note meant: keep feeding and let clans join did: end 10 surprised: nothing","result":"noted"}
+{"turn":303,"line":"end 10","result":"ok"}
+{"turn":303,"line":"note meant: keep feeding and let clans join did: end 10 surprised: nothing","result":"noted"}
+{"turn":313,"line":"end 10","result":"ok"}
+{"turn":313,"line":"note meant: keep feeding and let clans join did: end 10 surprised: nothing","result":"noted"}
+{"turn":323,"line":"end 10","result":"ok"}
+{"turn":323,"line":"note meant: store is idle at 47, spend on clans did: gift 30 surprised: Blue passed me","result":"noted"}
+{"turn":323,"line":"{\"type\":\"setGift\",\"food\":30}","result":"ok"}
+{"turn":323,"line":"note meant: see effect did: end 10 surprised: nothing","result":"noted"}
+{"turn":333,"line":"end 10","result":"ok"}
+{"turn":333,"line":"note meant: find why gifts stay 0 did: why on clan 321 surprised: gave 0 despite store","result":"noted"}
+{"turn":333,"line":"why 321","result":"ok"}
+{"turn":333,"line":"map","result":"ok"}
+{"turn":333,"line":"note meant: reach the unaligned clan and use the store did: move camp to 194, the suggested post surprised: gifts give nothing from the capital","result":"noted"}
+{"turn":333,"line":"{\"type\":\"move\",\"unit\":719,\"to\":194}","result":"ok"}
+{"turn":336,"line":"end 3","result":"ok"}
+{"turn":336,"line":"note meant: see if gifts flow from new post did: end 5 surprised: nothing","result":"noted"}
+{"turn":341,"line":"end 5","result":"ok"}
+{"turn":341,"line":"note meant: stop pack draining at the outpost did: return camp to capital 166 surprised: pack falls and gifts still 0","result":"noted"}
+{"turn":341,"line":"{\"type\":\"move\",\"unit\":719,\"to\":166}","result":"ok"}
+{"turn":351,"line":"end 10","result":"ok"}
+{"turn":351,"line":"note meant: reach +100 while watching Standing did: end 10 surprised: nothing","result":"noted"}
+{"turn":361,"line":"end 10","result":"ok"}
+{"turn":361,"line":"note meant: reach +100 while watching Standing did: end 10 surprised: nothing","result":"noted"}
+{"turn":371,"line":"end 10","result":"ok"}
+{"turn":371,"line":"note meant: reach +100 while watching Standing did: end 10 surprised: nothing","result":"noted"}
+{"turn":381,"line":"end 10","result":"ok"}
+{"turn":381,"line":"note meant: reach +100 while watching Standing did: end 10 surprised: nothing","result":"noted"}
+{"turn":391,"line":"end 10","result":"ok"}
+{"turn":391,"line":"note could not tell: why gifts went to 0 (gave 0.0 from turn 291 on despite a 47 store and gift set to 30), which clans a gift reaches, why my clans starved short of shellfish, and what raises the lean of unaligned clans","result":"noted"}
+{"turn":391,"line":"view","result":"ok"}

@@ -1,0 +1,356 @@
+# small seed 2, --civ 1: the pick, then one piped session (move to the AI's post, zone, setGift 2, end 10, why, a refused move of unit 999, end 90, view), then judge.
+$ sansfiat play --game g.json --seed 2 --size small --civ 1 < /dev/null
+turn 283, 0 turns since the pick at 283, phase main, leading civ 716
+standing, share of the people:
+  civ 716 Red 10.6%, rank 1 leader, you
+  civ 717 Blue 7.5%, rank 2
+  civ 718 Gold 5.1%, rank 3
+store 0.0: game 0.0, grain 0.0, fruit 0.0, fish 0.0, shellfish 0.0
+keep 15.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 0.0, gave 0.0; since founding gave 0.0, clans joined 0
+  camp 719 at 166 (-8, -6): 3.0 warriors, pack 15.0 of 15.0 (5.0 turns), dest none, at the capital, no limit, hungry 0 turns, zone 166 (-8, -6), held 166 (-8, -6)
+  scout 720 at 166 (-8, -6): no route, hungry 0 turns
+clans: 12 with 79.1 people; the largest:
+  clan 293 at 142 (-9, -5): 10.7 people, fed 0.86
+  clan 56 at 166 (-8, -6): 10.0 people, fed 0.91
+  clan 61 at 192 (-7, -6): 9.7 people, fed 0.88
+  clan 311 at 247 (-5, -6): 8.8 people, fed 0.82
+  clan 17 at 218 (-6, -7): 7.9 people, fed 0.95
+unaligned clans in reach of your market, leaning to each civ (join at 1.0):
+  none
+places: capitals civ 716 166 (-8, -6), civ 717 475 (2, 2), civ 718 740 (12, 2)
+  your clans' homes: 142 (-9, -5), 166 (-8, -6), 192 (-7, -6), 247 (-5, -6), 218 (-6, -7), 219 (-6, -6), 169 (-8, -3), 244 (-5, -9), 167 (-8, -5), 191 (-7, -7), 190 (-7, -8), 220 (-6, -5)
+  the AI would post your camp at 194 (-7, -4)
+feed since the last call: 0 about you, 0 others
+legal orders:
+  {"type":"disband","unit":719}
+  {"type":"move","unit":719,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5), 194 (-7, -4)
+  {"type":"zone","unit":719,"tiles":[<tile>]}  tiles: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"zone","unit":719,"tiles":[]}  undeploys
+  {"type":"switches","unit":719,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":719}
+  {"type":"forage","unit":719}
+  {"type":"route","unit":720,"from":166,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)
+
+$ piped lines
+{"type":"move","unit":719,"to":194}
+{"type":"zone","unit":719,"tiles":[192]}
+{"type":"setGift","food":2}
+end 10
+why 719
+{"type":"move","unit":999,"to":5}
+end 90
+view
+turn 283, 0 turns since the pick at 283, phase main, leading civ 716
+standing, share of the people:
+  civ 716 Red 10.6%, rank 1 leader, you
+  civ 717 Blue 7.5%, rank 2
+  civ 718 Gold 5.1%, rank 3
+store 0.0: game 0.0, grain 0.0, fruit 0.0, fish 0.0, shellfish 0.0
+keep 15.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 0.0, gave 0.0; since founding gave 0.0, clans joined 0
+  camp 719 at 166 (-8, -6): 3.0 warriors, pack 15.0 of 15.0 (5.0 turns), dest none, at the capital, no limit, hungry 0 turns, zone 166 (-8, -6), held 166 (-8, -6)
+  scout 720 at 166 (-8, -6): no route, hungry 0 turns
+clans: 12 with 79.1 people; the largest:
+  clan 293 at 142 (-9, -5): 10.7 people, fed 0.86
+  clan 56 at 166 (-8, -6): 10.0 people, fed 0.91
+  clan 61 at 192 (-7, -6): 9.7 people, fed 0.88
+  clan 311 at 247 (-5, -6): 8.8 people, fed 0.82
+  clan 17 at 218 (-6, -7): 7.9 people, fed 0.95
+unaligned clans in reach of your market, leaning to each civ (join at 1.0):
+  none
+places: capitals civ 716 166 (-8, -6), civ 717 475 (2, 2), civ 718 740 (12, 2)
+  your clans' homes: 142 (-9, -5), 166 (-8, -6), 192 (-7, -6), 247 (-5, -6), 218 (-6, -7), 219 (-6, -6), 169 (-8, -3), 244 (-5, -9), 167 (-8, -5), 191 (-7, -7), 190 (-7, -8), 220 (-6, -5)
+  the AI would post your camp at 194 (-7, -4)
+feed since the last call: 0 about you, 0 others
+legal orders:
+  {"type":"disband","unit":719}
+  {"type":"move","unit":719,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5), 194 (-7, -4)
+  {"type":"zone","unit":719,"tiles":[<tile>]}  tiles: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"zone","unit":719,"tiles":[]}  undeploys
+  {"type":"switches","unit":719,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":719}
+  {"type":"forage","unit":719}
+  {"type":"route","unit":720,"from":166,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)
+turn 283, 0 turns since the pick at 283, phase main, leading civ 716
+standing, share of the people:
+  civ 716 Red 10.6%, rank 1 leader, you
+  civ 717 Blue 7.5%, rank 2
+  civ 718 Gold 5.1%, rank 3
+store 0.0: game 0.0, grain 0.0, fruit 0.0, fish 0.0, shellfish 0.0
+keep 15.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 0.0, gave 0.0; since founding gave 0.0, clans joined 0
+  camp 719 at 166 (-8, -6): 3.0 warriors, pack 15.0 of 15.0 (5.0 turns), dest 194 (-7, -4), at the capital, no limit, hungry 0 turns, zone 166 (-8, -6), held 166 (-8, -6)
+  scout 720 at 166 (-8, -6): no route, hungry 0 turns
+clans: 12 with 79.1 people; the largest:
+  clan 293 at 142 (-9, -5): 10.7 people, fed 0.86
+  clan 56 at 166 (-8, -6): 10.0 people, fed 0.91
+  clan 61 at 192 (-7, -6): 9.7 people, fed 0.88
+  clan 311 at 247 (-5, -6): 8.8 people, fed 0.82
+  clan 17 at 218 (-6, -7): 7.9 people, fed 0.95
+unaligned clans in reach of your market, leaning to each civ (join at 1.0):
+  none
+places: capitals civ 716 166 (-8, -6), civ 717 475 (2, 2), civ 718 740 (12, 2)
+  your clans' homes: 142 (-9, -5), 166 (-8, -6), 192 (-7, -6), 247 (-5, -6), 218 (-6, -7), 219 (-6, -6), 169 (-8, -3), 244 (-5, -9), 167 (-8, -5), 191 (-7, -7), 190 (-7, -8), 220 (-6, -5)
+  the AI would post your camp at 194 (-7, -4)
+feed since the last call: 0 about you, 0 others
+legal orders:
+  {"type":"disband","unit":719}
+  {"type":"move","unit":719,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5), 194 (-7, -4)
+  {"type":"zone","unit":719,"tiles":[<tile>]}  tiles: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"zone","unit":719,"tiles":[]}  undeploys
+  {"type":"switches","unit":719,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":719}
+  {"type":"forage","unit":719}
+  {"type":"route","unit":720,"from":166,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)
+turn 283, 0 turns since the pick at 283, phase main, leading civ 716
+standing, share of the people:
+  civ 716 Red 10.6%, rank 1 leader, you
+  civ 717 Blue 7.5%, rank 2
+  civ 718 Gold 5.1%, rank 3
+store 0.0: game 0.0, grain 0.0, fruit 0.0, fish 0.0, shellfish 0.0
+keep 15.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 0.0, gave 0.0; since founding gave 0.0, clans joined 0
+  camp 719 at 166 (-8, -6): 3.0 warriors, pack 15.0 of 15.0 (5.0 turns), dest 194 (-7, -4), at the capital, no limit, hungry 0 turns, zone 166 (-8, -6), 192 (-7, -6), held 166 (-8, -6)
+  scout 720 at 166 (-8, -6): no route, hungry 0 turns
+clans: 12 with 79.1 people; the largest:
+  clan 293 at 142 (-9, -5): 10.7 people, fed 0.86
+  clan 56 at 166 (-8, -6): 10.0 people, fed 0.91
+  clan 61 at 192 (-7, -6): 9.7 people, fed 0.88
+  clan 311 at 247 (-5, -6): 8.8 people, fed 0.82
+  clan 17 at 218 (-6, -7): 7.9 people, fed 0.95
+unaligned clans in reach of your market, leaning to each civ (join at 1.0):
+  none
+places: capitals civ 716 166 (-8, -6), civ 717 475 (2, 2), civ 718 740 (12, 2)
+  your clans' homes: 142 (-9, -5), 166 (-8, -6), 192 (-7, -6), 247 (-5, -6), 218 (-6, -7), 219 (-6, -6), 169 (-8, -3), 244 (-5, -9), 167 (-8, -5), 191 (-7, -7), 190 (-7, -8), 220 (-6, -5)
+  the AI would post your camp at 194 (-7, -4)
+feed since the last call: 1 about you, 0 others
+    283   Red's camp at (-8, -6) deploys over 2 tiles
+legal orders:
+  {"type":"disband","unit":719}
+  {"type":"move","unit":719,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5), 194 (-7, -4)
+  {"type":"zone","unit":719,"tiles":[<tile>]}  tiles: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"zone","unit":719,"tiles":[]}  undeploys
+  {"type":"switches","unit":719,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":719}
+  {"type":"forage","unit":719}
+  {"type":"route","unit":720,"from":166,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)
+turn 283, 0 turns since the pick at 283, phase main, leading civ 716
+standing, share of the people:
+  civ 716 Red 10.6%, rank 1 leader, you
+  civ 717 Blue 7.5%, rank 2
+  civ 718 Gold 5.1%, rank 3
+store 0.0: game 0.0, grain 0.0, fruit 0.0, fish 0.0, shellfish 0.0
+keep 15.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 0.0, gave 0.0; since founding gave 0.0, clans joined 0
+  camp 719 at 166 (-8, -6): 3.0 warriors, pack 15.0 of 15.0 (5.0 turns), dest 194 (-7, -4), at the capital, no limit, hungry 0 turns, zone 166 (-8, -6), 192 (-7, -6), held 166 (-8, -6)
+  scout 720 at 166 (-8, -6): no route, hungry 0 turns
+clans: 12 with 79.1 people; the largest:
+  clan 293 at 142 (-9, -5): 10.7 people, fed 0.86
+  clan 56 at 166 (-8, -6): 10.0 people, fed 0.91
+  clan 61 at 192 (-7, -6): 9.7 people, fed 0.88
+  clan 311 at 247 (-5, -6): 8.8 people, fed 0.82
+  clan 17 at 218 (-6, -7): 7.9 people, fed 0.95
+unaligned clans in reach of your market, leaning to each civ (join at 1.0):
+  none
+places: capitals civ 716 166 (-8, -6), civ 717 475 (2, 2), civ 718 740 (12, 2)
+  your clans' homes: 142 (-9, -5), 166 (-8, -6), 192 (-7, -6), 247 (-5, -6), 218 (-6, -7), 219 (-6, -6), 169 (-8, -3), 244 (-5, -9), 167 (-8, -5), 191 (-7, -7), 190 (-7, -8), 220 (-6, -5)
+  the AI would post your camp at 194 (-7, -4)
+feed since the last call: 1 about you, 0 others
+    283   Red's camp at (-8, -6) deploys over 2 tiles
+legal orders:
+  {"type":"disband","unit":719}
+  {"type":"move","unit":719,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5), 194 (-7, -4)
+  {"type":"zone","unit":719,"tiles":[<tile>]}  tiles: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"zone","unit":719,"tiles":[]}  undeploys
+  {"type":"switches","unit":719,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":719}
+  {"type":"forage","unit":719}
+  {"type":"route","unit":720,"from":166,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)
+turn 293, 10 turns since the pick at 283, phase main, leading civ 716
+standing, share of the people:
+  civ 716 Red 9.5%, rank 1 leader, you
+  civ 717 Blue 8.0%, rank 2
+  civ 718 Gold 4.4%, rank 3
+store 42.3: game 1.2, grain 23.4, fruit 0.8, fish 15.0, shellfish 1.9
+keep 15.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 37.6, gave 0.0; since founding gave 0.0, clans joined 0
+  camp 719 at 194 (-7, -4): 3.0 warriors, pack 0.0 of 15.0 (0.0 turns), dest none, line cost 10.0, carries 3.1 a turn, hungry 1 turns, zone 194 (-7, -4), held 194 (-7, -4)
+  scout 720 at 166 (-8, -6): no route, hungry 0 turns
+clans: 11 with 69.7 people; the largest:
+  clan 56 at 166 (-8, -6): 11.4 people, fed 0.83
+  clan 61 at 192 (-7, -6): 7.9 people, fed 1.00
+  clan 17 at 218 (-6, -7): 7.9 people, fed 0.95
+  clan 293 at 142 (-9, -5): 7.8 people, fed 1.00
+  clan 147 at 219 (-6, -6): 7.6 people, fed 0.87
+unaligned clans in reach of your market, leaning to each civ (join at 1.0):
+  none
+places: capitals civ 716 166 (-8, -6), civ 717 475 (2, 2), civ 718 740 (12, 2)
+  your clans' homes: 166 (-8, -6), 192 (-7, -6), 218 (-6, -7), 142 (-9, -5), 219 (-6, -6), 247 (-5, -6), 194 (-7, -4), 244 (-5, -9), 167 (-8, -5), 191 (-7, -7), 190 (-7, -8)
+  the AI would post your camp at 194 (-7, -4)
+feed since the last call: 13 about you, 120 others
+  1 earlier not shown
+    283   Clan 61 is starving
+    283   Clan 311 is starving
+    283 ! Red's camp at (-7, -4) is cut off from its capital
+    283   Red's camp at (-7, -4) is resupplied
+    285   Clan 61 divides; clan 726 settles at (-7, -5)
+    286   Clan 399 is starving
+    286 ! 1.3 people leave Red's clans for others
+    289   Red's camp forages at (-7, -4)
+    290   Clan 399 is starving
+    290   Clan 293 divides; clan 738 settles at (-8, -5)
+    291   Clan 738 is starving
+    292 ! Red's camp at (-7, -4) goes hungry
+legal orders:
+  {"type":"raise","n":1}
+  {"type":"disband","unit":719}
+  {"type":"move","unit":719,"to":<tile>}  to: 221 (-6, -4), 220 (-6, -5), 193 (-7, -5), 168 (-8, -4), 169 (-8, -3), 195 (-7, -3), 194 (-7, -4)
+  {"type":"zone","unit":719,"tiles":[<tile>]}  tiles: 221 (-6, -4), 220 (-6, -5), 193 (-7, -5), 168 (-8, -4), 169 (-8, -3), 195 (-7, -3)
+  {"type":"zone","unit":719,"tiles":[]}  undeploys
+  {"type":"switches","unit":719,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":719}
+  {"type":"forage","unit":719}
+  {"type":"route","unit":720,"from":166,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)
+   292  went hungry: its pack covered 87% of its need
+   289  forages at (-7, -4)
+   283  its line brings food to the camp
+   283  its line is cut: it can't carry a turn's food for its warriors
+   283  arrived at (-7, -4)
+   283  deployed over 2 tiles, its warriors spreading to hold them
+   283  marching to (-7, -4), 3 steps away
+   282  raised at (-8, -6) with 3 warriors from its clans
+refused: 999 is not a unit
+turn 383, 100 turns since the pick at 283, phase main, leading civ 716
+standing, share of the people:
+  civ 717 Blue 16.6%, rank 1 leader
+  civ 716 Red 9.9%, rank 2 you
+  civ 718 Gold 8.1%, rank 3
+store 48.8: game 2.1, grain 29.4, fruit 0.3, fish 14.4, shellfish 2.6
+keep 15.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 45.0, gave 0.0; since founding gave 12.0, clans joined 2
+  camp 719 at 194 (-7, -4): 3.0 warriors, pack 2.2 of 15.0 (0.7 turns), dest none, line cost 10.0, carries 3.1 a turn, hungry 0 turns, zone 194 (-7, -4), held 194 (-7, -4)
+  scout 720 at 166 (-8, -6): no route, hungry 0 turns
+clans: 13 with 72.3 people; the largest:
+  clan 293 at 142 (-9, -5): 8.9 people, fed 0.97
+  clan 147 at 219 (-6, -6): 8.0 people, fed 0.84
+  clan 56 at 166 (-8, -6): 7.9 people, fed 1.00
+  clan 839 at 218 (-6, -7): 7.5 people, fed 0.84
+  clan 61 at 193 (-7, -5): 7.4 people, fed 0.92
+unaligned clans in reach of your market, leaning to each civ (join at 1.0):
+  none
+places: capitals civ 716 166 (-8, -6), civ 717 475 (2, 2), civ 718 740 (12, 2)
+  your clans' homes: 142 (-9, -5), 219 (-6, -6), 166 (-8, -6), 218 (-6, -7), 193 (-7, -5), 191 (-7, -7), 244 (-5, -9), 217 (-6, -8), 373 (-1, -2), 247 (-5, -6), 372 (-1, -3), 440 (1, -1), 405 (0, -3)
+  the AI would post your camp at 193 (-7, -5)
+feed since the last call: 72 about you, 1074 others
+  60 earlier not shown
+    376   Clan 857 divides; clan 881 settles at (0, -3)
+    377   Clan 865 is starving
+    377   Clan 881 is starving
+    378   Clan 857 divides; clan 890 settles at (-2, -2)
+    378 ! 3.4 people leave Red's clans for others
+    379   Clan 857 is starving
+    379   Clan 881 is starving
+    379   Clan 56 divides; clan 891 settles at (1, -1)
+    379   Red's camp forages at (-7, -4)
+    381   Clan 881 is starving
+    381   Clan 891 is starving
+    382   Clan 890 is starving
+legal orders:
+  {"type":"raise","n":1}
+  {"type":"disband","unit":719}
+  {"type":"move","unit":719,"to":<tile>}  to: 221 (-6, -4), 220 (-6, -5), 193 (-7, -5), 168 (-8, -4), 169 (-8, -3), 195 (-7, -3), 193 (-7, -5)
+  {"type":"zone","unit":719,"tiles":[<tile>]}  tiles: 221 (-6, -4), 220 (-6, -5), 193 (-7, -5), 168 (-8, -4), 169 (-8, -3), 195 (-7, -3)
+  {"type":"zone","unit":719,"tiles":[]}  undeploys
+  {"type":"switches","unit":719,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":719}
+  {"type":"forage","unit":719}
+  {"type":"route","unit":720,"from":166,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)
+turn 383, 100 turns since the pick at 283, phase main, leading civ 716
+standing, share of the people:
+  civ 717 Blue 16.6%, rank 1 leader
+  civ 716 Red 9.9%, rank 2 you
+  civ 718 Gold 8.1%, rank 3
+store 48.8: game 2.1, grain 29.4, fruit 0.3, fish 14.4, shellfish 2.6
+keep 15.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 45.0, gave 0.0; since founding gave 12.0, clans joined 2
+  camp 719 at 194 (-7, -4): 3.0 warriors, pack 2.2 of 15.0 (0.7 turns), dest none, line cost 10.0, carries 3.1 a turn, hungry 0 turns, zone 194 (-7, -4), held 194 (-7, -4)
+  scout 720 at 166 (-8, -6): no route, hungry 0 turns
+clans: 13 with 72.3 people; the largest:
+  clan 293 at 142 (-9, -5): 8.9 people, fed 0.97
+  clan 147 at 219 (-6, -6): 8.0 people, fed 0.84
+  clan 56 at 166 (-8, -6): 7.9 people, fed 1.00
+  clan 839 at 218 (-6, -7): 7.5 people, fed 0.84
+  clan 61 at 193 (-7, -5): 7.4 people, fed 0.92
+unaligned clans in reach of your market, leaning to each civ (join at 1.0):
+  none
+places: capitals civ 716 166 (-8, -6), civ 717 475 (2, 2), civ 718 740 (12, 2)
+  your clans' homes: 142 (-9, -5), 219 (-6, -6), 166 (-8, -6), 218 (-6, -7), 193 (-7, -5), 191 (-7, -7), 244 (-5, -9), 217 (-6, -8), 373 (-1, -2), 247 (-5, -6), 372 (-1, -3), 440 (1, -1), 405 (0, -3)
+  the AI would post your camp at 193 (-7, -5)
+feed since the last call: 72 about you, 1074 others
+  60 earlier not shown
+    376   Clan 857 divides; clan 881 settles at (0, -3)
+    377   Clan 865 is starving
+    377   Clan 881 is starving
+    378   Clan 857 divides; clan 890 settles at (-2, -2)
+    378 ! 3.4 people leave Red's clans for others
+    379   Clan 857 is starving
+    379   Clan 881 is starving
+    379   Clan 56 divides; clan 891 settles at (1, -1)
+    379   Red's camp forages at (-7, -4)
+    381   Clan 881 is starving
+    381   Clan 891 is starving
+    382   Clan 890 is starving
+legal orders:
+  {"type":"raise","n":1}
+  {"type":"disband","unit":719}
+  {"type":"move","unit":719,"to":<tile>}  to: 221 (-6, -4), 220 (-6, -5), 193 (-7, -5), 168 (-8, -4), 169 (-8, -3), 195 (-7, -3), 193 (-7, -5)
+  {"type":"zone","unit":719,"tiles":[<tile>]}  tiles: 221 (-6, -4), 220 (-6, -5), 193 (-7, -5), 168 (-8, -4), 169 (-8, -3), 195 (-7, -3)
+  {"type":"zone","unit":719,"tiles":[]}  undeploys
+  {"type":"switches","unit":719,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":719}
+  {"type":"forage","unit":719}
+  {"type":"route","unit":720,"from":166,"to":<tile>}  to: 192 (-7, -6), 191 (-7, -7), 165 (-8, -7), 142 (-9, -5), 167 (-8, -5)
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)
+
+$ sansfiat judge g.json
+turn 283 (+0): civ 716 10.6%, civ 717 7.5%, civ 718 5.1%; leader civ 716
+turn 293 (+10): civ 716 9.5%, civ 717 8.0%, civ 718 4.4%; leader civ 716
+turn 303 (+20): civ 716 9.6%, civ 717 9.6%, civ 718 4.4%; leader civ 716
+turn 313 (+30): civ 716 9.4%, civ 717 10.2%, civ 718 6.2%; leader civ 717
+turn 323 (+40): civ 716 9.1%, civ 717 10.0%, civ 718 6.8%; leader civ 717
+turn 333 (+50): civ 716 9.1%, civ 717 13.0%, civ 718 6.8%; leader civ 717
+turn 343 (+60): civ 716 8.2%, civ 717 14.0%, civ 718 6.1%; leader civ 717
+turn 353 (+70): civ 716 8.9%, civ 717 13.6%, civ 718 7.7%; leader civ 717
+turn 363 (+80): civ 716 8.6%, civ 717 15.6%, civ 718 9.2%; leader civ 717
+turn 373 (+90): civ 716 10.0%, civ 717 15.4%, civ 718 9.0%; leader civ 717
+turn 383 (+100): civ 716 9.9%, civ 717 16.6%, civ 718 8.1%; leader civ 717
+led civ 716: Standing at +100 9.9% (rank 2) in the game, 8.8% (rank 2) with every civ on the AI
+doubt (game / control): lead changes 1 / 1, spread +100 0.085 / 0.114, swings 5 / 1
+motion (game / control): clans changed 30 / 25, people 136.4 / 117.9, land tiles 350 / 313
+player orders: 3 (move 1, setGift 1, zone 1), 3.00 per 100 turns; turns with none 99 of 100, longest run 99
+player lines: 1 refused, 0 noted
+  refused at turn 293: {"type":"move","unit":999,"to":5} (refused: 999 is not a unit)

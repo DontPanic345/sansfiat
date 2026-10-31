@@ -73,3 +73,9 @@ same rule: nothing is free, and every abstraction has to justify itself. It need
   from the game itself.
 - It isn't a game of building everything at once. It grows slowly, one mechanic at a time,
   each kept only if it earns its place.
+
+## Decided
+
+- A civ's Standing is its share of the world's people: the people of its clans and of its warriors and scouts, over everyone's. Raising a camp neither wins nor loses Standing. Once land exists, the people on its land count too. (#101)
+- The lead changes only when another civ is ahead by more than half a point of Standing, so two civs neck and neck don't trade the lead on noise. (#101)
+- An army mustn't starve its own side: warriors starved are counted, and the world's people with armies are held against the same world without them. (#101)

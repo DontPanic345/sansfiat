@@ -1,0 +1,16 @@
+turn 283 (+0): civ 716 10.6%, civ 717 7.5%, civ 718 5.1%; leader civ 716
+turn 293 (+10): civ 716 9.4%, civ 717 8.1%, civ 718 5.8%; leader civ 716
+turn 303 (+20): civ 716 9.6%, civ 717 10.4%, civ 718 5.8%; leader civ 717
+turn 313 (+30): civ 716 9.8%, civ 717 10.3%, civ 718 6.3%; leader civ 717
+turn 323 (+40): civ 716 9.4%, civ 717 11.0%, civ 718 7.5%; leader civ 717
+turn 333 (+50): civ 716 9.3%, civ 717 12.6%, civ 718 8.8%; leader civ 717
+turn 343 (+60): civ 716 10.0%, civ 717 13.5%, civ 718 7.8%; leader civ 717
+turn 353 (+70): civ 716 10.3%, civ 717 14.6%, civ 718 8.0%; leader civ 717
+turn 363 (+80): civ 716 10.8%, civ 717 15.0%, civ 718 8.7%; leader civ 717
+turn 373 (+90): civ 716 9.8%, civ 717 14.7%, civ 718 10.6%; leader civ 717
+turn 383 (+100): civ 716 9.8%, civ 717 14.4%, civ 718 11.1%; leader civ 717
+led civ 716: Standing at +108 10.0% (rank 2) in the game, 8.9% (rank 2) with every civ on the AI
+doubt (game / control): lead changes 1 / 1, spread +108 0.052 / 0.133, swings 4 / 1
+motion (game / control): clans changed 25 / 25, people 123.2 / 117.9, land tiles 404 / 337
+player orders: 6 (forage 1, move 2, setGift 3), 5.56 per 100 turns; turns with none 103 of 108, longest run 49
+player lines: 0 refused, 19 noted

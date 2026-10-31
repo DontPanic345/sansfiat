@@ -1,0 +1,96 @@
+# The judge's bands: each `[group.metric]` names a number of `sweep --judge`'s total (its JSON's
+# `total`). A value outside a fail bound fails CI; outside a warn bound it warns and passes. Bounds
+# are inclusive. A band is a promise about the game, so a piece that moves one says so in its PR,
+# with the new numbers, and the bands move with it. `relay/specs/101/bands.md` has main's value
+# beside each band and why it sits there.
+
+# Health: what is always a bug. These fail.
+
+[health.panics]
+fail_max = 0
+note = "a map that panics is a game that can't be played"
+
+[health.digest_mismatches]
+fail_max = 0
+note = "the two army runs of a map must end on the same digest"
+
+[health.pregame_by_centres]
+fail_min = 7
+note = "the pre-game must end by the centres on every retro map"
+
+[health.people_vs_control]
+fail_min = 0.90
+warn_min = 0.95
+note = "armies cost the world 2% of its people on main (0.984); a tenth is a war the game didn't mean"
+
+[health.camps_kept]
+fail_min = 10
+warn_min = 13
+note = "15 of 21 camps live 200 turns on main; losing a third of the rest is the AI forgetting its camp"
+
+[health.warriors_starved]
+fail_max = 40
+warn_max = 28
+note = "19 on main, 21 with half the gift; twice main is camps no longer fed"
+
+[health.camps_lost]
+fail_max = 8
+warn_max = 5
+note = "3 on main, 5 with half the gift; 8 is most of the maps losing a camp"
+
+# The four scores: later pieces mean to move these, so they warn, and a piece that moves one says
+# so. Motion's clans changing hands also fails at a floor: below it the gift no longer moves clans.
+
+[standing.top_200]
+warn_min = 0.075
+warn_max = 0.15
+note = "0.091 on main, 0.068 with half the gift: the leader's share is what gifts and armies build"
+
+[standing.aligned_200]
+warn_min = 0.16
+warn_max = 0.30
+note = "0.184 on main, 0.157 with half the gift: the civs' share of the world"
+
+[doubt.lead_changes]
+warn_min = 3
+warn_max = 15
+note = "7 on main: some doubt on some maps; none is a game decided at the pick, many is flicker"
+
+[doubt.maps_with_lead_change]
+warn_min = 2
+note = "4 of 7 on main: a lead changing on only one map is a game decided at the pick"
+
+[doubt.spread_200]
+warn_min = 0.035
+warn_max = 0.10
+note = "0.053 on main, 0.029 with half the gift: the gap between first and last at +200"
+
+[doubt.swings]
+warn_min = 8
+warn_max = 32
+note = "16 on main at JUDGE.sample 10: Standing that never swings is a game on rails"
+
+[decisions.ai_orders_per_100]
+warn_min = 1.5
+warn_max = 5.0
+note = "2.29 on main, 1.90 with half the gift: the AI's orders per civ per 100 turns"
+
+[decisions.levers_repeated]
+warn_max = 0.9
+note = "0.81 on main, 0.90 with half the gift: the order kinds each civ gives at least twice, the mean over civs"
+
+[motion.clans_changed]
+fail_min = 55
+warn_min = 66
+warn_max = 160
+note = "82 on main, 49 with half the gift: clans moving between civs is what gifts do"
+
+[motion.people_changed]
+warn_min = 300
+warn_max = 800
+note = "398 on main, 274 with half the gift: the people in the clans that move"
+
+[motion.land_changed]
+warn_min = 2000
+warn_max = 5000
+note = "2522 on main, 1526 with half the gift: tiles whose civ changes"

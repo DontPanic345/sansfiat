@@ -1,0 +1,16 @@
+small  seed   2 pick 283  standing +200 top 0.212 aligned 0.359  lead changes 1  spread +100 0.114 +200 0.152 swings 3  orders/100 2.17 levers 0.7  motion: clans changed 33 people 149.6 land 679  centres 1 camps kept 3/3 starved 0 lost 0 people vs control 0.95 digests differ 0
+small  seed   3 pick 219  standing +200 top 0.064 aligned 0.180  lead changes 1  spread +100 0.006 +200 0.006 swings 0  orders/100 1.17 levers 0.3  motion: clans changed 0 people 0.0 land 21  centres 1 camps kept 2/3 starved 2 lost 0 people vs control 0.98 digests differ 0
+small  seed   6 pick 267  standing +200 top 0.132 aligned 0.268  lead changes 4  spread +100 0.047 +200 0.091 swings 9  orders/100 2.50 levers 1.3  motion: clans changed 15 people 71.4 land 358  centres 1 camps kept 1/3 starved 4 lost 0 people vs control 1.00 digests differ 0
+small  seed   9 pick 216  standing +200 top 0.125 aligned 0.244  lead changes 0  spread +100 0.067 +200 0.066 swings 2  orders/100 1.00 levers 0.3  motion: clans changed 4 people 26.0 land 608  centres 1 camps kept 3/3 starved 0 lost 0 people vs control 0.95 digests differ 0
+medium seed   8 pick 296  standing +200 top 0.038 aligned 0.097  lead changes 1  spread +100 0.014 +200 0.014 swings 0  orders/100 4.00 levers 1.0  motion: clans changed 3 people 15.7 land 75  centres 1 camps kept 2/3 starved 6 lost 2 people vs control 0.99 digests differ 0
+medium seed   9 pick 380  standing +200 top 0.031 aligned 0.076  lead changes 0  spread +100 0.005 +200 0.012 swings 2  orders/100 1.83 levers 1.0  motion: clans changed 0 people 0.0 land 360  centres 1 camps kept 1/3 starved 7 lost 1 people vs control 0.99 digests differ 0
+large  seed   8 pick 374  standing +200 top 0.038 aligned 0.065  lead changes 0  spread +100 0.024 +200 0.028 swings 0  orders/100 3.33 levers 1.0  motion: clans changed 27 people 135.5 land 421  centres 1 camps kept 3/3 starved 0 lost 0 people vs control 0.99 digests differ 0
+total standing: top at +200 0.091, aligned at +200 0.184
+total doubt: lead changes 7 on 4 maps, spread +100 0.039 +200 0.053, swings 16
+total decisions: AI orders per 100 turns 2.29 (move 1.52, raise 0.05, zone 0.71), levers repeated 0.81
+total motion: clans changed 82, people 398.3, land tiles 2522
+total health: pre-games by centres 7 of 7, camps kept 15 of 21, warriors starved 19, camps lost 3, people vs control 0.984, panics 0, digest mismatches 0
+ok health.digest_mismatches 0 (fail_max 0)
+ok health.panics 0 (fail_max 0)
+ok health.pregame_by_centres 7 (fail_min 7)
+seconds 51.8
