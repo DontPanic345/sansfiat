@@ -77,7 +77,7 @@ note = "2.29 on main, 1.90 with half the gift: the AI's orders per civ per 100 t
 
 [decisions.levers_repeated]
 warn_max = 0.9
-note = "0.81 on main, 0.90 with half the gift: the share of orders that repeat the last one"
+note = "0.81 on main, 0.90 with half the gift: the order kinds each civ gives at least twice, the mean over civs"
 
 [motion.clans_changed]
 fail_min = 55
