@@ -9,7 +9,7 @@ actions. One engine, two front ends: a CLI and a wasm web page. The game's desig
 cargo run -p sansfiat -- map [--seed N] [--size small|medium|large]   # the map as ASCII
 cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--save game.json] [--why ID]   # to the pick unless --turns; --why prints a subject's reasons
 cargo run -p sansfiat -- sweep [seed ...] [--size small|medium|large|all] [--turns N]   # the pre-game, seeds in parallel
-cargo run -p sansfiat -- sweep --judge [--json]   # the retro maps played (army twice, --no-army once) and scored by the judge: a report, with no verdict
+cargo run -p sansfiat -- sweep --judge [--bands FILE] [--json]   # the retro maps played (army twice, --no-army once) and scored by the judge; reads judge.toml, exits 1 on a fail
 cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army] [--no-gifts] [--no-zone] [--lever G]   # the retro maps past the pick, one line per civ and the totals; the --no-* flags are controls
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a game a line at a time: the file is a save, each call resumes it; stdin lines (orders, actions, end, why, view, map, note); g.lines.jsonl records them
 cargo run -p sansfiat -- judge g.json [--json]   # a played game judged turn by turn, beside the same map with every civ on the AI
@@ -54,9 +54,10 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `cli/src/digest.rs` | `digest`: a turn and its digest per line; `--lead` plays the scripted game, `--state` hashes the world without its log. |
 | `cli/src/sweep.rs` | `sweep`: the pre-game over seeds in parallel, its series lines, and the `Run` and `Point` they keep. |
 | `cli/src/retro.rs` | `sweep --after`: the retro maps past the pick, each civ's camp and clans, and the controls. `to_pick` and `kept_camp` are shared. |
-| `cli/src/judge.rs` | `sweep --judge`: the retro maps judged, the totals in six groups (standing, doubt, decisions, motion, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, the text and `--json` report. |
+| `cli/src/judge.rs` | `sweep --judge`: the retro maps judged, the totals, the bands of `judge.toml` checked, the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, the text and `--json` report. |
 | `cli/src/play.rs` | `play`: a game file resumed per call (`World::replay`), each stdin line applied through `act`, the save and the lines file (`FILE.lines.jsonl`) written after each. |
 | `cli/src/view.rs` | `view::text`: the led civ's text view (standing, store, units, clans, reach, places, feed, legal orders), under 80 lines at the pick and +100. |
+| `engine/judge.toml` | The judge's bands: `[group.metric]` tables with `fail_min`, `fail_max`, `warn_min`, `warn_max` and a `note`. A piece that moves one says so in its PR. |
 | `cli/src/replay.rs` | `replay`: a save's world, printed as `run` prints it. |
 | `cli/src/bench.rs` | `bench`: the time per turn for each seed. |
 | `cli/src/clear.rs` | `clear`: the barter clearing of a basket file (`basket_of`, `clear_file`). |

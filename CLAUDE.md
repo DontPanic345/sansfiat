@@ -32,9 +32,10 @@ it should be, and everything else serves that.
 
 `engine/check.sh` runs everything CI runs on the engine.
 
-The judge: `sansfiat sweep --judge` plays the seven retro maps with every civ on the AI and
-reports the scores, the armies and health beside a control. It is a report, not a check: CI
-doesn't run it. A piece that moves a score gives the old and new numbers in its PR.
+The judge: `check.sh` runs `sansfiat sweep --judge`, which plays the seven retro maps and checks
+its totals against the bands in `engine/judge.toml` (health fails, the four scores warn). A piece
+that moves a band says so in its PR, with the old and new numbers, and moves the band with it.
 
-Play: `sansfiat play --game FILE` plays a game a line at a time through the text view, and
-`sansfiat judge FILE` scores a played game beside the same map on the AI.
+Play: `sansfiat play --game FILE` plays a game a line at a time through the text view; the
+players' and the judge's prompts are in `relay/players/`, and `sansfiat judge FILE` scores a
+played game beside the same map on the AI.

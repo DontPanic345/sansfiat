@@ -1,0 +1,31 @@
+small  seed   2 pick 283  standing +200 top 0.103 aligned 0.274  lead changes 1  spread +100 0.054 +200 0.026 swings 2  orders/100 1.67 levers 1.3  motion: clans changed 19 people 107.1 land 318  centres 1 camps kept 3/3 starved 0 lost 0 people vs control 0.93 digests differ 0
+small  seed   3 pick 219  standing +200 top 0.064 aligned 0.180  lead changes 1  spread +100 0.006 +200 0.006 swings 0  orders/100 1.17 levers 0.3  motion: clans changed 0 people 0.0 land 21  centres 1 camps kept 2/3 starved 2 lost 0 people vs control 0.98 digests differ 0
+small  seed   6 pick 267  standing +200 top 0.081 aligned 0.186  lead changes 3  spread +100 0.031 +200 0.040 swings 5  orders/100 2.17 levers 1.3  motion: clans changed 10 people 46.3 land 145  centres 1 camps kept 1/3 starved 4 lost 0 people vs control 0.99 digests differ 0
+small  seed   9 pick 216  standing +200 top 0.134 aligned 0.253  lead changes 0  spread +100 0.050 +200 0.076 swings 6  orders/100 1.67 levers 0.3  motion: clans changed 10 people 60.4 land 459  centres 1 camps kept 3/3 starved 0 lost 0 people vs control 0.98 digests differ 0
+medium seed   8 pick 296  standing +200 top 0.035 aligned 0.089  lead changes 0  spread +100 0.010 +200 0.015 swings 0  orders/100 3.83 levers 1.3  motion: clans changed 1 people 4.3 land 52  centres 1 camps kept 2/3 starved 8 lost 2 people vs control 0.98 digests differ 0
+medium seed   9 pick 380  standing +200 top 0.027 aligned 0.050  lead changes 4  spread +100 0.004 +200 0.027 swings 2  orders/100 1.67 levers 1.0  motion: clans changed 0 people 0.0 land 402  centres 1 camps kept 1/3 starved 7 lost 3 people vs control 0.99 digests differ 0
+large  seed   8 pick 374  standing +200 top 0.031 aligned 0.065  lead changes 0  spread +100 0.016 +200 0.017 swings 0  orders/100 1.17 levers 0.7  motion: clans changed 9 people 55.7 land 129  centres 1 camps kept 3/3 starved 0 lost 0 people vs control 1.00 digests differ 0
+total standing: top at +200 0.068, aligned at +200 0.157
+total doubt: lead changes 9 on 4 maps, spread +100 0.024 +200 0.029, swings 15
+total decisions: AI orders per 100 turns 1.90 (move 1.24, raise 0.07, zone 0.60), levers repeated 0.90
+total motion: clans changed 49, people 273.8, land tiles 1526
+total health: pre-games by centres 7 of 7, camps kept 15 of 21, warriors starved 21, camps lost 5, people vs control 0.984, panics 0, digest mismatches 0
+ok decisions.ai_orders_per_100 1.9047619047619047 (warn_min 1.5, warn_max 5)
+WARN decisions.levers_repeated 0.9047619047619049 (above 0.9) — 0.81 on main, 0.90 with half the gift: the share of orders that repeat the last one
+ok doubt.lead_changes 9 (warn_min 3, warn_max 15)
+ok doubt.maps_with_lead_change 4 (warn_min 2)
+WARN doubt.spread_200 0.029426420863348353 (below 0.035) — 0.053 on main, 0.029 with half the gift: the gap between first and last at +200
+ok doubt.swings 15 (warn_min 8, warn_max 32)
+ok health.camps_kept 15 (fail_min 10, warn_min 13)
+ok health.camps_lost 5 (fail_max 8, warn_max 5)
+ok health.digest_mismatches 0 (fail_max 0)
+ok health.panics 0 (fail_max 0)
+ok health.people_vs_control 0.9835089288775747 (fail_min 0.9, warn_min 0.95)
+ok health.pregame_by_centres 7 (fail_min 7)
+ok health.warriors_starved 21 (fail_max 40, warn_max 28)
+FAIL motion.clans_changed 49 (below 55) — 82 on main, 49 with half the gift: clans moving between civs is what gifts do
+WARN motion.land_changed 1526 (below 2000) — 2522 on main, 1526 with half the gift: tiles whose civ changes
+WARN motion.people_changed 273.8422478835444 (below 300) — 398 on main, 274 with half the gift: the people in the clans that move
+WARN standing.aligned_200 0.156761669931856 (below 0.16) — 0.184 on main, 0.157 with half the gift: the civs' share of the world
+WARN standing.top_200 0.06797398320112438 (below 0.075) — 0.091 on main, 0.068 with half the gift: the leader's share is what gifts and armies build
+seconds 51.1

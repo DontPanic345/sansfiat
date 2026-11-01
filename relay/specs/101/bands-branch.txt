@@ -1,0 +1,24 @@
+total standing: top at +200 0.091, aligned at +200 0.184
+total doubt: lead changes 7 on 4 maps, spread +100 0.039 +200 0.053, swings 16
+total decisions: AI orders per 100 turns 2.29 (move 1.52, raise 0.05, zone 0.71), levers repeated 0.81
+total motion: clans changed 82, people 398.3, land tiles 2522
+total health: pre-games by centres 7 of 7, camps kept 15 of 21, warriors starved 19, camps lost 3, people vs control 0.984, panics 0, digest mismatches 0
+ok decisions.ai_orders_per_100 2.2857142857142856 (warn_min 1.5, warn_max 5)
+ok decisions.levers_repeated 0.8095238095238094 (warn_max 0.9)
+ok doubt.lead_changes 7 (warn_min 3, warn_max 15)
+ok doubt.maps_with_lead_change 4 (warn_min 2)
+ok doubt.spread_200 0.05252210064033202 (warn_min 0.035, warn_max 0.1)
+ok doubt.swings 16 (warn_min 8, warn_max 32)
+ok health.camps_kept 15 (fail_min 10, warn_min 13)
+ok health.camps_lost 3 (fail_max 8, warn_max 5)
+ok health.digest_mismatches 0 (fail_max 0)
+ok health.panics 0 (fail_max 0)
+ok health.people_vs_control 0.9837336153176597 (fail_min 0.9, warn_min 0.95)
+ok health.pregame_by_centres 7 (fail_min 7)
+ok health.warriors_starved 19 (fail_max 40, warn_max 28)
+ok motion.clans_changed 82 (fail_min 55, warn_min 66, warn_max 160)
+ok motion.land_changed 2522 (warn_min 2000, warn_max 5000)
+ok motion.people_changed 398.25603242388036 (warn_min 300, warn_max 800)
+ok standing.aligned_200 0.18422357017993662 (warn_min 0.16, warn_max 0.3)
+ok standing.top_200 0.09136615502011096 (warn_min 0.075, warn_max 0.15)
+seconds 52.7

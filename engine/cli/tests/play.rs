@@ -164,7 +164,7 @@ fn judge_prints_a_score_line_and_the_control_for_the_led_civ() {
 
 #[test]
 fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
-    // The trial game's save (relay/specs/101/trial/g.json): at its last turn clan 321 is in reach of Red's
+    // The trial game (relay/specs/101/play.md): at its last turn clan 321 is in reach of Red's
     // market but trades at another, so Red's gift never reaches it.
     let (_dir, game) = game_in("reach");
     let trial = concat!(env!("CARGO_MANIFEST_DIR"), "/../../relay/specs/101/trial/g.json");
