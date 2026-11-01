@@ -18,22 +18,24 @@ note = "the two army runs of a map must end on the same digest"
 fail_min = 7
 note = "the pre-game must end by the centres on every retro map"
 
-[health.people_vs_control]
+# Armies: what the camps cost their side. Measures, not bugs: the design says what they should be.
+
+[armies.people_vs_control]
 fail_min = 0.90
 warn_min = 0.95
 note = "armies cost the world 2% of its people on main (0.984); a tenth is a war the game didn't mean"
 
-[health.camps_kept]
+[armies.camps_kept]
 fail_min = 10
 warn_min = 13
 note = "15 of 21 camps live 200 turns on main; losing a third of the rest is the AI forgetting its camp"
 
-[health.warriors_starved]
+[armies.warriors_starved]
 fail_max = 40
 warn_max = 28
 note = "19 on main, 21 with half the gift; twice main is camps no longer fed"
 
-[health.camps_lost]
+[armies.camps_lost]
 fail_max = 8
 warn_max = 5
 note = "3 on main, 5 with half the gift; 8 is most of the maps losing a camp"

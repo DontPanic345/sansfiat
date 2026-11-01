@@ -21,17 +21,24 @@ use crate::USAGE;
 /// The turns past the pick each map is run for.
 const AFTER: u32 = 200;
 
-/// One map's health: its pre-game, its camps, and the digests of its two army runs.
+/// One map's health: its pre-game and the digests of its two army runs. These are bugs whatever
+/// the design says.
 #[derive(Clone, Debug, Serialize)]
 struct Health {
     pregame_by_centres: u32,
+    digest_mismatches: u32,
+}
+
+/// One map's armies: its camps, what they cost their side, and the world's people beside the
+/// `--no-army` control. These are measures, not bugs: the design decides what they should be.
+#[derive(Clone, Debug, Serialize)]
+struct Armies {
     camps_kept: u32,
     camps_of: u32,
     warriors_starved: u32,
     camps_lost: u32,
     people_at_200: f64,
     control_people_at_200: f64,
-    digest_mismatches: u32,
 }
 
 /// One map that was judged.
@@ -42,6 +49,7 @@ struct MapJudged {
     pick: u32,
     #[serde(flatten)]
     scores: Scores,
+    armies: Armies,
     health: Health,
 }
 
@@ -53,13 +61,14 @@ struct Panicked {
     message: String,
 }
 
-/// The sweep's totals, in the five groups. Each name is a band's name: `group.metric`.
+/// The sweep's totals, in six groups. Each name is a band's name: `group.metric`.
 #[derive(Clone, Debug, Serialize)]
 struct Total {
     standing: TotalStanding,
     doubt: TotalDoubt,
     decisions: TotalDecisions,
     motion: TotalMotion,
+    armies: TotalArmies,
     health: TotalHealth,
 }
 
@@ -93,13 +102,17 @@ struct TotalMotion {
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct TotalHealth {
-    pregame_by_centres: u32,
+struct TotalArmies {
     camps_kept: u32,
     camps_of: u32,
     warriors_starved: u32,
     camps_lost: u32,
     people_vs_control: f64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct TotalHealth {
+    pregame_by_centres: u32,
     panics: u32,
     digest_mismatches: u32,
 }
@@ -155,17 +168,19 @@ fn judge_map(name: &str, radius: i32, seed: u32) -> MapJudged {
     let civs: Vec<u32> = w.civs.keys().copied().collect();
     let kept = civs.iter().filter(|&&c| kept_camp(&w, c)).count() as u32;
     let people = |w: &World| stats::summary(w).people;
-    let health = Health {
-        pregame_by_centres: w.end.as_ref().is_some_and(|e| !e.by_limit) as u32,
+    let armies = Armies {
         camps_kept: kept,
         camps_of: civs.len() as u32,
         warriors_starved: civs.iter().map(|c| w.civs[c].army.starved).sum(),
         camps_lost: civs.iter().map(|c| w.civs[c].army.lost).sum(),
         people_at_200: people(&w),
         control_people_at_200: people(&control),
+    };
+    let health = Health {
+        pregame_by_centres: w.end.as_ref().is_some_and(|e| !e.by_limit) as u32,
         digest_mismatches: (stats::digest(&w) != stats::digest(&again)) as u32,
     };
-    MapJudged { size: name.to_string(), seed, pick: watch.pick(), scores: watch.scores(&w, &civs), health }
+    MapJudged { size: name.to_string(), seed, pick: watch.pick(), scores: watch.scores(&w, &civs), armies, health }
 }
 
 fn message(e: Box<dyn Any + Send>) -> String {
@@ -194,8 +209,8 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             *by_kind.entry(kind.clone()).or_insert(0.0) += rate / n;
         }
     }
-    let people: f64 = maps.iter().map(|m| m.health.people_at_200).sum();
-    let control: f64 = maps.iter().map(|m| m.health.control_people_at_200).sum();
+    let people: f64 = maps.iter().map(|m| m.armies.people_at_200).sum();
+    let control: f64 = maps.iter().map(|m| m.armies.control_people_at_200).sum();
     Total {
         standing: TotalStanding {
             top_200: mean(&at(|m| m.scores.standing.top_200)),
@@ -218,13 +233,15 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             people_changed: maps.iter().map(|m| m.scores.motion.people_changed).sum(),
             land_changed: maps.iter().map(|m| m.scores.motion.land_changed).sum(),
         },
+        armies: TotalArmies {
+            camps_kept: sum(|m| m.armies.camps_kept),
+            camps_of: sum(|m| m.armies.camps_of),
+            warriors_starved: sum(|m| m.armies.warriors_starved),
+            camps_lost: sum(|m| m.armies.camps_lost),
+            people_vs_control: if control > 0.0 { people / control } else { 0.0 },
+        },
         health: TotalHealth {
             pregame_by_centres: sum(|m| m.health.pregame_by_centres),
-            camps_kept: sum(|m| m.health.camps_kept),
-            camps_of: sum(|m| m.health.camps_of),
-            warriors_starved: sum(|m| m.health.warriors_starved),
-            camps_lost: sum(|m| m.health.camps_lost),
-            people_vs_control: if control > 0.0 { people / control } else { 0.0 },
             panics: panics as u32,
             digest_mismatches: sum(|m| m.health.digest_mismatches),
         },
@@ -357,9 +374,9 @@ fn print_text(r: &Report) {
     }
     for m in &r.maps {
         let s = &m.scores;
-        let h = &m.health;
+        let (a, h) = (&m.armies, &m.health);
         println!(
-            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  centres {} camps kept {}/{} starved {} lost {} people vs control {:.2} digests differ {}",
+            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  armies: camps kept {}/{} starved {} lost {} people vs control {:.2}  health: centres {} digests differ {}",
             m.size,
             m.seed,
             m.pick,
@@ -374,12 +391,12 @@ fn print_text(r: &Report) {
             s.motion.clans_changed,
             s.motion.people_changed,
             s.motion.land_changed,
+            a.camps_kept,
+            a.camps_of,
+            a.warriors_starved,
+            a.camps_lost,
+            a.people_at_200 / a.control_people_at_200.max(f64::MIN_POSITIVE),
             h.pregame_by_centres,
-            h.camps_kept,
-            h.camps_of,
-            h.warriors_starved,
-            h.camps_lost,
-            h.people_at_200 / h.control_people_at_200.max(f64::MIN_POSITIVE),
             h.digest_mismatches,
         );
     }
@@ -400,16 +417,16 @@ fn print_text(r: &Report) {
         "total motion: clans changed {}, people {:.1}, land tiles {}",
         t.motion.clans_changed, t.motion.people_changed, t.motion.land_changed
     );
+    let a = &t.armies;
+    println!(
+        "total armies: camps kept {} of {}, warriors starved {}, camps lost {}, people vs control {:.3}",
+        a.camps_kept, a.camps_of, a.warriors_starved, a.camps_lost, a.people_vs_control
+    );
     let h = &t.health;
     println!(
-        "total health: pre-games by centres {} of {}, camps kept {} of {}, warriors starved {}, camps lost {}, people vs control {:.3}, panics {}, digest mismatches {}",
+        "total health: pre-games by centres {} of {}, panics {}, digest mismatches {}",
         h.pregame_by_centres,
         r.maps.len() + r.panics.len(),
-        h.camps_kept,
-        h.camps_of,
-        h.warriors_starved,
-        h.camps_lost,
-        h.people_vs_control,
         h.panics,
         h.digest_mismatches
     );

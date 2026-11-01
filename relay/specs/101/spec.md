@@ -200,10 +200,10 @@ today (`probe.md`), and six after every step.
 ## Left unsettled: the canvas (build-3)
 
 - **The bands.** Where each score's warn and fail bounds sit, read from the judge on main and from a
-  known regression the judge must catch. A band that held main to its value exactly would fail every
+  known change the judge must notice. A band that held main to its value exactly would fail every
   piece that means to move it; a band too wide catches nothing. Proof: the judge passes on the branch,
-  and a perturbation that undoes something (the canvas picks one, such as halving the default gift as
-  #75's joins fell from 183 to 84) fails or warns it.
+  and a perturbation that undoes something (the canvas picks one, such as halving the default gift)
+  fails or warns it.
 - **The prompts**, judged by the trial: the player reaches +100 within the time the canvas gives it,
   writes notes at each decision, and the judge returns findings with turns and evidence.
 - **Whether the view is enough to play.** The player's notes and the judge's findings say; the canvas

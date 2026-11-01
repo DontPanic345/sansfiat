@@ -59,7 +59,7 @@ move changes one band and says so. In practice, the health bands fail and the fo
 whole point is that later pieces move them), unless you find a score whose fall is always a bug.
 
 Prove the bands catch something: perturb one number in `data.rs` that undoes a gain (halving the
-default gift, as #75 halved the joins, or another you choose), run the judge, record what it said in
+default gift, or another you choose), run the judge, record what it said in
 `bands.md`, and revert. Set `JUDGE.lead_margin` and `JUDGE.sample` from what the lead changes and
 swings look like on the seven maps; say what you chose in `bands.md`.
 
