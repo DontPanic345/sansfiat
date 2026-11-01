@@ -45,6 +45,24 @@ pub enum Order {
     ClearRoute { unit: u32 },
 }
 
+impl Order {
+    /// The order's wire name, as its `type` reads: what `World::orders` counts it under.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Order::Raise { .. } => "raise",
+            Order::Disband { .. } => "disband",
+            Order::Move { .. } => "move",
+            Order::Zone { .. } => "zone",
+            Order::Switches { .. } => "switches",
+            Order::Resupply { .. } => "resupply",
+            Order::Forage { .. } => "forage",
+            Order::Pillage { .. } => "pillage",
+            Order::Route { .. } => "route",
+            Order::ClearRoute { .. } => "clearRoute",
+        }
+    }
+}
+
 impl World {
     /// Checks `order` for `civ`: `Err` says why it can't happen. Whether `civ` is the one the player
     /// leads is `validate`'s check, not this one: the AI gives orders to every civ it doesn't lead.
@@ -80,6 +98,7 @@ impl World {
     /// and the AI's are re-derived on a replay. `Err` leaves the world as it was.
     pub fn order(&mut self, civ: u32, order: Order) -> Result<(), String> {
         self.check_order(civ, &order)?;
+        self.count(civ, order.kind());
         apply(self, civ, order);
         Ok(())
     }

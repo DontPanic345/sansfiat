@@ -62,6 +62,14 @@ pub struct World {
     /// turn to the next is an alert once (`flag_alerts`).
     #[serde(skip)]
     pub candidates: Vec<(EventKind, u32)>,
+    /// Accepted orders and actions per civ, by kind (`Order::kind`, `setKeep`, `setGift`), since the
+    /// world began: the AI's and the player's alike. Derived, so not saved; a replay rebuilds it.
+    #[serde(skip)]
+    pub orders: BTreeMap<u32, BTreeMap<String, u32>>,
+    /// The turn of the pick (`ChooseCiv`), leading or watching; `None` before it. Derived, so not
+    /// saved; a replay rebuilds it.
+    #[serde(skip)]
+    pub picked: Option<u32>,
 }
 
 /// A reason: a line about a subject, written where a rule acted on it.
@@ -165,6 +173,8 @@ impl World {
             centres_seen: Vec::new(),
             notes: BTreeMap::new(),
             candidates: Vec::new(),
+            orders: BTreeMap::new(),
+            picked: None,
         };
         clans::seed(&mut w);
         w
@@ -203,12 +213,14 @@ impl World {
             Action::ChooseCiv { civ } => {
                 self.player = *civ;
                 self.phase = Phase::Main;
+                self.picked = Some(self.turn);
             }
             Action::Order { civ, order } => {
                 self.order(*civ, order.clone()).expect("validated: the order checks");
             }
             Action::SetKeep { food } => {
                 let civ = self.player.expect("validated: the player leads a civ");
+                self.count(civ, "setKeep");
                 let text = match food {
                     Some(f) => format!("the player set it to keep {f:.1} food in its store"),
                     None => "the player set it to keep its camp's full pack".to_string(),
@@ -218,12 +230,18 @@ impl World {
             }
             Action::SetGift { food } => {
                 let civ = self.player.expect("validated: the player leads a civ");
+                self.count(civ, "setGift");
                 self.civs.get_mut(&civ).unwrap().gift = *food;
                 self.note(civ, format!("the player set its gift to {food:.1} food a turn"));
             }
         }
         self.log.push(action);
         Ok(())
+    }
+
+    /// Counts one accepted order or action of `kind` for `civ` (`orders`).
+    pub fn count(&mut self, civ: u32, kind: &str) {
+        *self.orders.entry(civ).or_default().entry(kind.to_string()).or_insert(0) += 1;
     }
 
     /// A tile as the notes name it: its hex, `(q, r)`.

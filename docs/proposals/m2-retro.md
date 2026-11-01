@@ -23,9 +23,11 @@ Measured on main, on the seven retro maps with every civ on the AI (`game.md` §
   scouts starve within 8 turns of the pick, sitting at their capital.
 - **Joining is a lever, but you set it once.** Gift 6 draws 14.7 clans against rivals' 4.5, and it
   saturates there. Joins are over by +100.
-- **Two regressions went unseen until now.** Camps kept 200 turns fell from 21/21 (#29) to 15/21
-  after #75. Joins at the default gift fell from 183 (#55) to 84. No step re-runs an earlier
-  piece's question.
+- **Two falls came with a deliberate change.** Camps kept 200 turns fell from 21/21 (#29) to 15/21
+  after #75, and joins at the default gift fell from 183 (#55) to 84. #75 carries the founding rule
+  the owner chose to unblock #28 (a clan switches to the capital's market at founding), and the
+  owner accepted the camps' fall there. No step re-ran #55's question, so the joins' fall wasn't put
+  to the owner when the rule changed.
 
 What the game needs, in order: a goal, an AI that uses its army, a world that keeps moving after
 the pick, and units that survive their first errand.

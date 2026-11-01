@@ -1,0 +1,8 @@
+{"turn":283,"line":"{\"type\":\"move\",\"unit\":719,\"to\":194}","result":"ok"}
+{"turn":283,"line":"{\"type\":\"zone\",\"unit\":719,\"tiles\":[192]}","result":"ok"}
+{"turn":283,"line":"{\"type\":\"setGift\",\"food\":2}","result":"ok"}
+{"turn":293,"line":"end 10","result":"ok"}
+{"turn":293,"line":"why 719","result":"ok"}
+{"turn":293,"line":"{\"type\":\"move\",\"unit\":999,\"to\":5}","result":"refused: 999 is not a unit"}
+{"turn":383,"line":"end 90","result":"ok"}
+{"turn":383,"line":"view","result":"ok"}

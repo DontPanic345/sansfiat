@@ -574,3 +574,16 @@ pub const NOTES: NotesRules = NotesRules { kept: 8, shown: 5 };
 
 /// The fewest people a civ's clans must send to clans not of it in a turn for `PeopleLeft` to report it.
 pub const PEOPLE_LEFT_MIN: f64 = 0.1;
+
+/// The judge's numbers (`judge.rs`): how far a civ must lead to take the lead, and the turns between
+/// the samples the swings are counted on.
+pub struct JudgeRules {
+    /// Standing a civ must be ahead by to take the lead from the civ that has it, and a difference
+    /// between samples of the spread must exceed to count as up or down. Two civs within half a point
+    /// of each other swap places on noise: the medium maps count 7 and 8 such changes at 0 (probe.md).
+    pub lead_margin: f64,
+    /// Turns between the samples the swings are counted on.
+    pub sample: u32,
+}
+
+pub const JUDGE: JudgeRules = JudgeRules { lead_margin: 0.005, sample: 10 };
