@@ -36,11 +36,17 @@ them: build-5 does.
    army. While it is set, the civ's clans whose home is the capital harvest nothing, and
    `levy` puts nothing in the store. Note it on the civ once, when it starts and when it ends.
 
-5. **Surrender** (`camp.rs`'s hunger, `units/mod.rs`, spec item 15). In `camp_turn`, after
-   eating: an army hungry `FIGHT.surrender` turns in a row surrenders whole. On a rival's land,
-   its people (as people, with its pack in the clan's store) join that civ's nearest clan by
-   steps (ties to the lower id). It counts in its own civ's `Counters.surrendered`, and the
-   people are not `fallen`. On no rival's land it disbands home as hunger does. Emit
+5. **Surrender** (`camp.rs`'s hunger, `units/line.rs`, `units/mod.rs`, spec item 15). In
+   `camp_turn`, after eating and before hunger's disband: an army hungry `FIGHT.surrender` turns
+   in a row (3, the same turn hunger would first take a warrior) whose line is cut by a rival
+   surrenders whole. Add `line::cut_by_rival(w, unit) -> Option<u32>`: `Some(rival)` when the
+   line over walkable ground alone would carry the army's food and the line that respects
+   rivals doesn't, the rival being the first whose land (`tile_civ`) or held ground lies on the
+   walkable-only line. Don't use `line::cutter`: it falls back to the lowest rival. Its people
+   (as people, with its pack in the clan's store) join that rival's nearest clan by steps (ties
+   to the lower id). It counts in its own civ's `Counters.surrendered`, and the people are not
+   `fallen`. Its own tile is never the rival's land (the army took it), which is why the rival is
+   read off the line. With the line open or cut by length alone, hunger works as now. Emit
    `ArmySurrendered` (civ, other, unit, amount) and note both civs and the receiving clan.
    With `Config.fight` off there is no surrender: hunger works as on main.
 
@@ -84,8 +90,10 @@ them: build-5 does.
   paper that turn.
 - Siege: all neighbours held by a rival, the capital's clans harvest nothing and the store gets
   no levy.
-- Surrender: a cut-off army on a rival's land, starved `FIGHT.surrender` turns, adds its people
-  to the rival's nearest clan, and both civs hear. With fighting off it doesn't surrender.
+- Surrender: an army of three whose line a rival's land cuts, starved `FIGHT.surrender` turns,
+  adds all three to the rival's nearest clan before hunger takes one, and both civs hear. An
+  army cut off by length alone, on unclaimed land, starves as now. With fighting off it doesn't
+  surrender.
 - A capital falls only when no guard, army or militia of its civ is left on it. Then its clans
   are unaligned, its Standing is 0, its claim is empty, `tile_civ` of its capital is not it,
   its orders are refused, and a turn after runs without a panic.

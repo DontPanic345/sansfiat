@@ -11,7 +11,8 @@ and "Left unsettled"), then build-3's `stories.md` and every earlier summary.
 
 In `data.rs`:
 - `FIGHT.rate`, `entrench`, `entrench_cap`, `retreat`, `hungry`, `militia`, `surrender` and
-  `floor`;
+  `floor` (`surrender` above `UNIT.hungry_turns` lets hunger take a warrior a turn first, and
+  past the turns that takes to empty the story's army it never fires);
 - the kinds' attack and defence;
 - `SCOUT.reach`.
 

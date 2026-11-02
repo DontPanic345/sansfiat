@@ -22,7 +22,7 @@ tunes your numbers. Read `spec.md` items 1–11 first, then `docs/design/war.md`
    warriors) and `pub const FIGHTERS: [FighterRules; 2]` with `name`, `attack` and `defence`,
    each with a note. Start warriors at 1.0/1.0 and archers at 0.8/1.4. Add
    `pub const FIGHT: FightRules` with `rate` 0.1, `entrench` 0.1, `entrench_cap` 0.5,
-   `retreat` 0.5, `hungry` 0.5, `floor` 0.01, and `militia` 0.3 and `surrender` 5 for build-2.
+   `retreat` 0.5, `hungry` 0.5, `floor` 0.01, and `militia` 0.3 and `surrender` 3 for build-2.
    Each field gets a doc comment saying what it is, and the const a note saying these are
    starting numbers for the glaze.
 
@@ -62,10 +62,13 @@ tunes your numbers. Read `spec.md` items 1–11 first, then `docs/design/war.md`
      shares. Its `beaten` test between civs goes. The fight decides between civs, and `hold`'s
      rule stands between one civ's own armies. Keep `hold`'s result in `CampState.held` and
      `guard` as now, so `claim::divide`, `civs::holder`, the line and the page read it unchanged.
-   - A retreating army moves at once to the nearest tile, by path cost, that its civ holds
-     (`civs::holder == civ`) and isn't contested, and keeps its zone only if it is still
-     connected. A guard's lost tile goes through `claim::take`, made `pub(crate)`. Note it on both
-     civs, and emit `TileTaken` rather than `ClaimTaken` when the tile was held.
+   - Only armies retreat. A retreating army moves at once to the nearest tile, by path cost,
+     that its civ holds (`civs::holder == civ`) and isn't contested, and keeps its zone only if
+     it is still connected. A guard never retreats: it loses a tile only when all its people
+     there fall (losses are capped at presence), and then the tile goes through `claim::take`,
+     made `pub(crate)`. Note it on both civs, and emit `TileTaken` rather than `ClaimTaken` when
+     the tile was held. Spec item 8 says why (`spec-review.md`: a guard's retreat would end
+     every skirmish on its first turn).
    - Notes: one per army and per civ whose guard fought, on each contested tile, with both
      strengths, entrenchment, losses each way and the outcome (spec item 11 has an example).
      Events: `Skirmish` (the first turn a tile is contested, keyed so a continuing fight doesn't
@@ -73,18 +76,24 @@ tunes your numbers. Read `spec.md` items 1–11 first, then `docs/design/war.md`
      and `TileTaken`, with wording in `events.rs`.
    - `Counters` gains `fallen: f64`, `taken: u32` and `surrendered: u32` (`#[serde(default)]`).
 
-5. **The march stops** (`camp.rs`, `camp_march`). It ends on the first tile of its path where
+5. **The AI's stand-in claim** (`claim::ai_claim`) skips tiles a rival army holds (its
+   `held`) or stands on. The AI re-paints its claim whenever it differs from the stand-in, so
+   without this a tile a stack took comes back under it the next turn and is fought for and
+   "taken" again every turn. A test: a stack on a tile it took from an AI civ isn't fought
+   again the turn after, and `taken` counts it once.
+
+6. **The march stops** (`camp.rs`, `camp_march`). It ends on the first tile of its path where
    a rival has presence (the presence before this turn's march is fine, as long as it is the
    same for every army in id order). Paper doesn't stop it. Only armies take paper in
    `claim::step`, not scouts or guards.
 
-6. **`Config.fight`** (`data.rs`), `#[serde(default = "yes")]`, with the doc comment saying
+7. **`Config.fight`** (`data.rs`), `#[serde(default = "yes")]`, with the doc comment saying
    off is the control (no losses, no retreats, and from build-2 no militia, surrender or fall).
 
-7. **The order of the step** (`units::step`): fallow, marches, `hold`, `fight::step`, each
+8. **The order of the step** (`units::step`): fallow, marches, `hold`, `fight::step`, each
    unit's turn. Hunger's take comes off the stack.
 
-8. **Saves.** The rules change, so bump `SAVE_VERSION` and the pins in `cli/tests/save.rs`
+9. **Saves.** The rules change, so bump `SAVE_VERSION` and the pins in `cli/tests/save.rs`
    together. `./cross-build.sh` must pass: `digest --lead` and `Sim::lead_orders` agree.
 
 ## Tests (`core/tests/fight.rs`, new)
@@ -98,7 +107,8 @@ On built maps, with civs and units placed by hand:
 - Archers defend better than warriors and attack worse.
 - A stack of ten entering a guarded claim tile: the guard's presence there is wiped, the tile
   leaves the claim (`TileTaken`), and the army loses under 0.05 people.
-- Two guards on an overlapped claim tile: both lose people, neither tile leaves its claim.
+- Two guards on an overlapped claim tile, one with twice the other's share there: both lose
+  people, neither retreats, and neither tile leaves its claim.
 - A march stops on a tile a rival holds, and not on paper.
 - Conservation: the people of the world before the fight step equal those after plus
   `fallen`, summed over civs.

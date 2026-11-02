@@ -54,6 +54,9 @@ record it as a decision.
 8. **The script** (`www/play/army.mjs`, new; add its row to `engine/CLAUDE.md`'s table). On a
    retro map where the led civ holds forest (find one at run time; build-3's `stories.md` names
    the maps), from the pick it:
+   - sets the gift to 0 and ends turns until the civ panel's Raise warriors isn't greyed: every
+     store is 0 at the pick and a warrior's pack is 5 food, and medium seed 9's Gold has 5.6 by
+     +10 (`spec-review.md`);
    - raises warriors as a new army through the civ's panel;
    - raises archers into it through the army's panel, or sees Raise archers greyed with "you
      hold no forest…";

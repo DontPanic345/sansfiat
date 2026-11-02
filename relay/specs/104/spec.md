@@ -50,14 +50,29 @@ check it is main's judge.
   tile in two civs' claims. The AI's stand-in claim never reaches a rival's. So AI-only runs
   fight only where a camp ends on a rival's held tile, which the AI's posts never do. The
   stories carry the question, and the judge's sweep is a health check.
-- **Stores are small.** Every civ's store is 0.0 at the pick on all seven maps: the boon
-  year's surplus goes into the camp's and the scout's packs. Played with no gift, small 2's
-  Red has 3.5 at +60 and 3.7 at +120. Blue and small 3's Red stay at 0.0, because the guard
-  eats from the store. Medium 9's third civ has 12.2 and 11.0. A warrior's pack is 5 food, so
-  "as many as it can feed" is a handful of warriors, and a "big stack" means big beside a guard
-  of 1–3 spread over 25–50 tiles. The stories have to be set on a civ that can fill packs. That
-  holds for medium 9's third civ (10 steps from the second, the closest pair on the retro maps)
-  and for small 2's Red (13 steps from Blue). Build-3 chooses, and says why.
+- **Stores are small, and the camp at home eats them.** Every civ's store is 0.0 at the pick
+  on all seven maps: the boon year's surplus goes into the camp's and the scout's packs. The
+  levy brings about 3–4 food a turn. A camp at the capital resupplies from the store each turn
+  and the guard eats from it, and together they eat more than the levy brings: played with no
+  gift, small 2's Red sits at 3.4 by +60 and medium 9's Gold at 12–14, and the led civ's guard
+  starves within ten turns. With the camp away or disbanded the guard lives and the store
+  fills: medium 9 Gold banks 46 by +35, nine warriors' packs (`spec-review.md`). So a civ keeps
+  about four people of units at home, or banks for a stack of eight or nine raised at once. A
+  "big stack" is that, beside a guard of 1–3 spread over 25–50 tiles. The likeliest story maps
+  are medium 9's Gold (10 steps from Blue, the closest pair on the retro maps) and small 2's Red
+  (13 steps from Blue). Build-3 chooses, and says why.
+- **A march on a rival capital starves on the way.** Medium 9 Gold's camp of 3 sent at Blue's
+  capital, at the pick or at +20, has its line cut by length three turns out and is gone in
+  eight, two steps short of Blue's claim. The path bends round rough country, a line is cut
+  past about cost 28, and the pack is five turns. The stack story stages: it marches to the last
+  tile whose line isn't cut, refills, and then pushes.
+- **Hunger beats surrender at 5.** A camp loses a warrior a turn from its third hungry turn, so
+  the starting camp of 3 is gone on its fifth. Surrender is checked at `UNIT.hungry_turns`,
+  before hunger's take (item 15).
+- **The AI re-paints its claim every turn** it differs from the stand-in. A tile a stack takes
+  would be re-claimed under it the next turn and taken again, counted each time. The stand-in
+  skips tiles a rival army holds (item 8). Tiles the stack walked over come back behind it,
+  which is how the rival closes round it.
 - **The scout starves on its first errand.** Small 2, Red, routed from its capital to Blue's
   at the pick: it has its route by the next turn, goes hungry on the second, and is gone by +30.
   It forages only on a route and never on its own land, supplies only the turn's shortfall, and
@@ -159,12 +174,16 @@ the judge and the scripts, mostly CLI), and the page.
      a little a turn, and a stack of ten facing a guard share of 0.1 loses almost nothing while
      the share is wiped out.
    - **Retreat.** After the losses, a side whose strength there is under `FIGHT.retreat` × the
-     others' (starting at 0.5) retreats. An army whose own tile it is moves at once to the
-     nearest tile its civ holds that isn't contested, by path cost. It ends its march and keeps
-     its zone only if the zone is still connected, else it undeploys. With no such tile it
-     stays and fights on. An army holding the tile as part of its zone stops holding it. A
-     guard's tile leaves the guard's claim, as `claim::take` does today, with the part of the
-     claim no longer joined to the capital. The capital never retreats.
+     others' (starting at 0.5) retreats. Only armies retreat. An army whose own tile it is
+     moves at once to the nearest tile its civ holds that isn't contested, by path cost. It ends
+     its march and keeps its zone only if the zone is still connected, else it undeploys. With
+     no such tile it stays and fights on. An army holding the tile as part of its zone stops
+     holding it. **Guards and militia don't retreat**: a guard is spread over its land, not a body
+     that falls back, and two guards' shares on an overlap differ by their walks from two
+     capitals, so a guard's retreat would end every skirmish on its first turn
+     (`spec-review.md`). A guard loses a tile only when all its people there fall: then the tile
+     leaves its claim, as `claim::take` does today, with the part of the claim no longer joined
+     to the capital. A stack does that in a turn; a rival guard never does.
    - **Holding.** The stronger side after the losses holds the tile; a tie stays with the holder.
      This replaces `hold`'s `beaten` test (larger share, then held last turn, then lower civ),
      which the fight folds in. `hold` keeps the spread (candidates, `divide`, the guard floor),
@@ -175,6 +194,10 @@ the judge and the scripts, mostly CLI), and the page.
    - **Tiles changing hands.** A tile changes hands when its holder at the start of the turn no
      longer holds it at the end: it retreated, or none of its people are left there. Each change
      is counted on the civ that won it (`Counters.taken`).
+   - **The AI's stand-in claim** (`claim::ai_claim`) skips tiles a rival army holds or stands
+     on. Without it the AI re-paints a taken tile under the stack the next turn, the guard's
+     share returns, and the stack fights and takes its own tile every turn. Once the army moves
+     on, the tile comes back to the claim.
    - **With `Config.fight` off** (the control): no losses and no retreats. Holding is the
      strength comparison alone, and everything else is as main.
 
@@ -218,11 +241,17 @@ the judge and the scripts, mostly CLI), and the page.
     `war.md`'s "an army round a capital stops its clans working, and its store spoils down".
     Walls and sieges of cities are M9's.
 
-15. **Surrender.** An army hungry `FIGHT.surrender` turns in a row (starting at 5, past
-    `UNIT.hungry_turns`, so it has lost warriors first) surrenders whole. If its tile is a
-    rival's land (`claim::tile_civ`), its people and pack join that civ's nearest clan by steps
-    (ties to the lower id), and it is counted in its civ's `surrendered`. Else they disband to
-    its own civ's home clan, as hunger sends them. `ArmySurrendered` (civ, other, unit, amount
+15. **Surrender.** An army hungry `FIGHT.surrender` turns in a row (starting at 3, equal to
+    `UNIT.hungry_turns`, and checked before hunger's take, since from that turn hunger takes a
+    warrior a turn and a camp of three would be gone before a later threshold) whose line is
+    cut by a rival surrenders whole to that rival. A line is cut by a rival when the line over
+    walkable ground alone would carry a turn's food and the line that respects rivals' land and
+    held ground doesn't; the rival is the first whose land or held ground lies on the first
+    line (a new `line::cut_by_rival(w, unit) -> Option<u32>`; `line::cutter` falls back to the
+    lowest rival and won't do). Its people and pack join that civ's nearest clan by steps (ties
+    to the lower id), and it is counted in its civ's `surrendered`. An army whose own tile it
+    took is never on a rival's land, so the rival is read off the line, not `tile_civ` of its
+    tile. A hungry army whose line is open, or cut by its length alone, starves as now. `ArmySurrendered` (civ, other, unit, amount
     people) is an alert for both civs, with a note on both. With `Config.fight` off there is no
     surrender.
 
@@ -280,13 +309,19 @@ the judge and the scripts, mostly CLI), and the page.
     [--turns N] --save FILE` plays a scripted story for the led civ through `World::act`, finding
     its units, tiles and rivals at run time, and writes a save that `judge FILE` scores. The
     scripts live in `cli/src/story.rs`, one function each. AI civs play as ever.
-    - **skirmish**: the led civ raises guard and claims a corridor toward its nearest rival
-      until it overlaps the rival's held claim, and holds it. Default 80 turns.
-    - **stack**: it gathers every warrior it can feed into one army (raising into it over the
-      turns, with gift 0) and marches it at the nearest rival's capital, auto-forage and
-      auto-supply on. Default 80 turns.
-    - **surrender**: it marches an army deep into the rival's held land, halts it there, and
-      leaves it. Default 60 turns.
+    Every story sets gift 0 and keeps its guard by the AI's own rule (`ai::land`'s raise and
+    disband, made callable), and doesn't keep its camp at the capital beside the guard: the two
+    together outeat the levy (Measured).
+    - **skirmish**: the led civ claims a corridor toward its nearest rival until it overlaps the
+      rival's held claim, and holds it, its camp posted on its own land off the capital.
+      Default 80 turns.
+    - **stack**: it banks the store (the starting camp sent out to forage on its own land, or
+      disbanded), raises every warrior the store fills at once, into one army, marches it to the
+      last tile of the path whose line isn't cut, refills, and then pushes at the nearest rival's
+      capital, auto-forage and auto-supply on. Default 80 turns.
+    - **surrender**: it marches an army into the rival's held land, past its guard, and halts it
+      two or more steps inside. The rival re-claims the tiles behind it (item 8), which cuts its
+      line. Default 60 turns.
 
     Each story is run with `--no-fight` too, and judged. The table goes in
     `relay/specs/104/stories.md`.
@@ -350,8 +385,11 @@ numbers (`UNIT.pack`, the levy, the store) to make it so. The notes go in `glaze
   of the claim paper.
 - A capital is besieged when rival armies hold all of its walkable neighbours. Then its own
   clans harvest nothing and no levy reaches its store.
-- A surrendered army joins the nearest clan of the civ whose land it stands on, with its pack.
-  On no rival's land it disbands home.
+- A surrendered army joins the nearest clan of the rival that cuts its line, with its pack, after
+  `UNIT.hungry_turns` hungry turns and before hunger takes a warrior. With its line open, or cut
+  by length alone, it starves as now.
+- Only armies retreat. A guard loses a tile only when all its people there fall.
+- The AI's stand-in claim skips tiles a rival army holds.
 - A fallen capital's store fills the taking army's packs, and the rest is lost. A fallen civ
   stays in `w.civs` with `fallen` set, and has no land, Standing or turn.
 - An army stays `camp` in code and on the wire, and "army" on the page.

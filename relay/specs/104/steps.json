@@ -15,7 +15,7 @@
   "model": "haiku",
   "effort": "high",
   "points": 4,
-  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high. Open 0: every rule is settled in spec items 12-18 with its refusal text, and the numbers are in data.rs already. New 1: militia and the guard drawn back are new parts in the clay's presence, and surrender adapts hunger's disband. Miss 1: the brief lists the tests to write, including a fallen civ's turn without a panic. Reach 2: the fall touches every rule that reads a capital, and siege touches harvest and the levy. I expect Haiku to land the rules and to miss a reader of capital in the fall sweep, which its own test or build-3's stories catch. About 12 files, 700 lines. Part and score agree."
+  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high. Open 0: every rule is settled in spec items 12-18 with its refusal text, and the numbers are in data.rs already. New 1: militia and the guard drawn back are new parts in the clay's presence, and surrender adapts hunger's disband. Miss 1: the brief lists the tests to write, among them surrender to the rival that cuts the line (line::cut_by_rival, new), including a fallen civ's turn without a panic. Reach 2: the fall touches every rule that reads a capital, and siege touches harvest and the levy. I expect Haiku to land the rules and to miss a reader of capital in the fall sweep, which its own test or build-3's stories catch. About 12 files, 700 lines. Part and score agree."
  },
  {
   "id": "build-3",
@@ -24,7 +24,7 @@
   "model": "sonnet",
   "effort": "high",
   "points": 8,
-  "why": "Open 2, New 1, Miss 3, Reach 2 = 8: sonnet high. Open 2: the scout's rules, the judge's group and each story's moves are settled (items 19-22), but which map a story plays clearest on is found by running. New 1: the stories follow script.rs's Lead, and the judge's control follows the no-claims one. Miss 3: only runs on real maps show the scout surviving and a story provoking its fight. Reach 2: strip runs every turn for every unit. I expect Sonnet to make the stories run and report, with some only half playing out on the starting numbers, which is the glaze's to fix. About 9 files, 900 lines (story.rs ~350, scout ~150, judge ~200, tests ~150). A kiln at 8 is under the 11 that would mean unsettled work in it."
+  "why": "Open 2, New 1, Miss 3, Reach 2 = 8: sonnet high. Open 2: the scout's rules, the judge's group and each story's moves are settled (items 19-22), but which map a story plays clearest on is found by running, and the stack's staging (bank the store, march to the line's reach, refill, push) is measured in spec-review.md but not yet scripted. New 1: the stories follow script.rs's Lead, and the judge's control follows the no-claims one. Miss 3: only runs on real maps show the scout surviving and a story provoking its fight. Reach 2: strip runs every turn for every unit. I expect Sonnet to make the stories run and report, with some only half playing out on the starting numbers, which is the glaze's to fix. About 9 files, 900 lines (story.rs ~350, scout ~150, judge ~200, tests ~150). A kiln at 8 is under the 11 that would mean unsettled work in it."
  },
  {
   "id": "build-4",
@@ -48,7 +48,7 @@
   "id": "review",
   "title": "Review the piece",
   "model": "opus",
-  "effort": "low",
-  "why": "The goal is judged by play: the stories on real maps and a fight on the page, so Opus. It re-runs one story with its control, plays a fight through play.mjs, checks the invariants and writes the answer and the ledgers."
+  "effort": "medium",
+  "why": "The goal is judged by play: the stories on real maps and a fight on the page, so Opus; and nothing that judges runs at low effort, so medium, as #102's and #103's reviews ran. It re-runs one story with its control, plays a fight through play.mjs, checks the invariants and writes the answer and the ledgers."
  }
 ]

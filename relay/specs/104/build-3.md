@@ -58,23 +58,33 @@ path. Then it ends the turn. The AI plays the rest. The save it writes is a norm
 `judge FILE` scores and `play --game FILE` resumes. Each story is one function, written the way
 `core/src/script.rs`'s `Lead` is: what it does on which turn, in its doc comment.
 
-- **skirmish**: raise guard while the store and clans can feed it. Claim a corridor along
-  the path to the nearest rival's capital, out until it overlaps the rival's held claim by a
-  tile or two, and keep it. Optionally deploy the army's zone on the corridor's far end to
-  thicken it. Default 80 turns.
-- **stack**: gift 0. Raise warriors into one army whenever the store fills a pack, gather
-  any other army into it (move them to it, then disband and raise into it, or march them
-  together: your call, said in the doc comment), and once it has as many as the store allowed
-  by turn 30 (or at turn 30 whatever it has), march it at the nearest rival's capital with both
-  switches on. Default 80 turns.
-- **surrender**: march an army into the rival's held land, past its guard, two or more steps
-  inside where the rival's held ground cuts its line, and halt it there. Default 60 turns.
+The economy every story lives in (`spec-review.md`): every store is 0 at the pick, the levy
+brings about 3–4 food a turn, and a pack is 5 food a warrior. A camp at the capital resupplies
+from the store every turn and the guard eats from it; the two together outeat the levy, and the
+led civ's guard starves within ten turns of the pick. So every story sets gift 0, keeps its
+guard by the AI's own rule (make `ai::land`'s guard raise and disband a function the story can
+call for the led civ), and doesn't leave its camp at the capital beside the guard.
 
-The maps. Stores are small (`spec.md`, Measured): every civ's is 0 at the pick, and a pack is
-5 food a warrior. Medium seed 9's third civ (store about 12 by +60, 10 steps from the second)
-and small seed 2's Red (about 3.5, 13 steps from Blue) are the likeliest. Try each story on at
-least two retro maps, pick the one where it plays clearest, and say why. A story that can't be
-made on any retro map is a finding: say what stopped it.
+- **skirmish**: post the camp on its own land off the capital. Claim a corridor along the path
+  to the nearest rival's capital, out until it overlaps the rival's held claim by a tile or two,
+  and keep it. Optionally deploy the army's zone on the corridor's far end to thicken it.
+  Default 80 turns.
+- **stack**: bank the store first: send the starting camp to forage on its own land away from
+  the capital, or disband it (your call, in the doc comment). With the camp away medium 9 Gold
+  banks 46 by +35. Then raise every warrior the store fills at once into one army (gather the
+  starting camp into it), and march it at the nearest rival's capital, both switches on. A
+  march straight there starves on the way (medium 9 Gold's camp is gone eight turns out, two
+  steps short of Blue's claim: the line is cut by length past about cost 28 and the pack is five
+  turns), so stage it: march to the last tile of the path whose line isn't cut, wait there until
+  the pack is full, then push. Default 80 turns.
+- **surrender**: march an army into the rival's held land, past its guard, and halt it two or
+  more steps inside. The rival's stand-in claim takes back the tiles behind it (build-1), which
+  cuts its line. Default 60 turns.
+
+The maps. Medium seed 9's Gold (10 steps from Blue, the closest pair) and small seed 2's Red
+(13 steps from Blue) are the likeliest. Try each story on at least two retro maps, pick the one
+where it plays clearest, and say why. A story that can't be made on any retro map is a finding:
+say what stopped it.
 
 Run each story with and without `--no-fight`, `judge` both, and write
 `relay/specs/104/stories.md`. Per story it holds the map, the civ, the rival, the measures of
