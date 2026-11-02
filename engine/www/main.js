@@ -1,9 +1,12 @@
 import init, { Sim, terrain, goods, rules, sizes } from './pkg/web.js';
-import { MapView, hue } from './map-view.js';
+import { MapView, hue } from './map/view.js';
+import { build } from './model.js';
+import { loadAtlas } from './atlas.js';
 import { Feed } from './feed.js';
-import { f2, keyOf, tileOf, alive, candidates, describe, tileKind, marketOn, holders, clanRole, unitOrder } from './select.js';
+import { f2, keyOf, tileOf, alive, candidates, describe, tileKind, marketOn, clanRole, unitOrder } from './select.js';
 
 await init();
+const atlas = await loadAtlas();
 const TERRAIN = JSON.parse(terrain());
 const GOODS = JSON.parse(goods());
 const RULES = JSON.parse(rules());
@@ -15,7 +18,8 @@ const params = new URLSearchParams(location.search);
 
 let sim = null;
 let layout = null;
-let v = null; // the last Sim.view()
+let model = null; // the view model of the last change (model.js)
+let v = null; // its Sim.view()
 let cursor = 0; // into Sim.events
 let selected = null; // {kind: 'unit', id} | {kind: 'capital', civ} | {kind: 'tile', tile, clan, market}
 let routing = { arm: null, start: null, unit: null }; // the selected scout's route: a map click arms 'start' or 'to'
@@ -33,6 +37,7 @@ let country = false; // View → Hidden country: the closed-country outlines, th
 const view = new MapView($('map'), {
   terrain: TERRAIN,
   rules: RULES,
+  atlas,
   onPick,
   onCommand,
   onPaint,
@@ -53,7 +58,7 @@ const feed = new Feed({
 new ResizeObserver(() => view.resize()).observe($('mapbox'));
 
 /** What the selection panel and the pick read the world through. */
-const ctx = () => ({ v, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome, painting, country });
+const ctx = () => ({ v, model, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome, painting, country });
 
 // ---- starting a map --------------------------------------------------------------------------
 
@@ -64,6 +69,7 @@ function start(next, seedShown) {
   stop();
   sim = next;
   layout = JSON.parse(sim.layout());
+  model = null;
   selected = null;
   routing = { arm: null, start: null, unit: null };
   outcome = null;
@@ -98,9 +104,10 @@ function newMap() {
 
 /** Re-reads the world after turns: the top bar, the feed, the panel, the map. */
 function refresh() {
-  v = JSON.parse(sim.view());
+  model = build(sim, layout, RULES, model);
+  v = model.v;
   const sum = v.summary;
-  view.setDynamic(v);
+  view.setModel(model);
   const centres = v.end ? v.end.centres.length : sum.centres.length;
   $('turn').textContent = v.turn;
   $('people').textContent = Math.round(sum.people);
@@ -119,7 +126,7 @@ function refresh() {
     $('phasetext').textContent = 'Main game';
     $('phasenote').textContent = `pre-game ${over}`;
   }
-  const mine = v.player != null ? Object.values(v.units).filter((u) => u.civ === v.player) : [];
+  const mine = model.mine;
   const warriors = mine.reduce((a, u) => a + u.people, 0);
   document.body.dataset.turn = v.turn;
   document.body.dataset.phase = v.phase;
@@ -669,7 +676,7 @@ function fillTip(i) {
   const lines = [`<b>${tileKind(ctx(), i)}</b>`];
   if (layout.terrain[i] !== 0 && TERRAIN[layout.terrain[i]].land) {
     lines.push(h ? clanTip(i, h) : 'Held by nobody');
-    for (const u of holders(ctx(), i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s camp`);
+    for (const u of model.holders(i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s camp`);
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
     lines.push(...wearTip(i));
   }
@@ -778,9 +785,10 @@ $('dice').onclick = () => {
 $('seed').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') newMap();
 });
-for (const key of ['fertility', 'territory', 'wear', 'routes', 'markets', 'hidden', 'civs', 'country']) {
+const LAYER_OF = { fertility: 'fertility', territory: 'territories', wear: 'worn', routes: 'festival-routes', markets: 'markets', civs: 'civs', country: 'country', hidden: 'hidden-costs' };
+for (const [key, layer] of Object.entries(LAYER_OF)) {
   $(`v-${key}`).onchange = (e) => {
-    view.setOptions({ [key]: e.target.checked });
+    view.setLayer(layer, e.target.checked);
     if (key === 'country') {
       country = e.target.checked;
       legend();
@@ -863,6 +871,8 @@ legend();
 }
 window.game = {
   view: () => v,
+  model: () => model,
+  atlas,
   layout: () => layout,
   tileCiv: (i) => sim.tile_civ(i),
   save: () => JSON.parse(sim.save()),

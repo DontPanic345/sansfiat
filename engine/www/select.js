@@ -3,7 +3,7 @@
 // `Sim.check(action)` refuses it and runs it when clicked. An entry with `arm` (and no action) arms a map click.
 //
 // A selection is {kind: 'unit', id}, {kind: 'capital', civ} or {kind: 'tile', tile, clan?, market?}.
-// `ctx` is what the page knows: {v (Sim.view), layout, terrain, goods, rules, sim, view (MapView)}.
+// `ctx` is what the page knows: {v (Sim.view), model (model.js), layout, terrain, goods, rules, sim, view (MapView)}.
 
 export const f2 = (x) => (Math.round(x * 100) / 100).toString();
 const ZONES = ['', 'valley', 'sealed valley', 'neck'];
@@ -86,11 +86,6 @@ function whyHtml(ctx, id) {
 }
 const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
-/** The camps whose warriors hold tile `i`, as "Red's camp" links. */
-export function holders(ctx, i) {
-  return Object.values(ctx.v.units).filter((u) => u.kind === 'camp' && u.held?.includes(i));
-}
-
 /** What tile `i` is to a clan: its home, in its territory, or on its festival route (can be several). */
 export function clanRole(c, i) {
   const bits = [];
@@ -101,19 +96,6 @@ export function clanRole(c, i) {
 }
 
 export const marketOn = (ctx, i) => Object.values(ctx.v.markets).find((m) => m.tile === i);
-
-/** A civ's claim as counts: the tiles claimed, held, paper (claimed, not held), and the thinnest guard
- *  share on a held tile (0 with none held). */
-export function claimCounts(c) {
-  const share = new Map(c.claim.map((t, k) => [t, c.guard[k] ?? 0]));
-  const held = c.land.map((t) => share.get(t) ?? 0);
-  return {
-    claimed: c.claim.length,
-    held: c.land.length,
-    paper: c.claim.length - c.land.length,
-    thinnest: held.length ? Math.min(...held) : 0,
-  };
-}
 
 /** The claim's counts as one line. */
 const claimLine = (cc) =>
@@ -291,7 +273,7 @@ function guardPanel(ctx, id) {
   let html = `<p class="dim">${civName(ctx, u.civ)} · guard at ${hex(ctx, u.tile)}${v.civs[u.civ]?.capital === u.tile ? ' (the capital)' : ''}</p>`;
   html += `<p>${f2(u.people)} people on the claim</p>`;
   if (u.hungry > 0) html += `<p><b style="color:#ff7b72">Hungry for ${u.hungry} turn${u.hungry === 1 ? '' : 's'}</b> <span class="dim">(loses a person at ${rules.hungry_turns})</span></p>`;
-  if (v.civs[u.civ]) html += `<p>${claimLine(claimCounts(v.civs[u.civ]))}</p>`;
+  if (v.civs[u.civ]) html += `<p>${claimLine(ctx.model.claims.get(u.civ))}</p>`;
   html += whyHtml(ctx, id);
   const actions = [];
   if (mine) {
@@ -308,7 +290,7 @@ function capitalPanel(ctx, id) {
   if (!c) return null;
   const mine = id === v.player;
   let html = `<p class="dim">${civName(ctx, id)} · capital at ${hex(ctx, c.capital)} · founded turn ${c.founded}</p>`;
-  html += `<p>${f2(c.people)} people in ${c.clans} clan${c.clans === 1 ? '' : 's'}<br>${claimLine(claimCounts(c))}</p>`;
+  html += `<p>${f2(c.people)} people in ${c.clans} clan${c.clans === 1 ? '' : 's'}<br>${claimLine(ctx.model.claims.get(c.id))}</p>`;
   html += '<table>';
   goods.forEach((g, f) => {
     if (c.store[f] > 0.005) html += `<tr><td>${g}</td><td>${f2(c.store[f])}</td></tr>`;
@@ -352,7 +334,7 @@ function tilePanel(ctx, sel) {
   const civ = sim.tile_civ(i);
   if (civ >= 0) html += `<p>Land of ${civName(ctx, civ)}</p>`;
   for (const c of Object.values(v.civs)) if (c.claim.includes(i) && !c.land.includes(i)) html += `<p>Paper of ${civName(ctx, c.id)}: claimed, not held</p>`;
-  for (const u of holders(ctx, i)) html += `<p>Held by ${civName(ctx, u.civ)}'s camp</p>`;
+  for (const u of ctx.model.holders(i)) html += `<p>Held by ${civName(ctx, u.civ)}'s camp</p>`;
   if (land) {
     html += '<table>';
     goods.forEach((g, f) => {
@@ -370,7 +352,7 @@ function tilePanel(ctx, sel) {
     html += whyHtml(ctx, id);
   };
   addClan(sel.clan, 'chosen');
-  addClan(view.clanAt(i), 'in its territory');
+  addClan(ctx.model.clanAt(i), 'in its territory');
   const m = sel.market != null ? v.markets[sel.market] : marketOn(ctx, i);
   if (m) html += marketHtml(ctx, m, 'here');
   else if (sel.market != null) html += `<p class="dim">Market ${sel.market} is gone.</p>`;

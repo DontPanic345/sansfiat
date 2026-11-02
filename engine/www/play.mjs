@@ -12,6 +12,10 @@
 //   await page.click(812);          // left-click a tile: select
 //   await page.command(830);        // right-click a tile: the selected unit's order
 //   await page.shot('turn.png');    // half size by default
+//   const page = await open('?size=small&seed=2', { size: 'phone' });   // SIZES: phone, laptop (default), wide
+//   await lead(page, { seed: 2 });  // to the main game, leading a civ (a name, or the first card)
+//   await page.key('Space'); await page.reload(); await page.file('#load', 'game.json');
+//   await page.drag(812, 830); await page.tip(812);   // a tile drag; a tile's or a selector's tooltip text
 //   await page.close();
 //
 // Chrome is found on the PATH (google-chrome, chromium) or in the usual places; CHROME overrides.
@@ -88,10 +92,18 @@ const connect = async (url) => {
   return { send, on: (l) => listeners.push(l), close: () => ws.close() };
 };
 
+/** The window sizes the page is judged at. */
+export const SIZES = { phone: { width: 390, height: 844 }, laptop: { width: 1280, height: 800 }, wide: { width: 1920, height: 1080 } };
+
+const KEYS = { Space: [' ', 'Space'], Escape: ['Escape', 'Escape'], Enter: ['Enter', 'Enter'], Tab: ['Tab', 'Tab'], ArrowLeft: ['ArrowLeft', 'ArrowLeft'], ArrowRight: ['ArrowRight', 'ArrowRight'], ArrowUp: ['ArrowUp', 'ArrowUp'], ArrowDown: ['ArrowDown', 'ArrowDown'] };
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Opens the page with `query` (like "?size=small&seed=2") in a 1280×800 headless Chrome. */
-export const open = async (query = '', { width = 1280, height = 800 } = {}) => {
+/** Opens the page with `query` (like "?size=small&seed=2") in a headless Chrome of `size` (a SIZES name,
+ *  laptop 1280×800 by default, or `width` and `height`). `path` and `ready` open another page of www/ and
+ *  say when it is up (for scripts that draw on a blank page). */
+export const open = async (query = '', { size = 'laptop', path = 'index.html', ready = '!!window.game && !!document.body.dataset.phase', ...dims } = {}) => {
+  const { width, height } = { ...SIZES[size], ...dims };
   const server = await serve();
   const profile = mkdtempSync(join(tmpdir(), 'play-'));
   const proc = spawn(chrome(), [
@@ -121,7 +133,7 @@ export const open = async (query = '', { width = 1280, height = 800 } = {}) => {
   await send('Page.enable');
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   const { port } = server.address();
-  await send('Page.navigate', { url: `http://127.0.0.1:${port}/index.html${query}` });
+  await send('Page.navigate', { url: `http://127.0.0.1:${port}/${path}${query}` });
 
   const evaluate = async (expr) => {
     const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
@@ -140,7 +152,7 @@ export const open = async (query = '', { width = 1280, height = 800 } = {}) => {
       await sleep(100);
     }
   };
-  await until('!!window.game && !!document.body.dataset.phase');
+  await until(ready);
 
   // A tile's centre on screen, fitting the whole map first when it's out of view.
   const tile = async (i) => {
@@ -162,8 +174,69 @@ export const open = async (query = '', { width = 1280, height = 800 } = {}) => {
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button, buttons: 0, clickCount: 1 });
   };
 
+  /** The pointer's tile-centre coordinates for a selector or a tile. */
+  const centreOf = async (target) =>
+    typeof target === 'number'
+      ? tile(target)
+      : evaluate(`(() => { const e = document.querySelector(${JSON.stringify(target)}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+
   return {
     eval: evaluate,
+    /** Loads another URL of the page (a query like "?size=small&seed=2&run=1"). */
+    goto: async (q) => {
+      await send('Page.navigate', { url: `http://127.0.0.1:${port}/${path}${q}` });
+      await sleep(200);
+      await until(ready);
+    },
+    /** Reloads the page in the same profile, so `localStorage` stays. */
+    reload: async () => {
+      await send('Page.reload');
+      await sleep(200);
+      await until(ready);
+    },
+    /** A real key press: `name` is a `KeyboardEvent.key` ("a", "Escape", "ArrowLeft") or "Space". */
+    key: async (name) => {
+      const [key, code] = KEYS[name] ?? [name, name.length === 1 && /[a-z]/i.test(name) ? `Key${name.toUpperCase()}` : name];
+      const text = key.length === 1 ? key : undefined;
+      await send('Input.dispatchKeyEvent', { type: text ? 'keyDown' : 'rawKeyDown', key, code, text, windowsVirtualKeyCode: key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0 });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code });
+      await sleep(50);
+    },
+    /** Sets the files of the `<input type=file>` `selector` to `path` (or a list of paths). */
+    file: async (selector, path) => {
+      const { root } = await send('DOM.getDocument', { depth: 0 });
+      const { nodeId } = await send('DOM.querySelector', { nodeId: root.nodeId, selector });
+      if (!nodeId) throw new Error(`no element ${selector}`);
+      await send('DOM.setFileInputFiles', { files: [].concat(path), nodeId });
+      await sleep(100);
+    },
+    /** A left-button drag from tile `from` to tile `to`, through the points between. */
+    drag: async (from, to) => {
+      const a = await tile(from);
+      const b = await tile(to);
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x, y: a.y });
+      await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: a.x, y: a.y, button: 'left', buttons: 1, clickCount: 1 });
+      for (let n = 1; n <= 8; n++) {
+        await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x + ((b.x - a.x) * n) / 8, y: a.y + ((b.y - a.y) * n) / 8, button: 'left', buttons: 1 });
+      }
+      await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: b.x, y: b.y, button: 'left', buttons: 0, clickCount: 1 });
+      await sleep(50);
+    },
+    /** The tooltip's text after hovering a tile or a selector: the page's `#tip` once it shows, else the
+     *  element's `title`; null if neither. */
+    tip: async (target) => {
+      const at = await centreOf(target);
+      if (!at) return null;
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x - 2, y: at.y });
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+      const read = `(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : null; })()`;
+      for (let n = 0; n < 20; n++) {
+        const text = await evaluate(read);
+        if (text) return text;
+        await sleep(100);
+      }
+      return typeof target === 'string' ? evaluate(`document.querySelector(${JSON.stringify(target)})?.title || null`) : null;
+    },
     until,
     tile,
     /** The page's own errors so far. */
@@ -213,6 +286,16 @@ export const open = async (query = '', { width = 1280, height = 800 } = {}) => {
       rmSync(profile, { recursive: true, force: true, maxRetries: 3 });
     },
   };
+};
+
+/** Takes a page to the main game: the pre-game run on small seed `seed` (2 by default), then the pick's
+ *  card whose name starts with `civ` (the first card without it) led. Returns the page's data. */
+export const lead = async (page, { seed = 2, size = 'small', civ } = {}) => {
+  await page.goto(`?size=${size}&seed=${seed}&run=1`);
+  await page.until("document.body.dataset.phase === 'choose'");
+  await page.button(civ ? `Lead ${civ}` : 'Lead ');
+  await page.until("document.body.dataset.phase === 'main'");
+  return page.data();
 };
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === normalize(process.argv[1])) {

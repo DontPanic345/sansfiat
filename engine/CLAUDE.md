@@ -13,9 +13,11 @@ cargo run -p sansfiat -- sweep --judge [--json] [--solo]   # the retro maps play
 cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army] [--no-gifts] [--no-zone] [--lever G]   # the retro maps past the pick, one line per civ and the totals; the --no-* flags are controls
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a game a line at a time: the file is a save, each call resumes it; stdin lines (orders, actions, end, why, view, map, note); g.lines.jsonl records them
 cargo run -p sansfiat -- judge g.json [--json]   # a played game judged turn by turn, beside the same map with every civ on the AI
-cargo run -p sansfiat -- replay game.json | bench | digest [--lead] [--state]   # replay a save; time turns; digests to compare builds (--state: the world without its log)
+cargo run -p sansfiat -- replay game.json | bench | digest [--lead] [--state] | digest --game FILE   # replay a save; time turns; digests to compare builds (--state: the world without its log; --game: a saved game's `<turn> <digest>`, to match the page's `Sim.digest()`)
 node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in headless Chrome; import { open } from it to click
 node www/play-<area>.mjs [out-dir]           # leads a civ through one area and screenshots it; one per area in www/
+node www/play/all.mjs                        # every script in www/play/ (art, views, ...) with a temp --out: a table of pass and seconds; check.sh runs it
+node www/assets/draw-atlas.mjs               # redraws assets/atlas.png and atlas.json from assets/placeholders.js
 ```
 
 `cargo test` runs optimised (`[profile.dev] opt-level = 3`): whole pre-games are too slow otherwise.
@@ -52,7 +54,7 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `cli/src/main.rs` | The `sansfiat` binary: `USAGE`, the size names, `main` and the dispatch to one module per command. |
 | `cli/src/run.rs` | `run` and its `Output` (the report, the JSON or the events), with the events and reasons it prints. |
 | `cli/src/map.rs` | `map`: the map as text, with a legend and counts. |
-| `cli/src/digest.rs` | `digest`: a turn and its digest per line; `--lead` plays the scripted game, `--state` hashes the world without its log. |
+| `cli/src/digest.rs` | `digest`: a turn and its digest per line; `--lead` plays the scripted game, `--state` hashes the world without its log; `--game FILE` replays a save and prints its one line. |
 | `cli/src/sweep.rs` | `sweep`: the pre-game over seeds in parallel, its series lines, and the `Run` and `Point` they keep. |
 | `cli/src/retro.rs` | `sweep --after`: the retro maps past the pick, each civ's camp and clans, and the controls. `to_pick` and `kept_camp` are shared. |
 | `cli/src/judge.rs` | `sweep --judge`: the retro maps judged (the army run twice, the `--no-army` and no-claims controls, and with `--solo` each civ's claim-alone run), the totals in groups (standing, doubt, decisions, motion, land, solo, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, its led civ's claim and land beside the control's, the text and `--json` report. |
@@ -66,10 +68,18 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `www/index.html` | The page's markup and styles. |
 | `www/main.js` | The page's controls and wiring, with `body.dataset` for the scripts. |
 | `www/select.js` | The selection panel: one function from a selection to `{title, html, actions}`; `unitOrder` and `civOrder` send the order form. |
-| `www/map-view.js` | The map canvas: pan, zoom, picking and the drawing. |
+| `www/model.js` | The view model, `build(sim, layout, rules, prev)`: the parsed `Sim.view()` as `v` plus clan civs, unit stacks, holders, claim counts, Standing and rank, the leader, festival walkers, the player's units and the Standing history. Layers and panels read it. |
+| `www/map/view.js` | `MapView`: pan, zoom, picking, the offscreen layer for the static layers, the selection's state, and `LAYERS` (the draw order) with `setLayer(name, on)`. |
+| `www/map/geom.js` | Hex corners, a clan's walk, and the clan hue the view and layers share. |
+| `www/map/layers/*.js` | One layer per file, `{ name, static, draw(ctx, model, view) }`: terrain (atlas cells), fertility, floodplains, rivers, country, passes, hidden-costs, territories, worn, trails, hearths, festival-routes, festivals, land, held, lines, clans, leanings, centres, capitals, units, routes, overlay. `icon.js` draws an atlas cell on the map. |
+| `www/atlas.js` | Loads `assets/atlas.json` and `atlas.png`: `cell(name)`, `tinted(name, colour)` for a `.mask` cell, `scaled(name, h)` pre-scaled cells. |
+| `www/assets/` | `atlas.json` (every cell's place, size and note: the artist's brief), `atlas.png` (placeholders), `placeholders.js` (draws each cell and lays out the sheet), `draw-atlas.mjs` (renders both through headless Chrome), `blank.html`. |
 | `www/feed.js` | The event feed: newest first, a filter by kind. |
 | `www/check.mjs` | The page's data checks under Node, sending the wire forms through `Sim`; `check.sh` runs it. |
-| `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits on state, screenshots; the play scripts import it. |
+| `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits on state, screenshots; `SIZES`, `open(query, {size})`, `reload`, `key`, `file`, `drag`, `tip` and `lead(page, {seed, civ})`; the play scripts import it. |
+| `www/play/all.mjs` | Runs every other script in `www/play/` and prints pass and seconds; fails without Chrome under `CI`. |
+| `www/play/art.mjs` | The atlas: every cell inside the PNG and not blank, the map's terrain drawn from it; shoots the pick. |
+| `www/play/views.mjs` | The map: pan, zoom and fit, each layer toggled by name, H for hidden country, a hover's tooltip. |
 | `www/play-camp.mjs` | A camp's line home: moves it out on its own land and screenshots the walk. |
 | `www/play-hold.mjs` | A rival camp's line cut: a thicker guard marches onto the nearest rival camp's tile. |
 | `www/play-lean.mjs` | A civ's gift: raised above the default, and the clan that leans to it. |

@@ -117,10 +117,12 @@ impl Sim {
             .filter(|(_, t)| t.wear.iter().any(|&x| x > 0.0))
             .map(|(i, t)| (i, t.wear, t.unworn))
             .collect();
+        let parts = stats::standing_parts(w);
         let civ_rows: BTreeMap<u32, serde_json::Value> = w
             .civs
             .values()
             .map(|c| {
+                let part = parts.get(&c.id).copied().unwrap_or_default();
                 let mine = w.clans.values().filter(|k| k.civ == Some(c.id));
                 let row = serde_json::json!({
                     "id": c.id,
@@ -144,6 +146,9 @@ impl Sim {
                     "given": c.given,
                     "joined": c.joined,
                     "gifted": c.gifted,
+                    "standing": part.clans + part.land,
+                    "standing_clans": part.clans,
+                    "standing_land": part.land,
                 });
                 (c.id, row)
             })
@@ -352,7 +357,7 @@ pub fn goods() -> String {
 }
 
 /// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
-/// hungry_turns, store_cap, floor, join, gift_max, notes_shown}`. `join` is the leaning at which a
+/// hungry_turns, store_cap, floor, join, gift_max, notes_shown, save_version}`. `join` is the leaning at which a
 /// clan joins a civ; `gift_max` is the most a civ can give a turn (its store cap); `notes_shown` is how
 /// many reasons the panel shows.
 #[wasm_bindgen]
@@ -369,6 +374,7 @@ pub fn rules() -> String {
         "join": LEANING.join,
         "gift_max": CIV.store_cap,
         "notes_shown": NOTES.shown,
+        "save_version": engine::world::SAVE_VERSION,
     })
     .to_string()
 }

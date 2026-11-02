@@ -18,7 +18,7 @@ jobs:
           node-version: 24
       - run: node --test relay/*.test.mjs
       - name: Syntax-check the page's scripts
-        run: for f in engine/www/*.js engine/www/*.mjs; do node --check "$f"; done
+        run: find engine/www \( -name '*.js' -o -name '*.mjs' \) -not -path 'engine/www/pkg/*' -print0 | xargs -0 -n1 node --check
 
   engine:
     runs-on: ubuntu-latest
