@@ -19,17 +19,29 @@ use crate::world::{Phase, World};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Order {
-    /// Raise warriors for the civ's camp (making it at the capital if there is none), or with `kind`
-    /// `guard` people for its guard on its claim: one person from each of up to `n` of its clans.
-    /// `{"type":"raise","n":2}` (the camp), `{"type":"raise","n":1,"kind":"guard"}`
+    /// Raise `fighter` (warriors by default) into army `into`, which must be the civ's with its line
+    /// not cut, or with none into a new army at the capital; or with `kind` `guard` people for its
+    /// guard on its claim: one person from each of up to `n` of its clans.
+    /// `{"type":"raise","n":2}` (a new army), `{"type":"raise","n":2,"into":12}`,
+    /// `{"type":"raise","n":1,"kind":"guard"}`
     Raise {
         n: u32,
         #[serde(default)]
         kind: UnitKind,
+        #[serde(default, skip_serializing_if = "is_warriors")]
+        fighter: Fighter,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        into: Option<u32>,
     },
-    /// Disband `n` of the camp's or guard's people, or all with `None`, to the civ's own clan.
-    /// `{"type":"disband","unit":12,"n":1}`
-    Disband { unit: u32, n: Option<u32> },
+    /// Disband `n` of the army's or guard's people, or all with `None`, to the civ's own clan: of
+    /// kind `fighter` (all of that kind with `n` none), else of every kind in proportion.
+    /// `{"type":"disband","unit":12,"n":1}`, `{"type":"disband","unit":12,"n":1,"fighter":"warriors"}`
+    Disband {
+        unit: u32,
+        n: Option<u32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        fighter: Option<Fighter>,
+    },
     /// Replace the civ's claim: the tiles it paints out from its capital, which is added. The guard is
     /// divided over it at once. `{"type":"claim","tiles":[58,59]}`
     Claim { tiles: Vec<usize> },
@@ -52,6 +64,11 @@ pub enum Order {
     Route { unit: u32, from: usize, to: usize },
     /// Stop the scout's search. `{"type":"clearRoute","unit":13}`
     ClearRoute { unit: u32 },
+}
+
+/// Whether `f` is the default kind, which an order's JSON leaves out.
+fn is_warriors(f: &Fighter) -> bool {
+    *f == Fighter::Warriors
 }
 
 impl Order {
@@ -81,10 +98,18 @@ impl World {
             return Err("the game has not begun".to_string());
         }
         match order {
-            Order::Raise { n, kind } => check_raise(self, civ, *n, *kind),
+            Order::Raise { n, kind, fighter, into } => check_raise(self, civ, *n, *kind, *fighter, *into),
             Order::Claim { tiles } => claim::check(self, civ, tiles).map(|_| ()),
-            Order::Disband { unit, n } => {
-                unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Guard])?;
+            Order::Disband { unit, n, fighter } => {
+                let u = unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Guard])?;
+                if let Some(f) = fighter {
+                    let Some(c) = u.camp() else {
+                        return Err("a guard has no kinds: disband it by number".to_string());
+                    };
+                    if c.stack[f.index()] < 1.0 - units::EPS {
+                        return Err(format!("it has no {}", f.rules().name));
+                    }
+                }
                 check_disband(*n)
             }
             Order::Move { unit, to } => check_move(self, unit_of(self, civ, *unit, UnitKind::Camp)?, *to),
@@ -143,13 +168,13 @@ fn unit_among<'a>(w: &'a World, civ: u32, id: u32, kinds: &[UnitKind]) -> Result
 /// Applies an order that `check_order` has passed.
 fn apply(w: &mut World, civ: u32, order: Order) {
     match order {
-        Order::Raise { n, kind: UnitKind::Guard } => {
+        Order::Raise { n, kind: UnitKind::Guard, .. } => {
             units::guard::raise(w, civ, n);
         }
-        Order::Raise { n, .. } => {
-            units::raise(w, civ, n).expect("checked: a clan can give a person");
+        Order::Raise { n, fighter, into, .. } => {
+            units::raise(w, civ, n, fighter, into).expect("checked: a clan can give a person");
         }
-        Order::Disband { unit, n } => units::disband(w, unit, n, false),
+        Order::Disband { unit, n, fighter } => units::disband_kind(w, unit, n, fighter, false),
         Order::Claim { tiles } => {
             let claim = claim::check(w, civ, &tiles).expect("checked: the claim holds");
             let name = units::name_of(w, civ);
@@ -157,7 +182,12 @@ fn apply(w: &mut World, civ: u32, order: Order) {
             claim::set(w, civ, claim);
             w.note(civ, format!("{name} claims {n} tile(s) from its capital"));
         }
-        Order::Move { unit, to } => order_move(w, unit, to),
+        Order::Move { unit, to } => {
+            order_move(w, unit, to);
+            if let Some(c) = w.units.get_mut(&unit).and_then(|u| u.camp_mut()) {
+                c.still = 0;
+            }
+        }
         Order::Zone { unit, tiles } => set_zone(w, unit, &tiles),
         Order::Switches { unit, forage, supply } => {
             let c = units::cs_mut(w, unit);
@@ -172,10 +202,11 @@ fn apply(w: &mut World, civ: u32, order: Order) {
     }
 }
 
-/// Checks `Raise`. A camp's: the army is on, `n` is at least one, a clan can give a person, and the
-/// store can fill the packs of those that do. A guard's: the army is on, `n` is at least one, the civ
+/// Checks `Raise`. A camp's: the army is on, `n` is at least one, warriors (archers come in
+/// build-2), `into` (if any) is the civ's army with its line not cut, a clan can give a person, and
+/// the store can fill the packs of those that do. A guard's: the army is on, `n` is at least one, the civ
 /// may claim land (`Config.claims`), and a clan can give a person.
-fn check_raise(w: &World, civ: u32, n: u32, kind: UnitKind) -> Result<(), String> {
+fn check_raise(w: &World, civ: u32, n: u32, kind: UnitKind, fighter: Fighter, into: Option<u32>) -> Result<(), String> {
     if !w.config.army {
         return Err("armies are off".to_string());
     }
@@ -192,6 +223,15 @@ fn check_raise(w: &World, civ: u32, n: u32, kind: UnitKind) -> Result<(), String
             return if k == 0 { Err("no clan has a person to spare".to_string()) } else { Ok(()) };
         }
         UnitKind::Camp => {}
+    }
+    if fighter == Fighter::Archers {
+        return Err("archers come in build-2".to_string());
+    }
+    if let Some(id) = into {
+        unit_of(w, civ, id, UnitKind::Camp)?;
+        if units::cut_off(w, id) {
+            return Err("its line is cut: raise at the capital".to_string());
+        }
     }
     let k = units::givers(w, civ).len().min(n as usize);
     if k == 0 {

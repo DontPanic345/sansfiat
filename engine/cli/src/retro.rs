@@ -70,7 +70,7 @@ pub(crate) fn after_run(
     lever: Option<f64>,
 ) -> MapRun {
     let claims = if claims { Claims::All } else { Claims::None };
-    let mut w = to_pick(Config { seed, radius, army, gifts, zone, claims });
+    let mut w = to_pick(Config { seed, radius, army, gifts, zone, claims, fight: true });
     let led = lever.and_then(|_| w.civs.keys().next().copied());
     w.act(Action::ChooseCiv { civ: led }).expect("a civ can be chosen at the pick");
     if let Some(g) = lever {
@@ -80,8 +80,15 @@ pub(crate) fn after_run(
     while w.turn < pick + after {
         if let Some(civ) = led.filter(|_| army) {
             if units::camp(&w, civ).is_none() {
-                let _ =
-                    w.act(Action::Order { civ, order: Order::Raise { n: UNIT.start, kind: units::UnitKind::Camp } });
+                let _ = w.act(Action::Order {
+                    civ,
+                    order: Order::Raise {
+                        n: UNIT.start,
+                        kind: units::UnitKind::Camp,
+                        fighter: Default::default(),
+                        into: None,
+                    },
+                });
             }
             if let Some(u) = units::camp(&w, civ).filter(|u| u.camp().is_some_and(|c| c.dest.is_none())) {
                 let at = units::post(&w, civ);

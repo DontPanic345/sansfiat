@@ -12,6 +12,7 @@
 
 mod ai;
 mod camp;
+pub mod fight;
 pub mod guard;
 mod line;
 mod scout;
@@ -82,6 +83,15 @@ pub struct Counters {
     /// Turns the line was cut by a rival's held ground (and would carry the camp's food without it).
     #[serde(default)]
     pub cut_by_army: u32,
+    /// People lost in fights: its armies', guard's and (build-2) militia's.
+    #[serde(default)]
+    pub fallen: f64,
+    /// Tiles it won by fighting.
+    #[serde(default)]
+    pub taken: u32,
+    /// Its armies that surrendered (build-2).
+    #[serde(default)]
+    pub surrendered: u32,
 }
 
 /// A unit: what every unit has, and its kind's own state. Its JSON is one flat object (see
@@ -145,6 +155,12 @@ struct UnitFlat {
     heard: bool,
     #[serde(default)]
     blocked: bool,
+    #[serde(default)]
+    stack: [f64; 2],
+    #[serde(default)]
+    still: u32,
+    #[serde(default)]
+    bows: bool,
 }
 
 impl From<Unit> for UnitFlat {
@@ -178,6 +194,9 @@ impl From<Unit> for UnitFlat {
             route: scout.route,
             heard: scout.heard,
             blocked: scout.blocked,
+            stack: camp.stack,
+            still: camp.still,
+            bows: camp.bows,
         }
     }
 }
@@ -200,6 +219,9 @@ impl From<UnitFlat> for Unit {
                 guard: f.guard,
                 full: f.full,
                 cut_by: f.cut_by,
+                stack: f.stack,
+                still: f.still,
+                bows: f.bows,
             }),
             UnitKind::Scout => UnitState::Scout(ScoutState { route: f.route, heard: f.heard, blocked: f.blocked }),
             UnitKind::Guard => UnitState::Guard,
@@ -225,6 +247,9 @@ fn scout_camp_fields() -> CampState {
         guard: Vec::new(),
         full: false,
         cut_by: None,
+        stack: [0.0; 2],
+        still: 0,
+        bows: false,
     }
 }
 
@@ -283,6 +308,43 @@ impl Unit {
         }
     }
 
+    /// Takes `k` people (at most all) from the unit, an army's from every kind in proportion. Returns
+    /// what came off each kind (a scout's or guard's as warriors). Every loss of an army's people
+    /// goes through here or `take_kind`, so its stack sums to its people.
+    pub fn take_people(&mut self, k: f64) -> [f64; 2] {
+        let people = self.actor.people;
+        let k = k.clamp(0.0, people);
+        let out = match &mut self.state {
+            UnitState::Camp(c) if people > EPS => {
+                let out = c.stack.map(|s| s * k / people);
+                for (s, o) in c.stack.iter_mut().zip(out) {
+                    *s = (*s - o).max(0.0);
+                }
+                out
+            }
+            _ => [k, 0.0],
+        };
+        self.actor.people = (people - k).max(0.0);
+        out
+    }
+
+    /// Takes `k` people of kind `f` (at most all of it) from an army. Returns how many.
+    pub fn take_kind(&mut self, f: Fighter, k: f64) -> f64 {
+        let Some(c) = self.camp_mut() else { return self.take_people(k)[0] };
+        let k = k.clamp(0.0, c.stack[f.index()]);
+        c.stack[f.index()] -= k;
+        self.actor.people = (self.actor.people - k).max(0.0);
+        k
+    }
+
+    /// Adds `k` people of kind `f` (an army's stack; other units' people alone).
+    pub fn add_people(&mut self, f: Fighter, k: f64) {
+        self.actor.people += k;
+        if let Some(c) = self.camp_mut() {
+            c.stack[f.index()] += k;
+        }
+    }
+
     /// The tiles a camp's warriors hold (none for a scout).
     pub fn held(&self) -> &[usize] {
         self.camp().map_or(&[][..], |c| c.held.as_slice())
@@ -291,7 +353,7 @@ impl Unit {
 
 pub(crate) const EPS: f64 = 1e-9;
 
-/// `civ`'s camp, if it has one.
+/// `civ`'s first army by id, if it has one.
 pub fn camp(w: &World, civ: u32) -> Option<&Unit> {
     w.units.values().find(|u| u.civ == civ && u.kind() == UnitKind::Camp)
 }
@@ -342,45 +404,33 @@ fn home_clan(w: &World, civ: u32) -> Option<u32> {
         .map(|c| c.id)
 }
 
-/// Adds `k` warriors (each from the pack share taken from the store) to `civ`'s camp, making it
-/// at the capital if there is none. The people have already been taken from their clans.
-fn join(w: &mut World, civ: u32, k: f64, pack: Basket) -> u32 {
+/// Adds `k` people of `fighter` (each with the pack share taken from the store) to `civ`'s army
+/// `into`, or to a new army at the capital with none. The people have already been taken from
+/// their clans.
+fn join(w: &mut World, civ: u32, k: f64, pack: Basket, fighter: Fighter, into: Option<u32>) -> u32 {
     let capital = w.civs[&civ].capital;
-    let existing = camp(w, civ).map(|u| u.id);
+    let existing = into.filter(|id| w.units.get(id).is_some_and(|u| u.civ == civ && u.camp().is_some()));
     let id = match existing {
         Some(id) => {
             let u = w.units.get_mut(&id).unwrap();
-            u.people += k;
+            u.add_people(fighter, k);
             add(&mut u.store, &pack);
             id
         }
         None => {
             let id = w.next_id;
             w.next_id += 1;
-            let mut actor = Actor::new(capital, k);
+            let mut actor = Actor::new(capital, 0.0);
             actor.store = pack;
-            let unit = Unit {
+            let mut unit = Unit {
                 id,
                 civ,
                 actor,
                 banked: 0.0,
                 hungry: 0,
-                state: UnitState::Camp(CampState {
-                    dest: None,
-                    auto_forage: true,
-                    auto_supply: true,
-                    resupply: false,
-                    forage: false,
-                    pillage: false,
-                    cut: false,
-                    foraging: false,
-                    supplying: false,
-                    held: vec![capital],
-                    guard: vec![0.0],
-                    full: false,
-                    cut_by: None,
-                }),
+                state: UnitState::Camp(CampState::new(capital, [0.0; 2])),
             };
+            unit.add_people(fighter, k);
             w.units.insert(id, unit);
             w.civs.get_mut(&civ).unwrap().army.raised += 1;
             id
@@ -389,10 +439,11 @@ fn join(w: &mut World, civ: u32, k: f64, pack: Basket) -> u32 {
     let kind = if existing.is_some() { EventKind::WarriorsRaised } else { EventKind::CampRaised };
     let tile = w.units[&id].home;
     w.emit(Event::new(kind, tile).civ(civ).unit(id));
+    let name = fighter.rules().name;
     let text = if existing.is_some() {
-        format!("raised {k:.0} more warriors: {:.0} in its camp", w.units[&id].people)
+        format!("raised {k:.0} more {name}: {:.0} in its army", w.units[&id].people)
     } else {
-        format!("raised at {} with {k:.0} warriors from its clans", w.at(tile))
+        format!("raised at {} with {k:.0} {name} from its clans", w.at(tile))
     };
     w.note(id, text);
     id
@@ -406,7 +457,7 @@ pub fn raise_at_founding(w: &mut World, civ: u32) {
         return;
     }
     let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
-    join(w, civ, k, pack);
+    join(w, civ, k, pack, Fighter::Warriors, None);
 }
 
 /// Takes `n` people from the civ's clans, one from each in turn, biggest first; round again when
@@ -451,9 +502,10 @@ pub fn raise_scout_at_founding(w: &mut World, civ: u32) {
     w.units.insert(id, unit);
 }
 
-/// Raises up to `n` warriors for `civ`: one person from each of the `n` biggest clans able to give,
-/// wherever they live, each with its share of the pack from the store. Returns how many.
-pub fn raise(w: &mut World, civ: u32, n: u32) -> Result<u32, String> {
+/// Raises up to `n` of `fighter` for `civ`, into army `into` or a new one at the capital: one person
+/// from each of the `n` biggest clans able to give, wherever they live, each with its share of the
+/// pack from the store. Returns how many.
+pub fn raise(w: &mut World, civ: u32, n: u32, fighter: Fighter, into: Option<u32>) -> Result<u32, String> {
     let from: Vec<u32> = givers(w, civ).into_iter().take(n as usize).collect();
     if from.is_empty() {
         return Err("no clan has a person to spare".to_string());
@@ -468,35 +520,54 @@ pub fn raise(w: &mut World, civ: u32, n: u32) -> Result<u32, String> {
         w.note(*id, format!("gave a person to {name}'s warriors"));
     }
     let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
-    join(w, civ, k, pack);
+    join(w, civ, k, pack, fighter, into);
     Ok(from.len() as u32)
 }
 
-/// Sends `n` of camp `id`'s warriors (all with `None`) back to its civ's own clan, with their share of
-/// the pack; with no clan to take them they are lost. All of them removes the camp. `starved` picks
-/// the event and, if it empties the camp, counts it lost.
+/// Sends `n` of camp `id`'s people (all with `None`) back to its civ's own clan, with their share of
+/// the pack: of kind `fighter` (all of it with `n` none), else of every kind in proportion. With no
+/// clan to take them they are lost. All of them removes the camp. `starved` picks the event and, if
+/// it empties the camp, counts it lost.
 pub fn disband(w: &mut World, id: u32, n: Option<u32>, starved: bool) {
+    disband_kind(w, id, n, None, starved);
+}
+
+/// As `disband`, of kind `fighter` when it names one.
+pub fn disband_kind(w: &mut World, id: u32, n: Option<u32>, fighter: Option<Fighter>, starved: bool) {
     let Some((civ, was)) = w.units.get(&id).map(|u| (u.civ, u.kind())) else { return };
     let people = w.units[&id].people;
-    let k = n.map_or(people, |n| f64::from(n).min(people));
+    let of = match (fighter, w.units[&id].camp()) {
+        (Some(f), Some(c)) => c.stack[f.index()],
+        _ => people,
+    };
+    let k = n.map_or(of, |n| f64::from(n).min(of));
     if k <= 0.0 {
         return;
     }
     let tile = w.units[&id].home;
     let amount = total(&w.units[&id].store) * k / people;
     let share = take(&mut w.units.get_mut(&id).unwrap().store, amount);
+    {
+        let u = w.units.get_mut(&id).unwrap();
+        match fighter {
+            Some(f) => {
+                u.take_kind(f, k);
+            }
+            None => {
+                u.take_people(k);
+            }
+        }
+    }
     let clan = home_clan(w, civ);
     if let Some(c) = clan.and_then(|id| w.clans.get_mut(&id)) {
         c.people += k;
         add(&mut c.store, &share);
     }
-    if k >= people {
+    if k + EPS >= people {
         w.units.remove(&id);
         if starved && was == UnitKind::Camp {
             w.civs.get_mut(&civ).unwrap().army.lost += 1;
         }
-    } else {
-        w.units.get_mut(&id).unwrap().people -= k;
     }
     let kind = if starved { EventKind::WarriorsStarved } else { EventKind::WarriorsDisbanded };
     w.emit(Event::new(kind, tile).civ(civ).unit(id).clan(clan));
@@ -564,16 +635,23 @@ fn room(u: &Unit) -> f64 {
 }
 
 /// The `units` step, after `civs`: fallow tiles count down, each camp in id order spoils and
-/// marches, every camp's warriors spread and hold (`hold`), then each camp and scout, in id order,
-/// takes the rest of its turn.
+/// marches (stopping where a rival has people, as they stood before the marches), every camp's
+/// warriors spread and hold (`hold`), the fight resolves every contested tile (`fight::step`), then
+/// each unit, in id order, takes the rest of its turn.
 pub fn step(w: &mut World) {
     for t in &mut w.tiles {
         t.fallow = t.fallow.saturating_sub(1);
     }
     let ids: Vec<u32> = w.units.keys().copied().collect();
     let camps: Vec<u32> = ids.iter().copied().filter(|id| w.units[id].kind() == UnitKind::Camp).collect();
-    let left: BTreeMap<u32, f64> = camps.iter().map(|&id| (id, camp_march(w, id))).collect();
+    let holders = fight::army_holders(w);
+    let rivals: BTreeMap<usize, Vec<u32>> = fight::presence(w)
+        .into_iter()
+        .map(|(t, parts)| (t, parts.iter().filter(|p| p.people > FIGHT.floor).map(|p| p.civ).collect()))
+        .collect();
+    let left: BTreeMap<u32, f64> = camps.iter().map(|&id| (id, camp_march(w, id, &rivals))).collect();
     let spent = hold(w);
+    fight::step(w, &holders);
     for id in ids {
         match w.units.get(&id).map(|u| u.kind()) {
             Some(UnitKind::Camp) => {

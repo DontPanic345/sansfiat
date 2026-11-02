@@ -60,7 +60,7 @@ fn raising_a_camp_moves_no_standing() {
     let (mut w, ids, _) = led();
     fill_stores(&mut w);
     let before = standing(&w);
-    w.order(ids[0], Order::Raise { n: 2, kind: UnitKind::Camp }).unwrap();
+    w.order(ids[0], Order::Raise { n: 2, kind: UnitKind::Camp, fighter: Default::default(), into: None }).unwrap();
     assert!(engine::units::camp(&w, ids[0]).is_some(), "the raise made a camp");
     let after = standing(&w);
     for id in ids {
@@ -72,7 +72,11 @@ fn raising_a_camp_moves_no_standing() {
 fn an_accepted_order_counts_under_its_kind_and_a_refused_one_does_not() {
     let (mut w, ids, _) = led();
     fill_stores(&mut w);
-    w.act(Action::Order { civ: ids[0], order: Order::Raise { n: 1, kind: UnitKind::Camp } }).unwrap();
+    w.act(Action::Order {
+        civ: ids[0],
+        order: Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None },
+    })
+    .unwrap();
     w.act(Action::SetGift { food: 1.0 }).unwrap();
     assert_eq!(w.orders[&ids[0]]["raise"], 1);
     assert_eq!(w.orders[&ids[0]]["setGift"], 1);
@@ -85,7 +89,11 @@ fn an_accepted_order_counts_under_its_kind_and_a_refused_one_does_not() {
 fn the_orders_counter_is_not_in_the_save_or_the_json() {
     let (mut w, ids, _) = led();
     fill_stores(&mut w);
-    w.act(Action::Order { civ: ids[0], order: Order::Raise { n: 1, kind: UnitKind::Camp } }).unwrap();
+    w.act(Action::Order {
+        civ: ids[0],
+        order: Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None },
+    })
+    .unwrap();
     assert!(!serde_json::to_string(&w).unwrap().contains("orders"));
 }
 
@@ -103,8 +111,8 @@ fn the_ai_orders_are_counted_too() {
 #[test]
 fn each_order_kind_is_its_wire_name() {
     let samples = [
-        Order::Raise { n: 1, kind: UnitKind::Camp },
-        Order::Disband { unit: 1, n: None },
+        Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None },
+        Order::Disband { unit: 1, n: None, fighter: None },
         Order::Move { unit: 1, to: 0 },
         Order::Zone { unit: 1, tiles: vec![] },
         Order::Switches { unit: 1, forage: true, supply: true },

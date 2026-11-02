@@ -243,10 +243,10 @@ fn feed(w: &World, me: u32, since: usize) -> String {
 fn legal(w: &World, me: u32) -> String {
     let ok = |o: Order| w.validate(&Action::Order { civ: me, order: o }).is_ok();
     let mut out = String::from("legal orders:\n");
-    if ok(Order::Raise { n: 1, kind: UnitKind::Camp }) {
+    if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None }) {
         out += "  {\"type\":\"raise\",\"n\":1}\n";
     }
-    if ok(Order::Raise { n: 1, kind: UnitKind::Guard }) {
+    if ok(Order::Raise { n: 1, kind: UnitKind::Guard, fighter: Default::default(), into: None }) {
         out += "  {\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}  a guard at your capital, from your clans\n";
     }
     let claimed = w.civs[&me].claim.clone();
@@ -261,7 +261,7 @@ fn legal(w: &World, me: u32) -> String {
         let near: Vec<usize> = engine::land::neighbours(w, u.tile()).collect();
         match u.kind() {
             UnitKind::Camp => {
-                if ok(Order::Disband { unit: id, n: None }) {
+                if ok(Order::Disband { unit: id, n: None, fighter: None }) {
                     out += &format!("  {{\"type\":\"disband\",\"unit\":{id}}}\n");
                 }
                 let mut to: Vec<usize> = near.clone();
@@ -295,7 +295,7 @@ fn legal(w: &World, me: u32) -> String {
                 }
             }
             UnitKind::Guard => {
-                if ok(Order::Disband { unit: id, n: None }) {
+                if ok(Order::Disband { unit: id, n: None, fighter: None }) {
                     out += &format!("  {{\"type\":\"disband\",\"unit\":{id}}}\n");
                 }
             }

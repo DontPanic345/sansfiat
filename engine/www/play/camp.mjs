@@ -204,17 +204,21 @@ async function hold(page) {
   need(painted.zone.length >= plan.ring.length + 1, `the ring is painted (zone ${painted.zone.length} tiles)`);
 
   // End turns until the rival's line is cut by our army and its camp is hungry.
-  const rivalState = () => page.eval(`(() => { const u = game.view().units[${plan.rival}]; return u && { hungry: u.hungry, cut_at: !!u.cut_at }; })()`);
-  let cut = false, hungry = false, s = null;
-  for (let turn = 0; turn < 25 && !(cut && hungry); turn++) {
+  const rivalState = () => page.eval(`(() => { const u = game.view().units[${plan.rival}]; return u && { hungry: u.hungry, cut_at: !!u.cut_at, tile: u.tile, people: u.people }; })()`);
+  const start = await rivalState();
+  // With the fight on, a stack on a rival's post fights it there: the rival retreats or falls, which is
+  // the hold's outcome too (build-4 draws the fight).
+  let cut = false, hungry = false, fought = false, s = null;
+  for (let turn = 0; turn < 25 && !(cut && hungry) && !fought; turn++) {
     await page.button('End turn');
     s = await rivalState();
     const text = (await page.eval("[...document.querySelectorAll('#feed li')].map((e) => e.textContent).join('\\n')"));
     cut = cut || text.includes("camp's line is cut by");
     hungry = hungry || (s && s.hungry > 0);
+    fought = fought || !s || s.people < start.people - 1e-6 || s.tile !== start.tile;
   }
-  need(cut && hungry, `the rival's line is cut by our army and its camp is hungry (cut ${cut}, hungry ${hungry})`);
-  await selectKey(page, `unit:${plan.rival}`, plan.at);
+  need((cut && hungry) || fought, `the rival's line is cut by our army and its camp is hungry, or they fight (cut ${cut}, hungry ${hungry}, fought ${fought})`);
+  if (s) await selectKey(page, `unit:${plan.rival}`, s.tile);
   await page.shot(join(out, 'hold.png'), 1);
   for (const e of page.errors()) fail(`page error: ${e}`);
 }

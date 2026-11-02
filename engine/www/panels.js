@@ -330,11 +330,14 @@ function civShape(ctx, c) {
   ];
   const buttons = [];
   if (mine) {
+    // Warriors join the civ's first army (build-4 gives the page raising by army and kind).
+    const army = Object.values(ctx.v.units).filter((u) => u.civ === c.id && u.kind === 'camp').sort((a, b) => a.id - b.id)[0];
+    const into = army ? { into: army.id } : {};
     buttons.push({
       label: 'Raise…',
       stepper: {
         options: [
-          { label: 'warriors', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', n }) },
+          { label: 'warriors', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', n, ...into }) },
           { label: 'a guard', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', n, kind: 'guard' }) },
         ],
       },

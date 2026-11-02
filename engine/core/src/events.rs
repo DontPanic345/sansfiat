@@ -41,12 +41,15 @@ pub enum EventKind {
     PeopleLeft,
     ClanLeft,
     ClaimTaken,
+    Skirmish,
+    Retreated,
+    TileTaken,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
 /// zone's size (`Deployed`, `Held`), the civ whose army cut a line (`LineCut`), the civ a clan left
 /// for (`ClanLeft`, whose `civ` is the one it left) or the civ whose unit took a tile (`ClaimTaken`,
-/// whose `civ` is the one that lost it); `unit` is for units, and `amount` is the tiles lost.
+/// `TileTaken`, whose `civ` is the one that lost it) or fought it (`Skirmish`, `Retreated`); `unit` is for units, and `amount` is the tiles lost.
 /// `alert` marks the events the led civ must hear of as they start (`flag_alerts`); the page and
 /// the CLI read it from the JSON as they read the rest.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -139,6 +142,23 @@ impl Event {
             ),
             EventKind::ClaimTaken => format!(
                 "{}'s claim at {at} is taken by {}'s unit: {:.0} tile(s) lost",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
+                self.amount.unwrap_or(0.0)
+            ),
+            EventKind::Skirmish => format!(
+                "{} and {} fight at {at}",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str())
+            ),
+            EventKind::Retreated => format!(
+                "{}'s army retreats from {} before {}",
+                self.civ_name(w),
+                at,
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str())
+            ),
+            EventKind::TileTaken => format!(
+                "{}'s guard at {at} falls to {}'s army: {:.0} tile(s) lost",
                 self.civ_name(w),
                 self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
                 self.amount.unwrap_or(0.0)

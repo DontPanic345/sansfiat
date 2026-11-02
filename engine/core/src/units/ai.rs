@@ -58,7 +58,10 @@ pub fn ai(w: &mut World) {
             continue;
         }
         if camp(w, civ).is_none() {
-            let _ = w.order(civ, Order::Raise { n: UNIT.start, kind: UnitKind::Camp });
+            let _ = w.order(
+                civ,
+                Order::Raise { n: UNIT.start, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None },
+            );
         }
         let Some(u) = camp(w, civ) else { continue };
         if u.camp().is_some_and(|c| c.dest.is_some()) {
@@ -92,7 +95,7 @@ fn land(w: &mut World, civ: u32) {
     }
     if let Some((id, hungry)) = guard_of(w, civ).map(|u| (u.id, u.hungry)) {
         if hungry > 0 {
-            let _ = w.order(civ, Order::Disband { unit: id, n: Some(1) });
+            let _ = w.order(civ, Order::Disband { unit: id, n: Some(1), fighter: None });
             return;
         }
     }
@@ -107,7 +110,7 @@ fn land(w: &mut World, civ: u32) {
     let kin: f64 = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| total(&k.actor.store)).sum();
     let spare = total(&c.store) + kin - civs::keep(w, civ);
     if short && spare >= GUARD.keep_turns * UNIT.food * (people + 1.0) {
-        let _ = w.order(civ, Order::Raise { n: 1, kind: UnitKind::Guard });
+        let _ = w.order(civ, Order::Raise { n: 1, kind: UnitKind::Guard, fighter: Fighter::Warriors, into: None });
     }
 }
 

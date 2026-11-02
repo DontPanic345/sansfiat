@@ -587,6 +587,88 @@ pub const UNIT: UnitRules = UnitRules {
     zone: 2,
 };
 
+/// The kinds of fighter an army's people are (`war.md`): its stack counts its people by kind, and
+/// each kind indexes `FIGHTERS`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Fighter {
+    #[default]
+    Warriors,
+    Archers,
+}
+
+impl Fighter {
+    pub const ALL: [Fighter; 2] = [Fighter::Warriors, Fighter::Archers];
+
+    pub fn index(self) -> usize {
+        self as usize
+    }
+
+    pub fn rules(self) -> &'static FighterRules {
+        &FIGHTERS[self.index()]
+    }
+}
+
+/// One kind of fighter's strength per person.
+pub struct FighterRules {
+    /// Its name, plural, for notes and the view.
+    pub name: &'static str,
+    /// Strength per person on a tile its side didn't hold at the turn's start.
+    pub attack: f64,
+    /// Strength per person on a tile its side held at the turn's start.
+    pub defence: f64,
+    pub note: &'static str,
+}
+
+/// The kinds, indexed by `Fighter`.
+pub const FIGHTERS: [FighterRules; 2] = [
+    FighterRules {
+        name: "warriors",
+        attack: 1.0,
+        defence: 1.0,
+        note: "The measure of the others: a person with a club or spear, as good taking as holding.",
+    },
+    FighterRules {
+        name: "archers",
+        attack: 0.8,
+        defence: 1.4,
+        note: "Bows hold ground from behind cover better than they take it; the fight is over one tile, so no range.",
+    },
+];
+
+/// The fight's rule (`units/fight.rs`): Lanchester-linear losses on each contested tile.
+pub struct FightRules {
+    /// People a side loses a turn per unit of the others' strength there.
+    pub rate: f64,
+    /// A defending army's strength gained per turn it has stood still.
+    pub entrench: f64,
+    /// The most entrenchment adds; a guard always defends at it.
+    pub entrench_cap: f64,
+    /// A side whose strength after the losses is under this times the others' retreats (armies only).
+    pub retreat: f64,
+    /// An army that went hungry last turn fights at this times its strength.
+    pub hungry: f64,
+    /// The fewest people a civ must have on a tile to be a side there.
+    pub floor: f64,
+    /// A militia person's strength, times a warrior's defence (build-2).
+    pub militia: f64,
+    /// Hungry turns in a row, with its line cut by a rival, before an army surrenders (build-2).
+    pub surrender: u32,
+    pub note: &'static str,
+}
+
+pub const FIGHT: FightRules = FightRules {
+    rate: 0.1,
+    entrench: 0.1,
+    entrench_cap: 0.5,
+    retreat: 0.5,
+    hungry: 0.5,
+    floor: 0.01,
+    militia: 0.3,
+    surrender: 3,
+    note: "Starting numbers for the glaze (build-5) to tune together against the stories.",
+};
+
 /// Which civs may claim land (`claim.rs`): `All` (the default), `None` (the control: no civ claims
 /// past its capital and raises no guard), or `Only(k)` (the k-th civ in id order, 0-based, claims as
 /// under `All`; the others as under `None`).
@@ -618,6 +700,11 @@ pub struct Config {
     /// Which civs may claim land: see `Claims`. Old saves load with `All`.
     #[serde(default)]
     pub claims: Claims,
+    /// Whether people of two civs on a tile fight (`units/fight.rs`): off is the control (no losses,
+    /// no retreats, and from build-2 no militia, surrender or fall; holding is the strength
+    /// comparison alone). Old saves load with it on.
+    #[serde(default = "yes")]
+    pub fight: bool,
 }
 
 fn yes() -> bool {
@@ -627,7 +714,7 @@ fn yes() -> bool {
 impl Default for Config {
     /// Radius 16: three centres 10 steps apart need the room.
     fn default() -> Self {
-        Config { seed: 1, radius: 16, army: true, gifts: true, zone: true, claims: Claims::All }
+        Config { seed: 1, radius: 16, army: true, gifts: true, zone: true, claims: Claims::All, fight: true }
     }
 }
 

@@ -146,7 +146,8 @@ fn raising_drops_n_clans_by_one_each() {
     let before = [people(&w, clans[0]), people(&w, b), people(&w, c), people(&w, d)];
     w.civs.get_mut(&red).unwrap().store = CIV.endowment;
     let (camp_before, store_before) = (units::camp(&w, red).unwrap().people, total(&w.civs[&red].store));
-    w.act(led_order(&w, Order::Raise { n: 2, kind: UnitKind::Camp })).unwrap();
+    let into = Some(units::camp(&w, red).unwrap().id);
+    w.act(led_order(&w, Order::Raise { n: 2, kind: UnitKind::Camp, fighter: Default::default(), into })).unwrap();
     // The two biggest that can give gave one each; the third gave nothing, nor the one under UNIT.min_clan.
     let able = [clans[0], b, c];
     let mut order = [0, 1, 2];
@@ -164,18 +165,22 @@ fn raising_drops_n_clans_by_one_each() {
     assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 3, "still one camp a civ");
     // The store can't fill the packs.
     w.civs.get_mut(&red).unwrap().store = [0.0; N];
-    assert!(w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp })).is_err());
-    assert!(w.act(led_order(&w, Order::Raise { n: 0, kind: UnitKind::Camp })).is_err());
+    assert!(w
+        .act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None }))
+        .is_err());
+    assert!(w
+        .act(led_order(&w, Order::Raise { n: 0, kind: UnitKind::Camp, fighter: Default::default(), into: None }))
+        .is_err());
 }
 
 #[test]
 fn raising_with_no_camp_makes_one_at_the_capital() {
     let (mut w, ids, _) = led();
     let red = ids[0];
-    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None })).unwrap();
+    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None, fighter: None })).unwrap();
     assert!(units::camp(&w, red).is_none());
     fill_stores(&mut w);
-    w.act(led_order(&w, Order::Raise { n: 3, kind: UnitKind::Camp })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 3, kind: UnitKind::Camp, fighter: Default::default(), into: None })).unwrap();
     let camp = units::camp(&w, red).unwrap();
     assert_eq!(camp.tile(), w.civs[&red].capital);
     assert_eq!(camp.people, 1.0, "only one clan to give");
@@ -193,24 +198,24 @@ fn disbanding_returns_the_warriors_to_the_civs_clan() {
     put_camp(&mut w, red, at_big(-2, 1));
     let own = w.clans[&clans[0]].people;
     let held = total(&units::camp(&w, red).unwrap().store);
-    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: Some(2) })).unwrap();
+    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: Some(2), fighter: None })).unwrap();
     assert_eq!(w.clans[&clans[0]].people, own + 2.0);
     assert_eq!(w.clans[&near].people, 9.0);
     let camp = units::camp(&w, red).unwrap();
     assert_eq!(camp.people, 1.0);
     assert!((total(&w.clans[&clans[0]].store) - held * 2.0 / 3.0).abs() < 1e-9, "their share of the pack went too");
     assert!((total(&camp.store) - held / 3.0).abs() < 1e-9);
-    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None })).unwrap();
+    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None, fighter: None })).unwrap();
     assert!(units::camp(&w, red).is_none());
     assert_eq!(w.clans[&clans[0]].people, own + 3.0);
     assert_eq!(w.civs[&red].army.lost, 0, "disbanding is not starving");
     assert_eq!(kinds(&w, EventKind::WarriorsDisbanded), 2);
     assert_eq!(
-        w.act(led_order(&w, Order::Disband { unit: led_scout(&w), n: None })),
+        w.act(led_order(&w, Order::Disband { unit: led_scout(&w), n: None, fighter: None })),
         Err("that unit is not a camp or a guard".to_string())
     );
     fill_stores(&mut w);
-    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None })).unwrap();
 }
 
 #[test]
@@ -374,6 +379,9 @@ fn pillage_yields_more_than_forage() {
         w.tiles[t].cap = [0.0, 100.0, 0.0, 0.0, 0.0];
         w.tiles[t].unworn = w.tiles[t].cap;
         w.tiles[t].stock = [0.0, 100.0, 0.0, 0.0, 0.0];
+        // With the fight on, the camp would take Blue's tile from its thin guard and it would be
+        // nobody's to pillage; off, the guard stays and the tile stays Blue's.
+        w.config.fight = false;
         let id = put_camp(&mut w, red, t);
         camp_mut(&mut w, id).store = [0.0; N];
         let unit = led_camp(&w);
@@ -454,7 +462,7 @@ fn hunger_loses_warriors() {
     assert_eq!(w.clans[&clans[0]].people, own + 3.0, "they went home");
     // Fed again, the count starts over.
     fill_stores(&mut w);
-    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None })).unwrap();
 }
 
 #[test]
@@ -492,7 +500,11 @@ fn with_the_army_off_no_camp_is_founded_and_nothing_is_levied() {
     assert_eq!(w.civs[&red].store, [0.0; N]);
     assert_eq!(w.clans[&a].harvest, HARVEST);
     w.act(Action::ChooseCiv { civ: Some(red) }).unwrap();
-    assert!(w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp })).is_err(), "armies are off");
+    assert!(
+        w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None }))
+            .is_err(),
+        "armies are off"
+    );
     w.act(Action::ChooseCiv { civ: None }).unwrap_err();
     // The AI raises none either.
     let mut v = big();
@@ -511,7 +523,7 @@ fn the_ai_raises_a_lost_camp_and_posts_it_off_the_capital() {
     w.phase = Phase::Main;
     // The AI leads Blue and Gold; Red is the player's: its camp is left alone.
     w.player = Some(ids[0]);
-    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None })).unwrap();
+    w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None, fighter: None })).unwrap();
     w.units.remove(&camp_id(&w, ids[1]));
     fill_stores(&mut w);
     units::ai(&mut w);
@@ -548,7 +560,10 @@ fn a_real_map_replays_with_the_camp_under_orders() {
         let n = w.turn - pick;
         let camp = units::camp(&w, me).map(|u| u.id);
         if n > 0 && n.is_multiple_of(20) {
-            let _ = w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp }));
+            let _ = w.act(led_order(
+                &w,
+                Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None },
+            ));
         }
         if let (3, Some(unit)) = (n, camp) {
             let to = w.civs.values().find(|c| c.id != me).unwrap().capital;
@@ -564,7 +579,7 @@ fn a_real_map_replays_with_the_camp_under_orders() {
             let _ = w.act(led_order(&w, Order::Resupply { unit }));
         }
         if let (5, Some(unit)) = (n, camp) {
-            let _ = w.act(led_order(&w, Order::Disband { unit, n: Some(1) }));
+            let _ = w.act(led_order(&w, Order::Disband { unit, n: Some(1), fighter: None }));
         }
         end_turn(&mut w);
         for u in w.units.values() {
@@ -589,11 +604,17 @@ fn a_real_map_replays_with_the_camp_under_orders() {
         r#"{"type":"order","civ":1,"order":{"type":"move","unit":12,"to":5}}"#
     );
     assert_eq!(
-        serde_json::to_string(&order(Order::Raise { n: 2, kind: UnitKind::Camp })).unwrap(),
+        serde_json::to_string(&order(Order::Raise {
+            n: 2,
+            kind: UnitKind::Camp,
+            fighter: Default::default(),
+            into: None
+        }))
+        .unwrap(),
         r#"{"type":"order","civ":1,"order":{"type":"raise","n":2,"kind":"camp"}}"#
     );
     assert_eq!(
-        serde_json::to_string(&order(Order::Disband { unit: 12, n: None })).unwrap(),
+        serde_json::to_string(&order(Order::Disband { unit: 12, n: None, fighter: None })).unwrap(),
         r#"{"type":"order","civ":1,"order":{"type":"disband","unit":12,"n":null}}"#
     );
     assert_eq!(
@@ -852,8 +873,8 @@ fn a_camp_cut_by_an_army_eats_its_pack_then_forages() {
 }
 
 #[test]
-fn a_unit_serialises_its_27_flat_fields_in_the_old_order_whatever_its_kind() {
-    const KEYS: [&str; 27] = [
+fn a_unit_serialises_its_30_flat_fields_in_the_old_order_whatever_its_kind() {
+    const KEYS: [&str; 30] = [
         "id",
         "civ",
         "kind",
@@ -881,6 +902,9 @@ fn a_unit_serialises_its_27_flat_fields_in_the_old_order_whatever_its_kind() {
         "route",
         "heard",
         "blocked",
+        "stack",
+        "still",
+        "bows",
     ];
     let (w, ids, _) = three();
     let camp = units::camp(&w, ids[0]).expect("a camp");

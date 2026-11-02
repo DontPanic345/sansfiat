@@ -55,14 +55,17 @@ fn claims_none_refuses_a_claim_and_a_guard_and_only_k_lets_one_civ_claim() {
     let tiles = within(&w, cap, 1);
     w.config.claims = Claims::None;
     assert!(w.order(red, Order::Claim { tiles: tiles.clone() }).is_err(), "claims none refuses a claim");
-    assert!(w.order(red, Order::Raise { n: 1, kind: UnitKind::Guard }).is_err(), "and a guard");
+    assert!(
+        w.order(red, Order::Raise { n: 1, kind: UnitKind::Guard, fighter: Default::default(), into: None }).is_err(),
+        "and a guard"
+    );
     assert_eq!(
         claim::check(&w, red, &tiles),
         Err("this civ may not claim land: the claims control is off".to_string())
     );
     // Camps are not the claims' business: a camp still raises.
     fill_stores(&mut w);
-    assert!(w.order(red, Order::Raise { n: 1, kind: UnitKind::Camp }).is_ok());
+    assert!(w.order(red, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None }).is_ok());
     // Only the k-th civ in id order (here Blue) may claim.
     w.config.claims = Claims::Only(1);
     assert!(!claim::may_claim(&w, red));
@@ -265,7 +268,7 @@ fn raising_a_guard_leaves_standing_as_it_was_and_an_unaligned_clan_on_the_land_c
     let (mut w, ids, _) = led();
     let red = ids[0];
     let before = standing(&w)[&red];
-    w.order(red, Order::Raise { n: 1, kind: UnitKind::Guard }).unwrap();
+    w.order(red, Order::Raise { n: 1, kind: UnitKind::Guard, fighter: Default::default(), into: None }).unwrap();
     assert!((standing(&w)[&red] - before).abs() < 1e-12, "raising moves nobody between civs");
     // An unaligned clan on Red's land: its people count for Red.
     hold_land(&mut w, red, &[at_big(-4, 0)]);
@@ -297,7 +300,7 @@ fn the_orders_of_the_guard_are_refused_with_the_reason_and_the_guard_takes_disba
     assert_eq!(red, me);
     let refused = w.check_order(me, &Order::Move { unit: guard, to: 0 });
     assert_eq!(refused, Err("a guard only holds the claim: it takes no order but disband".to_string()));
-    assert!(w.check_order(me, &Order::Disband { unit: guard, n: Some(1) }).is_ok());
+    assert!(w.check_order(me, &Order::Disband { unit: guard, n: Some(1), fighter: None }).is_ok());
 }
 
 #[test]
@@ -313,7 +316,8 @@ fn replaying_a_save_with_claims_and_guards_rebuilds_the_same_world() {
     let land: Vec<usize> = within(&w, cap, 2).into_iter().filter(|&t| TERRAIN[w.tiles[t].terrain].land).collect();
     let tiles = claim::connected_part(&w, cap, &land);
     w.act(led_order(&w, Order::Claim { tiles })).unwrap();
-    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Guard })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Guard, fighter: Default::default(), into: None }))
+        .unwrap();
     for _ in 0..30 {
         w.act(Action::EndTurn).unwrap();
     }
