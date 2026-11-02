@@ -650,9 +650,9 @@ pub struct FightRules {
     pub hungry: f64,
     /// The fewest people a civ must have on a tile to be a side there.
     pub floor: f64,
-    /// A militia person's strength, times a warrior's defence (build-2).
+    /// A militia person's strength, attacking or defending, times a warrior's defence.
     pub militia: f64,
-    /// Hungry turns in a row, with its line cut by a rival, before an army surrenders (build-2).
+    /// Hungry turns in a row, with its line cut by a rival, before an army surrenders (before hunger's take).
     pub surrender: u32,
     pub note: &'static str,
 }
@@ -701,8 +701,8 @@ pub struct Config {
     #[serde(default)]
     pub claims: Claims,
     /// Whether people of two civs on a tile fight (`units/fight.rs`): off is the control (no losses,
-    /// no retreats, and from build-2 no militia, surrender or fall; holding is the strength
-    /// comparison alone). Old saves load with it on.
+    /// no retreats, no militia, no surrender, no fall, no pressed capital and no siege; holding is
+    /// the strength comparison alone). Old saves load with it on.
     #[serde(default = "yes")]
     pub fight: bool,
 }

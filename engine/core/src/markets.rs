@@ -170,7 +170,7 @@ pub fn trade(w: &mut World) {
             })
             .unzip();
         // The civ whose capital market this is gives and posts what its store holds beyond its keep.
-        let civ = w.civs.values().find(|c| c.market == mid && w.phase == Phase::Main).map(|c| c.id);
+        let civ = crate::civs::alive(w).find(|c| c.market == mid && w.phase == Phase::Main).map(|c| c.id);
         let mut posted = 0.0;
         if let Some(civ) = civ {
             let spare = (w.civs[&civ].store.iter().sum::<f64>() - civs::keep(w, civ)).max(0.0);
@@ -340,8 +340,11 @@ pub fn form_and_fade(w: &mut World) {
 /// A festival whose activity falls under `min_attendance` goes, and its clans with it. A centre
 /// the pre-game ended on stays, and so does every civ's market.
 pub fn fade(w: &mut World) {
+    // A fallen civ's capital market is an ordinary festival from its fall, centre or not.
+    let fallen: Vec<u32> = w.civs.values().filter(|c| c.is_out()).map(|c| c.market).collect();
     let mut kept = w.end.as_ref().map(|e| e.centres.clone()).unwrap_or_default();
-    kept.extend(w.civs.values().map(|c| c.market));
+    kept.retain(|m| !fallen.contains(m));
+    kept.extend(crate::civs::alive(w).map(|c| c.market));
     let gone: Vec<u32> = w
         .markets
         .values()

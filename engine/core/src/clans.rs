@@ -215,7 +215,13 @@ pub fn harvest(w: &mut World) {
     for id in shuffled(w) {
         let c = &w.clans[&id];
         let (walks, yearly) = walks(w, c.home, &c.territory);
-        let takes = reap(w, c.people, &c.store, &c.routes, &c.territory, &yearly);
+        // A civ besieged at its capital: its own clans there harvest nothing (`fight::posture`).
+        let besieged = c.civ.and_then(|k| w.civs.get(&k)).is_some_and(|k| k.besieged && k.capital == c.home);
+        let takes = if besieged {
+            vec![[0.0; N]; walks.tiles.len()]
+        } else {
+            reap(w, c.people, &c.store, &c.routes, &c.territory, &yearly)
+        };
         let (routes, home, people) = (c.routes.clone(), c.home, c.people);
         for (&i, t) in walks.tiles.iter().zip(&takes) {
             let tile = &mut w.tiles[i];

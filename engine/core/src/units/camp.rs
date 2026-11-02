@@ -5,8 +5,8 @@
 
 use std::collections::BTreeMap;
 
-use super::line::{cut_by, cut_off, cutter, line, route, walkable};
-use super::{disband, name_of, rival_of, room, strip, supply, Unit, EPS};
+use super::line::{cut_by, cut_by_rival, cut_off, cutter, line, route, walkable};
+use super::{disband, name_of, rival_of, room, strip, supply, surrender, Unit, EPS};
 use crate::actors::{connected, divide, stride, Route, Walks};
 use crate::data::*;
 use crate::events::{Event, EventKind};
@@ -83,6 +83,12 @@ pub(crate) fn cs_mut(w: &mut World, id: u32) -> &mut CampState {
 pub(super) fn camp_march(w: &mut World, id: u32, rivals: &BTreeMap<usize, Vec<u32>>) -> f64 {
     let people = w.units[&id].people;
     w.units.get_mut(&id).unwrap().spoil();
+    // Making bows takes the turn's labour: no march (`bows` is cleared at the turn's end).
+    if cs(w, id).bows {
+        let c = cs_mut(w, id);
+        c.still += 1;
+        return 0.0;
+    }
 
     // The march. Every warrior walks, so a step costs one warrior's labour and the camp's labour
     // left is that, times the warriors. A march not done leaves nothing.
@@ -355,6 +361,16 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
         w.emit(Event::new(EventKind::CampHungry, tile).civ(civ).unit(id));
         w.note(id, format!("went hungry: its pack covered {:.0}% of its need", covered * 100.0));
     }
+    cs_mut(w, id).bows = false;
+    // An army hungry `FIGHT.surrender` turns in a row whose line a rival's land cuts surrenders whole,
+    // before hunger takes a warrior (with fighting on, `Config.fight`).
+    if hungry >= FIGHT.surrender && w.config.fight {
+        if let Some(by) = cut_by_rival(w, id) {
+            if surrender(w, id, by) {
+                return;
+            }
+        }
+    }
     if hungry >= UNIT.hungry_turns {
         w.civs.get_mut(&civ).unwrap().army.starved += 1;
         disband(w, id, Some(1), true);
@@ -383,7 +399,7 @@ pub(crate) fn zone_ok(w: &World, u: &Unit, tiles: &[usize]) -> Result<Vec<usize>
     if tiles.iter().any(|&t| !walkable(w, t)) {
         return Err("a zone can only cover land a camp can walk".to_string());
     }
-    if tiles.iter().any(|&t| w.civs.values().any(|c| c.capital == t)) {
+    if tiles.iter().any(|&t| crate::civs::alive(w).any(|c| c.capital == t)) {
         return Err("a zone can't cover a capital".to_string());
     }
     let zone = zone_of(u.home, tiles);

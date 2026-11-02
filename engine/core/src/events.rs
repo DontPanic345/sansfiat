@@ -44,12 +44,17 @@ pub enum EventKind {
     Skirmish,
     Retreated,
     TileTaken,
+    ArchersRaised,
+    ArmySurrendered,
+    CapitalFell,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
 /// zone's size (`Deployed`, `Held`), the civ whose army cut a line (`LineCut`), the civ a clan left
 /// for (`ClanLeft`, whose `civ` is the one it left) or the civ whose unit took a tile (`ClaimTaken`,
 /// `TileTaken`, whose `civ` is the one that lost it) or fought it (`Skirmish`, `Retreated`); `unit` is for units, and `amount` is the tiles lost.
+/// An `ArmySurrendered` is the army's civ (`civ`), the rival it joins (`other`), the army (`unit`), the
+/// clan it joined (`clan`) and the people (`amount`); a `CapitalFell` is the fallen civ and its taker.
 /// `alert` marks the events the led civ must hear of as they start (`flag_alerts`); the page and
 /// the CLI read it from the JSON as they read the rest.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -162,6 +167,19 @@ impl Event {
                 self.civ_name(w),
                 self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
                 self.amount.unwrap_or(0.0)
+            ),
+            EventKind::ArchersRaised => format!("{} raises archers for its army at {at}", self.civ_name(w)),
+            EventKind::ArmySurrendered => format!(
+                "{}'s army at {at} surrenders to {}: {:.1} people join its clans",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
+                self.amount.unwrap_or(0.0)
+            ),
+            EventKind::CapitalFell => format!(
+                "{}'s capital at {at} falls to {}: {} has no guard, army or militia left there",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
+                self.civ_name(w)
             ),
             EventKind::PregameEnded => match &w.end {
                 Some(e) => {

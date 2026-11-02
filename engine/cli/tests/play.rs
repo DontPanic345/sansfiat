@@ -43,10 +43,10 @@ fn turn_of(out: &str) -> u32 {
 fn camp_and_post(view: &str) -> (u32, usize) {
     let camp = view
         .lines()
-        .find_map(|l| l.trim_start().strip_prefix("camp "))
+        .find_map(|l| l.trim_start().strip_prefix("army "))
         .and_then(|r| r.split(' ').next())
         .and_then(|n| n.parse().ok())
-        .expect("the view names the camp");
+        .expect("the view names the army");
     let post = view
         .lines()
         .find_map(|l| l.split("would post your camp at ").nth(1))

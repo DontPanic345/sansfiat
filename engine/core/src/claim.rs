@@ -50,7 +50,7 @@ pub fn check(w: &World, civ: u32, tiles: &[usize]) -> Result<Vec<usize>, String>
     if tiles.iter().any(|&t| !TERRAIN[w.tiles[t].terrain].land) {
         return Err("a claim can only cover land".to_string());
     }
-    if tiles.iter().any(|&t| t != c.capital && w.civs.values().any(|o| o.capital == t)) {
+    if tiles.iter().any(|&t| t != c.capital && crate::civs::alive(w).any(|o| o.capital == t)) {
         return Err("a claim can't cover another civ's capital".to_string());
     }
     let mut all = tiles.to_vec();
@@ -89,11 +89,11 @@ pub fn held(w: &World, civ: u32) -> Vec<usize> {
 /// The civ whose land tile `i` is: a capital's own civ; else the civ holding it (`held`) with the
 /// thicker guard there, a tie to the lower id; else none. Clans' territories make no land.
 pub fn tile_civ(w: &World, i: usize) -> Option<u32> {
-    if let Some(c) = w.civs.values().find(|c| c.capital == i) {
+    if let Some(c) = crate::civs::alive(w).find(|c| c.capital == i) {
         return Some(c.id);
     }
     let mut best: Option<(u32, f64)> = None;
-    for c in w.civs.values() {
+    for c in crate::civs::alive(w) {
         let Ok(k) = c.claim.binary_search(&i) else { continue };
         let g = c.guard.get(k).copied().unwrap_or(0.0);
         if g + EPS < CLAIM.floor {
@@ -118,6 +118,14 @@ pub fn set(w: &mut World, civ: u32, claim: Vec<usize>) {
 /// before the camps' shares are added; the fight splits the guard's people by it.
 pub fn guard_shares(w: &World, civ: u32) -> Vec<f64> {
     let c = &w.civs[&civ];
+    // Pressed, the guard is all on the capital and the rest of the claim gets no share.
+    if c.pressed {
+        return c
+            .claim
+            .iter()
+            .map(|&t| if t == c.capital { guard_people(w, civ) * GUARD.guarding } else { 0.0 })
+            .collect();
+    }
     let walks = actors::Walks::new(w, c.capital, &c.claim);
     actors::divide(guard_people(w, civ) * GUARD.guarding, &[], &walks.yearly(GUARD.inside))
 }
@@ -127,6 +135,9 @@ pub fn guard_shares(w: &World, civ: u32) -> Vec<f64> {
 /// its camps that holds a claimed tile. Sets `Civ.guard`, aligned with the claim, and the guard's
 /// territory to the claim. Nothing else reads a guard share.
 pub fn divide(w: &mut World, civ: u32) {
+    if w.civs[&civ].is_out() {
+        return;
+    }
     let claim = w.civs[&civ].claim.clone();
     let mut guard = guard_shares(w, civ);
     for u in w.units.values().filter(|u| u.civ == civ) {
@@ -157,7 +168,7 @@ pub fn ai_claim(w: &World, civ: u32) -> Vec<usize> {
         .flat_map(|&s| {
             w.tiles[s].hex().within(CLAIM.ai_ring).into_iter().filter_map(|h| map::index(w.config.radius, h))
         })
-        .filter(|&t| TERRAIN[w.tiles[t].terrain].land && !w.civs.values().any(|o| o.id != civ && o.capital == t))
+        .filter(|&t| TERRAIN[w.tiles[t].terrain].land && !crate::civs::alive(w).any(|o| o.id != civ && o.capital == t))
         .collect();
     let rival: Vec<usize> = w
         .units
@@ -175,7 +186,7 @@ pub fn ai_claim(w: &World, civ: u32) -> Vec<usize> {
 /// (not a scout or a guard) standing on another civ's paper (a tile of its claim that isn't held, and isn't its capital) takes
 /// it: the tile leaves that claim, and so do the claim's tiles no longer joined to the capital.
 pub fn step(w: &mut World) {
-    let civs: Vec<u32> = w.civs.keys().copied().collect();
+    let civs: Vec<u32> = crate::civs::alive(w).map(|c| c.id).collect();
     for &c in &civs {
         divide(w, c);
     }

@@ -26,13 +26,14 @@ use crate::actors::Actor;
 use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
+use crate::land::steps;
 use crate::market::{add, take, total, Basket};
 use crate::world::{Phase, World};
 
 pub use ai::{ai, post};
 pub(crate) use camp::{cs_mut, zone_of, zone_ok};
 pub use camp::{zone_cap, CampState};
-pub use line::{cut_at, cut_off, line, path_between, route, turns};
+pub use line::{cut_at, cut_by_rival, cut_off, line, path_between, route, turns};
 pub use scout::{route_plan, Plan, ScoutState};
 
 use camp::{camp_march, camp_turn, hold};
@@ -502,9 +503,49 @@ pub fn raise_scout_at_founding(w: &mut World, civ: u32) {
     w.units.insert(id, unit);
 }
 
+/// The clan nearest tile `tile` by steps, of any civ (ties to the lower id).
+pub fn nearest_clan(w: &World, tile: usize) -> Option<u32> {
+    w.clans.values().min_by_key(|k| (steps(w, tile, k.home), k.id)).map(|k| k.id)
+}
+
+/// Moves all of unit `id`'s people and its pack into clan `clan`, and removes the unit. It is no
+/// fall: the people are the clan's again.
+pub fn give_up(w: &mut World, id: u32, clan: u32) {
+    let Some(u) = w.units.remove(&id) else { return };
+    if let Some(k) = w.clans.get_mut(&clan) {
+        k.people += u.people;
+        add(&mut k.store, &u.store);
+    }
+}
+
+/// Army `id` surrenders to civ `by`, whose land cuts its line (`line::cut_by_rival`): its people and
+/// pack join `by`'s clan nearest its tile by steps (ties to the lower id). Counted in its civ's
+/// `surrendered`, and noted on both civs and the clan. False, and nothing changes, when `by` has no
+/// clan to take them.
+pub fn surrender(w: &mut World, id: u32, by: u32) -> bool {
+    let Some(u) = w.units.get(&id) else { return false };
+    let (civ, tile, people) = (u.civ, u.home, u.people);
+    let Some(clan) =
+        w.clans.values().filter(|k| k.civ == Some(by)).min_by_key(|k| (steps(w, tile, k.home), k.id)).map(|k| k.id)
+    else {
+        return false;
+    };
+    give_up(w, id, clan);
+    w.civs.get_mut(&civ).unwrap().army.surrendered += 1;
+    claim::divide(w, civ);
+    w.emit(Event::new(EventKind::ArmySurrendered, tile).civ(civ).other(by).unit(id).clan(clan).amount(people));
+    let (name, taker) = (name_of(w, civ), name_of(w, by));
+    let at = w.at(tile);
+    w.note(civ, format!("its army at {at} surrendered to {taker}: {people:.1} people went to its clan {clan}"));
+    w.note(by, format!("{name}'s army at {at} surrendered: {people:.1} people joined clan {clan}"));
+    w.note(clan, format!("took in {people:.1} people of {name}'s army at {at}"));
+    true
+}
+
 /// Raises up to `n` of `fighter` for `civ`, into army `into` or a new one at the capital: one person
 /// from each of the `n` biggest clans able to give, wherever they live, each with its share of the
-/// pack from the store. Returns how many.
+/// pack from the store. Archers make their bows on the army they join or make: it marches nothing
+/// the turn they are raised (`CampState.bows`). Returns how many.
 pub fn raise(w: &mut World, civ: u32, n: u32, fighter: Fighter, into: Option<u32>) -> Result<u32, String> {
     let from: Vec<u32> = givers(w, civ).into_iter().take(n as usize).collect();
     if from.is_empty() {
@@ -520,7 +561,13 @@ pub fn raise(w: &mut World, civ: u32, n: u32, fighter: Fighter, into: Option<u32
         w.note(*id, format!("gave a person to {name}'s warriors"));
     }
     let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
-    join(w, civ, k, pack, fighter, into);
+    let id = join(w, civ, k, pack, fighter, into);
+    if fighter == Fighter::Archers {
+        w.units.get_mut(&id).unwrap().camp_mut().expect("an army").bows = true;
+        let tile = w.units[&id].home;
+        w.emit(Event::new(EventKind::ArchersRaised, tile).civ(civ).unit(id));
+        w.note(id, format!("{k:.0} archers raised: its bows take this turn's labour"));
+    }
     Ok(from.len() as u32)
 }
 
@@ -670,5 +717,9 @@ pub fn leader(w: &World) -> Result<u32, String> {
     if w.phase != Phase::Main {
         return Err("the game has not begun".to_string());
     }
-    w.player.ok_or_else(|| "you're watching: you lead no civ".to_string())
+    let civ = w.player.ok_or_else(|| "you're watching: you lead no civ".to_string())?;
+    if w.civs.get(&civ).is_some_and(|c| c.is_out()) {
+        return Err("your civ has fallen".to_string());
+    }
+    Ok(civ)
 }

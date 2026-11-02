@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::civs;
 use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
@@ -96,6 +97,9 @@ impl World {
     pub fn check_order(&self, civ: u32, order: &Order) -> Result<(), String> {
         if self.phase != Phase::Main {
             return Err("the game has not begun".to_string());
+        }
+        if self.civs.get(&civ).is_some_and(|c| c.is_out()) {
+            return Err("your civ has fallen".to_string());
         }
         match order {
             Order::Raise { n, kind, fighter, into } => check_raise(self, civ, *n, *kind, *fighter, *into),
@@ -224,8 +228,8 @@ fn check_raise(w: &World, civ: u32, n: u32, kind: UnitKind, fighter: Fighter, in
         }
         UnitKind::Camp => {}
     }
-    if fighter == Fighter::Archers {
-        return Err("archers come in build-2".to_string());
+    if fighter == Fighter::Archers && !civs::land(w, civ).into_iter().any(|t| w.tiles[t].terrain == FOREST) {
+        return Err("you hold no forest to make bows on".to_string());
     }
     if let Some(id) = into {
         unit_of(w, civ, id, UnitKind::Camp)?;

@@ -34,7 +34,7 @@ pub fn give(w: &mut World, civ: u32, ids: &[u32], kept: &mut [Basket], pool: f64
         }
     };
     let sum: f64 = ids.iter().map(|&id| weight(w, id)).sum();
-    if pool <= 0.0 || sum <= 0.0 {
+    if pool <= 0.0 || sum <= 0.0 || w.civs[&civ].is_out() {
         return 0.0;
     }
     let taken = take(&mut w.civs.get_mut(&civ).unwrap().store, pool);

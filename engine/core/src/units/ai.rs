@@ -18,9 +18,7 @@ use crate::world::{Phase, World};
 /// own land and on land (not on a built pass). The capital when there is nowhere to go.
 pub fn post(w: &World, civ: u32) -> usize {
     let c = &w.civs[&civ];
-    let to_rival = w
-        .civs
-        .values()
+    let to_rival = civs::alive(w)
         .filter(|o| o.id != civ)
         .filter_map(|o| path_between(w, c.capital, o.capital).map(|(p, _)| ((steps(w, c.capital, o.capital), o.id), p)))
         .min_by_key(|(k, _)| *k)
@@ -51,7 +49,7 @@ pub fn ai(w: &mut World) {
     if w.phase != Phase::Main {
         return;
     }
-    let ids: Vec<u32> = w.civs.keys().copied().filter(|&c| Some(c) != w.player).collect();
+    let ids: Vec<u32> = civs::alive(w).map(|c| c.id).filter(|&c| Some(c) != w.player).collect();
     for civ in ids {
         land(w, civ);
         if !w.config.army {

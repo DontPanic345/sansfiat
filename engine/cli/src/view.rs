@@ -1,7 +1,7 @@
 //! The text view of the led civ: what a player of the page can see, in text, read at every decision
 //! by `play`. Every number is read off the world; nothing here changes it.
 
-use engine::data::{CIV, LEANING, UNIT};
+use engine::data::{Fighter, CIV, LEANING, UNIT};
 use engine::units::{self, Unit, UnitKind};
 use engine::{civs, claim, markets, stats, Action, Clan, Event, Order, World, FOODS};
 
@@ -153,8 +153,13 @@ fn claim_lines(w: &World, me: u32) -> String {
         .map(|(k, &t)| (c.guard.get(k).copied().unwrap_or(0.0), t))
         .min_by(|a, b| a.0.total_cmp(&b.0));
     let thin = thinnest.map_or("none".to_string(), |(g, t)| format!("{g:.2} at {}", tile(w, t)));
+    let posture = [(c.pressed, "pressed"), (c.besieged, "besieged")]
+        .iter()
+        .filter(|(on, _)| *on)
+        .map(|(_, name)| format!(", {name}"))
+        .collect::<String>();
     let mut out = format!(
-        "claim: {} tiles, held {}, paper {}; guard {:.1} people, thinnest held share {thin}\n",
+        "claim: {} tiles, held {}, paper {}; guard {:.1} people, thinnest held share {thin}{posture}\n",
         c.claim.len(),
         held.len(),
         c.claim.len() - held.len(),
@@ -167,7 +172,7 @@ fn claim_lines(w: &World, me: u32) -> String {
     out
 }
 
-/// One unit of the led civ: a camp's warriors, pack, line, zone and hunger; a scout's route.
+/// One unit of the led civ: an army's stack, pack, line, zone and hunger; a scout's route.
 fn unit_line(w: &World, u: &Unit) -> String {
     match u.kind() {
         UnitKind::Camp => {
@@ -184,13 +189,16 @@ fn unit_line(w: &World, u: &Unit) -> String {
             let cut_at = units::cut_at(w, u.id)
                 .map(|(_, at, by)| format!(", cut at {} by civ {by}", tile(w, at)))
                 .unwrap_or_default();
+            let bows = if cs.bows { ", making bows" } else { "" };
             let dest = cs.dest.map_or("none".to_string(), |t| tile(w, t));
             format!(
-                "  camp {} at {}: {:.1} warriors, pack {pack:.1} of {:.1} ({feeds:.1} turns), dest {dest}, {line}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",
+                "  army {} at {}: {:.1} warriors, {:.1} archers, pack {pack:.1} of {:.1} ({feeds:.1} turns), entrenched {} turns{bows}, dest {dest}, {line}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",
                 u.id,
                 tile(w, u.tile()),
-                u.people,
+                cs.stack[Fighter::Warriors.index()],
+                cs.stack[Fighter::Archers.index()],
                 units::pack_cap(u.people),
+                cs.still,
                 u.hungry,
                 tiles(w, &u.territory),
                 tiles(w, &cs.held)
@@ -243,8 +251,22 @@ fn feed(w: &World, me: u32, since: usize) -> String {
 fn legal(w: &World, me: u32) -> String {
     let ok = |o: Order| w.validate(&Action::Order { civ: me, order: o }).is_ok();
     let mut out = String::from("legal orders:\n");
-    if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None }) {
-        out += "  {\"type\":\"raise\",\"n\":1}\n";
+    if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None }) {
+        out += "  {\"type\":\"raise\",\"n\":1}  warriors, into a new army at your capital\n";
+    }
+    if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None }) {
+        out += "  {\"type\":\"raise\",\"n\":1,\"fighter\":\"archers\"}  archers, into a new army at your capital\n";
+    }
+    for u in w.units.values().filter(|u| u.civ == me && u.kind() == UnitKind::Camp) {
+        let id = u.id;
+        for f in Fighter::ALL {
+            let name = f.rules().name;
+            let order = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: f, into: Some(id) };
+            if ok(order) {
+                let fighter = if f == Fighter::Warriors { String::new() } else { format!(",\"fighter\":\"{name}\"") };
+                out += &format!("  {{\"type\":\"raise\",\"n\":1{fighter},\"into\":{id}}}  {name} into army {id}\n");
+            }
+        }
     }
     if ok(Order::Raise { n: 1, kind: UnitKind::Guard, fighter: Default::default(), into: None }) {
         out += "  {\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}  a guard at your capital, from your clans\n";
@@ -263,6 +285,15 @@ fn legal(w: &World, me: u32) -> String {
             UnitKind::Camp => {
                 if ok(Order::Disband { unit: id, n: None, fighter: None }) {
                     out += &format!("  {{\"type\":\"disband\",\"unit\":{id}}}\n");
+                }
+                for f in Fighter::ALL {
+                    if ok(Order::Disband { unit: id, n: None, fighter: Some(f) }) {
+                        out += &format!(
+                            "  {{\"type\":\"disband\",\"unit\":{id},\"fighter\":\"{}\"}}  its {}\n",
+                            f.rules().name,
+                            f.rules().name
+                        );
+                    }
                 }
                 let mut to: Vec<usize> = near.clone();
                 to.push(units::post(w, me));

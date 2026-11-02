@@ -9,8 +9,9 @@ use std::collections::BTreeMap;
 use common::*;
 use engine::claim;
 use engine::data::*;
-use engine::units::{self, fight, UnitKind};
-use engine::{EventKind, Order, World};
+use engine::units::fight::{self, Part, Who};
+use engine::units::{self, UnitKind};
+use engine::{civs, clans, EventKind, Order, World};
 
 /// Puts `civ`'s first army on `tile` with a stack of `stack` (warriors, archers), undeployed, its pack
 /// full. Returns its id.
@@ -306,4 +307,247 @@ fn a_tile_taken_from_an_ai_civ_is_not_fought_for_again() {
     assert_eq!(kinds(&w, EventKind::TileTaken) as u32, w.civs[&red].army.taken);
     assert_eq!(kinds(&w, EventKind::Skirmish), kinds(&w, EventKind::TileTaken));
     assert!(!w.civs[&blue].claim.contains(&t), "the AI doesn't paint it back under the stack");
+}
+
+/// A new army of `stack` on `tile`: a copy of `civ`'s first army, set down there undeployed with a
+/// full pack (so no clan is drawn on).
+fn new_army(w: &mut World, civ: u32, tile: usize, stack: [f64; 2]) -> u32 {
+    let mut u = units::camp(w, civ).expect("a camp to copy").clone();
+    let id = w.next_id;
+    w.next_id += 1;
+    u.id = id;
+    u.actor.people = stack[0] + stack[1];
+    u.actor.home = tile;
+    u.actor.territory = vec![tile];
+    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0];
+    u.hungry = 0;
+    u.banked = 0.0;
+    let c = u.camp_mut().unwrap();
+    c.stack = stack;
+    c.held = vec![tile];
+    c.guard = vec![0.0];
+    c.dest = None;
+    c.still = 0;
+    w.units.insert(id, u);
+    id
+}
+
+/// The people of civ's parts on a tile of a presence map.
+fn parts_of(w: &World, t: usize, civ: u32) -> Vec<Part> {
+    fight::presence(w).get(&t).map(|ps| ps.iter().copied().filter(|p| p.civ == civ).collect()).unwrap_or_default()
+}
+
+#[test]
+fn an_army_on_a_rival_clans_home_meets_its_militia_and_both_lose() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let t = at_big(0, 5);
+    let k = put(&mut w, &[t], 10.0);
+    w.clans.get_mut(&k).unwrap().civ = Some(blue);
+    army(&mut w, red, t, [10.0, 0.0]);
+    let parts = parts_of(&w, t, blue);
+    assert!(
+        parts.iter().any(|p| p.who == Who::Militia(k) && (p.people - 10.0).abs() < 1e-9),
+        "the clan's people defend its home: {parts:?}"
+    );
+    let p = parts.iter().find(|p| p.who == Who::Militia(k)).unwrap();
+    assert!((p.defence - FIGHT.militia * FIGHTERS[0].defence).abs() < 1e-9, "a fraction of a warrior's defence");
+    fight_with(&mut w, &[(t, red)]);
+    assert!(w.clans[&k].people < 10.0, "the clan loses people");
+    assert!(w.units[&camp_id(&w, red)].people < 10.0, "the army loses people");
+    assert!(fallen(&w) > 0.0);
+    sums(&w);
+}
+
+#[test]
+fn an_unaligned_clan_on_a_rivals_army_gives_no_militia() {
+    let (mut w, ids, _) = led();
+    let (red, _) = (ids[0], ids[1]);
+    let t = at_big(0, 5);
+    let k = put(&mut w, &[t], 10.0);
+    assert_eq!(w.clans[&k].civ, None);
+    army(&mut w, red, t, [10.0, 0.0]);
+    assert!(parts_of(&w, t, ids[1]).is_empty(), "nobody's clan");
+    fight_with(&mut w, &[(t, red)]);
+    assert_eq!(w.clans[&k].people, 10.0, "the unaligned clan is not drawn in");
+}
+
+#[test]
+fn a_rival_army_on_the_capital_draws_the_whole_guard_there_and_the_claim_is_paper() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let cap = w.civs[&blue].capital;
+    hold_land(&mut w, blue, &[at_big(4, 0), at_big(3, 0)]);
+    assert!(claim::held(&w, blue).len() > 1, "the claim holds past the capital");
+    let people = units::guard_of(&w, blue).unwrap().people;
+    army(&mut w, red, cap, [4.0, 0.0]);
+    fight::posture(&mut w);
+    assert!(w.civs[&blue].pressed, "pressed while a rival stands on the capital");
+    assert_eq!(claim::held(&w, blue), vec![cap], "the rest of the claim is paper");
+    let guard: Vec<Part> = fight::presence(&w)
+        .into_iter()
+        .flat_map(|(t, ps)| {
+            ps.into_iter().filter(|p| p.civ == blue && matches!(p.who, Who::Guard(_))).map(move |p| (t, p))
+        })
+        .map(|(t, p)| {
+            assert_eq!(t, cap, "the guard is on the capital");
+            p
+        })
+        .collect();
+    assert_eq!(guard.len(), 1);
+    assert!((guard[0].people - people).abs() < 1e-9, "all its people, entrenched at the cap");
+    assert!((guard[0].defence - FIGHTERS[0].defence * fight::entrenched(u32::MAX)).abs() < 1e-9);
+    // The army leaves: the capital is no longer pressed and the guard spreads again.
+    let r = camp_id(&w, red);
+    camp_mut(&mut w, r).actor.home = at_big(0, 5);
+    fight::posture(&mut w);
+    assert!(!w.civs[&blue].pressed);
+    assert!(claim::held(&w, blue).len() > 1);
+}
+
+#[test]
+fn a_capital_ringed_by_rival_armies_is_besieged_and_its_clans_harvest_nothing() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let cap = w.civs[&blue].capital;
+    let mid = w.civs[&blue].market;
+    let bc = w.civs[&blue].clan;
+    w.clans.get_mut(&bc).unwrap().market = Some(mid);
+    w.tiles[cap].stock = [5.0; N];
+    clans::harvest(&mut w);
+    assert!(w.clans[&bc].harvest.iter().sum::<f64>() > 0.0, "the capital's clan harvests");
+    let ring: Vec<usize> = engine::land::neighbours(&w, cap).collect();
+    let rings: Vec<u32> = ring.iter().map(|&n| new_army(&mut w, red, n, [2.0, 0.0])).collect();
+    fight::posture(&mut w);
+    assert!(w.civs[&blue].besieged, "every neighbour is held or stood on by a rival army");
+    w.tiles[cap].stock = [5.0; N];
+    clans::harvest(&mut w);
+    assert_eq!(w.clans[&bc].harvest.iter().sum::<f64>(), 0.0, "the siege stops its clans working");
+    // The levy puts nothing in the store while besieged, and does once the siege is lifted.
+    w.clans.get_mut(&bc).unwrap().basket = [1.0; N];
+    let store = w.civs[&blue].store;
+    civs::levy(&mut w, mid);
+    assert_eq!(w.civs[&blue].store, store, "no levy");
+    for id in rings {
+        w.units.remove(&id);
+    }
+    fight::posture(&mut w);
+    assert!(!w.civs[&blue].besieged);
+    w.clans.get_mut(&bc).unwrap().basket = [1.0; N];
+    civs::levy(&mut w, mid);
+    assert!(w.civs[&blue].store.iter().sum::<f64>() > store.iter().sum::<f64>(), "the levy comes in again");
+}
+
+/// Blue's neighbours of `t` are held by its own armies, so Red's army at `t` is cut off from its
+/// capital by rival ground. Returns Red's army.
+fn ringed(w: &mut World, red: u32, blue: u32, t: usize) -> u32 {
+    for n in engine::land::neighbours(w, t).collect::<Vec<_>>() {
+        new_army(w, blue, n, [2.0, 0.0]);
+    }
+    new_army(w, red, t, [3.0, 0.0])
+}
+
+/// How many times army `id` lost a warrior to hunger, over the world's events.
+fn starved(w: &World, id: u32) -> usize {
+    w.events.iter().filter(|e| e.kind == EventKind::WarriorsStarved && e.unit == Some(id)).count()
+}
+
+/// Red's army at `t` with an empty pack and no food coming: it goes hungry each turn.
+fn starving(w: &mut World, id: u32) {
+    let u = camp_mut(w, id);
+    u.actor.store = [0.0; N];
+    let c = u.camp_mut().unwrap();
+    c.auto_forage = false;
+    c.auto_supply = false;
+}
+
+#[test]
+fn an_army_whose_line_a_rivals_land_cuts_surrenders_to_it_before_hunger_takes_a_warrior() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let t = at_big(-3, 1);
+    let r = ringed(&mut w, red, blue, t);
+    starving(&mut w, r);
+    let bc = w.civs[&blue].clan;
+    assert!(units::cut_off(&w, r) && units::line(&w, r).is_none(), "the ring cuts every way home");
+    assert_eq!(units::cut_by_rival(&w, r), Some(blue));
+    let before = people(&w);
+    for _ in 0..(FIGHT.surrender - 1) {
+        units::step(&mut w);
+    }
+    assert!(w.units.contains_key(&r), "two hungry turns: still an army");
+    units::step(&mut w);
+    assert!(!w.units.contains_key(&r), "the third hungry turn: it surrenders");
+    assert_eq!(starved(&w, r), 0, "hunger took no warrior");
+    assert_eq!(kinds(&w, EventKind::ArmySurrendered), 1);
+    let e = w.events.iter().find(|e| e.kind == EventKind::ArmySurrendered).unwrap().clone();
+    assert_eq!((e.civ, e.other, e.unit), (Some(red), Some(blue), Some(r)));
+    assert!((e.amount.unwrap() - 3.0).abs() < 1e-9, "all three");
+    assert_eq!(e.clan, Some(bc), "the rival's nearest clan");
+    assert_eq!(w.civs[&red].army.surrendered, 1);
+    assert_eq!(w.civs[&red].army.fallen, 0.0, "the people are not fallen");
+    assert!((people(&w) - before).abs() < 1e-9, "people are conserved");
+    assert!(w.notes[&red].iter().any(|n| n.text.contains("surrendered")), "Red hears");
+    assert!(w.notes[&blue].iter().any(|n| n.text.contains("surrendered")), "Blue hears");
+}
+
+#[test]
+fn an_army_cut_off_by_length_alone_starves_as_it_does_on_main() {
+    let (mut w, ids, _) = led();
+    let red = ids[0];
+    let t = at_big(-5, 11);
+    put_camp(&mut w, red, t);
+    let r = camp_id(&w, red);
+    starving(&mut w, r);
+    camp_mut(&mut w, r).actor.people = 3.0;
+    assert!(units::cut_off(&w, r));
+    assert_eq!(units::cut_by_rival(&w, r), None, "no rival's ground is on its line");
+    for _ in 0..UNIT.hungry_turns {
+        units::step(&mut w);
+    }
+    assert_eq!(kinds(&w, EventKind::ArmySurrendered), 0);
+    assert!(starved(&w, r) >= 1, "hunger takes a warrior");
+}
+
+#[test]
+fn with_fighting_off_an_army_cut_off_by_rival_land_does_not_surrender() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    w.config.fight = false;
+    let t = at_big(-3, 1);
+    let r = ringed(&mut w, red, blue, t);
+    starving(&mut w, r);
+    for _ in 0..UNIT.hungry_turns {
+        units::step(&mut w);
+    }
+    assert_eq!(kinds(&w, EventKind::ArmySurrendered), 0);
+    assert!(starved(&w, r) >= 1, "hunger works as on main");
+    assert_eq!(kinds(&w, EventKind::Skirmish), 0);
+}
+
+#[test]
+fn archers_need_held_forest_and_their_army_makes_bows_a_turn() {
+    let (mut w, ids, _) = led();
+    let red = ids[0];
+    let cap = w.civs[&red].capital;
+    let refused =
+        w.check_order(red, &Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None });
+    assert_eq!(refused, Err("you hold no forest to make bows on".to_string()));
+    w.tiles[cap].terrain = FOREST;
+    fill_stores(&mut w);
+    let first = led_camp(&w);
+    let home = w.units[&first].home;
+    camp_mut(&mut w, first).camp_mut().unwrap().dest = Some(at_big(-3, 0));
+    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: Some(first) }))
+        .unwrap();
+    let c = w.units[&first].camp().unwrap();
+    assert!(c.bows, "the bows take the turn");
+    assert_eq!(c.stack[Fighter::Archers.index()], 1.0);
+    units::step(&mut w);
+    assert_eq!(w.units[&first].home, home, "no march that turn");
+    assert!(!w.units[&first].camp().unwrap().bows, "cleared at the turn's end");
+    assert_eq!(kinds(&w, EventKind::ArchersRaised), 1);
+    sums(&w);
+    units::step(&mut w);
+    assert_ne!(w.units[&first].home, home, "it marches the turn after");
 }
