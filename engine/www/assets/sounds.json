@@ -31,5 +31,12 @@
   "held": "held.ogg",
   "lineCut": "line-cut.ogg",
   "clanLeft": "clan-left.ogg",
-  "claimTaken": "claim-taken.ogg"
+  "claimTaken": "claim-taken.ogg",
+  "scoutRaised": "scout-raised.ogg",
+  "skirmish": "skirmish.ogg",
+  "retreated": "retreated.ogg",
+  "tileTaken": "tile-taken.ogg",
+  "archersRaised": "archers-raised.ogg",
+  "armySurrendered": "army-surrendered.ogg",
+  "capitalFell": "capital-fell.ogg"
 }

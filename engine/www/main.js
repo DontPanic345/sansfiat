@@ -57,6 +57,7 @@ window.game = {
   digest: () => play.state().sim.digest(),
   border: (civ) => play.map().border(civ),
   notes: (id) => play.state().sim.notes(id),
+  terrain: () => app.data.TERRAIN,
 };
 
 const params = new URLSearchParams(location.search);

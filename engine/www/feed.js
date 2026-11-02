@@ -38,6 +38,13 @@ export const KINDS = {
   lineCut: { icon: '✂', color: '#ff7b72', label: 'Line cut' },
   clanLeft: { icon: '⇄', color: '#ffb347', label: 'Clans leave a civ' },
   claimTaken: { icon: '▧', color: '#d64545', label: 'Claims taken' },
+  scoutRaised: { icon: '+', color: '#7fd3ff', label: 'Scouts raised' },
+  skirmish: { icon: '⚔', color: '#ff7b72', label: 'Skirmishes' },
+  retreated: { icon: '←', color: '#ffb347', label: 'Armies retreat' },
+  tileTaken: { icon: '▣', color: '#d64545', label: 'Tiles taken' },
+  archersRaised: { icon: '↑', color: '#8fd18f', label: 'Archers raised' },
+  armySurrendered: { icon: '⚐', color: '#ffb347', label: 'Armies surrender' },
+  capitalFell: { icon: '♜', color: '#ff2a2a', label: 'Capitals fall' },
 };
 /** Rare, important kinds: the last ones trimmed from the DOM. */
 const PINNED = new Set(['centreFormed', 'pregameEnded', 'civFounded']);

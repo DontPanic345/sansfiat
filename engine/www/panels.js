@@ -77,7 +77,7 @@ export function candidates(ctx, i) {
 export function subjectOf(ctx, item) {
   const { v } = ctx;
   if (item.unit != null && item.unit in v.units) return { kind: 'unit', id: item.unit };
-  if (item.kind === 'civFounded' && item.civ != null && item.civ in v.civs) return { kind: 'civ', civ: item.civ };
+  if ((item.kind === 'civFounded' || item.kind === 'capitalFell') && item.civ != null && item.civ in v.civs) return { kind: 'civ', civ: item.civ };
   if (item.clan != null && item.clan in v.clans) return { kind: 'clan', id: item.clan };
   if (item.market != null && item.market in v.markets) return { kind: 'festival', id: item.market };
   return { kind: 'tile', tile: item.tile };
@@ -144,7 +144,19 @@ function claimNumbers(ctx, civ) {
   ];
 }
 
-/** The camp's panel (spec item 16, Camp). */
+/** The army's people by kind and their strength, attacking and defending (hunger in, entrenchment apart), from
+ *  the engine's rules (`Sim.rules`): each fighter's people times its attack or defence. */
+function strengthOf(ctx, u) {
+  const { rules } = ctx;
+  const hungry = u.hungry > 0 ? rules.fight.hungry : 1;
+  const stack = u.stack ?? [];
+  const attack = rules.fighters.reduce((a, f, k) => a + (stack[k] ?? 0) * f.attack * hungry, 0);
+  const defence = rules.fighters.reduce((a, f, k) => a + (stack[k] ?? 0) * f.defence * hungry, 0);
+  const bonus = Math.min(u.still * rules.fight.entrench, rules.fight.entrench_cap);
+  return { attack, defence, bonus, hungry };
+}
+
+/** The camp's panel (spec item 16, Camp; build-4: the army's fighters, strength, entrenchment and Raise…). */
 function campShape(ctx, u) {
   const { v, sim, rules, routing, painting } = ctx;
   const mine = u.civ === v.player;
@@ -154,14 +166,18 @@ function campShape(ctx, u) {
   const capital = v.civs[u.civ]?.capital === u.tile;
   const marching = u.dest != null;
   const r = marching ? JSON.parse(sim.route(u.id)) : null;
-  let doing;
-  if (u.hungry > 0) doing = `Hungry ${plural(u.hungry, 'turn')}: loses a warrior at ${rules.hungry_turns}`;
-  else if (u.cut_at) doing = `Cut off: ${civName(ctx, u.cut_at.by)}'s army holds its line at ${hex(ctx, u.cut_at.at)}`;
-  else if (u.cut_off) doing = "Cut off: its line can't feed it";
-  else if (marching) doing = `Marching to ${hex(ctx, u.dest)}${r ? `: ${plural(r.turns, 'turn')}` : ': no route'}`;
-  else if (deployed) doing = `Holding ${u.territory.length} tiles round ${hex(ctx, u.tile)}`;
-  else if (capital) doing = 'At the capital';
-  else doing = `At ${hex(ctx, u.tile)}`;
+  let base;
+  if (u.hungry > 0) base = `Hungry ${plural(u.hungry, 'turn')}: loses a warrior at ${rules.hungry_turns}`;
+  else if (u.cut_at) base = `Cut off: ${civName(ctx, u.cut_at.by)}'s army holds its line at ${hex(ctx, u.cut_at.at)}`;
+  else if (u.cut_off) base = "Cut off: its line can't feed it";
+  else if (marching) base = `Marching to ${hex(ctx, u.dest)}${r ? `: ${plural(r.turns, 'turn')}` : ': no route'}`;
+  else if (deployed) base = `Holding ${u.territory.length} tiles round ${hex(ctx, u.tile)}`;
+  else if (capital) base = 'At the capital';
+  else base = `At ${hex(ctx, u.tile)}`;
+  const extra = [];
+  if (v.contested?.includes(u.tile)) extra.push(`Fighting at (${hex(ctx, u.tile)})`);
+  if (u.bows) extra.push('Making bows');
+  const doing = [...extra, base].join(' · ');
 
   const line = u.cut_at
     ? 'cut'
@@ -170,8 +186,17 @@ function campShape(ctx, u) {
       : u.line
         ? 'at the capital'
         : 'none';
+  const st = strengthOf(ctx, u);
   const numbers = [
-    { label: 'Warriors', value: f2(u.people), tip: 'The warriors in this camp' },
+    { label: 'Warriors', value: f2(u.stack?.[0] ?? u.people), tip: 'The warriors in this army' },
+    { label: 'Archers', value: f2(u.stack?.[1] ?? 0), tip: 'The archers in this army: weaker taking a tile, stronger holding one' },
+    { label: 'Attack', value: f2(st.attack), tip: `Strength taking a tile it doesn't hold: each fighter's people times its attack${st.hungry < 1 ? `, ×${rules.fight.hungry} while hungry` : ''}` },
+    { label: 'Defence', value: f2(st.defence), tip: `Strength holding a tile: each fighter's people times its defence${st.hungry < 1 ? `, ×${rules.fight.hungry} while hungry` : ''}` },
+    {
+      label: 'Entrenched',
+      value: u.still > 0 ? `${plural(u.still, 'turn')}, +${Math.round(100 * st.bonus)}%` : 'no',
+      tip: `Turns it has stood still; each turn adds ${Math.round(100 * rules.fight.entrench)}% to its defence, to ${Math.round(100 * rules.fight.entrench_cap)}%`,
+    },
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
     { label: 'Line', value: line, tip: 'Its line home: steps, the cost, and the food a turn it carries with all its labour' },
   ];
@@ -193,23 +218,17 @@ function campShape(ctx, u) {
     buttons.push({ label: 'Forage', action: unitOrder(u, { type: 'forage' }) });
     buttons.push({ label: 'Pillage', action: unitOrder(u, { type: 'pillage' }) });
     buttons.push({ label: 'Resupply', action: unitOrder(u, { type: 'resupply' }) });
-    buttons.push({
-      label: `Auto-forage: ${u.auto_forage ? 'on' : 'off'}`,
-      action: unitOrder(u, { type: 'switches', forage: !u.auto_forage, supply: u.auto_supply }),
-    });
-    buttons.push({
-      label: `Auto-supply: ${u.auto_supply ? 'on' : 'off'}`,
-      action: unitOrder(u, { type: 'switches', forage: u.auto_forage, supply: !u.auto_supply }),
-    });
+    buttons.push(...switchButtons(u));
     if (deployed) buttons.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
-    buttons.push(disband(u));
+    if (u.kind === 'camp') buttons.push(raiseInto(u, rules));
+    buttons.push(disband(u, rules));
   }
   let hint = null;
   if (routing.arm === 'to') hint = 'Click the map to move the camp there; Esc cancels';
   else if (painting === 'paint' || painting === 'unpaint') hint = 'Click or drag on the map; Esc stops';
   else if (mine && !marching) hint = 'Right-click a tile to move the camp there';
   return {
-    name: `${owner}'s ${u.kind === 'camp' ? 'camp' : u.kind}`,
+    name: `${owner}'s ${u.kind === 'camp' ? 'army' : u.kind} ${u.id}`,
     swatch: v.civs[u.civ]?.color,
     doing,
     numbers,
@@ -220,12 +239,38 @@ function campShape(ctx, u) {
   };
 }
 
-/** Disband…: a count from one to the people there are, in the warriors' own order. */
-function disband(u) {
-  return { label: 'Disband…', stepper: { options: [{ label: 'warriors', cap: Math.max(1, Math.floor(u.people)), make: (n) => unitOrder(u, { type: 'disband', n }) }] } };
+/** The two switches as the buttons show them (the camp and the scout share them). */
+function switchButtons(u) {
+  return [
+    { label: `Auto-forage: ${u.auto_forage ? 'on' : 'off'}`, action: unitOrder(u, { type: 'switches', forage: !u.auto_forage, supply: u.auto_supply }) },
+    { label: `Auto-supply: ${u.auto_supply ? 'on' : 'off'}`, action: unitOrder(u, { type: 'switches', forage: u.auto_forage, supply: !u.auto_supply }) },
+  ];
 }
 
-/** A scout's panel (spec item 16, Scout): its route, its known and possible costs, and the route's buttons. */
+/** Raise…: a count of warriors or archers into this army, each refused with the engine's reason (greyed). */
+function raiseInto(u) {
+  const into = (fighter) => (n) => civOrder(u.civ, { type: 'raise', kind: 'camp', fighter, into: u.id, n });
+  return {
+    label: 'Raise…',
+    stepper: { options: [{ label: 'warriors', cap: 10, make: into('warriors') }, { label: 'archers', cap: 10, make: into('archers') }] },
+  };
+}
+
+/** Disband…: a count of one kind the army has (an option per kind present), or of all of it (`all`). A unit with
+ *  no kinds (a scout, a guard) has only the count of all. */
+function disband(u, rules = null) {
+  const options = [];
+  if (rules) {
+    rules.fighters.forEach((f, k) => {
+      const people = u.stack?.[k] ?? 0;
+      if (people >= 1) options.push({ label: f.name, cap: Math.floor(people), make: (n) => unitOrder(u, { type: 'disband', n, fighter: f.name }) });
+    });
+  }
+  options.push({ label: 'all', cap: Math.max(1, Math.floor(u.people)), make: (n) => unitOrder(u, { type: 'disband', n }) });
+  return { label: 'Disband…', stepper: { options } };
+}
+
+/** A scout's panel (spec item 16, Scout): its route, its known and possible costs, its switches, and the buttons. */
 function scoutShape(ctx, u) {
   const { v, routing, outcome } = ctx;
   const mine = u.civ === v.player;
@@ -242,7 +287,9 @@ function scoutShape(ctx, u) {
   ];
   const buttons = [];
   if (mine) {
-    buttons.push({ label: 'Move to…', arm: 'to' }, { label: 'Route from…', arm: 'start' }, { label: 'Clear route', action: unitOrder(u, { type: 'clearRoute' }) }, disband(u));
+    buttons.push({ label: 'Move to…', arm: 'to' }, { label: 'Route from…', arm: 'start' }, { label: 'Clear route', action: unitOrder(u, { type: 'clearRoute' }) });
+    buttons.push({ label: 'Forage', action: unitOrder(u, { type: 'forage' }) }, { label: 'Resupply', action: unitOrder(u, { type: 'resupply' }) });
+    buttons.push(...switchButtons(u), disband(u));
   }
   let hint = null;
   if (routing.arm === 'start') hint = "Click the map for the route's start; Esc cancels";
@@ -252,7 +299,7 @@ function scoutShape(ctx, u) {
   if (routing.start != null && routing.arm !== 'start' && !hint) hint = `Start: ${hex(ctx, routing.start)}`;
   const unitRows = unitsHere(u, ctx);
   return {
-    name: `${civName(ctx, u.civ)}'s scout`,
+    name: `${civName(ctx, u.civ)}'s scout ${u.id}`,
     swatch: v.civs[u.civ]?.color,
     doing,
     numbers,
@@ -301,13 +348,27 @@ function leaningRows(ctx, id) {
 }
 
 /** A civ's panel (spec item 16, Civ): its Standing with the parts in the tooltip, its store, its gifts and
- *  keep, its claim, the leaning clans and its units. Only the player's civ has buttons. */
+ *  keep, its claim, the leaning clans and its units. Only the player's civ has buttons. Raise… makes a new army
+ *  at the capital (warriors or archers), a guard or a scout (build-4). A fallen civ has no buttons. */
 function civShape(ctx, c) {
   const { v, goods, rules, painting } = ctx;
   const mine = c.id === v.player;
+  if (c.fallen) {
+    const [turn, by] = c.fallen;
+    return {
+      name: c.name,
+      swatch: c.color,
+      doing: `Fallen to ${civName(ctx, by)} on turn ${turn}`,
+      numbers: [],
+      list: [],
+      reasons: reasonsOf(ctx, c.id),
+      buttons: [],
+    };
+  }
   const s = ctx.model.standing.get(c.id);
   const civs = Object.values(v.civs).length;
-  const doing = `${mine ? `You lead ${c.name}: ` : ''}Standing ${pct(s.total)}, ${ORD(s.rank)} of ${civs}`;
+  const posture = c.besieged ? '; besieged' : c.pressed ? '; its capital is pressed' : '';
+  const doing = `${mine ? `You lead ${c.name}: ` : ''}Standing ${pct(s.total)}, ${ORD(s.rank)} of ${civs}${posture}`;
   const stored = goods.map((g, f) => (c.store[f] > 0.005 ? `${g} ${f2(c.store[f])}` : null)).filter(Boolean);
   const numbers = [
     { label: 'Standing', value: pct(s.total), tip: `Clans and units ${pct(s.clans)}, unaligned clans on its land ${pct(s.land)}` },
@@ -330,15 +391,14 @@ function civShape(ctx, c) {
   ];
   const buttons = [];
   if (mine) {
-    // Warriors join the civ's first army (build-4 gives the page raising by army and kind).
-    const army = Object.values(ctx.v.units).filter((u) => u.civ === c.id && u.kind === 'camp').sort((a, b) => a.id - b.id)[0];
-    const into = army ? { into: army.id } : {};
     buttons.push({
       label: 'Raise…',
       stepper: {
         options: [
-          { label: 'warriors', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', n, ...into }) },
+          { label: 'warriors', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', kind: 'camp', fighter: 'warriors', n }) },
+          { label: 'archers', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', kind: 'camp', fighter: 'archers', n }) },
           { label: 'a guard', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', n, kind: 'guard' }) },
+          { label: 'a scout', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', n, kind: 'scout' }) },
         ],
       },
     });

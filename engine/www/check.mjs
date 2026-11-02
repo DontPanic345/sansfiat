@@ -60,7 +60,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);
@@ -213,6 +213,23 @@ const camps = Object.values(v.units).filter((u) => u.kind === 'camp');
 assert.equal(camps.length, 3, 'a camp each');
 assert.equal(Object.values(v.units).filter((u) => u.kind === 'scout').length, 3, 'a scout each');
 assert.ok(camps.every((u) => u.tile === v.civs[u.civ].capital && u.people > 0));
+// The fight's data (build-4): each fighter's name and strength, FIGHT's entrenchment, hunger and surrender; each
+// army's stack by kind sums to its people; each civ's posture; the contested tiles of the last turn.
+assert.deepEqual(RULES.fighters.map((f) => f.name), ['warriors', 'archers'], 'rules name the fighters in order');
+assert.ok(RULES.fighters.every((f) => f.attack > 0 && f.defence > 0), 'every fighter has a strength');
+for (const key of ['entrench', 'entrench_cap', 'hungry', 'surrender']) assert.ok(key in RULES.fight, `rules.fight.${key}`);
+assert.ok(RULES.fight.hungry > 0 && RULES.fight.hungry <= 1, 'a hungry army fights at a share of its strength');
+assert.ok(Array.isArray(v.contested), 'the view gives the contested tiles');
+for (const c of Object.values(v.civs)) {
+  assert.equal(typeof c.pressed, 'boolean', 'a civ says whether its capital is pressed');
+  assert.equal(typeof c.besieged, 'boolean', 'a civ says whether it is besieged');
+  assert.ok(c.fallen === null || (Array.isArray(c.fallen) && c.fallen.length === 2), 'a civ says whether it fell, and when and to whom');
+}
+for (const u of camps) {
+  assert.equal(u.stack.length, 2, 'an army has a stack per fighter');
+  assert.ok(Math.abs(u.stack[0] + u.stack[1] - u.people) < 1e-9, "an army's stack sums to its people");
+  assert.ok(Number.isInteger(u.still) && typeof u.bows === 'boolean', 'an army has its entrenchment and bows');
+}
 assert.ok(camps.every((u) => u.line !== undefined && 'cut_off' in u), 'a camp carries its line');
 // What the page reads of a camp: its pack, its food in turns, its switches, and whether it is cut off,
 // which is its line's carry under its warriors' need (no line, or a line that can't feed it, is cut off).
@@ -485,5 +502,41 @@ const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');
 assert.throws(() => Sim.load(JSON.stringify({ ...save, version: 1 })), /version 1/, 'a save of another version fails, naming it');
 
+
+// The panels (build-4): a fallen civ reads its fall with no buttons, and an army's shape names its fighters.
+const { describe } = await import(pathToFileURL(`${here}panels.js`).href);
+const panelCtx = (view, extra = {}) => ({
+  v: view,
+  model: { claims: new Map(), standing: new Map(Object.values(view.civs).map((c) => [c.id, { total: 0, clans: 0, land: 0, rank: 1 }])), holders: () => [], clanAt: () => null },
+  layout: JSON.parse(sim.layout()),
+  terrain: TERRAIN,
+  goods: GOODS,
+  rules: RULES,
+  sim: { notes: () => '[]', route: () => 'null', tile: (i) => sim.tile(i), tile_civ: (i) => sim.tile_civ(i) },
+  view: null,
+  routing: { arm: null, start: null, unit: null },
+  outcome: null,
+  painting: null,
+  country: false,
+  ...extra,
+});
+const fallenView = { ...v, civs: { ...v.civs } };
+const victim = Object.values(v.civs).find((c) => c.id !== v.player);
+const other = Object.values(v.civs).find((c) => c.id !== victim.id);
+fallenView.civs[victim.id] = { ...victim, fallen: [12, other.id] };
+const fallenShape = describe(panelCtx(fallenView), { kind: 'civ', civ: victim.id });
+assert.equal(fallenShape.doing, `Fallen to ${other.name} on turn 12`, 'a fallen civ reads its fall');
+assert.equal(fallenShape.buttons.length, 0, 'a fallen civ has no buttons');
+const ledId = Number(Object.keys(v.civs)[0]);
+const ledView = { ...v, player: ledId };
+const armyUnit = Object.values(v.units).find((u) => u.kind === 'camp' && u.civ === ledId);
+const armyShape = describe(panelCtx(ledView), { kind: 'unit', id: armyUnit.id });
+assert.match(armyShape.name, /'s army \d+$/, 'an army is named by its civ and id');
+assert.ok(armyShape.numbers.some((n) => n.label === 'Archers') && armyShape.numbers.some((n) => n.label === 'Attack'), 'an army gives its archers and attack');
+const raise = armyShape.buttons.find((b) => b.stepper && b.label === 'Raise…');
+assert.deepEqual(raise.stepper.options.map((o) => o.label), ['warriors', 'archers'], 'an army raises warriors or archers into itself');
+const civShp = describe(panelCtx(ledView), { kind: 'civ', civ: ledId });
+const civRaise = civShp.buttons.find((b) => b.stepper && b.label === 'Raise…');
+assert.deepEqual(civRaise.stepper.options.map((o) => o.label), ['warriors', 'archers', 'a guard', 'a scout'], 'a civ raises warriors, archers, a guard or a scout');
 
 console.log(`ok: medium seed ${seed}, ${n} tiles, ended turn ${v.end.turn}${v.end.by_limit ? ' by the limit' : ''}, ${all.length} events, ${Object.keys(v.clans).length} clans`);
