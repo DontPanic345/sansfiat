@@ -31,7 +31,7 @@ try {
 
   await page.button('Lead ');
   await page.until("document.body.dataset.phase === 'main'");
-  need(/^capital:\d+$/.test(await page.eval('document.body.dataset.selected')), 'Lead did not select the capital');
+  need(/^civ:\d+$/.test(await page.eval('document.body.dataset.selected')), 'Lead did not select the civ');
   need((await page.eval('document.body.dataset.civ')) !== '', 'Lead did not make a civ the player\'s');
   need(!(await page.eval("document.getElementById('pick').hidden === false")), 'the pick is still up after Lead');
   need(page.errors().length === 0, `page errors: ${page.errors().join('; ')}`);

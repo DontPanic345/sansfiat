@@ -5,7 +5,8 @@
 import { MapView } from '../map/view.js';
 import { build } from '../model.js';
 import { Feed } from '../feed.js';
-import { f2, keyOf, tileOf, alive, candidates, describe, tileKind, marketOn, clanRole, unitOrder } from '../select.js';
+import { f2, keyOf, tileOf, alive, candidates, describe, subjectOf, tileKind, marketOn, clanRole, unitOrder } from '../panels.js';
+import * as panel from '../panel.js';
 import { app } from '../app.js';
 import { autosave } from '../save.js';
 import { legendHtml } from '../legend.js';
@@ -23,7 +24,7 @@ let layout = null;
 let model = null; // the view model of the last change (model.js)
 let v = null; // its Sim.view()
 let cursor = 0; // into Sim.events
-let selected = null; // {kind: 'unit', id} | {kind: 'capital', civ} | {kind: 'tile', tile, clan, market}
+let selected = null; // {kind: 'unit', id} | {kind: 'civ', civ} | {kind: 'clan', id} | {kind: 'festival', id} | {kind: 'tile', tile}
 let routing = { arm: null, start: null, unit: null }; // the selected scout's route: a map click arms 'start' or 'to'
 let outcome = null; // how the player's last scout route ended: 'found' | 'nopath' | null
 let playing = false;
@@ -70,7 +71,7 @@ export function init() {
       selectCiv: (civ) => {
         const c = v?.civs[civ];
         if (!c) return;
-        select({ kind: 'capital', civ });
+        select({ kind: 'civ', civ });
         view.centreOn(c.capital, { minK: 20, smooth: true });
       },
       newGame: () => app.show('start'),
@@ -92,18 +93,6 @@ export function init() {
   $('showfeed').onclick = () => showFeed(true);
   // At phone width the feed is a drawer, closed by default.
   showFeed(!matchMedia('(max-width: 760px)').matches);
-  $('detail').addEventListener('click', (e) => {
-    const p = e.target.closest('[data-paint]');
-    if (p) {
-      setPainting(painting === p.dataset.paint ? null : p.dataset.paint);
-      return;
-    }
-    const b = e.target.closest('[data-select]');
-    if (!b) return;
-    const [kind, id] = b.dataset.select.split(':');
-    if (kind === 'unit' && Number(id) in v.units) select({ kind: 'unit', id: Number(id) });
-    else if (kind === 'clan' && Number(id) in v.clans) select({ kind: 'tile', tile: v.clans[id].home, clan: Number(id) });
-  });
   window.addEventListener('keydown', keys);
   // A button blurs after a click, so a space never presses it again.
   document.addEventListener('click', (e) => e.target.closest?.('button, summary')?.blur());
@@ -191,14 +180,14 @@ function refresh() {
   document.body.dataset.routeState = scout?.route ? 'set' : (outcome ?? 'none');
   document.body.dataset.armed = routing.arm ?? '';
   markChips();
-  panel();
+  panelDraw();
   view.drawNow();
 }
 
 /** The bar, with the selected civ's chip marked. */
 function markChips() {
   if (!v) return;
-  bar.update({ v, model, selectedCiv: selected?.kind === 'capital' ? selected.civ : null });
+  bar.update({ v, model, selectedCiv: selected?.kind === 'civ' ? selected.civ : null });
 }
 
 /** Hands the map the player's camps' routes (the selected one drawn firmly, the rest faint), and the
@@ -214,10 +203,9 @@ function routes() {
   // The player's camp's line home, always faint; the selected clan's territory and route bright.
   const mineCamp = v.player != null ? Object.values(v.units).find((u) => u.civ === v.player && u.kind === 'camp') : null;
   view.setHomeLine(mineCamp?.line?.path.length ? [mineCamp.tile, ...mineCamp.line.path] : null);
-  view.setFocus(selected?.kind === 'tile' ? (selected.clan ?? view.clanAt(selected.tile)) : null);
-  // A selected festival (a market's tile, or its row): its walkers' routes are drawn bright.
-  const festival = selected?.kind === 'tile' && selected.clan == null ? (selected.market ?? marketOn(ctx(), selected.tile)?.id) : null;
-  view.setFocusMarket(festival ?? null);
+  view.setFocus(selected?.kind === 'clan' ? selected.id : selected?.kind === 'tile' ? view.clanAt(selected.tile) : null);
+  // A selected festival: its walkers' routes are drawn bright.
+  view.setFocusMarket(selected?.kind === 'festival' ? selected.id : null);
   const camp = selected?.kind === 'unit' ? v.units[selected.id] : null;
   if (camp && camp.cut_at) {
     // Cut by held ground: the line it would have, drawn to the tile where it stops, marked.
@@ -263,7 +251,7 @@ function chooseCiv(civ) {
   view.setHighlight(null);
   const c = civ != null && v.civs[civ];
   if (c) {
-    select({ kind: 'capital', civ });
+    select({ kind: 'civ', civ });
     view.centreOn(c.capital, { minK: 20, smooth: true });
   }
 }
@@ -425,7 +413,9 @@ function showFeed(on) {
 
 // ---- selecting and the selection panel -------------------------------------------------------
 
-function select(sel) {
+/** Selects `sel` (or nothing). Selecting a subject marks the alerts about it seen. `fromFeed` keeps the
+ *  feed's own highlight of the item clicked. */
+function select(sel, { fromFeed = false } = {}) {
   const unit = sel?.kind === 'unit' ? sel.id : null;
   // Picking another thing forgets a route being set; the same unit keeps its start.
   if (unit !== routing.unit) routing = { arm: null, start: null, unit };
@@ -436,18 +426,19 @@ function select(sel) {
     document.body.dataset.painting = '';
   }
   selected = sel;
-  feed.select(null);
+  if (!fromFeed) feed.select(null);
+  if (sel) feed.see((item) => keyOf(subjectOf(ctx(), item)) === keyOf(sel));
   syncSelection();
   markChips();
-  panel();
+  panelDraw();
 }
 
 /** Puts the selection on the map and in `body.dataset.selected`. */
 function syncSelection() {
-  const hl = selected && selected.kind === 'tile' && (selected.clan != null || selected.market != null);
   view.setSelection(selected ? tileOf(ctx(), selected) : -1, selected?.kind === 'unit' ? selected.id : -1);
   if (v) routes();
-  view.setHighlight(hl ? { clan: selected.clan, market: selected.market } : null);
+  const hl = selected?.kind === 'clan' ? { clan: selected.id, market: null } : selected?.kind === 'festival' ? { clan: null, market: selected.id } : null;
+  view.setHighlight(hl);
   document.body.dataset.selected = keyOf(selected);
 }
 
@@ -475,30 +466,33 @@ function armedPick(i) {
   const kind = routing.arm;
   routing.arm = null;
   if (i < 0) {
-    panel();
+    panelDraw();
     syncArm();
     return;
   }
   if (kind === 'start') {
     routing.start = i;
-    panel();
+    panelDraw();
     syncArm();
     return;
   }
   const u = v.units[routing.unit];
   if (!u) return;
-  order(unitOrder(u, { type: 'route', from: routing.start ?? u.tile, to: i }));
+  if (u.kind === 'camp') order(unitOrder(u, { type: 'move', to: i }));
+  else order(unitOrder(u, { type: 'route', from: routing.start ?? u.tile, to: i }));
 }
 
 /** Arms (or disarms, if it is armed already) a map click for the route: 'start' or 'to'. */
 function arm(kind) {
   routing.arm = routing.arm === kind ? null : kind;
   syncArm();
-  panel();
+  panelDraw();
 }
 
+/** The armed click's state on the page: the crosshair cursor, and `body.dataset.armed`. */
 function syncArm() {
   document.body.dataset.armed = routing.arm ?? '';
+  view.setArmed(routing.arm != null);
 }
 
 /** A right-click: the selected camp of the player's goes to the tile (a scout's sends nothing). */
@@ -508,75 +502,41 @@ function onCommand(i) {
   order(unitOrder(u, { type: 'move', to: i }));
 }
 
+/** A feed item's subject is selected and the map centred on it. */
 function onFeed(item) {
-  const alive = item.unit != null && item.unit in v.units;
-  if (alive) selected = { kind: 'unit', id: item.unit };
-  else if (item.kind === 'civFounded' && item.civ != null && item.civ in v.civs) selected = { kind: 'capital', civ: item.civ };
-  else selected = { kind: 'tile', tile: item.tile, clan: item.clan, market: item.market };
-  syncSelection();
-  markChips();
-  view.centreOn(alive ? v.units[item.unit].tile : item.tile, { minK: 24, smooth: true });
-  panel();
+  const sel = subjectOf(ctx(), item);
+  select(sel, { fromFeed: true });
+  view.centreOn(tileOf(ctx(), sel), { minK: 24, smooth: true });
 }
 
-/** The selection panel: what is selected and its actions as buttons, greyed with the reason when refused. */
-function panel() {
-  const el = $('detail');
-  const d = selected ? describe(ctx(), selected) : null;
-  if (!d) {
-    el.innerHTML = '';
-    return;
-  }
-  el.innerHTML = `<h2><span>${d.title}</span><button type="button" id="closedetail" aria-label="Close details">×</button></h2>${d.html}`;
-  if (d.actions.length) {
-    const box = document.createElement('div');
-    box.className = 'actions';
-    // Actions with the same `row` share a line; others each have their own.
-    let row = null;
-    let rowKey;
-    for (const a of d.actions) {
-      const why = a.arm ? '' : sim.check(JSON.stringify(a.action));
-      if (!row || a.row === undefined || a.row !== rowKey) {
-        row = document.createElement('div');
-        rowKey = a.row;
-        box.append(row);
-      }
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = a.label;
-      b.disabled = why !== '';
-      if (a.arm) {
-        b.setAttribute('aria-pressed', String(routing.arm === a.arm));
-        b.onclick = () => arm(a.arm);
-      } else {
-        b.onclick = () => order(a.action);
-      }
-      row.append(b);
-      if (why) {
-        const note = document.createElement('span');
-        note.className = 'dim';
-        note.textContent = ` ${why}`;
-        row.append(note);
-      }
-    }
-    const slot = el.querySelector('[data-actions]');
-    if (slot) slot.replaceWith(box);
-    else el.append(box);
-  }
-  $('closedetail').onclick = () => select(null);
+/** The bottom panel: what is selected, drawn by panel.js from the shape panels.js gives. */
+function panelDraw() {
+  panel.render($('detail'), selected ? describe(ctx(), selected) : null, {
+    check: (action) => sim.check(action),
+    run: order,
+    arm,
+    armed: routing.arm,
+    paint: (mode) => setPainting(painting === mode ? null : mode),
+    painting,
+    select,
+    redraw: panelDraw,
+  });
 }
 
 // ---- painting a zone and a claim ---------------------------------------------------------------
 
+/** Sets what a press and drag paint: 'paint' or 'unpaint' (a camp's zone, or a civ's claim when a civ is
+ *  selected), 'claim' or 'unclaim' (a civ's claim), or null. */
 function setPainting(mode) {
   const u = selected?.kind === 'unit' ? v?.units[selected.id] : null;
-  const capital = selected?.kind === 'capital' && selected.civ === v.player;
-  if (mode === 'paint' || mode === 'unpaint') painting = u && u.kind === 'camp' && u.civ === v.player ? mode : null;
-  else if (mode === 'claim' || mode === 'unclaim') painting = capital ? mode : null;
+  const camp = u && u.kind === 'camp' && u.civ === v.player;
+  const civ = selected?.kind === 'civ' && selected.civ === v.player;
+  if (mode === 'paint' || mode === 'unpaint') painting = camp ? mode : civ ? (mode === 'paint' ? 'claim' : 'unclaim') : null;
+  else if (mode === 'claim' || mode === 'unclaim') painting = civ ? mode : null;
   else painting = null;
   view.setPainting(painting != null);
   document.body.dataset.painting = painting ?? '';
-  panel();
+  panelDraw();
 }
 
 /** The tiles of `zone` (a Set holding `home`) still connected to `home` through each other. */
@@ -659,7 +619,7 @@ function keys(e) {
     if (routing.arm) {
       routing.arm = null;
       syncArm();
-      panel();
+      panelDraw();
     } else if (painting) setPainting(null);
     else select(null);
     return;
@@ -681,8 +641,8 @@ function keys(e) {
       else endTurn();
       break;
     case 'h': case 'H': $('v-country').click(); break;
-    case 'p': case 'P': setPainting(painting === 'paint' ? null : 'paint'); break;
-    case 'u': case 'U': setPainting(painting === 'unpaint' ? null : 'unpaint'); break;
+    case 'p': case 'P': setPainting(painting === 'paint' || painting === 'claim' ? null : 'paint'); break;
+    case 'u': case 'U': setPainting(painting === 'unpaint' || painting === 'unclaim' ? null : 'unpaint'); break;
     default: return;
   }
   e.preventDefault();
@@ -779,7 +739,7 @@ function fillTip(i) {
   if (m) lines.push(`Market ${m.id}${v.end && v.end.centres.includes(m.id) ? ' (centre)' : ''}`);
   if (isHearth(i)) lines.push('Hearth');
   const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
-  if (u && u.civ === v.player) {
+  if (u && u.civ === v.player && (u.kind === 'camp' || routing.arm === 'to')) {
     const r = JSON.parse(sim.path(u.tile, i));
     lines.push(r ? `Move here: cost ${f2(r.cost)}, ${r.turns} turn${r.turns === 1 ? '' : 's'}` : 'No route');
   }

@@ -248,17 +248,64 @@ export const open = async (query = '', { size = 'laptop', path = 'index.html', r
     },
     until,
     tile,
+    /** The bottom panel as the page draws it: its name, doing line, numbers (with tooltips), list rows,
+     *  reasons, buttons (greyed or not, with their tooltips), the refusal line and the hint. Null if hidden. */
+    panel: () =>
+      evaluate(`(() => { const d = document.getElementById('detail'); if (!d.firstElementChild) return null;
+        const t = (e) => (e ? e.textContent.trim() : null);
+        return {
+          name: t(d.querySelector('h2 span')),
+          doing: t(d.querySelector('.doing')),
+          numbers: [...d.querySelectorAll('.num')].map((n) => ({ label: t(n.firstElementChild), value: t(n.lastElementChild), tip: n.title })),
+          lists: [...d.querySelectorAll('.list')].map((l) => ({ label: t(l.firstElementChild), rows: [...l.querySelectorAll('.listrow')].map((r) => t(r.querySelector('button'))) })),
+          reasons: [...d.querySelectorAll('.why li')].map((l) => l.textContent.trim()),
+          buttons: [...d.querySelectorAll('.actions > button, .actions .stepper > button')].map((b) => ({ label: b.textContent.trim(), disabled: b.disabled, title: b.title, pressed: b.getAttribute('aria-pressed') })),
+          refused: t(d.querySelector('.refused')),
+          hint: t(d.querySelector('.hint')),
+          text: d.textContent,
+        }; })()`),
+    /** Opens a stepper button `label` in the panel, sets its count (and its option, by its text), and
+     *  presses Go when `go` is set, else Cancel. Returns the count's max, Go's state and its tooltip. */
+    stepper: async (label, { n = 1, option = null, go = false } = {}) => {
+      const r = await evaluate(`(async () => {
+        const d = document.getElementById('detail');
+        const open = [...d.querySelectorAll('.actions > button')].find((b) => b.textContent.trim() === ${JSON.stringify(label)});
+        if (!open) return { missing: true };
+        if (open.disabled) return { disabled: true, title: open.title };
+        open.click();
+        await new Promise((r) => requestAnimationFrame(r));
+        const sel = d.querySelector('.stepper select');
+        if (sel && ${JSON.stringify(option)} != null) {
+          sel.value = [...sel.options].find((o) => o.textContent === ${JSON.stringify(option)}).value;
+          sel.dispatchEvent(new Event('change'));
+          await new Promise((r) => requestAnimationFrame(r));
+        }
+        const input = d.querySelector('.stepper input');
+        if (!input) return { missing: true };
+        input.value = String(${Number(n)});
+        input.dispatchEvent(new Event('input'));
+        const button = (text) => [...d.querySelectorAll('.stepper button')].find((b) => b.textContent.trim() === text);
+        const out = { max: Number(input.max), go: !button('Go').disabled, title: button('Go').title, options: sel ? [...sel.options].map((o) => o.textContent) : [] };
+        if (${go} && out.go) button('Go').click();
+        else button('Cancel').click();
+        return out;
+      })()`);
+      await sleep(50);
+      return r;
+    },
+
     /** The page's own errors so far. */
     errors: () => [...errors],
     data: () => evaluate('({ ...document.body.dataset })'),
     /** Left-clicks tile `i`: selects what's there. */
     click: (i) => mouse(i, 'left'),
-    /** Clicks tile `i` until a `kind` ("unit", "capital", "tile") is selected, since a click on the
-     *  selected thing's tile moves to the next thing there. Returns the selection's key. */
+    /** Clicks tile `i` until a `kind` ("unit", "civ", "clan", "festival", "tile") is selected, since a click on
+     *  the selected thing's tile moves to the next thing there. Returns the selection's key. */
     select: async function (i, kind) {
       for (let n = 0; n < 8; n++) {
         const [now, at] = await evaluate(`(() => { const s = document.body.dataset.selected || ''; const [k, id] = s.split(':'); const v = game.view();
-          return [s, k === 'unit' ? v.units[id]?.tile : k === 'capital' ? v.civs[id]?.capital : Number(id)]; })()`);
+          return [s, k === 'unit' ? v.units[id]?.tile : k === 'civ' ? v.civs[id]?.capital : k === 'clan' ? v.clans[id]?.home
+            : k === 'festival' ? v.markets[id]?.tile : Number(id)]; })()`);
         if (now.startsWith(`${kind}:`) && at === i) return now;
         await mouse(i, 'left');
       }

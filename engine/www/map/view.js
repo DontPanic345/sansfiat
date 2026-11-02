@@ -58,6 +58,7 @@ export class MapView {
     this.routes = []; // [{unit, tiles: [from, ...path], selected}]: the player's units' routes
     this.line = null; // {tiles, colour, cut?}: the selected camp's line home (to where it is cut, `cut` the tile), or null
     this.painting = false; // in paint mode a left press or drag paints tiles (onPaint) instead of picking or panning
+    this.armed = false; // an armed click (Move to…): the crosshair, and the next left press is onPick's to route
     this.focus = null; // the selected clan's id: its territory and route are drawn bright, the others' dim
     this.homeLine = null; // the led civ's camp's line home as tile lists, drawn faint at all times
     this.plan = null; // {known, possible}: the selected scout's route as tile lists from its start, or null
@@ -212,7 +213,17 @@ export class MapView {
   /** Paint mode on or off: while on, a left press and drag call `onPaint` for each tile they cross. */
   setPainting(on) {
     this.painting = on;
-    this.canvas.style.cursor = on ? 'crosshair' : '';
+    this.updateCursor();
+  }
+
+  /** Armed click on or off (Move to…, Route from…): while armed, a left press picks a tile for the panel's action. */
+  setArmed(on) {
+    this.armed = on;
+    this.updateCursor();
+  }
+
+  updateCursor() {
+    this.canvas.style.cursor = this.painting || this.armed ? 'crosshair' : '';
   }
 
   /** The clan to show bright (its territory and festival route), the rest dimmed; null for none. */

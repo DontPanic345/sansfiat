@@ -103,9 +103,17 @@ button.link:hover { background:none; }
 #detail h2 { font-size:14px; margin:0 0 4px; display:flex; justify-content:space-between; align-items:center; }
 #detail p { margin:4px 0; }
 #detail table { border-collapse:collapse; font-size:12px; } #detail td { padding:0 8px 0 0; }
-#detail .actions { margin-top:8px; display:flex; flex-direction:column; gap:4px; }
-#detail .actions > div { display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; }
-#detail .units { margin:6px 0; }
+#detail .numbers { display:flex; flex-wrap:wrap; gap:2px 16px; margin:4px 0; }
+#detail .num { white-space:nowrap; }
+#detail .num b { font-variant-numeric:tabular-nums; }
+#detail .list { margin:6px 0; }
+#detail .listrow { font-size:12px; }
+#detail .hint, #detail .refused { margin:4px 0; font-size:12px; }
+#detail .actions { margin-top:8px; display:flex; flex-wrap:nowrap; gap:4px 6px; align-items:center; overflow-x:auto; padding-bottom:2px; }
+#detail .actions > button, #detail .stepper > * { flex:none; }
+#detail .stepper { display:inline-flex; gap:4px 6px; align-items:center; }
+#detail .stepper input { width:64px; }
+#detail h2 .close { padding:0 7px; }
 #detail .why { margin:6px 0; } #detail .why ul { list-style:none; margin:2px 0 0; padding:0; font-size:12px; }
 #detail .why li { padding:1px 0; }
 #detail .why .turn { color:var(--dim); font-variant-numeric:tabular-nums; }
@@ -118,7 +126,7 @@ button.link:hover { background:none; }
 #feed { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; }
 #feed li button { display:flex; gap:6px; width:100%; text-align:left; background:none; border:0; border-bottom:1px solid #222a35; border-radius:0; padding:3px 12px; font-size:12px; align-items:baseline; }
 #feed li button:hover { background:#222c38; }
-#alerts { list-style:none; margin:0; padding:0; border-bottom:2px solid #5a2a2a; background:#241a1c; flex:none; }
+#alerts { list-style:none; margin:0; padding:0; border-bottom:2px solid #5a2a2a; background:#241a1c; flex:none; max-height:124px; overflow-y:auto; }
 #alerts[hidden] { display:none; }
 #alerts li button, #feed li.alert button { border-left:3px solid #ff5a4d; padding-left:9px; }
 #alerts li button { display:flex; gap:6px; width:100%; text-align:left; background:none; border:0; border-bottom:1px solid #3a2a2d; border-radius:0; padding:3px 12px; font-size:12px; align-items:baseline; }

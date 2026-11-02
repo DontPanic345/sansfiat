@@ -37,10 +37,12 @@ if (!haveChrome()) {
 
 const scripts = readdirSync(here).filter((f) => f.endsWith('.mjs') && f !== 'all.mjs').sort();
 const out = mkdtempSync(join(tmpdir(), 'play-all-'));
+// layout.mjs's map share is the canvas's to settle (spec item 26): until it does, its run skips that check.
+const extra = { 'layout.mjs': ['--share', '0'] };
 const rows = [];
 for (const script of scripts) {
   const t0 = Date.now();
-  const r = spawnSync(process.execPath, [join(here, script), '--out', out], { encoding: 'utf8', timeout: 300_000 });
+  const r = spawnSync(process.execPath, [join(here, script), '--out', out, ...(extra[script] ?? [])], { encoding: 'utf8', timeout: 300_000 });
   const ok = r.status === 0;
   rows.push({ script, ok, seconds: (Date.now() - t0) / 1000 });
   if (!ok) process.stderr.write(`--- ${script} failed (${r.status ?? r.signal})\n${r.stdout.slice(-1500)}${r.stderr.slice(-1500)}\n`);

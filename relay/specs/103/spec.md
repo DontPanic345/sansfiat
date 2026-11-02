@@ -297,12 +297,12 @@ mixed ones, that is 15 of 26.
 ## Settled: the panel
 
 15. **One component** (`panel.js`). `render(el, shape)` draws a shape
-    `{ name, swatch?, doing, numbers: [{label, value, tip}], list?: {label, rows}, reasons:
+    `{ name, swatch?, doing, numbers: [{label, value, tip}], list?: [{label, rows, empty?}], reasons:
     [{turn, text}], buttons: [...] }` in this order:
     - the name with its civ's swatch, and the line of what it is doing;
     - the numbers as label–value pairs, each with a tooltip;
-    - an optional short list (units here, leaning clans, a festival's clans), each row selecting
-      its subject;
+    - an optional short list, or several (a civ's leaning clans, then its units; units here; a
+      festival's clans), each row selecting its subject;
     - the latest reasons (`rules.notes_shown`), newest first;
     - **one button row**.
 
