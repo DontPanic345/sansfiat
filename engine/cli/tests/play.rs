@@ -164,12 +164,12 @@ fn judge_prints_a_score_line_and_the_control_for_the_led_civ() {
 
 #[test]
 fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
-    // On small seed 9, 33 turns after the pick, an unaligned clan is in reach of the led civ's market
+    // On small seed 9, 5 turns after the pick, an unaligned clan is in reach of the led civ's market
     // but trades at another, so the civ's gift never reaches it: the view says so, and `why` for that
     // clan gives its reasons.
     let (_dir, game) = game_in("reach");
     sansfiat(&["play", "--game", &game, "--seed", "9", "--size", "small", "--civ", "1"], "");
-    let out = sansfiat(&["play", "--game", &game], "end 33\n");
+    let out = sansfiat(&["play", "--game", &game], "end 5\n");
     assert!(out.contains("a gift reaches only those that trade there"), "{out}");
     let clan = out
         .lines()

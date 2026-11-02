@@ -494,12 +494,13 @@ pub const LEANING: LeaningRules = LeaningRules {
     join: 1.0,
     gift_default: 2.0,
     floor: 0.001,
-    // A clan on a held home gains land + guarded × guard a turn, against a fade of 0.03: a home
-    // with a guard share of 0.3 pulls a clan to a civ's join line, one at 0.1 never does.
-    land: 0.01,
-    guarded: 0.1,
-    leave_run: 10,
-    leave_at: 0.3,
+    // A clan on a held home gains land + guarded × guard a turn, against a fade of 0.03: land alone
+    // settles at 3.3, past the join line, so a held home joins in about 11 turns (canvas.md).
+    land: 0.1,
+    guarded: 0.5,
+    // Leaving after 5 turns drawn at 0.1: a held rival home wins a clan; 10/0.3 left none (canvas.md).
+    leave_run: 5,
+    leave_at: 0.1,
 };
 
 /// The land a civ claims and holds (`claim.rs`). The floor is the guard share a claimed tile must keep
@@ -511,10 +512,10 @@ pub struct ClaimRules {
     pub ai_reach: i32,
 }
 
-// The floor is what a tile's guard must reach to be held: at 0.1 three guards hold the seven tiles
-// nearest a capital on small seed 2 (`spec-review.md`). The ring and reach are the AI's stand-in,
-// which the canvas leaves to R.
-pub const CLAIM: ClaimRules = ClaimRules { floor: 0.1, ai_ring: 1, ai_reach: 4 };
+// The floor 0.05 lets three guards hold the ring around the clans' homes near the capital; 0.1 held 13 tiles a
+// civ, 0.05 holds 16 and wins 14 of 21 solo gains (canvas.md). Ring 1 and reach 4 keep the
+// stand-in near; ring 2 or reach 6 claimed more than the guard holds and the solo gain fell.
+pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05, ai_ring: 1, ai_reach: 4 };
 
 /// The guard: the people a civ keeps on its claim at its capital (`units/guard.rs`, `claim.rs`).
 pub struct GuardRules {
@@ -531,7 +532,8 @@ pub struct GuardRules {
     pub keep_turns: f64,
 }
 
-pub const GUARD: GuardRules = GuardRules { start: 3, guarding: 3.5, inside: 0.05, keep_turns: 5.0 };
+// Inside 0.02 (a tenth of a camp's) and keep_turns 1, so the store still gives (canvas.md).
+pub const GUARD: GuardRules = GuardRules { start: 3, guarding: 3.5, inside: 0.02, keep_turns: 1.0 };
 
 pub struct UnitRules {
     /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).

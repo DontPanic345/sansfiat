@@ -78,13 +78,13 @@ fn one_guard_holds_a_small_claim_and_leaves_the_far_tiles_of_a_wide_one_paper() 
     // The guard of founding (three people): its whole labour over seven tiles holds every one.
     w.order(red, Order::Claim { tiles: within(&w, cap, 1) }).unwrap();
     assert_eq!(claim::held(&w, red), within(&w, cap, 1), "a small claim is all land");
-    // Wide: everything within three steps. The guard's share falls with the walk out, and three steps
+    // Wide: everything within five steps. The guard's share falls with the walk out, and five steps
     // out is paper.
-    w.order(red, Order::Claim { tiles: within(&w, cap, 3) }).unwrap();
+    w.order(red, Order::Claim { tiles: within(&w, cap, 5) }).unwrap();
     let held = claim::held(&w, red);
     let near = within(&w, cap, 1);
     assert!(near.iter().all(|t| held.contains(t)), "the near ring is held");
-    let far: Vec<usize> = within(&w, cap, 3).into_iter().filter(|&t| steps(&w, cap, t) == 3).collect();
+    let far: Vec<usize> = within(&w, cap, 5).into_iter().filter(|&t| steps(&w, cap, t) == 5).collect();
     assert!(far.iter().all(|t| !held.contains(t)), "the far tiles are paper");
     assert!(far.iter().all(|&t| tile_is_claimed(&w, red, t)), "but still claimed");
     // Paper is no land: the civ's land is what its guard holds.
@@ -100,8 +100,8 @@ fn a_camp_holding_paper_of_its_own_claim_makes_it_held() {
     let (mut w, ids, _) = led();
     let red = ids[0];
     let cap = w.civs[&red].capital;
-    w.order(red, Order::Claim { tiles: within(&w, cap, 3) }).unwrap();
-    let far = within(&w, cap, 3).into_iter().find(|&t| steps(&w, cap, t) == 3).unwrap();
+    w.order(red, Order::Claim { tiles: within(&w, cap, 5) }).unwrap();
+    let far = within(&w, cap, 5).into_iter().find(|&t| steps(&w, cap, t) == 5).unwrap();
     assert!(!claim::held(&w, red).contains(&far));
     // A camp of Red's holds it, with a share of its own: the guard share of the camp is added (`divide`).
     let id = camp_id(&w, red);

@@ -78,7 +78,7 @@ pub fn ai(w: &mut World) {
 
 /// The AI's land for `civ`: its stand-in claim is sent whenever it differs from the claim, where
 /// `Config.claims` lets it claim. Its guard is raised a person a turn while a claimed tile under
-/// `CLAIM.floor` has no guard and its store, after `keep`, holds `GUARD.keep_turns` turns of food for
+/// `CLAIM.floor` has no guard and its store and its clans' stores, after `keep`, hold `GUARD.keep_turns` turns of food for
 /// one more guard; a guard that went hungry last turn loses a person.
 fn land(w: &mut World, civ: u32) {
     if claim::may_claim(w, civ) {
@@ -103,7 +103,9 @@ fn land(w: &mut World, civ: u32) {
         .enumerate()
         .any(|(k, &t)| t != c.capital && c.guard.get(k).copied().unwrap_or(0.0) + EPS < CLAIM.floor);
     let people = claim::guard_people(w, civ);
-    let spare = total(&c.store) - civs::keep(w, civ);
+    // The guard eats from the store and then its clans' stores, so both count to feed one more.
+    let kin: f64 = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| total(&k.actor.store)).sum();
+    let spare = total(&c.store) + kin - civs::keep(w, civ);
     if short && spare >= GUARD.keep_turns * UNIT.food * (people + 1.0) {
         let _ = w.order(civ, Order::Raise { n: 1, kind: UnitKind::Guard });
     }

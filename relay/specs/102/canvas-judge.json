@@ -1,0 +1,1656 @@
+{
+  "maps": [
+    {
+      "size": "small",
+      "seed": 2,
+      "pick": 237,
+      "standing": {
+        "civs": [
+          {
+            "id": 472,
+            "at_100": 0.036346016938669456,
+            "at_200": 0.03591586065156474,
+            "clans_200": 0.03591586065156474,
+            "land_200": 0.0
+          },
+          {
+            "id": 473,
+            "at_100": 0.11012692193310852,
+            "at_200": 0.10923371642503232,
+            "clans_200": 0.10923371642503232,
+            "land_200": 0.0
+          },
+          {
+            "id": 474,
+            "at_100": 0.15048056414942154,
+            "at_200": 0.15276032157207617,
+            "clans_200": 0.15276032157207617,
+            "land_200": 0.0
+          }
+        ],
+        "top_200": 0.15276032157207617,
+        "aligned_200": 0.29790989864867323,
+        "on_land_200": 0.0
+      },
+      "doubt": {
+        "lead_changes": 1,
+        "spread_100": 0.11413454721075209,
+        "spread_200": 0.11684446092051143,
+        "spread_min": 0.025777790543651126,
+        "spread_max": 0.12722920803898735,
+        "swings": 3
+      },
+      "decisions": {
+        "orders_per_100": 8.833333333333334,
+        "by_kind": {
+          "claim": 4.833333333333333,
+          "disband": 1.5,
+          "move": 0.6666666666666666,
+          "raise": 1.1666666666666667,
+          "zone": 0.6666666666666666
+        },
+        "levers_repeated": 3.0
+      },
+      "motion": {
+        "clans_changed": 19,
+        "people_changed": 102.22791710088171,
+        "land_changed": 145,
+        "clans_left": 0,
+        "clans_joined": 20,
+        "claim_taken": 0
+      },
+      "land": {
+        "at_pick": {
+          "homes_trailed": 0.797979797979798,
+          "worked_trailed": 0.2896825396825397,
+          "route_trailed": 1.0,
+          "markets": 20,
+          "trading": 0.8936170212765957
+        },
+        "at_200": {
+          "homes_trailed": 0.7614678899082569,
+          "worked_trailed": 0.28112449799196787,
+          "route_trailed": 1.0,
+          "markets": 18,
+          "trading": 0.9027777777777778
+        },
+        "clan_turns": 28686,
+        "festival_changes": 133,
+        "flips": 12,
+        "festival_changes_per_100": 0.46364080039043437,
+        "flips_per_100": 0.04183225266680611,
+        "civs_200": [
+          {
+            "id": 472,
+            "claimed": 26,
+            "held": 1,
+            "guard": 0.0
+          },
+          {
+            "id": 473,
+            "claimed": 29,
+            "held": 1,
+            "guard": 0.0
+          },
+          {
+            "id": 474,
+            "claimed": 40,
+            "held": 38,
+            "guard": 6.0
+          }
+        ]
+      },
+      "no_claims": {
+        "standing": {
+          "civs": [
+            {
+              "id": 472,
+              "at_100": 0.04233740081273173,
+              "at_200": 0.0417025654269562,
+              "clans_200": 0.0417025654269562,
+              "land_200": 0.0
+            },
+            {
+              "id": 473,
+              "at_100": 0.046920172136729506,
+              "at_200": 0.046364521240960514,
+              "clans_200": 0.046364521240960514,
+              "land_200": 0.0
+            },
+            {
+              "id": 474,
+              "at_100": 0.07206265147792693,
+              "at_200": 0.07283709077516673,
+              "clans_200": 0.07283709077516673,
+              "land_200": 0.0
+            }
+          ],
+          "top_200": 0.07283709077516673,
+          "aligned_200": 0.16090417744308344,
+          "on_land_200": 0.0
+        },
+        "doubt": {
+          "lead_changes": 0,
+          "spread_100": 0.029725250665195192,
+          "spread_200": 0.031134525348210533,
+          "spread_min": 0.011791095521077419,
+          "spread_max": 0.03394730591670405,
+          "swings": 0
+        },
+        "decisions": {
+          "orders_per_100": -0.0,
+          "by_kind": {},
+          "levers_repeated": 0.0
+        },
+        "motion": {
+          "clans_changed": 2,
+          "people_changed": 10.943170579404514,
+          "land_changed": 0,
+          "clans_left": 0,
+          "clans_joined": 2,
+          "claim_taken": 0
+        },
+        "land": {
+          "at_pick": {
+            "homes_trailed": 0.7941176470588235,
+            "worked_trailed": 0.2896825396825397,
+            "route_trailed": 1.0,
+            "markets": 20,
+            "trading": 0.8936170212765957
+          },
+          "at_200": {
+            "homes_trailed": 0.7522935779816514,
+            "worked_trailed": 0.2885375494071146,
+            "route_trailed": 1.0,
+            "markets": 18,
+            "trading": 0.900709219858156
+          },
+          "clan_turns": 27630,
+          "festival_changes": 41,
+          "flips": 6,
+          "festival_changes_per_100": 0.14838943177705394,
+          "flips_per_100": 0.021715526601520086,
+          "civs_200": [
+            {
+              "id": 472,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 473,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 474,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            }
+          ]
+        }
+      },
+      "solo": [
+        {
+          "civ": 472,
+          "gain": -0.004834235625044217,
+          "clans": -0.004834235625044217,
+          "land": 0.0
+        },
+        {
+          "civ": 473,
+          "gain": 0.044666932255213086,
+          "clans": 0.044666932255213086,
+          "land": 0.0
+        },
+        {
+          "civ": 474,
+          "gain": 0.10012720434747688,
+          "clans": 0.10012720434747688,
+          "land": 0.0
+        }
+      ],
+      "armies": {
+        "camps_kept": 2,
+        "camps_of": 3,
+        "warriors_starved": 3,
+        "camps_lost": 1,
+        "people_at_200": 748.3478759059783,
+        "control_people_at_200": 747.7696763548525
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "small",
+      "seed": 3,
+      "pick": 245,
+      "standing": {
+        "civs": [
+          {
+            "id": 267,
+            "at_100": 0.08056702927906081,
+            "at_200": 0.07893118883342906,
+            "clans_200": 0.07893118883342906,
+            "land_200": 0.0
+          },
+          {
+            "id": 268,
+            "at_100": 0.022433474009905332,
+            "at_200": 0.021093492674540214,
+            "clans_200": 0.021093492674540214,
+            "land_200": 0.0
+          },
+          {
+            "id": 269,
+            "at_100": 0.1477027932234939,
+            "at_200": 0.13760440508098584,
+            "clans_200": 0.13760440508098584,
+            "land_200": 0.0
+          }
+        ],
+        "top_200": 0.13760440508098584,
+        "aligned_200": 0.23762908658895512,
+        "on_land_200": 0.0
+      },
+      "doubt": {
+        "lead_changes": 0,
+        "spread_100": 0.12526931921358855,
+        "spread_200": 0.11651091240644562,
+        "spread_min": 0.04601066497405544,
+        "spread_max": 0.12782430425862953,
+        "swings": 8
+      },
+      "decisions": {
+        "orders_per_100": 18.166666666666668,
+        "by_kind": {
+          "claim": 10.666666666666666,
+          "disband": 1.1666666666666667,
+          "move": 3.3333333333333335,
+          "raise": 0.6666666666666666,
+          "zone": 2.3333333333333335
+        },
+        "levers_repeated": 2.3333333333333335
+      },
+      "motion": {
+        "clans_changed": 2,
+        "people_changed": 10.847485899075927,
+        "land_changed": 279,
+        "clans_left": 0,
+        "clans_joined": 2,
+        "claim_taken": 0
+      },
+      "land": {
+        "at_pick": {
+          "homes_trailed": 0.8793103448275862,
+          "worked_trailed": 0.34146341463414637,
+          "route_trailed": 0.9393939393939394,
+          "markets": 17,
+          "trading": 0.9512195121951219
+        },
+        "at_200": {
+          "homes_trailed": 0.9076923076923077,
+          "worked_trailed": 0.3444976076555024,
+          "route_trailed": 0.9428571428571428,
+          "markets": 17,
+          "trading": 0.9425287356321839
+        },
+        "clan_turns": 17127,
+        "festival_changes": 226,
+        "flips": 16,
+        "festival_changes_per_100": 1.31955392070999,
+        "flips_per_100": 0.09341974659893736,
+        "civs_200": [
+          {
+            "id": 267,
+            "claimed": 30,
+            "held": 4,
+            "guard": 0.0
+          },
+          {
+            "id": 268,
+            "claimed": 24,
+            "held": 2,
+            "guard": 0.0
+          },
+          {
+            "id": 269,
+            "claimed": 37,
+            "held": 37,
+            "guard": 4.0
+          }
+        ]
+      },
+      "no_claims": {
+        "standing": {
+          "civs": [
+            {
+              "id": 267,
+              "at_100": 0.08285852786607212,
+              "at_200": 0.08280207023350065,
+              "clans_200": 0.08280207023350065,
+              "land_200": 0.0
+            },
+            {
+              "id": 268,
+              "at_100": 0.03766874862295268,
+              "at_200": 0.0375848523650804,
+              "clans_200": 0.0375848523650804,
+              "land_200": 0.0
+            },
+            {
+              "id": 269,
+              "at_100": 0.11405369557234275,
+              "at_200": 0.11379967390704131,
+              "clans_200": 0.11379967390704131,
+              "land_200": 0.0
+            }
+          ],
+          "top_200": 0.11379967390704131,
+          "aligned_200": 0.23418659650562235,
+          "on_land_200": 0.0
+        },
+        "doubt": {
+          "lead_changes": 0,
+          "spread_100": 0.07638494694939008,
+          "spread_200": 0.07621482154196091,
+          "spread_min": 0.0663340296354395,
+          "spread_max": 0.08926711283131643,
+          "swings": 1
+        },
+        "decisions": {
+          "orders_per_100": -0.0,
+          "by_kind": {},
+          "levers_repeated": 0.0
+        },
+        "motion": {
+          "clans_changed": 1,
+          "people_changed": 5.202870901028573,
+          "land_changed": 0,
+          "clans_left": 0,
+          "clans_joined": 1,
+          "claim_taken": 0
+        },
+        "land": {
+          "at_pick": {
+            "homes_trailed": 0.8666666666666667,
+            "worked_trailed": 0.34146341463414637,
+            "route_trailed": 0.9393939393939394,
+            "markets": 17,
+            "trading": 0.9512195121951219
+          },
+          "at_200": {
+            "homes_trailed": 0.8870967741935484,
+            "worked_trailed": 0.3333333333333333,
+            "route_trailed": 0.9393939393939394,
+            "markets": 16,
+            "trading": 0.9390243902439024
+          },
+          "clan_turns": 16331,
+          "festival_changes": 57,
+          "flips": 2,
+          "festival_changes_per_100": 0.34902945318719003,
+          "flips_per_100": 0.012246647480252282,
+          "civs_200": [
+            {
+              "id": 267,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 268,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 269,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            }
+          ]
+        }
+      },
+      "solo": [
+        {
+          "civ": 267,
+          "gain": 0.0006236416290032604,
+          "clans": 0.0006236416290032604,
+          "land": 0.0
+        },
+        {
+          "civ": 268,
+          "gain": -0.01525948044258199,
+          "clans": -0.01525948044258199,
+          "land": 0.0
+        },
+        {
+          "civ": 269,
+          "gain": 0.014523079679170145,
+          "clans": 0.014523079679170145,
+          "land": 0.0
+        }
+      ],
+      "armies": {
+        "camps_kept": 2,
+        "camps_of": 3,
+        "warriors_starved": 2,
+        "camps_lost": 0,
+        "people_at_200": 437.9550625165229,
+        "control_people_at_200": 434.7197577723562
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "small",
+      "seed": 6,
+      "pick": 318,
+      "standing": {
+        "civs": [
+          {
+            "id": 353,
+            "at_100": 0.08192647129689716,
+            "at_200": 0.06797886946860321,
+            "clans_200": 0.06797886946860321,
+            "land_200": 0.0
+          },
+          {
+            "id": 354,
+            "at_100": 0.07240594553712061,
+            "at_200": 0.07142104802616095,
+            "clans_200": 0.07142104802616095,
+            "land_200": 0.0
+          },
+          {
+            "id": 355,
+            "at_100": 0.052382433624120935,
+            "at_200": 0.05166990472733362,
+            "clans_200": 0.05166990472733362,
+            "land_200": 0.0
+          }
+        ],
+        "top_200": 0.07142104802616095,
+        "aligned_200": 0.19106982222209778,
+        "on_land_200": 0.0
+      },
+      "doubt": {
+        "lead_changes": 2,
+        "spread_100": 0.029544037672776226,
+        "spread_200": 0.01975114329882733,
+        "spread_min": 0.008521227494717773,
+        "spread_max": 0.05013013535007756,
+        "swings": 4
+      },
+      "decisions": {
+        "orders_per_100": 9.333333333333334,
+        "by_kind": {
+          "claim": 1.6666666666666667,
+          "disband": 3.1666666666666665,
+          "move": 1.8333333333333333,
+          "raise": 2.0,
+          "zone": 0.6666666666666666
+        },
+        "levers_repeated": 3.3333333333333335
+      },
+      "motion": {
+        "clans_changed": 0,
+        "people_changed": 0.0,
+        "land_changed": 217,
+        "clans_left": 0,
+        "clans_joined": 1,
+        "claim_taken": 0
+      },
+      "land": {
+        "at_pick": {
+          "homes_trailed": 0.8823529411764706,
+          "worked_trailed": 0.31316725978647686,
+          "route_trailed": 0.9761904761904762,
+          "markets": 20,
+          "trading": 0.9357798165137615
+        },
+        "at_200": {
+          "homes_trailed": 0.8777777777777778,
+          "worked_trailed": 0.28368794326241137,
+          "route_trailed": 1.0,
+          "markets": 21,
+          "trading": 0.940677966101695
+        },
+        "clan_turns": 23172,
+        "festival_changes": 72,
+        "flips": 15,
+        "festival_changes_per_100": 0.31071983428275507,
+        "flips_per_100": 0.0647332988089073,
+        "civs_200": [
+          {
+            "id": 353,
+            "claimed": 36,
+            "held": 3,
+            "guard": 1.0
+          },
+          {
+            "id": 354,
+            "claimed": 35,
+            "held": 4,
+            "guard": 0.0
+          },
+          {
+            "id": 355,
+            "claimed": 50,
+            "held": 1,
+            "guard": 0.0
+          }
+        ]
+      },
+      "no_claims": {
+        "standing": {
+          "civs": [
+            {
+              "id": 353,
+              "at_100": 0.08998206760951924,
+              "at_200": 0.10124314031236124,
+              "clans_200": 0.10124314031236124,
+              "land_200": 0.0
+            },
+            {
+              "id": 354,
+              "at_100": 0.07255740090590157,
+              "at_200": 0.07128185501220358,
+              "clans_200": 0.07128185501220358,
+              "land_200": 0.0
+            },
+            {
+              "id": 355,
+              "at_100": 0.045497628742434806,
+              "at_200": 0.04469778871521729,
+              "clans_200": 0.04469778871521729,
+              "land_200": 0.0
+            }
+          ],
+          "top_200": 0.10124314031236124,
+          "aligned_200": 0.21722278403978212,
+          "on_land_200": 0.0
+        },
+        "doubt": {
+          "lead_changes": 1,
+          "spread_100": 0.04448443886708443,
+          "spread_200": 0.05654535159714395,
+          "spread_min": 0.016641849692255753,
+          "spread_max": 0.06308587246585348,
+          "swings": 2
+        },
+        "decisions": {
+          "orders_per_100": -0.0,
+          "by_kind": {},
+          "levers_repeated": 0.0
+        },
+        "motion": {
+          "clans_changed": 0,
+          "people_changed": 0.0,
+          "land_changed": 0,
+          "clans_left": 0,
+          "clans_joined": 0,
+          "claim_taken": 0
+        },
+        "land": {
+          "at_pick": {
+            "homes_trailed": 0.8863636363636364,
+            "worked_trailed": 0.31316725978647686,
+            "route_trailed": 0.9761904761904762,
+            "markets": 20,
+            "trading": 0.9357798165137615
+          },
+          "at_200": {
+            "homes_trailed": 0.8876404494382022,
+            "worked_trailed": 0.28027681660899656,
+            "route_trailed": 1.0,
+            "markets": 21,
+            "trading": 0.9385964912280702
+          },
+          "clan_turns": 22675,
+          "festival_changes": 94,
+          "flips": 16,
+          "festival_changes_per_100": 0.4145534729878721,
+          "flips_per_100": 0.07056229327453142,
+          "civs_200": [
+            {
+              "id": 353,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 354,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 355,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            }
+          ]
+        }
+      },
+      "solo": [
+        {
+          "civ": 353,
+          "gain": -0.0017099704004224225,
+          "clans": -0.0017099704004224225,
+          "land": 0.0
+        },
+        {
+          "civ": 354,
+          "gain": 0.0061130737070659025,
+          "clans": 0.0061130737070659025,
+          "land": 0.0
+        },
+        {
+          "civ": 355,
+          "gain": 0.0039937643047053065,
+          "clans": 0.0039937643047053065,
+          "land": 0.0
+        }
+      ],
+      "armies": {
+        "camps_kept": 2,
+        "camps_of": 3,
+        "warriors_starved": 2,
+        "camps_lost": 0,
+        "people_at_200": 571.3323901794323,
+        "control_people_at_200": 565.7299999895628
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "small",
+      "seed": 9,
+      "pick": 240,
+      "standing": {
+        "civs": [
+          {
+            "id": 485,
+            "at_100": 0.00725095771934435,
+            "at_200": 0.009529267805414611,
+            "clans_200": 0.009529267805414611,
+            "land_200": 0.0
+          },
+          {
+            "id": 486,
+            "at_100": 0.14245944335645705,
+            "at_200": 0.1328710637385821,
+            "clans_200": 0.1328710637385821,
+            "land_200": 0.0
+          },
+          {
+            "id": 487,
+            "at_100": 0.12877367127964123,
+            "at_200": 0.12977646528391523,
+            "clans_200": 0.12977646528391523,
+            "land_200": 0.0
+          }
+        ],
+        "top_200": 0.1328710637385821,
+        "aligned_200": 0.27217679682791196,
+        "on_land_200": 0.0
+      },
+      "doubt": {
+        "lead_changes": 5,
+        "spread_100": 0.13520848563711269,
+        "spread_200": 0.12334179593316749,
+        "spread_min": 0.05768314885037201,
+        "spread_max": 0.14882365859259658,
+        "swings": 5
+      },
+      "decisions": {
+        "orders_per_100": 38.666666666666664,
+        "by_kind": {
+          "claim": 32.166666666666664,
+          "disband": 0.5,
+          "move": 2.8333333333333335,
+          "raise": 1.5,
+          "zone": 1.6666666666666667
+        },
+        "levers_repeated": 2.6666666666666665
+      },
+      "motion": {
+        "clans_changed": 21,
+        "people_changed": 101.16634171905415,
+        "land_changed": 451,
+        "clans_left": 1,
+        "clans_joined": 20,
+        "claim_taken": 0
+      },
+      "land": {
+        "at_pick": {
+          "homes_trailed": 0.8780487804878049,
+          "worked_trailed": 0.299625468164794,
+          "route_trailed": 0.9512195121951219,
+          "markets": 18,
+          "trading": 0.8773584905660378
+        },
+        "at_200": {
+          "homes_trailed": 0.8588235294117647,
+          "worked_trailed": 0.3076923076923077,
+          "route_trailed": 1.0,
+          "markets": 16,
+          "trading": 0.8490566037735849
+        },
+        "clan_turns": 21415,
+        "festival_changes": 385,
+        "flips": 37,
+        "festival_changes_per_100": 1.7978052766752277,
+        "flips_per_100": 0.17277609152463227,
+        "civs_200": [
+          {
+            "id": 485,
+            "claimed": 33,
+            "held": 1,
+            "guard": 0.0
+          },
+          {
+            "id": 486,
+            "claimed": 38,
+            "held": 38,
+            "guard": 6.0
+          },
+          {
+            "id": 487,
+            "claimed": 22,
+            "held": 22,
+            "guard": 3.0
+          }
+        ]
+      },
+      "no_claims": {
+        "standing": {
+          "civs": [
+            {
+              "id": 485,
+              "at_100": 0.07372837944376003,
+              "at_200": 0.059670991524519636,
+              "clans_200": 0.059670991524519636,
+              "land_200": 0.0
+            },
+            {
+              "id": 486,
+              "at_100": 0.127727149804384,
+              "at_200": 0.10727805131464432,
+              "clans_200": 0.10727805131464432,
+              "land_200": 0.0
+            },
+            {
+              "id": 487,
+              "at_100": 0.09135498354769564,
+              "at_200": 0.09331746785603985,
+              "clans_200": 0.09331746785603985,
+              "land_200": 0.0
+            }
+          ],
+          "top_200": 0.10727805131464432,
+          "aligned_200": 0.2602665106952038,
+          "on_land_200": 0.0
+        },
+        "doubt": {
+          "lead_changes": 1,
+          "spread_100": 0.05399877036062396,
+          "spread_200": 0.04760705979012469,
+          "spread_min": 0.0325823416774709,
+          "spread_max": 0.08627687541219997,
+          "swings": 9
+        },
+        "decisions": {
+          "orders_per_100": -0.0,
+          "by_kind": {},
+          "levers_repeated": 0.0
+        },
+        "motion": {
+          "clans_changed": 14,
+          "people_changed": 60.375031564963365,
+          "land_changed": 0,
+          "clans_left": 0,
+          "clans_joined": 14,
+          "claim_taken": 0
+        },
+        "land": {
+          "at_pick": {
+            "homes_trailed": 0.8780487804878049,
+            "worked_trailed": 0.299625468164794,
+            "route_trailed": 0.9512195121951219,
+            "markets": 18,
+            "trading": 0.8773584905660378
+          },
+          "at_200": {
+            "homes_trailed": 0.85,
+            "worked_trailed": 0.28793774319066145,
+            "route_trailed": 0.9545454545454546,
+            "markets": 16,
+            "trading": 0.8571428571428571
+          },
+          "clan_turns": 22102,
+          "festival_changes": 284,
+          "flips": 24,
+          "festival_changes_per_100": 1.2849515880915754,
+          "flips_per_100": 0.10858745814858384,
+          "civs_200": [
+            {
+              "id": 485,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 486,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 487,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            }
+          ]
+        }
+      },
+      "solo": [
+        {
+          "civ": 485,
+          "gain": -0.03748786323272485,
+          "clans": -0.03748786323272485,
+          "land": 0.0
+        },
+        {
+          "civ": 486,
+          "gain": 0.03334438052018873,
+          "clans": 0.03334438052018873,
+          "land": 0.0
+        },
+        {
+          "civ": 487,
+          "gain": 0.036857609311194764,
+          "clans": 0.036857609311194764,
+          "land": 0.0
+        }
+      ],
+      "armies": {
+        "camps_kept": 2,
+        "camps_of": 3,
+        "warriors_starved": 9,
+        "camps_lost": 6,
+        "people_at_200": 563.9985655207297,
+        "control_people_at_200": 601.3416195163082
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "medium",
+      "seed": 8,
+      "pick": 273,
+      "standing": {
+        "civs": [
+          {
+            "id": 931,
+            "at_100": 0.046950141364287476,
+            "at_200": 0.05125120578362556,
+            "clans_200": 0.05125120578362556,
+            "land_200": 0.0
+          },
+          {
+            "id": 932,
+            "at_100": 0.08017776326712577,
+            "at_200": 0.08051276781854308,
+            "clans_200": 0.08051276781854308,
+            "land_200": 0.0
+          },
+          {
+            "id": 933,
+            "at_100": 0.03859027037184017,
+            "at_200": 0.0383621572787117,
+            "clans_200": 0.0383621572787117,
+            "land_200": 0.0
+          }
+        ],
+        "top_200": 0.08051276781854308,
+        "aligned_200": 0.17012613088088033,
+        "on_land_200": 0.0
+      },
+      "doubt": {
+        "lead_changes": 3,
+        "spread_100": 0.04158749289528559,
+        "spread_200": 0.04215061053983138,
+        "spread_min": 0.004687132662553543,
+        "spread_max": 0.05055591258802273,
+        "swings": 3
+      },
+      "decisions": {
+        "orders_per_100": 27.166666666666668,
+        "by_kind": {
+          "claim": 14.166666666666666,
+          "disband": 3.1666666666666665,
+          "move": 4.166666666666667,
+          "raise": 5.166666666666667,
+          "zone": 0.5
+        },
+        "levers_repeated": 3.6666666666666665
+      },
+      "motion": {
+        "clans_changed": 18,
+        "people_changed": 85.93779663587776,
+        "land_changed": 444,
+        "clans_left": 0,
+        "clans_joined": 18,
+        "claim_taken": 0
+      },
+      "land": {
+        "at_pick": {
+          "homes_trailed": 0.8535353535353535,
+          "worked_trailed": 0.3212121212121212,
+          "route_trailed": 0.9663865546218487,
+          "markets": 36,
+          "trading": 0.9576923076923077
+        },
+        "at_200": {
+          "homes_trailed": 0.8413461538461539,
+          "worked_trailed": 0.3286290322580645,
+          "route_trailed": 0.984,
+          "markets": 36,
+          "trading": 0.9660377358490566
+        },
+        "clan_turns": 52668,
+        "festival_changes": 220,
+        "flips": 11,
+        "festival_changes_per_100": 0.4177109440267335,
+        "flips_per_100": 0.020885547201336674,
+        "civs_200": [
+          {
+            "id": 931,
+            "claimed": 31,
+            "held": 31,
+            "guard": 4.0
+          },
+          {
+            "id": 932,
+            "claimed": 51,
+            "held": 1,
+            "guard": 1.0
+          },
+          {
+            "id": 933,
+            "claimed": 39,
+            "held": 13,
+            "guard": 2.0
+          }
+        ]
+      },
+      "no_claims": {
+        "standing": {
+          "civs": [
+            {
+              "id": 931,
+              "at_100": 0.007969071999836706,
+              "at_200": 0.00798488046529461,
+              "clans_200": 0.00798488046529461,
+              "land_200": 0.0
+            },
+            {
+              "id": 932,
+              "at_100": 0.042948104375741446,
+              "at_200": 0.0419999255103993,
+              "clans_200": 0.0419999255103993,
+              "land_200": 0.0
+            },
+            {
+              "id": 933,
+              "at_100": 0.03730310054557013,
+              "at_200": 0.03754385933442083,
+              "clans_200": 0.03754385933442083,
+              "land_200": 0.0
+            }
+          ],
+          "top_200": 0.0419999255103993,
+          "aligned_200": 0.08752866531011474,
+          "on_land_200": 0.0
+        },
+        "doubt": {
+          "lead_changes": 0,
+          "spread_100": 0.03497903237590474,
+          "spread_200": 0.03401504504510469,
+          "spread_min": 0.02011886191475451,
+          "spread_max": 0.038074788743346966,
+          "swings": 0
+        },
+        "decisions": {
+          "orders_per_100": -0.0,
+          "by_kind": {},
+          "levers_repeated": 0.0
+        },
+        "motion": {
+          "clans_changed": 0,
+          "people_changed": 0.0,
+          "land_changed": 0,
+          "clans_left": 0,
+          "clans_joined": 0,
+          "claim_taken": 0
+        },
+        "land": {
+          "at_pick": {
+            "homes_trailed": 0.855,
+            "worked_trailed": 0.3212121212121212,
+            "route_trailed": 0.9663865546218487,
+            "markets": 36,
+            "trading": 0.9576923076923077
+          },
+          "at_200": {
+            "homes_trailed": 0.8357487922705314,
+            "worked_trailed": 0.32926829268292684,
+            "route_trailed": 0.9836065573770492,
+            "markets": 36,
+            "trading": 0.9550561797752809
+          },
+          "clan_turns": 52916,
+          "festival_changes": 181,
+          "flips": 19,
+          "festival_changes_per_100": 0.3420515534053972,
+          "flips_per_100": 0.03590596416962733,
+          "civs_200": [
+            {
+              "id": 931,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 932,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 933,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            }
+          ]
+        }
+      },
+      "solo": [
+        {
+          "civ": 931,
+          "gain": 0.04103210799505512,
+          "clans": 0.04103210799505512,
+          "land": 0.0
+        },
+        {
+          "civ": 932,
+          "gain": 0.014722598823876963,
+          "clans": 0.014722598823876963,
+          "land": 0.0
+        },
+        {
+          "civ": 933,
+          "gain": 0.001599566420893768,
+          "clans": 0.001599566420893768,
+          "land": 0.0
+        }
+      ],
+      "armies": {
+        "camps_kept": 1,
+        "camps_of": 3,
+        "warriors_starved": 35,
+        "camps_lost": 11,
+        "people_at_200": 1345.9071163061271,
+        "control_people_at_200": 1376.2049158273112
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "medium",
+      "seed": 9,
+      "pick": 431,
+      "standing": {
+        "civs": [
+          {
+            "id": 877,
+            "at_100": 0.0778513155445471,
+            "at_200": 0.07975163402747559,
+            "clans_200": 0.07975163402747559,
+            "land_200": 0.0
+          },
+          {
+            "id": 878,
+            "at_100": 0.050012632861153934,
+            "at_200": 0.049428303709082425,
+            "clans_200": 0.049428303709082425,
+            "land_200": 0.0
+          },
+          {
+            "id": 879,
+            "at_100": 0.03098727425898694,
+            "at_200": 0.03062523037813329,
+            "clans_200": 0.03062523037813329,
+            "land_200": 0.0
+          }
+        ],
+        "top_200": 0.07975163402747559,
+        "aligned_200": 0.15980516811469128,
+        "on_land_200": 0.0
+      },
+      "doubt": {
+        "lead_changes": 0,
+        "spread_100": 0.04686404128556017,
+        "spread_200": 0.0491264036493423,
+        "spread_min": 0.040754152081335086,
+        "spread_max": 0.055142898085019876,
+        "swings": 2
+      },
+      "decisions": {
+        "orders_per_100": 18.666666666666668,
+        "by_kind": {
+          "claim": 13.5,
+          "disband": 0.8333333333333334,
+          "move": 2.5,
+          "raise": 0.8333333333333334,
+          "zone": 1.0
+        },
+        "levers_repeated": 3.3333333333333335
+      },
+      "motion": {
+        "clans_changed": 10,
+        "people_changed": 53.04655578120522,
+        "land_changed": 278,
+        "clans_left": 0,
+        "clans_joined": 11,
+        "claim_taken": 0
+      },
+      "land": {
+        "at_pick": {
+          "homes_trailed": 0.8148148148148148,
+          "worked_trailed": 0.28468468468468466,
+          "route_trailed": 0.9375,
+          "markets": 34,
+          "trading": 0.7415730337078652
+        },
+        "at_200": {
+          "homes_trailed": 0.8540145985401459,
+          "worked_trailed": 0.2887700534759358,
+          "route_trailed": 0.98,
+          "markets": 34,
+          "trading": 0.7853107344632768
+        },
+        "clan_turns": 35280,
+        "festival_changes": 408,
+        "flips": 36,
+        "festival_changes_per_100": 1.1564625850340136,
+        "flips_per_100": 0.10204081632653061,
+        "civs_200": [
+          {
+            "id": 877,
+            "claimed": 29,
+            "held": 29,
+            "guard": 4.0
+          },
+          {
+            "id": 878,
+            "claimed": 22,
+            "held": 22,
+            "guard": 3.0
+          },
+          {
+            "id": 879,
+            "claimed": 25,
+            "held": 10,
+            "guard": 1.0
+          }
+        ]
+      },
+      "no_claims": {
+        "standing": {
+          "civs": [
+            {
+              "id": 877,
+              "at_100": 0.02423655117404187,
+              "at_200": 0.02346273110482009,
+              "clans_200": 0.02346273110482009,
+              "land_200": 0.0
+            },
+            {
+              "id": 878,
+              "at_100": 0.03769375563158506,
+              "at_200": 0.036834301824567775,
+              "clans_200": 0.036834301824567775,
+              "land_200": 0.0
+            },
+            {
+              "id": 879,
+              "at_100": 0.02874358096862727,
+              "at_200": 0.028088199734338796,
+              "clans_200": 0.028088199734338796,
+              "land_200": 0.0
+            }
+          ],
+          "top_200": 0.036834301824567775,
+          "aligned_200": 0.08838523266372666,
+          "on_land_200": 0.0
+        },
+        "doubt": {
+          "lead_changes": 1,
+          "spread_100": 0.013457204457543188,
+          "spread_200": 0.013371570719747684,
+          "spread_min": 0.0018573325941893468,
+          "spread_max": 0.014535471131705547,
+          "swings": 0
+        },
+        "decisions": {
+          "orders_per_100": -0.0,
+          "by_kind": {},
+          "levers_repeated": 0.0
+        },
+        "motion": {
+          "clans_changed": 0,
+          "people_changed": 0.0,
+          "land_changed": 0,
+          "clans_left": 0,
+          "clans_joined": 0,
+          "claim_taken": 0
+        },
+        "land": {
+          "at_pick": {
+            "homes_trailed": 0.8175182481751825,
+            "worked_trailed": 0.28468468468468466,
+            "route_trailed": 0.9375,
+            "markets": 34,
+            "trading": 0.7415730337078652
+          },
+          "at_200": {
+            "homes_trailed": 0.8321678321678322,
+            "worked_trailed": 0.2733812949640288,
+            "route_trailed": 0.9811320754716981,
+            "markets": 34,
+            "trading": 0.7351351351351352
+          },
+          "clan_turns": 35873,
+          "festival_changes": 436,
+          "flips": 42,
+          "festival_changes_per_100": 1.2153987678755611,
+          "flips_per_100": 0.11707969782287514,
+          "civs_200": [
+            {
+              "id": 877,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 878,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 879,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            }
+          ]
+        }
+      },
+      "solo": [
+        {
+          "civ": 877,
+          "gain": 0.05527727181629621,
+          "clans": 0.05527727181629621,
+          "land": 0.0
+        },
+        {
+          "civ": 878,
+          "gain": 0.025423481829858645,
+          "clans": 0.025423481829858645,
+          "land": 0.0
+        },
+        {
+          "civ": 879,
+          "gain": 0.005874068009441045,
+          "clans": 0.005874068009441045,
+          "land": 0.0
+        }
+      ],
+      "armies": {
+        "camps_kept": 3,
+        "camps_of": 3,
+        "warriors_starved": 0,
+        "camps_lost": 0,
+        "people_at_200": 917.5586312023921,
+        "control_people_at_200": 951.3403392177515
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "digest_mismatches": 0
+      }
+    },
+    {
+      "size": "large",
+      "seed": 8,
+      "pick": 369,
+      "standing": {
+        "civs": [
+          {
+            "id": 2708,
+            "at_100": 0.02440360762567038,
+            "at_200": 0.02715185398800037,
+            "clans_200": 0.02715185398800037,
+            "land_200": 0.0
+          },
+          {
+            "id": 2709,
+            "at_100": 0.02492667450602329,
+            "at_200": 0.024748115924844265,
+            "clans_200": 0.024748115924844265,
+            "land_200": 0.0
+          },
+          {
+            "id": 2710,
+            "at_100": 0.04074733855422597,
+            "at_200": 0.04171771662977807,
+            "clans_200": 0.04171771662977807,
+            "land_200": 0.0
+          }
+        ],
+        "top_200": 0.04171771662977807,
+        "aligned_200": 0.0936176865426227,
+        "on_land_200": 0.0
+      },
+      "doubt": {
+        "lead_changes": 1,
+        "spread_100": 0.01634373092855559,
+        "spread_200": 0.016969600704933807,
+        "spread_min": 0.006004332816201455,
+        "spread_max": 0.020970051745774154,
+        "swings": 0
+      },
+      "decisions": {
+        "orders_per_100": 34.666666666666664,
+        "by_kind": {
+          "claim": 26.666666666666668,
+          "move": 7.166666666666667,
+          "raise": 0.8333333333333334
+        },
+        "levers_repeated": 2.3333333333333335
+      },
+      "motion": {
+        "clans_changed": 71,
+        "people_changed": 301.26024258660965,
+        "land_changed": 654,
+        "clans_left": 0,
+        "clans_joined": 71,
+        "claim_taken": 0
+      },
+      "land": {
+        "at_pick": {
+          "homes_trailed": 0.8144329896907216,
+          "worked_trailed": 0.31716082659478884,
+          "route_trailed": 0.9859154929577465,
+          "markets": 73,
+          "trading": 0.9277864992150706
+        },
+        "at_200": {
+          "homes_trailed": 0.8219461697722568,
+          "worked_trailed": 0.3118856121537087,
+          "route_trailed": 0.9829351535836177,
+          "markets": 72,
+          "trading": 0.9342723004694836
+        },
+        "clan_turns": 126501,
+        "festival_changes": 937,
+        "flips": 97,
+        "festival_changes_per_100": 0.7407056070702999,
+        "flips_per_100": 0.0766792357372669,
+        "civs_200": [
+          {
+            "id": 2708,
+            "claimed": 24,
+            "held": 24,
+            "guard": 4.0
+          },
+          {
+            "id": 2709,
+            "claimed": 24,
+            "held": 24,
+            "guard": 3.0
+          },
+          {
+            "id": 2710,
+            "claimed": 48,
+            "held": 48,
+            "guard": 7.0
+          }
+        ]
+      },
+      "no_claims": {
+        "standing": {
+          "civs": [
+            {
+              "id": 2708,
+              "at_100": 0.01877104307995502,
+              "at_200": 0.019371045653996007,
+              "clans_200": 0.019371045653996007,
+              "land_200": 0.0
+            },
+            {
+              "id": 2709,
+              "at_100": 0.01721202115967764,
+              "at_200": 0.016972822745007297,
+              "clans_200": 0.016972822745007297,
+              "land_200": 0.0
+            },
+            {
+              "id": 2710,
+              "at_100": 0.022855150379800807,
+              "at_200": 0.02193360771925243,
+              "clans_200": 0.02193360771925243,
+              "land_200": 0.0
+            }
+          ],
+          "top_200": 0.02193360771925243,
+          "aligned_200": 0.05827747611825573,
+          "on_land_200": 0.0
+        },
+        "doubt": {
+          "lead_changes": 0,
+          "spread_100": 0.005643129220123166,
+          "spread_200": 0.004960784974245132,
+          "spread_min": 0.0028877044801115317,
+          "spread_max": 0.007535062179236916,
+          "swings": 0
+        },
+        "decisions": {
+          "orders_per_100": -0.0,
+          "by_kind": {},
+          "levers_repeated": 0.0
+        },
+        "motion": {
+          "clans_changed": 16,
+          "people_changed": 65.92487075965798,
+          "land_changed": 0,
+          "clans_left": 0,
+          "clans_joined": 16,
+          "claim_taken": 0
+        },
+        "land": {
+          "at_pick": {
+            "homes_trailed": 0.8144329896907216,
+            "worked_trailed": 0.31716082659478884,
+            "route_trailed": 0.9859154929577465,
+            "markets": 73,
+            "trading": 0.9277864992150706
+          },
+          "at_200": {
+            "homes_trailed": 0.8020408163265306,
+            "worked_trailed": 0.31362007168458783,
+            "route_trailed": 0.9895104895104895,
+            "markets": 73,
+            "trading": 0.9184615384615384
+          },
+          "clan_turns": 127589,
+          "festival_changes": 883,
+          "flips": 158,
+          "festival_changes_per_100": 0.6920659304485497,
+          "flips_per_100": 0.12383512685262836,
+          "civs_200": [
+            {
+              "id": 2708,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 2709,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            },
+            {
+              "id": 2710,
+              "claimed": 1,
+              "held": 1,
+              "guard": 0.0
+            }
+          ]
+        }
+      },
+      "solo": [
+        {
+          "civ": 2708,
+          "gain": 0.007539489852861413,
+          "clans": 0.006335612246994481,
+          "land": 0.001203877605866932
+        },
+        {
+          "civ": 2709,
+          "gain": 0.010459566204089124,
+          "clans": 0.010107179308834112,
+          "land": 0.00035238689525501096
+        },
+        {
+          "civ": 2710,
+          "gain": 0.013181207973366055,
+          "clans": 0.013181207973366055,
+          "land": 0.0
+        }
+      ],
+      "armies": {
+        "camps_kept": 2,
+        "camps_of": 3,
+        "warriors_starved": 2,
+        "camps_lost": 0,
+        "people_at_200": 3300.7133799457156,
+        "control_people_at_200": 3350.7051981164773
+      },
+      "health": {
+        "pregame_by_centres": 1,
+        "digest_mismatches": 0
+      }
+    }
+  ],
+  "panics": [],
+  "total": {
+    "standing": {
+      "top_200": 0.09951985098480028,
+      "aligned_200": 0.20319065568940461,
+      "on_land_200": 0.0
+    },
+    "doubt": {
+      "lead_changes": 12,
+      "maps_with_lead_change": 5,
+      "spread_100": 0.07270737926337585,
+      "spread_200": 0.06924213249329418,
+      "swings": 25,
+      "no_claims_lead_changes": 3,
+      "no_claims_maps_with_lead_change": 3
+    },
+    "decisions": {
+      "ai_orders_per_100": 22.214285714285715,
+      "by_kind": {
+        "claim": 14.80952380952381,
+        "disband": 1.476190476190476,
+        "move": 3.2142857142857144,
+        "raise": 1.7380952380952381,
+        "zone": 0.9761904761904763
+      },
+      "levers_repeated": 2.952380952380952
+    },
+    "motion": {
+      "clans_changed": 141,
+      "people_changed": 654.4863397227044,
+      "land_changed": 2468,
+      "clans_left": 1,
+      "clans_joined": 143,
+      "claim_taken": 0
+    },
+    "land": {
+      "markets_pick": 218,
+      "markets_200": 214,
+      "trading_pick": 0.8978609544523943,
+      "trading_200": 0.9029516934381513,
+      "homes_trailed": [
+        0.8457821460732214,
+        0.8461526324212377
+      ],
+      "worked_trailed": [
+        0.3095709021085074,
+        0.3066124363556998
+      ],
+      "route_trailed": [
+        0.9652294250513046,
+        0.9842560423486802
+      ],
+      "festival_changes_per_100": 0.7810424177215605,
+      "flips_per_100": 0.07347900107922282,
+      "claimed_200": 33.0,
+      "held_200": 16.857142857142858,
+      "guard_200": 2.3333333333333335
+    },
+    "solo": {
+      "civs": 21,
+      "gain": 0.016955594998999186,
+      "clans": 0.016881487165612424,
+      "land": 0.00007410783338675918,
+      "above": 14
+    },
+    "armies": {
+      "camps_kept": 14,
+      "camps_of": 21,
+      "warriors_starved": 53,
+      "camps_lost": 18,
+      "people_vs_control": 0.9823116816958724
+    },
+    "health": {
+      "pregame_by_centres": 7,
+      "panics": 0,
+      "digest_mismatches": 0
+    }
+  },
+  "seconds": 38.767476448
+}

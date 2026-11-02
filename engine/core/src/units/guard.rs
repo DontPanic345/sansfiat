@@ -1,7 +1,7 @@
 //! The guard: a civ's people who stand at its capital and hold its claim (`claim.rs`). A guard takes
 //! no order but raising and disbanding. It eats from the civ's store, `UNIT.food` a person a turn,
-//! with no pack and no line; a store that can't feed it leaves it hungry, and hungry
-//! `UNIT.hungry_turns` turns in a row it loses a person a turn to the civ's own clan, as a camp's
+//! with no pack and no line. What the store lacks, its civ's clans give from their own stores; a turn it
+//! goes unfed it is hungry, and hungry `UNIT.hungry_turns` turns in a row it loses a person a turn to the civ's own clan, as a camp's
 //! warriors do.
 
 use super::{disband, take_people, Unit, UnitState, EPS};
@@ -44,15 +44,27 @@ pub fn raise_at_founding(w: &mut World, civ: u32) {
     raise(w, civ, GUARD.start);
 }
 
-/// The guard's turn, in the `units` step: it eats its `UNIT.food` a person from the civ's store. A
+/// The guard's turn, in the `units` step: it eats its `UNIT.food` a person from the civ's store, then
+/// from its civ's clans' stores. A
 /// turn it isn't fed it is hungry; hungry `UNIT.hungry_turns` in a row, it disbands a person.
 pub(super) fn turn(w: &mut World, id: u32) {
     let (civ, need) = {
         let u = &w.units[&id];
         (u.civ, u.people * UNIT.food)
     };
-    let eaten = take(&mut w.civs.get_mut(&civ).unwrap().store, need);
-    let fed = total(&eaten) + EPS >= need;
+    let mut got = total(&take(&mut w.civs.get_mut(&civ).unwrap().store, need));
+    // What the store lacks, the civ's clans give from their own stores, biggest first: the guard
+    // are their people.
+    let mut kin: Vec<(f64, u32)> =
+        w.clans.values().filter(|c| c.civ == Some(civ)).map(|c| (total(&c.actor.store), c.id)).collect();
+    kin.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
+    for (_, cid) in kin {
+        if got + EPS >= need {
+            break;
+        }
+        got += total(&take(&mut w.clans.get_mut(&cid).unwrap().actor.store, need - got));
+    }
+    let fed = got + EPS >= need;
     let u = w.units.get_mut(&id).unwrap();
     u.hungry = if fed { 0 } else { u.hungry + 1 };
     let hungry = u.hungry;

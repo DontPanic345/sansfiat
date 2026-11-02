@@ -6,7 +6,7 @@ use engine::{Action, Config, Order, Phase, World};
 
 /// The small map at its pick: the pre-game ended, no civ chosen yet.
 fn small() -> World {
-    let mut w = World::new(Config { seed: 6, radius: 16, ..Config::default() });
+    let mut w = World::new(Config { seed: 3, radius: 16, ..Config::default() });
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }

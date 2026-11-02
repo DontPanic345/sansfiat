@@ -382,7 +382,7 @@ fn a_small_seed_runs_a_hundred_turns_past_the_pick_with_leanings_rising_and_a_fo
 }
 
 #[test]
-fn a_home_on_a_guarded_civs_land_leans_faster_than_a_barely_held_one_and_joins() {
+fn a_home_on_a_guarded_civs_land_joins_sooner_than_a_barely_held_one() {
     let (mut w, civ, _) = scene();
     let (guarded, barely) = (at_big(-5, 1), at_big(-4, 1));
     // Two tiles of the civ's land, one guarded thick and one at the floor; the guard shares are set
@@ -411,14 +411,21 @@ fn a_home_on_a_guarded_civs_land_leans_faster_than_a_barely_held_one_and_joins()
     }
     let a = put(&mut w, &[guarded], 6.0);
     let b = put(&mut w, &[barely], 6.0);
-    for _ in 0..40 {
+    // Land alone settles past the join line ((land + guarded × floor) / fade), so both join; the
+    // guarded one first.
+    let joined = |w: &World, id: u32| w.clans[&id].civ == Some(civ);
+    let (mut ta, mut tb) = (None, None);
+    for t in 0..60 {
         lean(&mut w);
+        if ta.is_none() && joined(&w, a) {
+            ta = Some(t);
+        }
+        if tb.is_none() && joined(&w, b) {
+            tb = Some(t);
+        }
     }
-    assert_eq!(w.clans[&a].civ, Some(civ), "the guarded home's clan joins");
-    assert_eq!(w.clans[&b].civ, None, "the barely held one leans but never reaches the join line");
-    // Its steady leaning is (land + guarded × floor) / fade ≈ 0.67: it climbs towards that, never to the join.
-    let lean_b = w.clans[&b].leaning[&civ];
-    assert!(lean_b > 0.4 && lean_b < LEANING.join, "{lean_b}");
+    let (ta, tb) = (ta.expect("the guarded home's clan joins"), tb.expect("the barely held one joins too"));
+    assert!(ta < tb, "the guarded one joins first: {ta} against {tb}");
 }
 
 #[test]
