@@ -34,6 +34,7 @@ pub enum EventKind {
     ScoutBlocked,
     ScoutHungry,
     ScoutStarved,
+    ScoutRaised,
     ClanJoined,
     Deployed,
     Held,
@@ -125,6 +126,7 @@ impl Event {
             EventKind::ScoutPassFound => format!("{}'s scout finds a pass at {at}", self.civ_name(w)),
             EventKind::ScoutBlocked => format!("{}'s scout is blocked at {at}", self.civ_name(w)),
             EventKind::ScoutHungry => format!("{}'s scout at {at} goes hungry", self.civ_name(w)),
+            EventKind::ScoutRaised => format!("{} raises a scout at {at}", self.civ_name(w)),
             EventKind::ScoutStarved => format!("{}'s scout at {at} loses a person to hunger", self.civ_name(w)),
             EventKind::ClanJoined => format!("Clan {clan} joins {}", self.civ_name(w)),
             EventKind::PeopleLeft => {

@@ -30,9 +30,9 @@ use crate::land::steps;
 use crate::market::{add, take, total, Basket};
 use crate::world::{Phase, World};
 
-pub use ai::{ai, post};
-pub(crate) use camp::{cs_mut, zone_of, zone_ok};
+pub use ai::{ai, guard_order, post};
 pub use camp::{zone_cap, CampState};
+pub(crate) use camp::{zone_of, zone_ok};
 pub use line::{cut_at, cut_by_rival, cut_off, line, path_between, route, turns};
 pub use scout::{route_plan, Plan, ScoutState};
 
@@ -122,8 +122,8 @@ pub enum UnitState {
 }
 
 /// A unit's JSON: the flat object every unit has always written, the fields in their old order.
-/// A camp writes the scout's fields at their defaults, and a scout writes the camp's fields as
-/// `raise_scout_at_founding` sets them (`scout_camp_fields`), which nothing changes after.
+/// A camp writes the scout's fields at their defaults, and a scout writes the switches and one-shot
+/// orders it shares with the camp, and the camp's other fields as `scout_camp_fields` has them.
 #[derive(Clone, Serialize, Deserialize)]
 struct UnitFlat {
     id: u32,
@@ -157,6 +157,8 @@ struct UnitFlat {
     #[serde(default)]
     blocked: bool,
     #[serde(default)]
+    built: bool,
+    #[serde(default)]
     stack: [f64; 2],
     #[serde(default)]
     still: u32,
@@ -168,9 +170,19 @@ impl From<Unit> for UnitFlat {
     fn from(u: Unit) -> Self {
         let kind = u.kind();
         let (camp, scout) = match u.state {
-            UnitState::Camp(c) => (c, ScoutState { route: None, heard: false, blocked: false }),
-            UnitState::Scout(s) => (scout_camp_fields(), s),
-            UnitState::Guard => (scout_camp_fields(), ScoutState { route: None, heard: false, blocked: false }),
+            UnitState::Camp(c) => (c, ScoutState::new()),
+            UnitState::Scout(s) => (
+                CampState {
+                    auto_forage: s.auto_forage,
+                    auto_supply: s.auto_supply,
+                    resupply: s.resupply,
+                    forage: s.forage,
+                    pillage: s.pillage,
+                    ..scout_camp_fields()
+                },
+                s,
+            ),
+            UnitState::Guard => (scout_camp_fields(), ScoutState::new()),
         };
         UnitFlat {
             id: u.id,
@@ -195,6 +207,7 @@ impl From<Unit> for UnitFlat {
             route: scout.route,
             heard: scout.heard,
             blocked: scout.blocked,
+            built: scout.built,
             stack: camp.stack,
             still: camp.still,
             bows: camp.bows,
@@ -224,15 +237,25 @@ impl From<UnitFlat> for Unit {
                 still: f.still,
                 bows: f.bows,
             }),
-            UnitKind::Scout => UnitState::Scout(ScoutState { route: f.route, heard: f.heard, blocked: f.blocked }),
+            UnitKind::Scout => UnitState::Scout(ScoutState {
+                route: f.route,
+                heard: f.heard,
+                blocked: f.blocked,
+                built: f.built,
+                auto_forage: f.auto_forage,
+                auto_supply: f.auto_supply,
+                resupply: f.resupply,
+                forage: f.forage,
+                pillage: f.pillage,
+            }),
             UnitKind::Guard => UnitState::Guard,
         };
         Unit { id: f.id, civ: f.civ, actor: f.actor, banked: f.banked, hungry: f.hungry, state }
     }
 }
 
-/// The camp fields a scout carries: what `raise_scout_at_founding` sets (not `Default`, which would
-/// write `auto_forage` false and move every digest).
+/// The camp fields a scout carries beyond the switches and one-shot orders it has of its own (not
+/// `Default`, which would write `auto_forage` false).
 fn scout_camp_fields() -> CampState {
     CampState {
         dest: None,
@@ -486,21 +509,45 @@ pub fn raise_scout_at_founding(w: &mut World, civ: u32) {
     if k == 0.0 {
         return;
     }
+    make_scout(w, civ, k);
+}
+
+/// Makes a scout of `k` people (already taken from their clans) at `civ`'s capital, its pack from
+/// the store. Returns its id.
+fn make_scout(w: &mut World, civ: u32, k: f64) -> u32 {
     let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
     let capital = w.civs[&civ].capital;
     let mut actor = Actor::new(capital, k);
     actor.store = pack;
     let id = w.next_id;
     w.next_id += 1;
-    let unit = Unit {
-        id,
-        civ,
-        actor,
-        banked: 0.0,
-        hungry: 0,
-        state: UnitState::Scout(ScoutState { route: None, heard: false, blocked: false }),
-    };
+    let unit = Unit { id, civ, actor, banked: 0.0, hungry: 0, state: UnitState::Scout(ScoutState::new()) };
     w.units.insert(id, unit);
+    id
+}
+
+/// Raises a scout of up to `n` people for `civ`: one person from each of the `n` biggest clans able
+/// to give, at the capital, their pack from the store. A civ may have any number of scouts. Returns
+/// how many people it has.
+pub fn raise_scout(w: &mut World, civ: u32, n: u32) -> Result<u32, String> {
+    let from: Vec<u32> = givers(w, civ).into_iter().take(n as usize).collect();
+    if from.is_empty() {
+        return Err("no clan has a person to spare".to_string());
+    }
+    let k = from.len() as f64;
+    if total(&w.civs[&civ].store) + EPS < pack_cap(k) {
+        return Err("the store can't fill their packs".to_string());
+    }
+    let name = name_of(w, civ);
+    for id in &from {
+        w.clans.get_mut(id).unwrap().people -= 1.0;
+        w.note(*id, format!("gave a person to {name}'s scout"));
+    }
+    let id = make_scout(w, civ, k);
+    let tile = w.units[&id].home;
+    w.emit(Event::new(EventKind::ScoutRaised, tile).civ(civ).unit(id));
+    w.note(id, format!("raised at {} with {k:.0} people from its clans", w.at(tile)));
+    Ok(from.len() as u32)
 }
 
 /// The clan nearest tile `tile` by steps, of any civ (ties to the lower id).
@@ -635,11 +682,17 @@ pub(crate) fn rival_of(w: &World, u: &Unit) -> bool {
     claim::tile_civ(w, u.home).is_some_and(|c| c != u.civ)
 }
 
-/// Strips the camp's tile for up to `labour` of work, taking at most `room` of food into the
+/// Strips the unit's tile for up to `labour` of work, taking at most `room` of food into the
 /// pack at `rate` a unit of labour. Returns the labour used and the food taken; nothing when the
 /// tile is fallow or bare.
 fn strip(w: &mut World, id: u32, labour: f64, room: f64, rate: f64) -> (f64, f64) {
     let tile = w.units[&id].home;
+    strip_at(w, id, tile, labour, room, rate)
+}
+
+/// As `strip`, of tile `tile`. It takes only the food it takes: each stock drops in proportion to
+/// what was taken, and the tile rests `ceil(UNIT.fallow × taken / held)` turns.
+fn strip_at(w: &mut World, id: u32, tile: usize, labour: f64, room: f64, rate: f64) -> (f64, f64) {
     let t = &mut w.tiles[tile];
     let held = total(&t.stock);
     if t.fallow > 0 || held <= 0.0 || labour <= 0.0 || room <= 0.0 {
@@ -649,9 +702,12 @@ fn strip(w: &mut World, id: u32, labour: f64, room: f64, rate: f64) -> (f64, f64
     if food <= EPS {
         return (0.0, 0.0);
     }
-    let got = t.stock.map(|s| food * s / held);
-    t.stock = [0.0; N];
-    t.fallow = UNIT.fallow;
+    let share = food / held;
+    let got = t.stock.map(|s| s * share);
+    for (s, g) in t.stock.iter_mut().zip(got) {
+        *s = (*s - g).max(0.0);
+    }
+    t.fallow = (f64::from(UNIT.fallow) * share).ceil() as u32;
     add(&mut w.units.get_mut(&id).unwrap().store, &got);
     (food / rate, food)
 }

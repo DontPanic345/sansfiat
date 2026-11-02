@@ -64,6 +64,8 @@ struct MapJudged {
     scores: Scores,
     /// The same map with no civ claiming: the control the claims are read against.
     no_claims: Scores,
+    /// The same map with `Config.fight` off: the control the fight group is read against.
+    no_fight: Scores,
     /// With `--solo`: each civ's gain from claiming alone, in id order.
     solo: Option<Vec<SoloGain>>,
     armies: Armies,
@@ -88,7 +90,19 @@ struct Total {
     land: TotalLand,
     solo: Option<TotalSolo>,
     armies: TotalArmies,
+    fight: TotalFight,
     health: TotalHealth,
+}
+
+/// The fight group over the maps, beside the no-fight control's (which has none by construction).
+#[derive(Clone, Debug, Serialize)]
+struct TotalFight {
+    fallen: f64,
+    taken: u32,
+    surrendered: u32,
+    control_fallen: f64,
+    control_taken: u32,
+    control_surrendered: u32,
 }
 
 /// The land group over the maps: festivals summed, shares averaged over the maps that have one, and
@@ -210,15 +224,22 @@ fn at_200(s: &Scores, civ: u32) -> (f64, f64, f64) {
 }
 
 /// Judges one map: the army run twice (their digests must agree), the `--no-army` control, the
-/// no-claims control and, with `solo`, each civ claiming alone (civ `k` in id order, `Only(k)`).
+/// no-claims control, the no-fight control and, with `solo`, each civ claiming alone (civ `k` in id order, `Only(k)`).
 fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
     let base = Config { seed, radius, ..Config::default() };
-    let configs = [base, base, Config { army: false, ..base }, Config { claims: Claims::None, ..base }];
+    let configs = [
+        base,
+        base,
+        Config { army: false, ..base },
+        Config { claims: Claims::None, ..base },
+        Config { fight: false, ..base },
+    ];
     let mut runs = played_all(&configs).into_iter();
     let (w, watch) = runs.next().expect("the army run");
     let (again, _) = runs.next().expect("the army run again");
     let (control, _) = runs.next().expect("the control with no armies");
     let (none, none_watch) = runs.next().expect("the control with no claims");
+    let (calm, calm_watch) = runs.next().expect("the control with no fighting");
     let civs: Vec<u32> = w.civs.keys().copied().collect();
     let kept = civs.iter().filter(|&&c| kept_camp(&w, c)).count() as u32;
     let people = |w: &World| stats::summary(w).people;
@@ -252,6 +273,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
         pick: watch.pick(),
         scores: watch.scores(&w, &civs),
         no_claims,
+        no_fight: calm_watch.scores(&calm, &civs),
         solo,
         armies,
         health,
@@ -381,6 +403,14 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             camps_lost: sum(|m| m.armies.camps_lost),
             people_vs_control: if control > 0.0 { people / control } else { 0.0 },
         },
+        fight: TotalFight {
+            fallen: maps.iter().map(|m| m.scores.fight.fallen).sum(),
+            taken: sum(|m| m.scores.fight.taken),
+            surrendered: sum(|m| m.scores.fight.surrendered),
+            control_fallen: maps.iter().map(|m| m.no_fight.fight.fallen).sum(),
+            control_taken: sum(|m| m.no_fight.fight.taken),
+            control_surrendered: sum(|m| m.no_fight.fight.surrendered),
+        },
         health: TotalHealth {
             pregame_by_centres: sum(|m| m.health.pregame_by_centres),
             panics: panics as u32,
@@ -433,7 +463,7 @@ fn print_text(r: &Report) {
         let (a, h, l) = (&m.armies, &m.health, &s.land);
         let f = |v: Option<f64>| v.map_or("-".to_string(), |v| format!("{v:.2}"));
         println!(
-            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  armies: camps kept {}/{} starved {} lost {} people vs control {:.2}  land: markets {}/{} trading {:.2}/{:.2} homes {}/{} worked {}/{} route {}/{} changes {:.2} flips {:.2}  health: centres {} digests differ {}",
+            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  armies: camps kept {}/{} starved {} lost {} people vs control {:.2}  land: markets {}/{} trading {:.2}/{:.2} homes {}/{} worked {}/{} route {}/{} changes {:.2} flips {:.2}  fight (control): fallen {:.2} ({:.2}) taken {} ({}) surrendered {} ({})  health: centres {} digests differ {}",
             m.size,
             m.seed,
             m.pick,
@@ -465,6 +495,12 @@ fn print_text(r: &Report) {
             f(l.at_200.as_ref().and_then(|t| t.route_trailed)),
             l.festival_changes_per_100,
             l.flips_per_100,
+            s.fight.fallen,
+            m.no_fight.fight.fallen,
+            s.fight.taken,
+            m.no_fight.fight.taken,
+            s.fight.surrendered,
+            m.no_fight.fight.surrendered,
             h.pregame_by_centres,
             h.digest_mismatches,
         );
@@ -544,6 +580,11 @@ fn print_text(r: &Report) {
     println!(
         "total armies: camps kept {} of {}, warriors starved {}, camps lost {}, people vs control {:.3}",
         a.camps_kept, a.camps_of, a.warriors_starved, a.camps_lost, a.people_vs_control
+    );
+    let fi = &t.fight;
+    println!(
+        "total fight (control, fighting off): people fallen {:.2} ({:.2}), tiles taken {} ({}), armies surrendered {} ({})",
+        fi.fallen, fi.control_fallen, fi.taken, fi.control_taken, fi.surrendered, fi.control_surrendered
     );
     let h = &t.health;
     println!(
@@ -763,6 +804,17 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
         gm.claim_taken,
         cm.claim_taken
     );
+    let (gf, cf) = (&j.game.fight, &j.control.fight);
+    let civs: Vec<String> = gf
+        .civs
+        .iter()
+        .map(|(id, c)| format!("{id}: fallen {:.2} taken {} surrendered {}", c.fallen, c.taken, c.surrendered))
+        .collect();
+    println!(
+        "fight (game / control): people fallen {:.2} / {:.2}, tiles taken {} / {}, armies surrendered {} / {}",
+        gf.fallen, cf.fallen, gf.taken, cf.taken, gf.surrendered, cf.surrendered
+    );
+    println!("fight by civ (game): {}", civs.join("; "));
     let p = &j.player;
     let kinds: Vec<String> = p.orders_by_kind.iter().map(|(k, v)| format!("{k} {v}")).collect();
     println!(

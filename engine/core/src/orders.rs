@@ -105,10 +105,10 @@ impl World {
             Order::Raise { n, kind, fighter, into } => check_raise(self, civ, *n, *kind, *fighter, *into),
             Order::Claim { tiles } => claim::check(self, civ, tiles).map(|_| ()),
             Order::Disband { unit, n, fighter } => {
-                let u = unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Guard])?;
+                let u = unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout, UnitKind::Guard])?;
                 if let Some(f) = fighter {
                     let Some(c) = u.camp() else {
-                        return Err("a guard has no kinds: disband it by number".to_string());
+                        return Err("only an army has kinds: disband a scout or a guard by number".to_string());
                     };
                     if c.stack[f.index()] < 1.0 - units::EPS {
                         return Err(format!("it has no {}", f.rules().name));
@@ -122,10 +122,14 @@ impl World {
                 units::zone_ok(self, u, tiles).map(|_| ())
             }
             Order::Switches { unit, .. } | Order::Resupply { unit } => {
-                unit_of(self, civ, *unit, UnitKind::Camp).map(|_| ())
+                unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout]).map(|_| ())
             }
-            Order::Forage { unit } => check_take(self, unit_of(self, civ, *unit, UnitKind::Camp)?, false),
-            Order::Pillage { unit } => check_take(self, unit_of(self, civ, *unit, UnitKind::Camp)?, true),
+            Order::Forage { unit } => {
+                check_take(self, unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout])?, false)
+            }
+            Order::Pillage { unit } => {
+                check_take(self, unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout])?, true)
+            }
             Order::Route { unit, from, to } => {
                 unit_of(self, civ, *unit, UnitKind::Scout)?;
                 check_route(self, *from, *to)
@@ -175,6 +179,9 @@ fn apply(w: &mut World, civ: u32, order: Order) {
         Order::Raise { n, kind: UnitKind::Guard, .. } => {
             units::guard::raise(w, civ, n);
         }
+        Order::Raise { n, kind: UnitKind::Scout, .. } => {
+            units::raise_scout(w, civ, n).expect("checked: a clan can give a person");
+        }
         Order::Raise { n, fighter, into, .. } => {
             units::raise(w, civ, n, fighter, into).expect("checked: a clan can give a person");
         }
@@ -194,19 +201,45 @@ fn apply(w: &mut World, civ: u32, order: Order) {
         }
         Order::Zone { unit, tiles } => set_zone(w, unit, &tiles),
         Order::Switches { unit, forage, supply } => {
-            let c = units::cs_mut(w, unit);
-            c.auto_forage = forage;
-            c.auto_supply = supply;
+            let u = w.units.get_mut(&unit).expect("checked: a unit");
+            match &mut u.state {
+                units::UnitState::Camp(c) => (c.auto_forage, c.auto_supply) = (forage, supply),
+                units::UnitState::Scout(s) => (s.auto_forage, s.auto_supply) = (forage, supply),
+                units::UnitState::Guard => {}
+            }
         }
-        Order::Resupply { unit } => units::cs_mut(w, unit).resupply = true,
-        Order::Forage { unit } => units::cs_mut(w, unit).forage = true,
-        Order::Pillage { unit } => units::cs_mut(w, unit).pillage = true,
+        Order::Resupply { unit } => once(w, unit, Once::Resupply),
+        Order::Forage { unit } => once(w, unit, Once::Forage),
+        Order::Pillage { unit } => once(w, unit, Once::Pillage),
         Order::Route { unit, from, to } => order_route(w, unit, Some((from, to))),
         Order::ClearRoute { unit } => order_route(w, unit, None),
     }
 }
 
-/// Checks `Raise`. A camp's: the army is on, `n` is at least one, warriors (archers come in
+/// A one-shot order, for a camp or a scout.
+enum Once {
+    Resupply,
+    Forage,
+    Pillage,
+}
+
+/// Sets one-shot order `which` on unit `unit`, a camp or a scout.
+fn once(w: &mut World, unit: u32, which: Once) {
+    let u = w.units.get_mut(&unit).expect("checked: a unit");
+    let (resupply, forage, pillage) = match &mut u.state {
+        units::UnitState::Camp(c) => (&mut c.resupply, &mut c.forage, &mut c.pillage),
+        units::UnitState::Scout(s) => (&mut s.resupply, &mut s.forage, &mut s.pillage),
+        units::UnitState::Guard => return,
+    };
+    match which {
+        Once::Resupply => *resupply = true,
+        Once::Forage => *forage = true,
+        Once::Pillage => *pillage = true,
+    }
+}
+
+/// Checks `Raise`. A scout's: the army is on, `n` is at least one, a clan can give a person, and the
+/// store can fill the packs. A camp's: the army is on, `n` is at least one, warriors (archers come in
 /// build-2), `into` (if any) is the civ's army with its line not cut, a clan can give a person, and
 /// the store can fill the packs of those that do. A guard's: the army is on, `n` is at least one, the civ
 /// may claim land (`Config.claims`), and a clan can give a person.
@@ -218,7 +251,17 @@ fn check_raise(w: &World, civ: u32, n: u32, kind: UnitKind, fighter: Fighter, in
         return Err("raise at least one warrior".to_string());
     }
     match kind {
-        UnitKind::Scout => return Err("a scout is made at founding, not raised".to_string()),
+        UnitKind::Scout => {
+            let k = units::givers(w, civ).len().min(n as usize);
+            if k == 0 {
+                return Err("no clan has a person to spare".to_string());
+            }
+            return if total(&w.civs[&civ].store) + units::EPS < units::pack_cap(k as f64) {
+                Err("the store can't fill their packs".to_string())
+            } else {
+                Ok(())
+            };
+        }
         UnitKind::Guard if !claim::may_claim(w, civ) => {
             return Err("this civ may not claim land, so it has no guard".to_string());
         }
@@ -350,5 +393,6 @@ fn order_route(w: &mut World, unit: u32, route: Option<(usize, usize)>) {
     s.route = route;
     s.heard = false;
     s.blocked = false;
+    s.built = false;
     w.note(unit, text);
 }

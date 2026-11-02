@@ -239,7 +239,8 @@ fn the_guard_eats_from_the_store_and_loses_a_person_to_the_own_clan_after_hungry
         w.events.iter().filter(|e| e.kind == EventKind::WarriorsStarved && e.unit == Some(guard)).collect();
     assert_eq!(starved.len(), 1, "the loss is an event, and only the guard's");
     // Fed, the guard's hunger starts over.
-    w.civs.get_mut(&red).unwrap().store = CIV.endowment;
+    // (The camp and the scout refill their packs from the store first, so it holds enough for all.)
+    w.civs.get_mut(&red).unwrap().store = [0.0, 60.0, 0.0, 0.0, 0.0];
     units::step(&mut w);
     assert_eq!(units::guard_of(&w, red).unwrap().hungry, 0);
 }

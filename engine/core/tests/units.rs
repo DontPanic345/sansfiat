@@ -210,10 +210,9 @@ fn disbanding_returns_the_warriors_to_the_civs_clan() {
     assert_eq!(w.clans[&clans[0]].people, own + 3.0);
     assert_eq!(w.civs[&red].army.lost, 0, "disbanding is not starving");
     assert_eq!(kinds(&w, EventKind::WarriorsDisbanded), 2);
-    assert_eq!(
-        w.act(led_order(&w, Order::Disband { unit: led_scout(&w), n: None, fighter: None })),
-        Err("that unit is not a camp or a guard".to_string())
-    );
+    // A scout is disbanded like an army, to the civ's own clan.
+    assert_eq!(w.act(led_order(&w, Order::Disband { unit: led_scout(&w), n: None, fighter: None })), Ok(()));
+    assert!(units::scout(&w, red).is_none());
     fill_stores(&mut w);
     w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None })).unwrap();
 }
@@ -223,6 +222,7 @@ fn a_camp_at_the_capital_fills_with_no_labour() {
     let (mut w, ids, _) = three();
     let red = ids[0];
     no_guard(&mut w, red);
+    no_scout(&mut w, red);
     let id = camp_id(&w, red);
     assert_eq!(units::line(&w, id), Some((Vec::new(), 0.0, f64::INFINITY)));
     assert!(!units::cut_off(&w, id));
@@ -354,10 +354,11 @@ fn foraging_strips_a_tile_so_a_clan_harvests_nothing_there_for_fallow_turns() {
     // It took what eating needed this turn and the tile is stripped.
     assert!((w.civs[&red].army.foraged - 3.0).abs() < 1e-9, "{}", w.civs[&red].army.foraged);
     assert_eq!(w.civs[&red].army.foraged_tiles, 1);
-    assert_eq!((w.tiles[t].stock, w.tiles[t].fallow), ([0.0; N], UNIT.fallow));
+    // Only the food it took leaves: a third of the tile, which rests a third of the fallow turns.
+    assert_eq!((w.tiles[t].stock, w.tiles[t].fallow), ([0.0, 7.0, 0.0, 0.0, 0.0], 2));
     assert_eq!(units::camp(&w, red).unwrap().hungry, 0);
     assert_eq!(kinds(&w, EventKind::CampForaged), 1);
-    for turn in 1..=UNIT.fallow {
+    for turn in 1..=w.tiles[t].fallow {
         regrow(&mut w);
         harvest(&mut w);
         assert_eq!(total(&w.clans[&clan].harvest), 0.0, "turn {turn}: nothing to harvest");
@@ -407,6 +408,7 @@ fn with_the_switches_off_it_neither_forages_nor_supplies() {
     let (mut w, ids, _) = led();
     let red = ids[0];
     no_guard(&mut w, red);
+    no_scout(&mut w, red);
     let t = at_big(-3, 1);
     w.tiles[t].stock = [0.0, 10.0, 0.0, 0.0, 0.0];
     let id = put_camp(&mut w, red, t);
@@ -873,8 +875,8 @@ fn a_camp_cut_by_an_army_eats_its_pack_then_forages() {
 }
 
 #[test]
-fn a_unit_serialises_its_30_flat_fields_in_the_old_order_whatever_its_kind() {
-    const KEYS: [&str; 30] = [
+fn a_unit_serialises_its_31_flat_fields_in_the_old_order_whatever_its_kind() {
+    const KEYS: [&str; 31] = [
         "id",
         "civ",
         "kind",
@@ -902,6 +904,7 @@ fn a_unit_serialises_its_30_flat_fields_in_the_old_order_whatever_its_kind() {
         "route",
         "heard",
         "blocked",
+        "built",
         "stack",
         "still",
         "bows",

@@ -453,9 +453,13 @@ pub struct ScoutRules {
     pub people: u32,
     /// Labour to reveal a forest or hills tile (a mountain takes a whole turn's search labour).
     pub reveal: f64,
+    /// Steps from its tile a scout forages: its own tile and those within this many steps, each walk
+    /// there and back paid from its labour. A scout on a long errand has no line to live off, and
+    /// the tile it stands on is soon bare; one step more finds a tile that isn't.
+    pub reach: usize,
 }
 
-pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 };
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's

@@ -91,11 +91,13 @@ fn has_event(w: &World, kind: EventKind) -> bool {
     w.events.iter().any(|e| e.kind == kind)
 }
 
-/// Ends turns until the scout's route is cleared; returns how many turns it took.
+/// Ends turns until the scout's route is done (its trails built, or it can't exist, which clears
+/// it); returns how many turns it took.
 fn until_route_done(w: &mut World, max: u32) -> u32 {
     for turn in 1..=max {
         end_fed(w);
-        if scout(w).scout().unwrap().route.is_none() {
+        let s = scout(w).scout().unwrap();
+        if s.route.is_none() || s.built {
             return turn;
         }
     }
@@ -191,7 +193,7 @@ fn a_sealed_scout_searches_the_range_from_inside_the_valley() {
         if !w.tiles[pass].trail {
             assert!(s.home == cap || w.tiles[s.home].hex().distance(ch) < 3, "it searched from outside the valley");
         }
-        if s.scout().unwrap().route.is_none() {
+        if s.scout().unwrap().route.is_none() || s.scout().unwrap().built {
             break;
         }
     }
