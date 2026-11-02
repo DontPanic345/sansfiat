@@ -60,7 +60,11 @@ covers the screens, the bar, keys and the bottom slot.
      - each action either applies or is greyed with a reason;
      - Disband… opens a count;
      - the hold: a thicker guard marching on a rival camp's tile cuts its line, as `play-hold`
-       checks.
+       meant to. `play-hold` fails on main (spec item 24): its "Raise 1" label is gone, and the
+       page's enabled Raise warrior is refused by the engine, so it raised 3 of 10 warriors in 60
+       tries at small seed 7. Raise through the stepper, which greys with `Sim.check`'s reason,
+       and end turns while it is refused. If the hold can't be reached on seed 7, use another
+       retro seed and say which and why.
    - **`scout.mjs`** takes over `play-scout`: Move to… sets a route from the scout's tile, Route
      from… then Move to… sets one from a picked start, and Clear route clears it.
    - **`civ.mjs`** takes over `play-lean` and `play-claim`, and checks:
@@ -88,9 +92,15 @@ covers the screens, the bar, keys and the bottom slot.
      - a horizontal scroll;
      - a bar wrapping past one line at laptop and wide;
      - a button in the panel's row that is clipped and can't be scrolled to;
-     - a map under 60% of the window at laptop and wide with the camp selected.
+     - a map under 60% of the window at laptop and wide with the camp selected and the feed as
+       it opens by default, counting only the map nothing covers.
 
-     Record the map's share per size in its output.
+     Record the map's share per size in its output. Main's is 67% at laptop and 79% at wide.
+     With a 340 px feed and a 40 px bar at laptop, 60% leaves the panel 106 px, so this bar may
+     fail at laptop until the canvas settles the feed's width and the panel's height. If it does,
+     report the share, keep the check, and let `all.mjs` mark it as the canvas's: `layout.mjs
+     --share 0` skips the bar, and `all.mjs` runs it so until build-4 turns it on.
+   - Shoot also a large map (seed 2) at fit at laptop size, for the placeholders at low zoom.
 
 7. **Retire** `www/play-camp.mjs`, `play-hold.mjs`, `play-lean.mjs`, `play-read.mjs`,
    `play-scout.mjs` and `play-claim.mjs` once their successors pass and keep what each checked.

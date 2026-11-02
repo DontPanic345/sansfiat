@@ -20,7 +20,8 @@ component renders every selection. One atlas holds the placeholder art and one b
 sound. `play.mjs` is the only driver, with one script per touch point, and CI runs them all.
 
 No rule changes. The engine gains only what the view needs: each civ's Standing in `Sim.view()`
-and the save version in `rules()`.
+and the save version in `rules()`. The CLI gains `sansfiat digest --game FILE`, so a game saved on
+the page can be checked against the native build.
 
 **The question:** does the page put every touch point `page.md` lists in front of the player,
 at phone, laptop and wide sizes, without changing a rule? It is a page piece, so it moves no
@@ -212,6 +213,8 @@ mixed ones, that is 15 of 26.
    - **Continue**: the autosave's line, such as "Red, turn 312, small seed 2". It is greyed with
      "No saved game" when there is none.
    - **Load a file…**: any save, from the page or `sansfiat play`.
+
+   When watching, the line reads "Watching, turn 312, small seed 2".
 
    A save from another version shows the engine's error on the start screen ("this save is
    version 2; this build reads version 3"), and the page stays on the start screen.
@@ -431,6 +434,9 @@ mixed ones, that is 15 of 26.
 
 21. `Sim.view()` gives each civ `standing`, `standing_clans` and `standing_land`, from
     `stats::standing_parts`. `rules()` gives `save_version`. Nothing else in the engine changes.
+    The CLI's `digest` takes `--game FILE`: it replays the save and prints its turn and
+    `stats::digest`, one line. Today no command prints a save's digest (`replay` prints the
+    report), so without it the played game's digest can't be matched natively.
     `stats::digest` is unchanged for every seed. `www/check.mjs` checks the Standing: each in [0, 1],
     their sum at most 1, and parts that add up.
 
@@ -451,14 +457,20 @@ mixed ones, that is 15 of 26.
 
 23. **CI.** `check.sh` runs `node www/play/all.mjs` after `check.mjs`. Without Chrome it fails
     under `CI` and skips with a warning otherwise. `ci.yml`'s syntax check covers
-    `engine/www/**/*.js` and `*.mjs`. Today the scripts run in about 2–8 s each (measured: the
-    pre-game to the pick on small seed 2 takes under 2 s in headless Chrome), so all of them
-    should take under three minutes.
+    `engine/www/**/*.js` and `*.mjs`, through a `find` that leaves out `www/pkg/`. Today's scripts
+    run in 3.0–5.7 s each (measured at spec-review, `spec-review.md`), and ten turns on a large
+    map take under a second, so all of them should take under two minutes.
 
 24. **The old scripts** (`play-camp`, `play-hold`, `play-lean`, `play-read`, `play-scout`,
     `play-claim`) become `play/camp.mjs` (with the hold), `play/civ.mjs` (lean and claim),
     `play/feed.mjs` (read) and `play/scout.mjs`, keeping what each checked. Build-3 removes them
-    once its scripts pass. Until then they keep passing.
+    once its scripts pass. Until then the five that pass on main keep passing.
+
+    `play-hold` already fails on main (measured at spec-review, `spec-review.md`): it clicks a
+    button labelled "Raise 1", which is now "Raise warrior", and with the label fixed the page's
+    enabled Raise warrior is refused by the engine, so it raises 3 of 10 warriors in 60 tries.
+    Builds 1 and 2 leave it failing. Build-3 rebuilds the hold in `camp.mjs`, raising through the
+    stepper, and may move it to another retro seed where the hold can be reached, saying which.
 
 ## Left unsettled: the canvas (build-4)
 
@@ -479,7 +491,12 @@ decision with the shot that showed it. What proves it:
 - `node www/play/all.mjs` passes, 26 of 26 touch points.
 - The `layout` script passes at all three sizes, with no horizontal scroll, no bar wrapping
   past one line at laptop and wide, no button row clipped, and the map at least 60% of the
-  window at laptop and wide with a camp selected.
+  window at laptop and wide with a camp selected and the feed as it opens by default. The map's
+  share counts only what nothing covers. Main's, measured at spec-review, is 67% at laptop
+  (its bar wraps to 74 px) and 79% at wide. At laptop the bar and the panel share the height
+  with a 340 px feed beside the map: with a 40 px bar, 60% leaves the panel 106 px. So the
+  canvas narrows the feed, collapses it by default at laptop, or keeps the panel short; which
+  is its call.
 - A **played game on the page**:
   - lead a civ on small seed 2 (or another retro map, saying why) and play 30 turns using only
     the page's buttons, keys and clicks through `play.mjs`;
@@ -488,8 +505,10 @@ decision with the shot that showed it. What proves it:
   - reload mid-way and Continue;
   - save to a file.
 
-  `sansfiat replay` of that file gives the same `digest` as the page's `Sim.digest()`, and
-  `sansfiat judge` reads it. The notes go in `canvas.md`.
+  `sansfiat digest --game FILE` gives the same digest as the page's `Sim.digest()`, and
+  `sansfiat judge FILE` reads it. The notes go in `canvas.md`.
+- The placeholders at low zoom: a large map (seed 2) at fit, at laptop, in the shots. That is
+  where the cells are smallest.
 - The screenshots: start, pick, play with the camp selected, play with the civ selected, and
   end, at phone, laptop and wide, in `relay/specs/103/screens/`, beside main's. Under 2 MB in
   all: the laptop and wide shots at half scale.
@@ -523,6 +542,8 @@ decision with the shot that showed it. What proves it:
 - Placeholders are drawn by `placeholders.js` and rendered into a committed `atlas.png` by
   `draw-atlas.mjs`, so paid art replaces one file.
 - `sounds.json` names a file for every feed kind, and a missing file is silent. No sound ships.
+- The CLI's `digest` gains `--game FILE`, the one change outside the page, so the played game's
+  digest can be matched natively. It touches no rule.
 - A bare URL opens the start screen. `?size&seed` still goes straight to a game, for the
   scripts and for shared links, and starting a game no longer rewrites the URL.
 
@@ -535,8 +556,8 @@ decision with the shot that showed it. What proves it:
    paint a zone and a claim.
 4. Play the page through `play.mjs` for 30 turns as the canvas did, but on another map (small seed
    4), and from the start screen: New game, the pick, Move to…, a claim, a guard, an alert
-   followed, Standing so far, a reload and Continue. Then `sansfiat replay` the saved file and
-   match its digest. Does the page say what happened, and why?
+   followed, Standing so far, a reload and Continue. Then `sansfiat digest --game` the saved
+   file and match its digest. Does the page say what happened, and why?
 5. Look at the screenshots at all three sizes beside `screens/main-*.png`. Does the map stay the
    thing you look at? Is there a ring or circle that isn't a rule?
 6. The PR description carries the touch-point table (main and now), the lever count, the

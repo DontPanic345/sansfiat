@@ -36,7 +36,8 @@ the touch-point table, and build-1's summary. Its view model (`model.js`), layer
 3. **Start** (`screens/start.js`, spec item 7):
    - the title and the vision line;
    - New game: size, seed, 🎲 and Start;
-   - Continue, with the autosave's line, greyed when there is none;
+   - Continue, with the autosave's line, greyed when there is none ("Watching, turn N, …" when
+     no civ is led);
    - Load a file….
 
    An old-version save, autosaved or a file, shows the engine's error there. Start begins the
@@ -127,7 +128,7 @@ the touch-point table, and build-1's summary. Its view model (`model.js`), layer
       kinds, and every kind in `KINDS` is in `sounds.json`.
 
 12. The old `www/play-*.mjs` scripts: keep them passing (change a label or selector where the bar
-    moved). Build-3 retires them.
+    moved), except `play-hold`, which fails on main (spec item 24). Build-3 retires them.
 
 13. `engine/CLAUDE.md`: the `www` rows for your files.
 

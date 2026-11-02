@@ -37,7 +37,8 @@ Read:
   - whether anything needs touch-specific handling to reach a touch point, given that
     right-click doesn't exist there, which Move to… covers.
 - **The end screen's chart**, and the start screen's look.
-- **The placeholder art's legibility** at low and high zoom. Change `placeholders.js` and re-run
+- **The placeholder art's legibility** at low and high zoom: low is a large map at fit, which
+  `layout.mjs` shoots. Change `placeholders.js` and re-run
   `draw-atlas.mjs`. Keep `atlas.json`'s cell names and sizes unless one is wrong, which would
   be a decision.
 
@@ -50,7 +51,10 @@ as modules, one model, layers, one panel component, one atlas, one driver. No ru
 
 - `./check.sh` passes, with `play/all.mjs`, 26 of 26 touch points.
 - `layout.mjs` passes at all three sizes. The map is at least 60% of the window at laptop and
-  wide with a camp selected.
+  wide with a camp selected and the feed as it opens by default, counting only what nothing
+  covers. Main's is 67% and 79%. At laptop, a 340 px feed and a 40 px bar leave the panel 106 px
+  at 60%, so the feed's width, whether it opens by default at laptop, and the panel's height
+  are yours to trade. Turn the share bar on in `all.mjs` if build-3 left it off.
 - **A played game on the page** (spec, Left unsettled):
   1. Through `play.mjs`, lead a civ on small seed 2 and play 30 turns with only buttons, keys and
      clicks.
@@ -58,7 +62,7 @@ as modules, one model, layers, one panel component, one atlas, one driver. No ru
   3. Reload at turn 15 and Continue.
   4. Save to a file.
 
-  `cargo run --release -p sansfiat -- replay FILE` and the page's `Sim.digest()` match, and
+  `cargo run --release -p sansfiat -- digest --game FILE` and the page's `Sim.digest()` match, and
   `sansfiat judge FILE` reads the game. Write the script you play it with as
   `www/play/game.mjs`, so the review can rerun it on another seed. `all.mjs` may skip it for
   time if it runs past a minute; say so.

@@ -27,6 +27,11 @@ Read `www/map-view.js` whole, `www/main.js`'s `refresh` and `routes`, and `www/s
    `cargo run --release -p sansfiat -- digest` for small seeds 1–3 before and after, and put both in
    your summary.
 
+   In `cli/src/digest.rs`, `digest --game FILE` replays a save (`World::replay`) and prints one
+   line, `<turn> <digest>`, as the other forms do. Today no command prints a save's digest, and the
+   canvas and the review match a game saved on the page against it. Add a test in
+   `cli/tests/` that saves a played world and checks the line, and the usage line in `main.rs`.
+
 2. **The view model** (`www/model.js`, spec item 3). `build(sim, layout, rules, prev)` returns
    `{ v, ... }` with:
    - `clanCiv` (Map);
@@ -72,9 +77,12 @@ Read `www/map-view.js` whole, `www/main.js`'s `refresh` and `routes`, and `www/s
      color)` for a `.mask` cell tinted into an offscreen canvas, cached per colour.
    - The terrain layer draws each tile's cell, picking variant `i % 3`. Units and icons draw
      their cells.
-   - The terrain layer redraws on pan and zoom. Measure `stats.terrainMs` on a large map at fit
-     before and after. If it is more than 1.5× main's, cache the scaled cells per zoom step, or
-     draw flat at low zoom. Give both numbers in your summary.
+   - The terrain layer redraws on pan and zoom. Measure `stats.terrainMs` on a large map (seed 2)
+     at fit, at laptop size, as the median of ten redraws, before and after. It must stay under
+     16 ms, one frame. Spec-review measured main at 8.5 ms there, and a bare `drawImage` per tile
+     of 3,367 tiles alone at 10–12 ms (`spec-review.md`), so expect to need a cache of the cells
+     pre-scaled per zoom step, or flat fills where a cell is only a few pixels across. Give both
+     numbers in your summary.
    - `www/play.mjs`'s server already serves `.png` and `.json`.
 
 5. **The driver** (spec item 22).
@@ -102,8 +110,9 @@ Read `www/map-view.js` whole, `www/main.js`'s `refresh` and `routes`, and `www/s
 
      Build-2 adds the View and Debug menus to this script.
 
-7. The old `www/play-*.mjs` scripts keep passing. Run each once at the end, and fix what you
-   moved under them.
+7. The old `www/play-*.mjs` scripts keep passing, except `play-hold`, which fails on main
+   (spec item 24) and build-3 rebuilds. Run each once at the end, and fix what you moved under
+   them.
 
 8. `engine/CLAUDE.md`: the `www` rows for the files you add, move and remove. `play/all.mjs`
    goes in the command block.
@@ -114,7 +123,9 @@ Read `www/map-view.js` whole, `www/main.js`'s `refresh` and `routes`, and `www/s
 - The digests of small seeds 1–3 are unchanged.
 - Your after-shots match your before-shots by eye, except where the placeholders differ in
   detail. Put both in `relay/specs/103/screens/build-1-*.png`, at half scale.
-- `terrainMs` before and after, on a large map at fit.
+- `terrainMs` before and after, on a large map at fit: under 16 ms.
+- `sansfiat digest --game FILE` prints the same digest as the page's `Sim.digest()` for a game
+  saved on the page.
 
 Build-2 and build-3 rely on:
 - `model.js`'s fields;
