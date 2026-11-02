@@ -154,13 +154,14 @@ export const open = async (query = '', { size = 'laptop', path = 'index.html', r
   };
   await until(ready);
 
-  // A tile's centre on screen, on the map's canvas (not under the panel or the feed): the whole map is
+  // A tile's centre on screen, on the map's canvas with nothing over it (the panel, the feed, the zoom or a button): the whole map is
   // fitted when the tile is out of view, and the map centred on it when fitting still leaves it out.
   const tile = async (i) => {
     // A map still easing to a centre (after Lead, say) moves the tile under the pointer: wait for it.
     await until('!game.map.anim', 10_000);
     const at = () => evaluate(`(() => { const r = document.getElementById('map').getBoundingClientRect(); const p = game.map.screenOf(${i});
-      return { x: p.x, y: p.y, inside: p.x >= r.left && p.x < r.right && p.y >= r.top && p.y < r.bottom }; })()`);
+      const inside = p.x >= r.left && p.x < r.right && p.y >= r.top && p.y < r.bottom;
+      return { x: p.x, y: p.y, inside: inside && document.elementFromPoint(p.x, p.y)?.id === 'map' }; })()`);
     let p = await at();
     if (!p.inside) {
       await evaluate('game.map.fit()');

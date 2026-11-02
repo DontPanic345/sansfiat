@@ -92,7 +92,7 @@ export function init() {
   $('hidefeed').onclick = () => showFeed(false);
   $('showfeed').onclick = () => showFeed(true);
   // At phone width the feed is a drawer, closed by default.
-  showFeed(!matchMedia('(max-width: 760px)').matches);
+  showFeed(matchMedia('(min-width: 1400px)').matches);
   window.addEventListener('keydown', keys);
   // A button blurs after a click, so a space never presses it again.
   document.addEventListener('click', (e) => e.target.closest?.('button, summary')?.blur());

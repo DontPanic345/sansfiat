@@ -37,8 +37,7 @@ if (!haveChrome()) {
 
 const scripts = readdirSync(here).filter((f) => f.endsWith('.mjs') && f !== 'all.mjs').sort();
 const out = mkdtempSync(join(tmpdir(), 'play-all-'));
-// layout.mjs's map share is the canvas's to settle (spec item 26): until it does, its run skips that check.
-const extra = { 'layout.mjs': ['--share', '0'] };
+const extra = {};
 const rows = [];
 for (const script of scripts) {
   const t0 = Date.now();

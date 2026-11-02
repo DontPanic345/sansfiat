@@ -24,7 +24,8 @@ try {
   const cards = await page.eval("document.querySelectorAll('#pick .card').length");
   need(cards === 3, `the pick shows ${cards} cards, not 3`);
 
-  await page.button('Show');
+  // The card's Show (the map's Show feed is a button too, while the feed is closed).
+  await page.eval("[...document.querySelectorAll('#pick .card button')].find((b) => b.textContent.trim() === 'Show').click()");
   const lit = await page.eval('game.map.highlight ? game.map.highlight.tiles.length : 0');
   need(lit > 0, 'Show did not highlight a civ\'s land');
   await page.shot(join(out, 'pick-show.png'));

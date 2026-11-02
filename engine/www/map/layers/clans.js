@@ -11,7 +11,7 @@ export function draw(ctx, model, view) {
   for (const c of Object.values(v.clans)) {
     if (!view.onScreen(c.home)) continue;
     const x = view.px[c.home], y = view.py[c.home];
-    const r = Math.min(1.4, Math.max(px * 2.2, 0.22 * Math.sqrt(c.people)));
+    const r = Math.min(0.75, Math.max(px * 2.2, 0.16 * Math.sqrt(c.people)));
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI);
     ctx.fillStyle = hue(c.id);

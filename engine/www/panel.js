@@ -52,9 +52,13 @@ export function render(slot, shape, hooks) {
       TAG('button', { type: 'button', class: 'close', 'aria-label': 'Close details', text: '×', onclick: () => hooks.select(null) }),
     ),
   );
-  if (shape.doing) slot.append(TAG('p', { class: 'doing', text: shape.doing }));
+  // Two columns at laptop and wide: what it is (doing, numbers, lists) and why (reasons, hint, refusals).
+  const info = TAG('div', { class: 'info' });
+  const aside = TAG('div', { class: 'aside' });
+  slot.append(info, aside);
+  if (shape.doing) info.append(TAG('p', { class: 'doing', text: shape.doing }));
   if (shape.numbers?.length) {
-    slot.append(
+    info.append(
       TAG(
         'div',
         { class: 'numbers' },
@@ -71,10 +75,10 @@ export function render(slot, shape, hooks) {
           TAG('div', { class: 'listrow' }, TAG('button', { type: 'button', class: 'link', text: r.label, onclick: () => hooks.select(r.select) }), r.text ? TAG('span', { class: 'dim', text: ` ${r.text}` }) : null),
         )
       : [TAG('p', { class: 'dim', text: list.empty })];
-    slot.append(TAG('div', { class: 'list' }, TAG('span', { class: 'dim', text: list.label }), rows));
+    info.append(TAG('div', { class: 'list' }, TAG('span', { class: 'dim', text: list.label }), rows));
   }
   if (shape.reasons?.length) {
-    slot.append(
+    aside.append(
       TAG(
         'div',
         { class: 'why' },
@@ -87,7 +91,7 @@ export function render(slot, shape, hooks) {
       ),
     );
   }
-  if (shape.hint) slot.append(TAG('p', { class: 'dim hint', text: shape.hint }));
+  if (shape.hint) aside.append(TAG('p', { class: 'dim hint', text: shape.hint }));
   if (!shape.buttons?.length) return;
 
   const refused = [];
@@ -106,7 +110,7 @@ export function render(slot, shape, hooks) {
     }
   }
   slot.append(row);
-  if (refused.length) slot.append(TAG('p', { class: 'dim refused', text: refused.join(' · ') }));
+  if (refused.length) aside.append(TAG('p', { class: 'dim refused', text: refused.join(' · ') }));
 }
 
 /** A stepper button: closed, it opens a count in the row; open, the count, its option, Go and Cancel. */

@@ -22,7 +22,8 @@ label { color:var(--dim); font-size:12px; }
 .start-card .row { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; }
 .start-card fieldset { border:1px solid var(--line); border-radius:6px; display:flex; flex-wrap:wrap; gap:8px 10px; align-items:end; padding:10px 12px; margin:0; }
 .start-card fieldset legend { color:var(--dim); font-size:12px; padding:0 4px; }
-.start-card select { min-width:150px; }
+.start-card select { min-width:0; }
+.start-card input[type=number] { width:64px; }
 #start-error { color:#ff8a80; margin:0; }
 #start-error:empty { display:none; }
 
@@ -31,7 +32,8 @@ label { color:var(--dim); font-size:12px; }
 #screen-end h1 { margin:0; font-size:18px; }
 #end-chart { max-width:920px; width:100%; }
 #end-chart svg { width:100%; height:auto; display:block; }
-#end-chart text { fill:var(--dim); font-size:12px; }
+#end-chart text { fill:var(--dim); font-size:13px; }
+#end-chart text[style] { font-weight:600; }
 #end-chart .grid { stroke:var(--line); stroke-width:1; }
 #end-chart .none { color:var(--dim); }
 #end-buttons { display:flex; gap:8px; }
@@ -98,7 +100,7 @@ button.link { background:none; border:0; padding:0 8px 0 0; color:var(--accent);
 button.link:hover { background:none; }
 
 /* the bottom panel: the selection's shape, across the map's width */
-#detail { flex:none; max-height:45%; overflow:auto; padding:8px 12px; border-top:1px solid var(--line); background:var(--panel); }
+#detail { flex:none; max-height:34%; overflow:auto; padding:6px 12px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:24px; align-content:start; border-top:1px solid var(--line); background:var(--panel); }
 #detail:empty { display:none; }
 #detail h2 { font-size:14px; margin:0 0 4px; display:flex; justify-content:space-between; align-items:center; }
 #detail p { margin:4px 0; }
@@ -109,10 +111,14 @@ button.link:hover { background:none; }
 #detail .list { margin:6px 0; }
 #detail .listrow { font-size:12px; }
 #detail .hint, #detail .refused { margin:4px 0; font-size:12px; }
-#detail .actions { margin-top:8px; display:flex; flex-wrap:nowrap; gap:4px 6px; align-items:center; overflow-x:auto; padding-bottom:2px; }
+#detail .actions { margin-top:6px; display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; padding-bottom:2px; }
 #detail .actions > button, #detail .stepper > * { flex:none; }
 #detail .stepper { display:inline-flex; gap:4px 6px; align-items:center; }
 #detail .stepper input { width:64px; }
+#detail > h2, #detail > .actions { grid-column:1 / -1; }
+#detail .aside > :first-child, #detail .info > :first-child { margin-top:0; }
+#detail .list { display:flex; flex-wrap:wrap; gap:0 10px; align-items:baseline; }
+#detail .why ul { max-height:3.2em; overflow:auto; }
 #detail h2 .close { padding:0 7px; }
 #detail .why { margin:6px 0; } #detail .why ul { list-style:none; margin:2px 0 0; padding:0; font-size:12px; }
 #detail .why li { padding:1px 0; }
@@ -160,6 +166,7 @@ button.link:hover { background:none; }
   #bar.more-open .more-items { display:flex; }
   .more-items .menu .pop { right:auto; left:0; }
   #side { position:absolute; right:0; top:0; bottom:0; width:80vw; max-width:none; z-index:10; }
-  #detail { max-height:45%; }
+  #detail { max-height:45%; display:block; }
+  #detail .actions button { padding:4px 8px; }
   #legend .items { grid-template-columns:repeat(2,auto); }
 }

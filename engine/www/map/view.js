@@ -31,7 +31,7 @@ import { CORNER, EDGE_DIR } from './geom.js';
 /** The layers, bottom to top. */
 export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, territories, worn, trails, hearths, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
-const OFF = new Set(['fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
+const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */
 const GROUPS = { civs: ['land', 'held', 'lines', 'capitals', 'units', 'routes'], markets: ['festivals', 'centres'] };
 
@@ -518,7 +518,7 @@ export class MapView {
     if (this.model) {
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      for (const l of LAYERS) if (!l.static && this.on[l.name]) l.draw(ctx, this.model, this);
+      for (const l of LAYERS) if (!l.static && (this.on[l.name] || l.always?.(this))) l.draw(ctx, this.model, this);
     }
     this.stats.overlayMs = performance.now() - t1;
   }

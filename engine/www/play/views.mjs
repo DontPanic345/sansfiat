@@ -65,7 +65,7 @@ try {
 
   // The View and Debug menus: each item starts as its layer does, and toggling it toggles the layer.
   const items = [
-    ['v-territory', 'territories', true],
+    ['v-territory', 'territories', false],
     ['v-routes', 'festival-routes', false],
     ['v-country', 'country', false],
     ['v-fertility', 'fertility', false],

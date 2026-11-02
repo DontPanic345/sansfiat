@@ -3,13 +3,16 @@ import { hue, CORNER } from '../geom.js';
 
 export const name = 'territories';
 
+/** Off (the default), only the selected clan's territory is drawn: every clan's tint is View → Territories. */
+export const always = (view) => view.focus != null;
+
 export function draw(ctx, model, view) {
   const px = 1 / view.k;
   const byClan = new Map();
   for (let a = 0; a < view.nvis; a++) {
     const i = view.vis[a];
     const o = view.claim[i];
-    if (!o) continue;
+    if (!o || (!view.on.territories && o !== view.focus)) continue;
     let list = byClan.get(o);
     if (!list) byClan.set(o, (list = []));
     list.push(i);
