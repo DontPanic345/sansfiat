@@ -103,8 +103,8 @@ impl Event {
                 let name = self.civ.and_then(|id| w.civs.get(&id)).map_or("A civ", |c| c.name.as_str());
                 format!("{name} is founded at {at}, on market {market}")
             }
-            EventKind::CampRaised => format!("{} raises a camp at {at}", self.civ_name(w)),
-            EventKind::WarriorsRaised => format!("{} raises more warriors for its camp", self.civ_name(w)),
+            EventKind::CampRaised => format!("{} raises an army at {at}", self.civ_name(w)),
+            EventKind::WarriorsRaised => format!("{} raises more warriors for its army", self.civ_name(w)),
             EventKind::WarriorsDisbanded | EventKind::WarriorsStarved => {
                 let why = if self.kind == EventKind::WarriorsStarved { " from hunger" } else { "" };
                 let person = match self.clan {
@@ -113,11 +113,11 @@ impl Event {
                 };
                 format!("{}'s warriors disband{why} at {at}; {person}", self.civ_name(w))
             }
-            EventKind::CampResupplied => format!("{}'s camp at {at} is resupplied", self.civ_name(w)),
-            EventKind::CampCutOff => format!("{}'s camp at {at} is cut off from its capital", self.civ_name(w)),
-            EventKind::CampHungry => format!("{}'s camp at {at} goes hungry", self.civ_name(w)),
-            EventKind::CampForaged => format!("{}'s camp forages at {at}", self.civ_name(w)),
-            EventKind::CampPillaged => format!("{}'s camp pillages at {at}", self.civ_name(w)),
+            EventKind::CampResupplied => format!("{}'s army at {at} is resupplied", self.civ_name(w)),
+            EventKind::CampCutOff => format!("{}'s army at {at} is cut off from its capital", self.civ_name(w)),
+            EventKind::CampHungry => format!("{}'s army at {at} goes hungry", self.civ_name(w)),
+            EventKind::CampForaged => format!("{}'s army forages at {at}", self.civ_name(w)),
+            EventKind::CampPillaged => format!("{}'s army pillages at {at}", self.civ_name(w)),
             EventKind::ScoutRouteFound => {
                 format!("{}'s scout has its route, cost {:.1}", self.civ_name(w), self.cost.unwrap_or(0.0))
             }
@@ -133,14 +133,14 @@ impl Event {
                 format!("{:.1} people leave {}'s clans for others", self.amount.unwrap_or(0.0), self.civ_name(w))
             }
             EventKind::Deployed => {
-                format!("{}'s camp at {at} deploys over {} tiles", self.civ_name(w), self.other.unwrap_or(0))
+                format!("{}'s army at {at} deploys over {} tiles", self.civ_name(w), self.other.unwrap_or(0))
             }
             EventKind::Held => {
-                format!("{}'s camp at {at} holds its zone of {} tiles", self.civ_name(w), self.other.unwrap_or(0))
+                format!("{}'s army at {at} holds its zone of {} tiles", self.civ_name(w), self.other.unwrap_or(0))
             }
             EventKind::LineCut => {
                 let by = self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str());
-                format!("{}'s camp's line is cut by {by}'s army", self.civ_name(w))
+                format!("{}'s army's line is cut by {by}'s army", self.civ_name(w))
             }
             EventKind::ClanLeft => format!(
                 "Clan {clan} leaves {} for {}",

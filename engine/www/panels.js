@@ -113,7 +113,7 @@ export function clanRole(c, i) {
 
 const hex = (ctx, i) => `${ctx.layout.q[i]}, ${ctx.layout.r[i]}`;
 const civName = (ctx, id) => ctx.v.civs[id]?.name ?? '?';
-const unitName = (u) => `${u.kind[0].toUpperCase()}${u.kind.slice(1)} ${u.id}`;
+const unitName = (u) => { const k = u.kind === 'camp' ? 'army' : u.kind; return `${k[0].toUpperCase()}${k.slice(1)} ${u.id}`; };
 const pack = (u) => sum(u.store);
 
 /** The latest reasons the subject has (`Sim.notes`), newest first, for the panel's Why list. */
@@ -224,9 +224,9 @@ function campShape(ctx, u) {
     buttons.push(disband(u, rules));
   }
   let hint = null;
-  if (routing.arm === 'to') hint = 'Click the map to move the camp there; Esc cancels';
+  if (routing.arm === 'to') hint = 'Click the map to move the army there; Esc cancels';
   else if (painting === 'paint' || painting === 'unpaint') hint = 'Click or drag on the map; Esc stops';
-  else if (mine && !marching) hint = 'Right-click a tile to move the camp there';
+  else if (mine && !marching) hint = 'Right-click a tile to move the army there';
   return {
     name: `${owner}'s ${u.kind === 'camp' ? 'army' : u.kind} ${u.id}`,
     swatch: v.civs[u.civ]?.color,
@@ -506,7 +506,7 @@ function tileShape(ctx, sel) {
       numbers.push({ label: 'Tame', value: `${Math.round((100 * t.tame) / rules.tame_turns)}%`, tip: 'Share of the way to a hearth: the wild grain tamed here' });
     }
   }
-  for (const u of model.holders(i)) numbers.push({ label: 'Held by', value: `${civName(ctx, u.civ)}'s camp`, tip: 'A camp whose zone holds the tile' });
+  for (const u of model.holders(i)) numbers.push({ label: 'Held by', value: `${civName(ctx, u.civ)}'s army`, tip: 'An army whose zone holds the tile' });
   return { name: tileKind(ctx, i), doing, numbers, reasons: [], buttons: [] };
 }
 

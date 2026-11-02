@@ -65,3 +65,4 @@ territory the player has fixed; the actor divides its labour around it as any ac
 - The player's orders are logged; the AI's are not, and a replay works them out again. (#100)
 - A civ may raise warriors, and the order names the civ rather than a unit. (#100)
 - A camp can only be posted or sent to land, never onto a built pass over a mountain, whoever sends it. (#100)
+- An army's people stand on the tiles it holds in proportion to how it guards each one, and a guard's stand over its civ's land the same way, so a thin line is thin in a fight too. (#104)

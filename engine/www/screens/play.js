@@ -717,7 +717,7 @@ function fillTip(i) {
   const lines = [`<b>${tileKind(ctx(), i)}</b>`];
   if (layout.terrain[i] !== 0 && TERRAIN[layout.terrain[i]].land) {
     lines.push(h ? clanTip(i, h) : 'Held by nobody');
-    for (const u of model.holders(i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s camp`);
+    for (const u of model.holders(i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s army`);
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
     lines.push(...wearTip(i));
   }
