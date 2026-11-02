@@ -2,7 +2,6 @@
 // Events come from `Sim.events(from)`; the page keeps the cursor and hands each new batch to `add`.
 
 const CAP = 300; // entries in the DOM
-const ALERTS = 5; // alerts in the box at the top
 const KEEP = 6000; // entries in memory, for re-rendering after a filter change
 
 export const KINDS = {
@@ -45,13 +44,12 @@ const PINNED = new Set(['centreFormed', 'pregameEnded', 'civFounded']);
 
 export class Feed {
   /** @param {{list: HTMLElement, filters: HTMLElement, alerts?: HTMLElement, onClick(item: object): void, mine?(item: object): boolean, onUnread?(n: number): void}} o
-   *  `alerts` is the box of the last `ALERTS` alerts; `onUnread` hears the count of alerts that came while the feed was hidden. */
+   *  `alerts` is the box of the alerts not yet seen (it scrolls past five); `onUnread` hears their count, which is the Feed toggle's. */
   constructor({ list, filters, alerts = null, onClick, mine = () => false, onUnread = () => {} }) {
     this.mine = mine;
     this.box = alerts;
     this.onUnread = onUnread;
     this.open = true;
-    this.unread = 0;
     this.list = list;
     this.onClick = onClick;
     this.items = [];
@@ -80,6 +78,7 @@ export class Feed {
       if (!li) return;
       const item = this.items.find((it) => it.id === Number(li.dataset.id));
       if (!item) return;
+      this.see((it) => it === item);
       this.select(item.id);
       this.onClick(item);
     };
@@ -91,25 +90,32 @@ export class Feed {
     this.items = [];
     this.selected = null;
     this.list.replaceChildren();
-    this.unread = 0;
-    this.onUnread(0);
     this.renderAlerts();
   }
 
-  /** The feed is shown or hidden: showing it clears the unread alerts. */
+  /** The feed is shown or hidden. Alerts stay until seen, so this changes nothing about them. */
   setOpen(on) {
     this.open = on;
-    if (on) {
-      this.unread = 0;
-      this.onUnread(0);
-    }
   }
 
-  /** The last `ALERTS` alerts, newest first, in the box at the top. */
+  /** Marks the alerts `match` picks as seen: a click on one, or the selection of its subject. */
+  see(match) {
+    let changed = false;
+    for (const item of this.items) {
+      if (item.alert && !item.seen && match(item)) {
+        item.seen = true;
+        changed = true;
+      }
+    }
+    if (changed) this.renderAlerts();
+  }
+
+  /** The alerts not yet seen, newest first, in the box at the top; the count goes to `onUnread`. */
   renderAlerts() {
-    if (!this.box) return;
     const rows = [];
-    for (let i = this.items.length - 1; i >= 0 && rows.length < ALERTS; i--) if (this.items[i].alert) rows.push(this.row(this.items[i]));
+    for (let i = this.items.length - 1; i >= 0; i--) if (this.items[i].alert && !this.items[i].seen) rows.push(this.row(this.items[i]));
+    this.onUnread(rows.length);
+    if (!this.box) return;
     this.box.replaceChildren(...rows);
     this.box.hidden = rows.length === 0;
   }
@@ -150,14 +156,7 @@ export class Feed {
       if (this.shown.has(item.kind)) this.list.prepend(this.row(item));
     }
     this.trim();
-    const alerts = fresh.filter((item) => item.alert).length;
-    if (alerts) {
-      this.renderAlerts();
-      if (!this.open) {
-        this.unread += alerts;
-        this.onUnread(this.unread);
-      }
-    }
+    if (fresh.some((item) => item.alert)) this.renderAlerts();
   }
 
   row(item) {

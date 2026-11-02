@@ -8,3 +8,4 @@ cargo test
 ./build-web.sh
 ./cross-build.sh
 node www/check.mjs
+node www/play/all.mjs

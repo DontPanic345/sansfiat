@@ -56,3 +56,18 @@ player has, shows what changed and why, and stays out of the map's way.
 
 Screens as modules; a view model built from `Sim.view()` once a turn; a draw layer per
 mechanic; one panel component fed a selection; one play driver for the scripts.
+
+## Decided
+
+- The start screen offers New game (size, seed, a random seed), Continue with its line ("Red, turn 312, small seed 2") and Load a file; an old save's version error shows there. A bare link opens it. (#103)
+- The pre-game plays on the map from Start, with Skip to the pick; the pick comes up over the map. (#103)
+- The top bar shows a Standing chip per civ: yours marked "you", the leader with ▲, and clicking one selects that civ. (#103)
+- The panel's rows per kind are settled: camp, scout, guard, civ, clan, festival and tile, each with its name and doing, numbers, reasons and one button row. A clan and a festival take no orders. (#103)
+- A button that can't act now is greyed, and its tooltip says why. Raise… and Disband… open a count with Go. (#103)
+- Escape steps back one thing at a time: a menu, then an armed click, then painting, then the selection. (#103)
+- Alerts stay in the alerts box until clicked or their subject selected, and the Feed button counts them. (#103)
+- The feed starts open only on windows 1400 px wide or more. Narrower, it is closed, and on a phone it is a drawer over the map. (#103)
+- At laptop width and wider, the panel sits under the map in two columns: what it is, and why. On a phone it is a bottom sheet. (#103)
+- Every clan's territory tint is off by default, under View → Territories. A selected clan's territory is still drawn. (#103)
+- The atlas has three variants of each terrain at 128×148, with units and icons at 64×64 and masks tinted per civ; `atlas.json` is the artist's brief. `sounds.json` names a file per feed kind, and a missing file stays silent. (#103)
+- Until a game can end, Game → Standing so far opens the end screen, which reads "The game goes on" over each civ's Standing line since the pick. (#103)

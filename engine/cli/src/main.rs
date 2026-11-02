@@ -36,7 +36,7 @@ sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|al
 sansfiat sweep --judge [--json] [--solo]   (the retro maps, every civ on the AI: the army run twice, the --no-army control and the no-claims control, scored by the judge over 200 turns past the pick; --solo adds each civ claiming alone; a report, with no verdict)
 sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--no-zone] [--no-claims] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army, --no-gifts, --no-zone (AI camps paint no zone) and --no-claims (no civ claims land) are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
 sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
-sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead] [--state]   (prints turn and digest, from turn 0; --lead plays the scripted game: picks the first civ and gives orders; --state hashes the world without its log)
+sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead] [--state] | --game FILE   (prints turn and digest, from turn 0; --game replays a save and prints its turn and digest; --lead plays the scripted game: picks the first civ and gives orders; --state hashes the world without its log)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
 sansfiat goods";
 

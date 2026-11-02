@@ -198,6 +198,17 @@ for (const c of civs) {
   assert.equal(sim.tile_civ(c.capital), c.id, 'a capital belongs to its civ');
   assert.equal(v.clans[Object.keys(v.clans).find((id) => v.clan_civ.some(([k, k2]) => k === Number(id) && k2 === c.id))].civ, c.id);
 }
+// Standing: each in [0, 1], the sum at most 1, and the parts add up.
+{
+  let sum = 0;
+  for (const c of civs) {
+    for (const key of ['standing', 'standing_clans', 'standing_land']) assert.ok(c[key] >= 0 && c[key] <= 1, `${key} is in [0, 1]`);
+    assert.ok(Math.abs(c.standing - (c.standing_clans + c.standing_land)) < 1e-12, 'the parts add up');
+    sum += c.standing;
+  }
+  assert.ok(sum <= 1 + 1e-9, 'the Standings sum to at most 1');
+  assert.equal(typeof RULES.save_version, 'number', 'rules carry the save version');
+}
 const camps = Object.values(v.units).filter((u) => u.kind === 'camp');
 assert.equal(camps.length, 3, 'a camp each');
 assert.equal(Object.values(v.units).filter((u) => u.kind === 'scout').length, 3, 'a scout each');

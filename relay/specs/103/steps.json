@@ -1,0 +1,45 @@
+[
+ {
+  "id": "build-1",
+  "title": "Easel: Standing in the view, the view model, the map in layers, the atlas and its placeholders, the driver and play/all.mjs in CI, digest --game",
+  "part": "easel",
+  "model": "sonnet",
+  "effort": "medium",
+  "points": 8,
+  "why": "Open 2, New 1, Miss 3, Reach 2 = 8, which is sonnet high; this is the piece's step a rung below, at sonnet medium. Open 2: the split and the atlas layout are settled (spec items 3-5), but 'draws as before' and the placeholders are judged by eye. New 1: layers and cells are today's drawing moved; the atlas loader and mask tinting are new but small. Miss 3: a layer out of order or a cell drawn wrong is caught only by the before/after shots; the checks catch the engine half. Reach 2: the drawing runs every frame. I expect Sonnet medium to move the drawing faithfully and to land the atlas, perhaps leaving terrainMs above the bar or a placeholder that reads worse than the flat colour; the retro learns whether a pixel-faithful refactor needs high effort. Spec-review added `digest --game FILE` to the CLI (one file and a test, ~40 lines) and an absolute 16 ms terrain bar, since a bare drawImage per tile already costs more than main's terrain pass on a large map. About 27 files, 1950 lines, most of it moved (map/view.js ~500, layers ~900 across 16 files, model ~150, atlas ~250 with placeholders and draw-atlas, play.mjs +120, all.mjs ~60, art and views ~150, lib.rs ~10). Part and score agree: an easel under 11."
+ },
+ {
+  "id": "build-2",
+  "title": "Easel: screens and the router, the top bar with Standing, Game/View/Debug menus, keys, autosave and Continue, the end screen before R, the sound bus; their scripts",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 5,
+  "why": "Open 2, New 1, Miss 1, Reach 1 = 5: haiku high, on the ladder. Open 2: every screen, chip, menu item, key and the autosave entry is settled (spec items 2-14), but the layout is the canvas's to judge. New 1: the pick and controls exist and move; the start and end screens and autosave are plain DOM and localStorage. Miss 1: the start, pick, bar, save and end scripts it writes each fail when their touch point is missing. Reach 1: main.js's callers and the scripts. About 14 files, 1400 lines (index.html and style.css ~400 moved, main.js ~120, screens ~450, bar ~150, save ~120, sound ~60, scripts ~450). The most files in the piece, which costs minutes, not a bigger model. Part and score agree."
+ },
+ {
+  "id": "build-3",
+  "title": "Easel: the panel component and its rows per kind, Move to…, Raise…/Disband…, clans and festivals as selections, alerts until seen; the touch-point scripts and layout.mjs; the old play scripts retired",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 5,
+  "why": "Open 2, New 1, Miss 1, Reach 1 = 5: haiku high, on the ladder. Open 2: the rows for each of seven kinds are given line by line (spec item 16), but how they lay out is the canvas's. New 1: select.js's panels and the scout's arm are the pattern for the component, Move to… and the stepper. Miss 1: the hold in camp.mjs is rebuilt, not ported, since play-hold fails on main (spec item 24); camp, scout, civ, select, feed and layout scripts, which carry over what the six old scripts checked. Reach 1: the page's selection callers. About 12 files, 1500 lines (panel.js ~200, panels.js ~550 from select.js, play.js and feed.js ~150, scripts ~600 replacing ~620 of old ones). Part and score agree."
+ },
+ {
+  "id": "build-4",
+  "title": "Canvas: how the page reads at phone, laptop and wide; a played game on the page; the final screenshots",
+  "part": "canvas",
+  "model": "opus",
+  "effort": "low",
+  "points": 9,
+  "why": "Open 4, New 1, Miss 3, Reach 1 = 9: opus low for a canvas, on the ladder. Open 4: density, clutter, the phone layout and the placeholders' legibility are judged by eye from its own shots. New 1: #102's canvas re-shot the page; layout.mjs gives the shots. Miss 3: only play and the shots show it. Reach 1: the page, no rule. A canvas at 9 holds the hard part, as the shape expects. About 8 files changed (style.css, panels.js, layers, placeholders, atlas.png, screens), plus game.mjs ~150 and canvas.md; most of its time is playing and looking."
+ },
+ {
+  "id": "review",
+  "title": "Review the piece",
+  "model": "opus",
+  "effort": "medium",
+  "why": "The goal is judged by play and by eye (the page is the game), so Opus by the rule, at medium because the crew refuses a judging step at low effort. It reruns check.sh with play/all.mjs, checks the digests against main, counts the levers, plays the page from the start screen for 30 turns on small seed 4 with a reload and Continue, matches the saved file through `digest --game`, reads the shots at three sizes beside main's, puts the touch-point table and screenshots in the PR, and adds the decisions to page.md's and map.md's Decided ledgers."
+ }
+]
