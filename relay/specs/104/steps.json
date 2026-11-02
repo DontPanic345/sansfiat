@@ -1,0 +1,54 @@
+[
+ {
+  "id": "build-1",
+  "title": "Clay: stacks and kinds, many armies, raise and disband by place and kind, units/fight.rs (presence, strength, losses, entrenchment, retreat, holding with hold's contest folded in), the march stopping on a contest, Config.fight, counters, notes, tests",
+  "part": "clay",
+  "model": "opus",
+  "effort": "low",
+  "points": 8,
+  "why": "Open 2, New 3, Miss 1, Reach 2 = 8: opus low for a clay. Open 2: the rule's form, the parts and the interfaces are settled in spec items 1-11, and the numbers are starting ones, but how hold's contest folds in and how a retreat finds its tile are judgement in the code. New 3: nothing here fights; hold is the nearest pattern and it only compares shares. Miss 1: the tests it writes on built maps catch the rule, and conservation is a test. Reach 2: units::step runs every turn, and Raise's wire form changes for Lead, the AI, the view and the page. I expect Opus to land the module with a shape the kiln can extend (Part, Who, presence) and maybe to leave the march-stop or the retreat rougher than the losses. About 10 files, 1000 lines (fight.rs ~400, tests ~400, the stack and orders ~200). Part and score agree."
+ },
+ {
+  "id": "build-2",
+  "title": "Kiln: archers and bow-making, militia, the capital's guard drawn back, siege, surrender, the fallen capital and every rule that skips a fallen civ; events, alerts, the text view and legal orders",
+  "part": "kiln",
+  "model": "haiku",
+  "effort": "high",
+  "points": 4,
+  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high. Open 0: every rule is settled in spec items 12-18 with its refusal text, and the numbers are in data.rs already. New 1: militia and the guard drawn back are new parts in the clay's presence, and surrender adapts hunger's disband. Miss 1: the brief lists the tests to write, including a fallen civ's turn without a panic. Reach 2: the fall touches every rule that reads a capital, and siege touches harvest and the levy. I expect Haiku to land the rules and to miss a reader of capital in the fall sweep, which its own test or build-3's stories catch. About 12 files, 700 lines. Part and score agree."
+ },
+ {
+  "id": "build-3",
+  "title": "Kiln: the scout as a unit and foraging that takes only what it takes; the judge's fight group and the no-fight control; sansfiat story with skirmish, stack and surrender, run with their controls on the retro maps",
+  "part": "kiln",
+  "model": "sonnet",
+  "effort": "high",
+  "points": 8,
+  "why": "Open 2, New 1, Miss 3, Reach 2 = 8: sonnet high. Open 2: the scout's rules, the judge's group and each story's moves are settled (items 19-22), but which map a story plays clearest on is found by running. New 1: the stories follow script.rs's Lead, and the judge's control follows the no-claims one. Miss 3: only runs on real maps show the scout surviving and a story provoking its fight. Reach 2: strip runs every turn for every unit. I expect Sonnet to make the stories run and report, with some only half playing out on the starting numbers, which is the glaze's to fix. About 9 files, 900 lines (story.rs ~350, scout ~150, judge ~200, tests ~150). A kiln at 8 is under the 11 that would mean unsettled work in it."
+ },
+ {
+  "id": "build-4",
+  "title": "Kiln: the page: stacks with their size, Raise and Disband by kind in the army and civ panels, the scout's switches, new kinds in the feed and sounds, Why for a fight; play/army.mjs",
+  "part": "kiln",
+  "model": "haiku",
+  "effort": "medium",
+  "points": 5,
+  "why": "Open 2, New 1, Miss 1, Reach 1 = 5, which is haiku high. This is the piece's step a rung below, at haiku medium. Open 2: the rows and buttons are settled (item 23), and how a stack's number reads is by eye. New 1: steppers, KINDS and the unit layer exist, and only the kind option is new. Miss 1: army.mjs and art.mjs catch a missing button or kind. Reach 1: the panels and one layer. I expect Haiku medium to land the panels and feed and perhaps to struggle getting army.mjs to a fight quickly. The retro learns whether a page kiln with a play script needs high effort. About 9 files, 500 lines. Part and score agree."
+ },
+ {
+  "id": "build-5",
+  "title": "Glaze: tune losses, entrenchment, retreat, surrender, militia, the kinds and the scout's reach until the skirmish, the stack, a fall and the surrender play out on the retro maps; health on the judge",
+  "part": "glaze",
+  "model": "opus",
+  "effort": "low",
+  "points": 10,
+  "why": "Open 4, New 1, Miss 3, Reach 2 = 10: opus low for a glaze. Open 4: found by searching numbers against the stories. New 1: tuning against runs as #102's canvas did. Miss 3: only the stories on real maps and the judge show it. Reach 2: the fight runs every turn. I expect Opus to get the skirmish and the surrender right and to find the stack's outcome bound by the economy's small stores, which it reports as part of the answer. About 4 files, 200 lines, most of the time in runs. Part and score agree."
+ },
+ {
+  "id": "review",
+  "title": "Review the piece",
+  "model": "opus",
+  "effort": "low",
+  "why": "The goal is judged by play: the stories on real maps and a fight on the page, so Opus. It re-runs one story with its control, plays a fight through play.mjs, checks the invariants and writes the answer and the ledgers."
+ }
+]
