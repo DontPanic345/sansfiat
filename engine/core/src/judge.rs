@@ -58,6 +58,14 @@ pub struct Watch {
     clans_changed: u32,
     people_changed: f64,
     land_changed: u32,
+    trails_pick: stats::Trails,
+    trails_200: Option<stats::Trails>,
+    /// Each clan's festival now, and the festivals it left within the flip window: (festival, turn
+    /// it left).
+    festival: BTreeMap<u32, (Option<u32>, Vec<(Option<u32>, u32)>)>,
+    clan_turns: u32,
+    festival_changes: u32,
+    flips: u32,
 }
 
 impl Watch {
@@ -75,6 +83,12 @@ impl Watch {
             clans_changed: 0,
             people_changed: 0.0,
             land_changed: 0,
+            trails_pick: stats::trails(w),
+            trails_200: None,
+            festival: w.clans.iter().map(|(&id, c)| (id, (c.market, Vec::new()))).collect(),
+            clan_turns: 0,
+            festival_changes: 0,
+            flips: 0,
         }
     }
 
@@ -109,6 +123,29 @@ impl Watch {
         let land = land_civs(w);
         self.land_changed += self.land.iter().zip(&land).filter(|(a, b)| a != b).count() as u32;
         self.land = land;
+
+        let now = self.turns();
+        let mut festival = BTreeMap::new();
+        for (&id, c) in &w.clans {
+            let Some((was, mut left)) = self.festival.remove(&id) else {
+                festival.insert(id, (c.market, Vec::new()));
+                continue;
+            };
+            self.clan_turns += 1;
+            left.retain(|&(_, t)| now - t < JUDGE.flip_window);
+            if c.market != was {
+                self.festival_changes += 1;
+                if left.iter().any(|&(m, _)| m == c.market) {
+                    self.flips += 1;
+                }
+                left.push((was, now));
+            }
+            festival.insert(id, (c.market, left));
+        }
+        self.festival = festival;
+        if now == 200 {
+            self.trails_200 = Some(stats::trails(w));
+        }
     }
 
     /// The turn the watch began at.
@@ -220,6 +257,15 @@ impl Watch {
                 people_changed: self.people_changed,
                 land_changed: self.land_changed,
             },
+            land: LandScores {
+                at_pick: self.trails_pick.clone(),
+                at_200: self.trails_200.clone(),
+                clan_turns: self.clan_turns,
+                festival_changes: self.festival_changes,
+                flips: self.flips,
+                festival_changes_per_100: per_100(self.festival_changes, self.clan_turns),
+                flips_per_100: per_100(self.flips, self.clan_turns),
+            },
         }
     }
 }
@@ -231,6 +277,30 @@ pub struct Scores {
     pub doubt: DoubtScores,
     pub decisions: DecisionScores,
     pub motion: MotionScores,
+    pub land: LandScores,
+}
+
+/// `n` per 100 clan-turns.
+pub fn per_100(n: u32, clan_turns: u32) -> f64 {
+    if clan_turns == 0 {
+        0.0
+    } else {
+        f64::from(n) * 100.0 / f64::from(clan_turns)
+    }
+}
+
+/// The land group: trail shares and festivals at the pick and +200, and how steady the festivals
+/// are after the pick. A change is a clan's festival differing from last turn's; a flip is a change
+/// back to one (or none) it had within `JUDGE.flip_window` turns.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct LandScores {
+    pub at_pick: stats::Trails,
+    pub at_200: Option<stats::Trails>,
+    pub clan_turns: u32,
+    pub festival_changes: u32,
+    pub flips: u32,
+    pub festival_changes_per_100: f64,
+    pub flips_per_100: f64,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]

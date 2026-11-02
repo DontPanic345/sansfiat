@@ -10,6 +10,7 @@ use std::time::Instant;
 
 use engine::data::JUDGE;
 use engine::judge::{Scores, Watch};
+use engine::stats::Trails;
 use engine::world::SAVE_VERSION;
 use engine::{stats, Action, Config, Save, World};
 use serde::Serialize;
@@ -68,8 +69,23 @@ struct Total {
     doubt: TotalDoubt,
     decisions: TotalDecisions,
     motion: TotalMotion,
+    land: TotalLand,
     armies: TotalArmies,
     health: TotalHealth,
+}
+
+/// The land group over the maps: festivals summed, shares averaged over the maps that have one.
+#[derive(Clone, Debug, Serialize)]
+struct TotalLand {
+    markets_pick: usize,
+    markets_200: usize,
+    trading_pick: f64,
+    trading_200: f64,
+    homes_trailed: (Option<f64>, Option<f64>),
+    worked_trailed: (Option<f64>, Option<f64>),
+    route_trailed: (Option<f64>, Option<f64>),
+    festival_changes_per_100: f64,
+    flips_per_100: f64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -176,6 +192,38 @@ fn mean(v: &[f64]) -> f64 {
     }
 }
 
+fn mean_some(v: &[Option<f64>]) -> Option<f64> {
+    let v: Vec<f64> = v.iter().flatten().copied().collect();
+    if v.is_empty() {
+        None
+    } else {
+        Some(mean(&v))
+    }
+}
+
+fn total_land(maps: &[MapJudged]) -> TotalLand {
+    let pick = |f: fn(&Trails) -> Option<f64>| {
+        let at_200: Vec<Option<f64>> = maps.iter().map(|m| m.scores.land.at_200.as_ref().and_then(f)).collect();
+        let at_pick: Vec<Option<f64>> = maps.iter().map(|m| f(&m.scores.land.at_pick)).collect();
+        (mean_some(&at_pick), mean_some(&at_200))
+    };
+    let clan_turns: u32 = maps.iter().map(|m| m.scores.land.clan_turns).sum();
+    let changes: u32 = maps.iter().map(|m| m.scores.land.festival_changes).sum();
+    let flips: u32 = maps.iter().map(|m| m.scores.land.flips).sum();
+    let n = maps.len().max(1) as f64;
+    TotalLand {
+        markets_pick: maps.iter().map(|m| m.scores.land.at_pick.markets).sum(),
+        markets_200: maps.iter().filter_map(|m| m.scores.land.at_200.as_ref()).map(|t| t.markets).sum(),
+        trading_pick: maps.iter().map(|m| m.scores.land.at_pick.trading).sum::<f64>() / n,
+        trading_200: maps.iter().filter_map(|m| m.scores.land.at_200.as_ref()).map(|t| t.trading).sum::<f64>() / n,
+        homes_trailed: pick(|t| t.homes_trailed),
+        worked_trailed: pick(|t| t.worked_trailed),
+        route_trailed: pick(|t| t.route_trailed),
+        festival_changes_per_100: engine::judge::per_100(changes, clan_turns),
+        flips_per_100: engine::judge::per_100(flips, clan_turns),
+    }
+}
+
 /// The totals over the maps that judged (panicked maps are not in them).
 fn total(maps: &[MapJudged], panics: usize) -> Total {
     let n = maps.len().max(1) as f64;
@@ -211,6 +259,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             people_changed: maps.iter().map(|m| m.scores.motion.people_changed).sum(),
             land_changed: maps.iter().map(|m| m.scores.motion.land_changed).sum(),
         },
+        land: total_land(maps),
         armies: TotalArmies {
             camps_kept: sum(|m| m.armies.camps_kept),
             camps_of: sum(|m| m.armies.camps_of),
@@ -269,9 +318,10 @@ fn print_text(r: &Report) {
     }
     for m in &r.maps {
         let s = &m.scores;
-        let (a, h) = (&m.armies, &m.health);
+        let (a, h, l) = (&m.armies, &m.health, &s.land);
+        let f = |v: Option<f64>| v.map_or("-".to_string(), |v| format!("{v:.2}"));
         println!(
-            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  armies: camps kept {}/{} starved {} lost {} people vs control {:.2}  health: centres {} digests differ {}",
+            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  armies: camps kept {}/{} starved {} lost {} people vs control {:.2}  land: markets {}/{} trading {:.2}/{:.2} homes {}/{} worked {}/{} route {}/{} changes {:.2} flips {:.2}  health: centres {} digests differ {}",
             m.size,
             m.seed,
             m.pick,
@@ -291,6 +341,18 @@ fn print_text(r: &Report) {
             a.warriors_starved,
             a.camps_lost,
             a.people_at_200 / a.control_people_at_200.max(f64::MIN_POSITIVE),
+            l.at_pick.markets,
+            l.at_200.as_ref().map_or(0, |t| t.markets),
+            l.at_pick.trading,
+            l.at_200.as_ref().map_or(0.0, |t| t.trading),
+            f(l.at_pick.homes_trailed),
+            f(l.at_200.as_ref().and_then(|t| t.homes_trailed)),
+            f(l.at_pick.worked_trailed),
+            f(l.at_200.as_ref().and_then(|t| t.worked_trailed)),
+            f(l.at_pick.route_trailed),
+            f(l.at_200.as_ref().and_then(|t| t.route_trailed)),
+            l.festival_changes_per_100,
+            l.flips_per_100,
             h.pregame_by_centres,
             h.digest_mismatches,
         );
@@ -311,6 +373,23 @@ fn print_text(r: &Report) {
     println!(
         "total motion: clans changed {}, people {:.1}, land tiles {}",
         t.motion.clans_changed, t.motion.people_changed, t.motion.land_changed
+    );
+    let l = &t.land;
+    let f = |v: Option<f64>| v.map_or("-".to_string(), |v| format!("{v:.2}"));
+    println!(
+        "total land: markets {} at the pick, {} at +200; trading {:.2}/{:.2}; homes trailed {}/{}; worked trailed {}/{}; route trailed {}/{} (pick/+200); festival changes {:.2} and flips {:.2} per 100 clan-turns",
+        l.markets_pick,
+        l.markets_200,
+        l.trading_pick,
+        l.trading_200,
+        f(l.homes_trailed.0),
+        f(l.homes_trailed.1),
+        f(l.worked_trailed.0),
+        f(l.worked_trailed.1),
+        f(l.route_trailed.0),
+        f(l.route_trailed.1),
+        l.festival_changes_per_100,
+        l.flips_per_100
     );
     let a = &t.armies;
     println!(

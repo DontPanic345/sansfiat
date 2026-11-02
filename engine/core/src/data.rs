@@ -584,6 +584,9 @@ pub struct JudgeRules {
     pub lead_margin: f64,
     /// Turns between the samples the swings are counted on.
     pub sample: u32,
+    /// A clan's festival change back to one it had within this many turns is a flip. A fixed window,
+    /// so a build with no `MARKET.keep_turns` counts as one with it.
+    pub flip_window: u32,
 }
 
-pub const JUDGE: JudgeRules = JudgeRules { lead_margin: 0.005, sample: 10 };
+pub const JUDGE: JudgeRules = JudgeRules { lead_margin: 0.005, sample: 10, flip_window: 10 };
