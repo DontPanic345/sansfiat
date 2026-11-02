@@ -5,8 +5,8 @@
 
 use std::collections::BTreeMap;
 
-use super::line::{cut_by, cut_off, cutter, line, route, walkable};
-use super::{disband, name_of, rival_of, room, strip, supply, Unit, EPS};
+use super::line::{cut_by, cut_by_rival, cut_off, cutter, line, route, walkable};
+use super::{disband, name_of, rival_of, room, strip, supply, surrender, Unit, EPS};
 use crate::actors::{connected, divide, stride, Route, Walks};
 use crate::data::*;
 use crate::events::{Event, EventKind};
@@ -38,6 +38,36 @@ pub struct CampState {
     /// says when each starts.
     pub full: bool,
     pub cut_by: Option<u32>,
+    /// Its people by kind (`Fighter`): they sum to the unit's people.
+    pub stack: [f64; 2],
+    /// Turns since it last took a step: its entrenchment.
+    pub still: u32,
+    /// Whether it makes bows this turn (build-2).
+    pub bows: bool,
+}
+
+impl CampState {
+    /// A camp at `home` with nothing ordered and its switches on, of `stack`.
+    pub(crate) fn new(home: usize, stack: [f64; 2]) -> Self {
+        CampState {
+            dest: None,
+            auto_forage: true,
+            auto_supply: true,
+            resupply: false,
+            forage: false,
+            pillage: false,
+            cut: false,
+            foraging: false,
+            supplying: false,
+            held: vec![home],
+            guard: vec![0.0],
+            full: false,
+            cut_by: None,
+            stack,
+            still: 0,
+            bows: false,
+        }
+    }
 }
 
 /// The camp state of unit `id` (the unit is a camp; the callers have checked).
@@ -50,17 +80,29 @@ pub(crate) fn cs_mut(w: &mut World, id: u32) -> &mut CampState {
 }
 
 /// One camp's march. Returns the labour the march left.
-pub(super) fn camp_march(w: &mut World, id: u32) -> f64 {
+pub(super) fn camp_march(w: &mut World, id: u32, rivals: &BTreeMap<usize, Vec<u32>>) -> f64 {
     let people = w.units[&id].people;
     w.units.get_mut(&id).unwrap().spoil();
+    // Making bows takes the turn's labour: no march (`bows` is cleared at the turn's end).
+    if cs(w, id).bows {
+        let c = cs_mut(w, id);
+        c.still += 1;
+        return 0.0;
+    }
 
     // The march. Every warrior walks, so a step costs one warrior's labour and the camp's labour
     // left is that, times the warriors. A march not done leaves nothing.
     let mut left = people * UNIT.labour;
     let mut arrived = false;
-    if let Some((tiles, _)) = route(w, id) {
+    let mut moved = false;
+    if let Some((full, _)) = route(w, id) {
+        // Arriving on a tile where a rival has people contests it: the march ends there this turn.
+        let civ = w.units[&id].civ;
+        let stop = full.iter().position(|t| rivals.get(t).is_some_and(|cs| cs.iter().any(|&c| c != civ)));
+        let tiles: Vec<usize> = full[..stop.map_or(full.len(), |k| k + 1)].to_vec();
         let u = &w.units[&id];
         let (taken, rest) = stride(w, u.home, &tiles, u.banked + UNIT.labour, 0.0);
+        moved = taken > 0;
         if taken > 0 {
             let u = w.units.get_mut(&id).unwrap();
             u.actor.home = tiles[taken - 1];
@@ -70,7 +112,12 @@ pub(super) fn camp_march(w: &mut World, id: u32) -> f64 {
             c.held = vec![home];
             c.guard = vec![0.0];
         }
-        if taken == tiles.len() {
+        if taken == tiles.len() && tiles.len() < full.len() {
+            w.units.get_mut(&id).unwrap().banked = 0.0;
+            left = 0.0;
+            let at = w.at(w.units[&id].home);
+            w.note(id, format!("stopped at {at}: a rival's people are there"));
+        } else if taken == tiles.len() {
             cs_mut(w, id).dest = None;
             w.units.get_mut(&id).unwrap().banked = 0.0;
             left = rest * people;
@@ -83,6 +130,8 @@ pub(super) fn camp_march(w: &mut World, id: u32) -> f64 {
         cs_mut(w, id).dest = None;
         w.units.get_mut(&id).unwrap().banked = 0.0;
     }
+    let c = cs_mut(w, id);
+    c.still = if moved { 0 } else { c.still + 1 };
     if arrived {
         let at = w.at(w.units[&id].home);
         w.note(id, format!("arrived at {at}"));
@@ -100,8 +149,8 @@ fn guarding(u: &Unit) -> f64 {
 /// still in its zone, its own tile and the zone tiles next to them are its candidates; its guarding
 /// is divided over them (`divide`, each share paying its walk inside them at `UNIT.inside`), and a
 /// tile whose share falls under `UNIT.guard` isn't held (its own tile always is, unless taken). A
-/// tile two camps want goes to the larger share; a tie stays with the camp that held it, else the
-/// lower civ id. Returns the labour each deployed camp spent guarding.
+/// tile two camps of one civ want goes to the larger share; a tie stays with the camp that held it,
+/// else the lower id. Between civs the fight decides (`fight::step`). Returns the labour each deployed camp spent guarding.
 pub(super) fn hold(w: &mut World) -> BTreeMap<u32, f64> {
     // (tile, unit, civ, share, held last turn)
     let mut want: Vec<(usize, u32, u32, f64, bool)> = Vec::new();
@@ -138,7 +187,8 @@ pub(super) fn hold(w: &mut World) -> BTreeMap<u32, f64> {
         let beaten = want.iter().any(|&(t2, id2, civ2, share2, was2)| {
             t2 == t
                 && id2 != id
-                && (share2 > share + EPS || (share2 + EPS >= share && ((was2 && !was) || (was2 == was && civ2 < civ))))
+                && civ2 == civ
+                && (share2 > share + EPS || (share2 + EPS >= share && ((was2 && !was) || (was2 == was && id2 < id))))
         });
         if !beaten {
             held.get_mut(&id).unwrap().push((t, share));
@@ -311,6 +361,22 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
         w.emit(Event::new(EventKind::CampHungry, tile).civ(civ).unit(id));
         w.note(id, format!("went hungry: its pack covered {:.0}% of its need", covered * 100.0));
     }
+    cs_mut(w, id).bows = false;
+    // An army hungry `FIGHT.surrender` turns in a row whose line a rival's land cuts surrenders whole,
+    // before hunger takes a warrior (with fighting on, `Config.fight`). An army still on the march
+    // has somewhere to go, and one fighting on its tile this turn stands, so neither does.
+    let home = w.units[&id].home;
+    if hungry >= FIGHT.surrender
+        && w.config.fight
+        && w.units[&id].camp().is_some_and(|c| c.dest.is_none())
+        && !w.contested.contains(&home)
+    {
+        if let Some(by) = cut_by_rival(w, id) {
+            if surrender(w, id, by) {
+                return;
+            }
+        }
+    }
     if hungry >= UNIT.hungry_turns {
         w.civs.get_mut(&civ).unwrap().army.starved += 1;
         disband(w, id, Some(1), true);
@@ -339,7 +405,7 @@ pub(crate) fn zone_ok(w: &World, u: &Unit, tiles: &[usize]) -> Result<Vec<usize>
     if tiles.iter().any(|&t| !walkable(w, t)) {
         return Err("a zone can only cover land a camp can walk".to_string());
     }
-    if tiles.iter().any(|&t| w.civs.values().any(|c| c.capital == t)) {
+    if tiles.iter().any(|&t| crate::civs::alive(w).any(|c| c.capital == t)) {
         return Err("a zone can't cover a capital".to_string());
     }
     let zone = zone_of(u.home, tiles);

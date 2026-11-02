@@ -12,7 +12,7 @@ use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::{cost_map, is_hearth, passable, path, steps};
-use crate::market::Basket;
+use crate::market::{add, take, total, Basket};
 use crate::markets::reach;
 use crate::units::{self, Counters};
 use crate::world::{Phase, World};
@@ -60,6 +60,26 @@ pub struct Civ {
     pub claim: Vec<usize>,
     /// Each claimed tile's guard share, aligned with `claim`: what its guard and its camps' hold on it.
     pub guard: Vec<f64>,
+    /// A rival army stands on its capital this turn: its guard is drawn back there (`fight.rs`).
+    pub pressed: bool,
+    /// Every walkable neighbour of its capital is held or stood on by a rival army: its own clans
+    /// there harvest nothing and no levy reaches its store (`fight.rs`).
+    pub besieged: bool,
+    /// The turn its capital fell, and the civ that took it. A fallen civ has no land, no Standing,
+    /// no turn and no orders (`fall`).
+    pub fallen: Option<(u32, u32)>,
+}
+
+impl Civ {
+    /// Whether the civ has fallen: its capital was taken with no part of it left there.
+    pub fn is_out(&self) -> bool {
+        self.fallen.is_some()
+    }
+}
+
+/// The civs that have not fallen, in id order.
+pub fn alive(w: &World) -> impl Iterator<Item = &Civ> {
+    w.civs.values().filter(|c| !c.is_out())
 }
 
 impl Deref for Civ {
@@ -110,6 +130,12 @@ struct CivFlat {
     claim: Vec<usize>,
     #[serde(default)]
     guard: Vec<f64>,
+    #[serde(default)]
+    pressed: bool,
+    #[serde(default)]
+    besieged: bool,
+    #[serde(default)]
+    fallen: Option<(u32, u32)>,
 }
 
 impl From<Civ> for CivFlat {
@@ -134,6 +160,9 @@ impl From<Civ> for CivFlat {
             revealed: c.revealed,
             claim: c.claim,
             guard: c.guard,
+            pressed: c.pressed,
+            besieged: c.besieged,
+            fallen: c.fallen,
         }
     }
 }
@@ -160,6 +189,9 @@ impl From<CivFlat> for Civ {
             revealed: f.revealed,
             claim: f.claim,
             guard: f.guard,
+            pressed: f.pressed,
+            besieged: f.besieged,
+            fallen: f.fallen,
         }
     }
 }
@@ -225,6 +257,9 @@ pub fn found(w: &mut World) {
             gifted: 0.0,
             claim: vec![capital],
             guard: vec![0.0],
+            pressed: false,
+            besieged: false,
+            fallen: None,
         };
         w.civs.insert(id, civ);
         w.emit(Event::new(EventKind::CivFounded, capital).civ(id).market(mid));
@@ -329,6 +364,63 @@ pub fn found(w: &mut World) {
     w.phase = Phase::Choose;
 }
 
+/// `civ`'s capital falls to `by`'s army (`fight.rs` finds it: a rival army on the capital and no
+/// part of `civ` left there). Its claim is cleared and its guard disbands to its own clan; its clans
+/// go unaligned with their leanings cleared; its armies and scouts disband to the nearest clan by
+/// steps; its store fills the packs of `by`'s armies on the tile in id order, and the rest is lost.
+/// Its capital's market is an ordinary festival from then on (`markets::fade`). Notes both civs and
+/// emits `CapitalFell`.
+pub fn fall(w: &mut World, civ: u32, by: u32) {
+    let capital = w.civs[&civ].capital;
+    let turn = w.turn;
+    {
+        let c = w.civs.get_mut(&civ).unwrap();
+        c.fallen = Some((turn, by));
+        c.claim.clear();
+        c.guard.clear();
+        c.pressed = false;
+        c.besieged = false;
+    }
+    if let Some(g) = units::guard_of(w, civ).map(|u| u.id) {
+        units::disband(w, g, None, false);
+    }
+    let clans: Vec<u32> = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| k.id).collect();
+    for id in clans {
+        let k = w.clans.get_mut(&id).unwrap();
+        k.civ = None;
+        k.leaning.clear();
+        w.note(id, "its civ has fallen: it is unaligned".to_string());
+    }
+    let units: Vec<(u32, usize)> = w.units.values().filter(|u| u.civ == civ).map(|u| (u.id, u.home)).collect();
+    for (id, home) in units {
+        match units::nearest_clan(w, home) {
+            Some(clan) => units::give_up(w, id, clan),
+            None => {
+                w.units.remove(&id);
+            }
+        }
+    }
+    // The store: the taking civ's armies on the capital fill their packs in id order.
+    let armies: Vec<u32> = w
+        .units
+        .values()
+        .filter(|u| u.civ == by && u.kind() == units::UnitKind::Camp && u.home == capital)
+        .map(|u| u.id)
+        .collect();
+    for id in armies {
+        let room = (units::pack_cap(w.units[&id].people) - total(&w.units[&id].store)).max(0.0);
+        let amount = room.min(total(&w.civs[&civ].store));
+        let got = take(&mut w.civs.get_mut(&civ).unwrap().store, amount);
+        add(&mut w.units.get_mut(&id).unwrap().store, &got);
+    }
+    w.civs.get_mut(&civ).unwrap().store = [0.0; N];
+    w.emit(Event::new(EventKind::CapitalFell, capital).civ(civ).other(by));
+    let (name, taker) = (w.civs[&civ].name.clone(), w.civs[&by].name.clone());
+    let at = w.at(capital);
+    w.note(civ, format!("its capital at {at} fell to {taker}'s army: it has no guard, army or militia left there"));
+    w.note(by, format!("took {name}'s capital at {at}"));
+}
+
 /// The civ tile `i` counts for in a camp's line: the civ whose camp holds it, else its land's
 /// (`tile_civ`). Forage and pillage, and the AI's post, read land without holding.
 pub fn holder(w: &World, i: usize) -> Option<u32> {
@@ -348,7 +440,7 @@ pub fn is_civ_clan(w: &World, id: u32) -> bool {
 /// A civ whose own clan is gone (merged, died) passes it to its biggest clan (ties to the lower
 /// id); the capital stays.
 fn repair(w: &mut World) {
-    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    let ids: Vec<u32> = alive(w).map(|c| c.id).collect();
     for id in ids {
         if w.clans.contains_key(&w.civs[&id].clan) {
             continue;
@@ -369,7 +461,7 @@ fn repair(w: &mut World) {
 /// camp needs: a full pack for its warriors (a new camp's with none), and 0 with `Config.army` off;
 /// and `GUARD.keep_turns` turns of its guard's food.
 pub fn keep(w: &World, civ: u32) -> f64 {
-    let Some(c) = w.civs.get(&civ) else { return 0.0 };
+    let Some(c) = w.civs.get(&civ).filter(|c| !c.is_out()) else { return 0.0 };
     let guard = GUARD.keep_turns * UNIT.food * claim::guard_people(w, civ);
     let base = match c.keep {
         Some(k) => k,
@@ -389,7 +481,10 @@ pub fn levy(w: &mut World, mid: u32) {
     if !w.config.army {
         return;
     }
-    let Some(civ) = w.civs.values().find(|c| c.market == mid).map(|c| c.id) else { return };
+    let Some(civ) = alive(w).find(|c| c.market == mid).map(|c| c.id) else { return };
+    if w.civs[&civ].besieged {
+        return;
+    }
     let ids: Vec<u32> = w
         .clans
         .values()
@@ -433,7 +528,7 @@ pub fn levy(w: &mut World, mid: u32) {
 /// over the cap is lost.
 pub fn upkeep(w: &mut World) {
     repair(w);
-    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    let ids: Vec<u32> = alive(w).map(|c| c.id).collect();
     for id in ids {
         let civ = w.civs.get_mut(&id).unwrap();
         civ.spoil();

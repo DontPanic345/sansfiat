@@ -63,6 +63,9 @@ pub struct World {
     /// turn to the next is an alert once (`flag_alerts`).
     #[serde(skip)]
     pub candidates: Vec<(EventKind, u32)>,
+    /// The tiles contested last turn (`units::fight`), so a fight that goes on is a `Skirmish` once.
+    #[serde(default)]
+    pub contested: Vec<usize>,
     /// Accepted orders and actions per civ, by kind (`Order::kind`, `setKeep`, `setGift`), since the
     /// world began: the AI's and the player's alike. Derived, so not saved; a replay rebuilds it.
     #[serde(skip)]
@@ -140,7 +143,7 @@ pub const TURN: &[Step] = &[
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
 /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
 /// into a different world.
-pub const SAVE_VERSION: u32 = 3;
+pub const SAVE_VERSION: u32 = 7;
 
 /// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -175,6 +178,7 @@ impl World {
             centres_seen: Vec::new(),
             notes: BTreeMap::new(),
             candidates: Vec::new(),
+            contested: Vec::new(),
             orders: BTreeMap::new(),
             picked: None,
         };
@@ -304,6 +308,11 @@ impl World {
             | EventKind::PeopleLeft => e.civ == Some(me),
             EventKind::ClanJoined => e.civ.is_some_and(|c| c != me),
             EventKind::ClanLeft | EventKind::ClaimTaken => e.civ == Some(me) || e.other == Some(me),
+            // A skirmish on the led civ's land or by its army, its army's retreat, a tile it lost, a
+            // surrender it is party to, and any fallen capital.
+            EventKind::Skirmish | EventKind::ArmySurrendered => e.civ == Some(me) || e.other == Some(me),
+            EventKind::Retreated | EventKind::TileTaken => e.civ == Some(me),
+            EventKind::CapitalFell => true,
             _ => false,
         };
         if !mine {

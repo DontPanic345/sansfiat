@@ -63,8 +63,13 @@ fn append(path: &Path, entry: &Entry) -> Result<(), String> {
 
 pub(crate) fn play(args: &[String]) -> Result<(), String> {
     let (mut game, mut seed, mut radius, mut civ) = (None, None, None, None);
+    let mut fight = true;
     let mut it = args.iter();
     while let Some(flag) = it.next() {
+        if flag == "--no-fight" {
+            fight = false;
+            continue;
+        }
         let value = it.next().ok_or(format!("{flag} needs a value\n{USAGE}"))?;
         let bad = |_| format!("{flag}: not a number: {value}");
         match flag.as_str() {
@@ -97,11 +102,14 @@ pub(crate) fn play(args: &[String]) -> Result<(), String> {
                 ));
             }
         }
+        if !fight && w.config.fight {
+            return Err(format!("{game} is a game with fighting on: --no-fight starts a new game"));
+        }
         w
     } else {
         let seed = seed.ok_or(format!("a new game needs --seed\n{USAGE}"))?;
         let radius = radius.ok_or(format!("a new game needs --size\n{USAGE}"))?;
-        let mut w = World::new(Config { seed, radius, ..Config::default() });
+        let mut w = World::new(Config { seed, radius, fight, ..Config::default() });
         while w.phase == Phase::Pregame {
             w.act(Action::EndTurn)?;
         }

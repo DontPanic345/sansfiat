@@ -39,7 +39,7 @@ try {
   }
   need((await page.data()).selected === `unit:${scout}`, `clicking the capital selects the scout ${scout}`);
   let p = await page.panel();
-  need(/'s scout$/.test(p.name) && !!p.doing, `the scout's panel is named "${p.name}" with a doing line`);
+  need(/'s scout \d+$/.test(p.name) && !!p.doing, `the scout's panel is named "${p.name}" with a doing line`);
   const labels = p.buttons.map((b) => b.label);
   for (const want of ['Move to…', 'Route from…', 'Clear route', 'Disband…']) need(labels.includes(want), `the scout's row has ${want}`);
 

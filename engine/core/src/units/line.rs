@@ -5,6 +5,7 @@
 use super::{UnitKind, EPS};
 use crate::actors::{stride, walk_cost};
 use crate::civs;
+use crate::claim;
 use crate::data::*;
 use crate::land::{passable, path};
 use crate::world::World;
@@ -39,7 +40,8 @@ pub fn line(w: &World, unit: u32) -> Option<(Vec<usize>, f64, f64)> {
 /// The line as `line`, reading held ground (`hold`) or only land.
 pub(super) fn line_by(w: &World, unit: u32, hold: bool) -> Option<(Vec<usize>, f64, f64)> {
     let u = w.units.get(&unit)?;
-    let capital = w.civs.get(&u.civ)?.capital;
+    let c = w.civs.get(&u.civ).filter(|c| !c.is_out())?;
+    let capital = c.capital;
     let civ_of = |i| if hold { civs::holder(w, i) } else { civs::tile_civ(w, i) };
     let (tiles, cost) =
         path(w, u.home, capital, |i| walkable(w, i) && (i == capital || civ_of(i).is_none_or(|c| c == u.civ)))?;
@@ -90,6 +92,29 @@ pub fn cut_at(w: &World, unit: u32) -> Option<(Vec<usize>, usize, u32)> {
     let rival_at = |i: usize| w.units.values().find(|o| o.civ != u.civ && o.held().contains(&i)).map(|o| o.civ);
     let (at, by) = p.iter().filter(|&&i| i != capital).find_map(|&i| rival_at(i).map(|c| (i, c)))?;
     Some((p, at, by))
+}
+
+/// The rival whose land or held ground cuts army `unit`'s line, when its line doesn't carry a turn's
+/// food: the first rival on its tile or the open path home (`tile_civ` or a rival army's held tile),
+/// else the first rival whose land borders its tile. `None` when the line is open, or when no rival's
+/// land is on the way or beside it (cut by length alone), so it starves as it does on main.
+pub fn cut_by_rival(w: &World, unit: u32) -> Option<u32> {
+    let u = w.units.get(&unit)?;
+    let capital = w.civs.get(&u.civ).filter(|c| !c.is_out())?.capital;
+    let (open, _) = path(w, u.home, capital, |i| walkable(w, i))?;
+    if !cut_off(w, unit) {
+        return None;
+    }
+    std::iter::once(u.home)
+        .chain(open.iter().copied())
+        .find_map(|i| {
+            let army = w.units.values().find(|o| o.civ != u.civ && o.held().contains(&i)).map(|o| o.civ);
+            army.or_else(|| claim::tile_civ(w, i).filter(|&c| c != u.civ))
+        })
+        .or_else(|| {
+            // Its tile and the walk home are no rival's land, but rival land round its tile cuts it off.
+            crate::land::neighbours(w, u.home).find_map(|i| claim::tile_civ(w, i).filter(|&c| c != u.civ))
+        })
 }
 
 /// The civ whose held ground cuts camp `unit`'s line: the first rival holding a tile of the line

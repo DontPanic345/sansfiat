@@ -1,4 +1,4 @@
-use engine::data::{CIV, CLAIM, GUARD, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{CIV, CLAIM, FIGHT, FIGHTERS, GUARD, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::script::Lead;
 use engine::units::UnitKind;
@@ -149,6 +149,9 @@ impl Sim {
                     "standing": part.clans + part.land,
                     "standing_clans": part.clans,
                     "standing_land": part.land,
+                    "pressed": c.pressed,
+                    "besieged": c.besieged,
+                    "fallen": c.fallen,
                 });
                 (c.id, row)
             })
@@ -221,6 +224,7 @@ impl Sim {
             "civs": civ_rows,
             "units": units_json,
             "clan_civ": clan_civ,
+            "contested": w.contested,
             "summary": stats::summary(w),
         })
         .to_string()
@@ -357,9 +361,12 @@ pub fn goods() -> String {
 }
 
 /// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
-/// hungry_turns, store_cap, floor, join, gift_max, notes_shown, save_version}`. `join` is the leaning at which a
-/// clan joins a civ; `gift_max` is the most a civ can give a turn (its store cap); `notes_shown` is how
-/// many reasons the panel shows.
+/// hungry_turns, store_cap, floor, join, gift_max, notes_shown, save_version, fighters, fight}`. `join` is the
+/// leaning at which a clan joins a civ; `gift_max` is the most a civ can give a turn (its store cap);
+/// `notes_shown` is how many reasons the panel shows. `fighters` is `[{name, attack, defence}]` in
+/// `Fighter` order (strength per person attacking and defending); `fight` is `{entrench, entrench_cap,
+/// hungry, surrender}`: a defender's strength gained per turn still and its cap, the factor on an army
+/// hungry last turn, and the hungry turns that surrender it.
 #[wasm_bindgen]
 pub fn rules() -> String {
     serde_json::json!({
@@ -375,6 +382,8 @@ pub fn rules() -> String {
         "gift_max": CIV.store_cap,
         "notes_shown": NOTES.shown,
         "save_version": engine::world::SAVE_VERSION,
+        "fighters": FIGHTERS.iter().map(|f| serde_json::json!({ "name": f.name, "attack": f.attack, "defence": f.defence })).collect::<Vec<_>>(),
+        "fight": { "entrench": FIGHT.entrench, "entrench_cap": FIGHT.entrench_cap, "hungry": FIGHT.hungry, "surrender": FIGHT.surrender },
     })
     .to_string()
 }

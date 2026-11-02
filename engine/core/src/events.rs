@@ -34,6 +34,7 @@ pub enum EventKind {
     ScoutBlocked,
     ScoutHungry,
     ScoutStarved,
+    ScoutRaised,
     ClanJoined,
     Deployed,
     Held,
@@ -41,12 +42,20 @@ pub enum EventKind {
     PeopleLeft,
     ClanLeft,
     ClaimTaken,
+    Skirmish,
+    Retreated,
+    TileTaken,
+    ArchersRaised,
+    ArmySurrendered,
+    CapitalFell,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
 /// zone's size (`Deployed`, `Held`), the civ whose army cut a line (`LineCut`), the civ a clan left
 /// for (`ClanLeft`, whose `civ` is the one it left) or the civ whose unit took a tile (`ClaimTaken`,
-/// whose `civ` is the one that lost it); `unit` is for units, and `amount` is the tiles lost.
+/// `TileTaken`, whose `civ` is the one that lost it) or fought it (`Skirmish`, `Retreated`); `unit` is for units, and `amount` is the tiles lost.
+/// An `ArmySurrendered` is the army's civ (`civ`), the rival it joins (`other`), the army (`unit`), the
+/// clan it joined (`clan`) and the people (`amount`); a `CapitalFell` is the fallen civ and its taker.
 /// `alert` marks the events the led civ must hear of as they start (`flag_alerts`); the page and
 /// the CLI read it from the JSON as they read the rest.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -94,8 +103,8 @@ impl Event {
                 let name = self.civ.and_then(|id| w.civs.get(&id)).map_or("A civ", |c| c.name.as_str());
                 format!("{name} is founded at {at}, on market {market}")
             }
-            EventKind::CampRaised => format!("{} raises a camp at {at}", self.civ_name(w)),
-            EventKind::WarriorsRaised => format!("{} raises more warriors for its camp", self.civ_name(w)),
+            EventKind::CampRaised => format!("{} raises an army at {at}", self.civ_name(w)),
+            EventKind::WarriorsRaised => format!("{} raises more warriors for its army", self.civ_name(w)),
             EventKind::WarriorsDisbanded | EventKind::WarriorsStarved => {
                 let why = if self.kind == EventKind::WarriorsStarved { " from hunger" } else { "" };
                 let person = match self.clan {
@@ -104,11 +113,11 @@ impl Event {
                 };
                 format!("{}'s warriors disband{why} at {at}; {person}", self.civ_name(w))
             }
-            EventKind::CampResupplied => format!("{}'s camp at {at} is resupplied", self.civ_name(w)),
-            EventKind::CampCutOff => format!("{}'s camp at {at} is cut off from its capital", self.civ_name(w)),
-            EventKind::CampHungry => format!("{}'s camp at {at} goes hungry", self.civ_name(w)),
-            EventKind::CampForaged => format!("{}'s camp forages at {at}", self.civ_name(w)),
-            EventKind::CampPillaged => format!("{}'s camp pillages at {at}", self.civ_name(w)),
+            EventKind::CampResupplied => format!("{}'s army at {at} is resupplied", self.civ_name(w)),
+            EventKind::CampCutOff => format!("{}'s army at {at} is cut off from its capital", self.civ_name(w)),
+            EventKind::CampHungry => format!("{}'s army at {at} goes hungry", self.civ_name(w)),
+            EventKind::CampForaged => format!("{}'s army forages at {at}", self.civ_name(w)),
+            EventKind::CampPillaged => format!("{}'s army pillages at {at}", self.civ_name(w)),
             EventKind::ScoutRouteFound => {
                 format!("{}'s scout has its route, cost {:.1}", self.civ_name(w), self.cost.unwrap_or(0.0))
             }
@@ -117,20 +126,21 @@ impl Event {
             EventKind::ScoutPassFound => format!("{}'s scout finds a pass at {at}", self.civ_name(w)),
             EventKind::ScoutBlocked => format!("{}'s scout is blocked at {at}", self.civ_name(w)),
             EventKind::ScoutHungry => format!("{}'s scout at {at} goes hungry", self.civ_name(w)),
+            EventKind::ScoutRaised => format!("{} raises a scout at {at}", self.civ_name(w)),
             EventKind::ScoutStarved => format!("{}'s scout at {at} loses a person to hunger", self.civ_name(w)),
             EventKind::ClanJoined => format!("Clan {clan} joins {}", self.civ_name(w)),
             EventKind::PeopleLeft => {
                 format!("{:.1} people leave {}'s clans for others", self.amount.unwrap_or(0.0), self.civ_name(w))
             }
             EventKind::Deployed => {
-                format!("{}'s camp at {at} deploys over {} tiles", self.civ_name(w), self.other.unwrap_or(0))
+                format!("{}'s army at {at} deploys over {} tiles", self.civ_name(w), self.other.unwrap_or(0))
             }
             EventKind::Held => {
-                format!("{}'s camp at {at} holds its zone of {} tiles", self.civ_name(w), self.other.unwrap_or(0))
+                format!("{}'s army at {at} holds its zone of {} tiles", self.civ_name(w), self.other.unwrap_or(0))
             }
             EventKind::LineCut => {
                 let by = self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str());
-                format!("{}'s camp's line is cut by {by}'s army", self.civ_name(w))
+                format!("{}'s army's line is cut by {by}'s army", self.civ_name(w))
             }
             EventKind::ClanLeft => format!(
                 "Clan {clan} leaves {} for {}",
@@ -142,6 +152,36 @@ impl Event {
                 self.civ_name(w),
                 self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
                 self.amount.unwrap_or(0.0)
+            ),
+            EventKind::Skirmish => format!(
+                "{} and {} fight at {at}",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str())
+            ),
+            EventKind::Retreated => format!(
+                "{}'s army retreats from {} before {}",
+                self.civ_name(w),
+                at,
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str())
+            ),
+            EventKind::TileTaken => format!(
+                "{}'s guard at {at} falls to {}'s army: {:.0} tile(s) lost",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
+                self.amount.unwrap_or(0.0)
+            ),
+            EventKind::ArchersRaised => format!("{} raises archers for its army at {at}", self.civ_name(w)),
+            EventKind::ArmySurrendered => format!(
+                "{}'s army at {at} surrenders to {}: {:.1} people join its clans",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
+                self.amount.unwrap_or(0.0)
+            ),
+            EventKind::CapitalFell => format!(
+                "{}'s capital at {at} falls to {}: {} has no guard, army or militia left there",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
+                self.civ_name(w)
             ),
             EventKind::PregameEnded => match &w.end {
                 Some(e) => {

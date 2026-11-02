@@ -48,7 +48,7 @@ async function panelChecks(page) {
   const camp = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${civ} && u.kind === 'camp').id`);
   await selectKey(page, `unit:${camp}`, cap);
   const p = await page.panel();
-  need(/'s camp$/.test(p?.name ?? ''), `the camp's panel is named "${p?.name}"`);
+  need(/'s army \d+$/.test(p?.name ?? ''), `the army's panel is named "${p?.name}"`);
   need(!!p?.doing, `the camp's panel has a doing line: "${p?.doing}"`);
   need(p.numbers.length >= 3 && p.numbers.every((n) => n.tip), 'the numbers are label–value pairs, each with a tooltip');
   need(p.reasons.length > 0, 'the camp lists its reasons');
@@ -139,7 +139,7 @@ async function panelChecks(page) {
   for (const e of page.errors()) fail(`page error: ${e}`);
 }
 
-/** The hold: the civ raises warriors through its stepper until the camp has ten, the camp marches onto the
+/** The hold: the army raises warriors through its own Raise… stepper until it has ten, the camp marches onto the
  *  nearest rival camp's post (its tile), the ring round it is painted, and turns end until the rival's
  *  line is cut by our army and its camp goes hungry. */
 async function hold(page) {
@@ -150,8 +150,9 @@ async function hold(page) {
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   const mine = () => page.eval(`(() => { const u = Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp');
     return u && { id: u.id, tile: u.tile, people: u.people, dest: u.dest, hungry: u.hungry, pack: u.store.reduce((a, b) => a + b, 0), zone: u.territory, held: u.held }; })()`);
-  // Raise warriors at the capital through the civ's stepper; a refused count (greyed, with its reason) ends a turn.
-  await selectKey(page, `civ:${me}`, cap);
+  // Raise warriors into the army at the capital through the army's own Raise… stepper; a refused count (greyed,
+  // with its reason) ends a turn.
+  await selectKey(page, `unit:${(await mine()).id}`, cap);
   let raised = null;
   let refusals = 0;
   for (let turn = 0; turn < 60 && (raised = await mine()).people < WARRIORS; turn++) {
@@ -163,7 +164,7 @@ async function hold(page) {
   }
   console.log(JSON.stringify({ seed: HOLD_SEED, raised: raised.people, refusals, turn: Number((await page.data()).turn) }));
   if (raised.people < 8) throw new Error(`raised only ${raised.people} warriors through the stepper`);
-  need(true, `the civ's Raise… raises warriors to the camp (${raised.people})`);
+  need(true, `the army's Raise… raises warriors to the camp (${raised.people})`);
 
   // The nearest rival camp at its post (not at its capital): the camp marches onto it with Move to….
   const plan = await page.eval(`(() => {
@@ -204,17 +205,21 @@ async function hold(page) {
   need(painted.zone.length >= plan.ring.length + 1, `the ring is painted (zone ${painted.zone.length} tiles)`);
 
   // End turns until the rival's line is cut by our army and its camp is hungry.
-  const rivalState = () => page.eval(`(() => { const u = game.view().units[${plan.rival}]; return u && { hungry: u.hungry, cut_at: !!u.cut_at }; })()`);
-  let cut = false, hungry = false, s = null;
-  for (let turn = 0; turn < 25 && !(cut && hungry); turn++) {
+  const rivalState = () => page.eval(`(() => { const u = game.view().units[${plan.rival}]; return u && { hungry: u.hungry, cut_at: !!u.cut_at, tile: u.tile, people: u.people }; })()`);
+  const start = await rivalState();
+  // With the fight on, a stack on a rival's post fights it there: the rival retreats or falls, which is
+  // the hold's outcome too (build-4 draws the fight).
+  let cut = false, hungry = false, fought = false, s = null;
+  for (let turn = 0; turn < 25 && !(cut && hungry) && !fought; turn++) {
     await page.button('End turn');
     s = await rivalState();
     const text = (await page.eval("[...document.querySelectorAll('#feed li')].map((e) => e.textContent).join('\\n')"));
     cut = cut || text.includes("camp's line is cut by");
     hungry = hungry || (s && s.hungry > 0);
+    fought = fought || !s || s.people < start.people - 1e-6 || s.tile !== start.tile;
   }
-  need(cut && hungry, `the rival's line is cut by our army and its camp is hungry (cut ${cut}, hungry ${hungry})`);
-  await selectKey(page, `unit:${plan.rival}`, plan.at);
+  need((cut && hungry) || fought, `the rival's line is cut by our army and its camp is hungry, or they fight (cut ${cut}, hungry ${hungry}, fought ${fought})`);
+  if (s) await selectKey(page, `unit:${plan.rival}`, s.tile);
   await page.shot(join(out, 'hold.png'), 1);
   for (const e of page.errors()) fail(`page error: ${e}`);
 }

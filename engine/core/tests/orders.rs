@@ -28,7 +28,7 @@ fn led_game() -> World {
 /// One order for each kind that names a camp, with `unit` as its unit.
 fn camp_orders(unit: u32) -> Vec<Order> {
     vec![
-        Order::Disband { unit, n: Some(1) },
+        Order::Disband { unit, n: Some(1), fighter: None },
         Order::Move { unit, to: 0 },
         Order::Zone { unit, tiles: Vec::new() },
         Order::Switches { unit, forage: true, supply: true },
@@ -46,8 +46,8 @@ fn scout_orders(unit: u32) -> Vec<Order> {
 #[test]
 fn every_order_has_its_wire_name() {
     let orders = [
-        Order::Raise { n: 1, kind: units::UnitKind::Camp },
-        Order::Disband { unit: 1, n: None },
+        Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Default::default(), into: None },
+        Order::Disband { unit: 1, n: None, fighter: None },
         Order::Move { unit: 1, to: 2 },
         Order::Zone { unit: 1, tiles: vec![2] },
         Order::Switches { unit: 1, forage: true, supply: false },
@@ -105,11 +105,14 @@ fn every_order_is_refused_for_a_unit_of_the_wrong_kind() {
     let me = w.player.unwrap();
     let (camp, scout) = (led_camp(&w), led_scout(&w));
     for order in camp_orders(scout) {
-        // Disband takes a camp or a guard, so its refusal names both.
-        let want = if matches!(order, Order::Disband { .. }) {
-            "that unit is not a camp or a guard"
-        } else {
-            "that unit is not a camp"
+        // A scout takes the switches, the one-shot orders and disbanding, as a camp does.
+        let want = match order {
+            Order::Disband { .. } | Order::Switches { .. } | Order::Resupply { .. } | Order::Forage { .. } => {
+                assert_eq!(w.check_order(me, &order), Ok(()), "{order:?}");
+                continue;
+            }
+            Order::Pillage { .. } => "there is nothing to pillage here: it isn't a rival's land",
+            _ => "that unit is not a camp",
         };
         assert_eq!(w.check_order(me, &order), Err(want.to_string()), "{order:?}");
     }
@@ -125,7 +128,7 @@ fn every_order_is_refused_before_the_game_has_begun() {
     let civ = *w.civs.keys().next().unwrap();
     let camp = units::camp(&w, civ).unwrap().id;
     let scout = units::scout(&w, civ).unwrap().id;
-    let raise = Order::Raise { n: 1, kind: units::UnitKind::Camp };
+    let raise = Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Default::default(), into: None };
     assert_eq!(w.check_order(civ, &raise), Err("the game has not begun".to_string()));
     for order in camp_orders(camp).into_iter().chain(scout_orders(scout)) {
         assert_eq!(w.check_order(civ, &order), Err("the game has not begun".to_string()), "{order:?}");
@@ -191,8 +194,11 @@ fn world_order_works_for_an_ai_civ_while_the_player_leads_another() {
     let camp = units::camp(&w, ai).unwrap().id;
     let people = w.units[&camp].people;
     let logged = w.log.len();
-    w.order(ai, Order::Disband { unit: camp, n: Some(1) }).unwrap();
+    w.order(ai, Order::Disband { unit: camp, n: Some(1), fighter: None }).unwrap();
     assert_eq!(w.units[&camp].people, people - 1.0, "the AI's warrior went home");
     assert_eq!(w.log.len(), logged, "an order given directly is not logged");
-    assert!(w.order(me, Order::Disband { unit: camp, n: Some(1) }).is_err(), "the AI's camp is not the player's");
+    assert!(
+        w.order(me, Order::Disband { unit: camp, n: Some(1), fighter: None }).is_err(),
+        "the AI's camp is not the player's"
+    );
 }

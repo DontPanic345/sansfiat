@@ -18,9 +18,7 @@ use crate::world::{Phase, World};
 /// own land and on land (not on a built pass). The capital when there is nowhere to go.
 pub fn post(w: &World, civ: u32) -> usize {
     let c = &w.civs[&civ];
-    let to_rival = w
-        .civs
-        .values()
+    let to_rival = civs::alive(w)
         .filter(|o| o.id != civ)
         .filter_map(|o| path_between(w, c.capital, o.capital).map(|(p, _)| ((steps(w, c.capital, o.capital), o.id), p)))
         .min_by_key(|(k, _)| *k)
@@ -51,14 +49,17 @@ pub fn ai(w: &mut World) {
     if w.phase != Phase::Main {
         return;
     }
-    let ids: Vec<u32> = w.civs.keys().copied().filter(|&c| Some(c) != w.player).collect();
+    let ids: Vec<u32> = civs::alive(w).map(|c| c.id).filter(|&c| Some(c) != w.player).collect();
     for civ in ids {
         land(w, civ);
         if !w.config.army {
             continue;
         }
         if camp(w, civ).is_none() {
-            let _ = w.order(civ, Order::Raise { n: UNIT.start, kind: UnitKind::Camp });
+            let _ = w.order(
+                civ,
+                Order::Raise { n: UNIT.start, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None },
+            );
         }
         let Some(u) = camp(w, civ) else { continue };
         if u.camp().is_some_and(|c| c.dest.is_some()) {
@@ -77,9 +78,7 @@ pub fn ai(w: &mut World) {
 }
 
 /// The AI's land for `civ`: its stand-in claim is sent whenever it differs from the claim, where
-/// `Config.claims` lets it claim. Its guard is raised a person a turn while a claimed tile under
-/// `CLAIM.floor` has no guard and its store and its clans' stores, after `keep`, hold `GUARD.keep_turns` turns of food for
-/// one more guard; a guard that went hungry last turn loses a person.
+/// `Config.claims` lets it claim; then its guard (`guard_order`).
 fn land(w: &mut World, civ: u32) {
     if claim::may_claim(w, civ) {
         let want = claim::ai_claim(w, civ);
@@ -87,13 +86,23 @@ fn land(w: &mut World, civ: u32) {
             w.order(civ, Order::Claim { tiles: want }).expect("the stand-in claim passes the claim's check");
         }
     }
+    if let Some(order) = guard_order(w, civ) {
+        let _ = w.order(civ, order);
+    }
+}
+
+/// The AI's rule for `civ`'s guard, as the order it would give: a guard that went hungry last turn
+/// loses a person (`Disband`); else the guard is raised a person a turn while a claimed tile under
+/// `CLAIM.floor` has no guard and its store and its clans' stores, after `keep`, hold
+/// `GUARD.keep_turns` turns of food for one more guard. `None` when it does neither. A story keeps
+/// the led civ's guard by giving this order through `act`.
+pub fn guard_order(w: &World, civ: u32) -> Option<Order> {
     if !w.config.army || !claim::may_claim(w, civ) {
-        return;
+        return None;
     }
     if let Some((id, hungry)) = guard_of(w, civ).map(|u| (u.id, u.hungry)) {
         if hungry > 0 {
-            let _ = w.order(civ, Order::Disband { unit: id, n: Some(1) });
-            return;
+            return Some(Order::Disband { unit: id, n: Some(1), fighter: None });
         }
     }
     let c = &w.civs[&civ];
@@ -106,9 +115,12 @@ fn land(w: &mut World, civ: u32) {
     // The guard eats from the store and then its clans' stores, so both count to feed one more.
     let kin: f64 = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| total(&k.actor.store)).sum();
     let spare = total(&c.store) + kin - civs::keep(w, civ);
-    if short && spare >= GUARD.keep_turns * UNIT.food * (people + 1.0) {
-        let _ = w.order(civ, Order::Raise { n: 1, kind: UnitKind::Guard });
-    }
+    (short && spare >= GUARD.keep_turns * UNIT.food * (people + 1.0)).then_some(Order::Raise {
+        n: 1,
+        kind: UnitKind::Guard,
+        fighter: Fighter::Warriors,
+        into: None,
+    })
 }
 
 /// The AI's zone for a posted, idle camp: the first `UNIT.zone` tiles of its line home (no more

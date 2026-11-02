@@ -69,3 +69,6 @@ first, so there's no reserve to set.
 - A contested tile goes to the side guarding it more; capitals can't be held. (#90)
 - Held ground blocks rivals' lines, and lets your own line through their land. (#88, #90)
 - Lines, and forage against pillage, read a civ's land as the part of its claim its guard holds. (#102)
+- Foraging takes only what it takes, for every unit: the tile keeps the rest of its food and rests in proportion. (#104)
+- A scout has the army's switches, and can be ordered to forage, pillage and resupply. (#104)
+- A civ can raise people into an army only while that army's line is open, so a cut-off army can't be reinforced. (#104)

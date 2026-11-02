@@ -330,6 +330,7 @@ impl Watch {
                 flips_per_100: per_100(self.flips, self.clan_turns),
                 civs_200: self.civs_200.clone(),
             },
+            fight: FightScores::of(w),
         }
     }
 }
@@ -342,6 +343,47 @@ pub struct Scores {
     pub decisions: DecisionScores,
     pub motion: MotionScores,
     pub land: LandScores,
+    /// What fighting cost and moved, read from the civs' counters at the end of the watch.
+    pub fight: FightScores,
+}
+
+/// The fight group: per civ and in total, the people fallen in fights (armies, guards and militia),
+/// the tiles taken by fighting and the armies surrendered, from `Civ.army` at the end of the watch.
+/// The counters run from the start of the game, and fighting begins at the pick, so they are the
+/// watch's.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+pub struct FightScores {
+    pub civs: BTreeMap<u32, FightCivScores>,
+    pub fallen: f64,
+    pub taken: u32,
+    pub surrendered: u32,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+pub struct FightCivScores {
+    pub fallen: f64,
+    pub taken: u32,
+    pub surrendered: u32,
+}
+
+impl FightScores {
+    /// The fight counts of every civ in `w`.
+    pub fn of(w: &World) -> FightScores {
+        let civs: BTreeMap<u32, FightCivScores> = w
+            .civs
+            .values()
+            .map(|c| {
+                let a = &c.army;
+                (c.id, FightCivScores { fallen: a.fallen, taken: a.taken, surrendered: a.surrendered })
+            })
+            .collect();
+        FightScores {
+            fallen: civs.values().map(|c| c.fallen).sum(),
+            taken: civs.values().map(|c| c.taken).sum(),
+            surrendered: civs.values().map(|c| c.surrendered).sum(),
+            civs,
+        }
+    }
 }
 
 /// `n` per 100 clan-turns.

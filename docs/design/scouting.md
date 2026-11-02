@@ -81,3 +81,5 @@ set its target. Debug views stay, but nothing in play needs them.
 - Trails, worn or built, make a route cheaper; a marsh trail only bridges its river. (#74, #76)
 - A trail on a route the civ uses, such as a camp's line, counts as walked. (#78)
 - The player hears of a route when it's found and again when it's built. (#74, #77)
+- A scout forages its own tile and the tiles next to it, and pays the walk to each. (#104)
+- A scout keeps its route until the route is cleared, and the trails along it count as walked while it does. (#104)

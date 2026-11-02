@@ -4,7 +4,8 @@ use common::*;
 use engine::civs::{self, cards, Civ};
 use engine::clans::eat;
 use engine::data::*;
-use engine::{Action, Config, EventKind, Phase, Save, World};
+use engine::units::fight;
+use engine::{Action, Config, EventKind, Order, Phase, Save, UnitKind, World};
 
 /// A big world with three markets, ended by hand: the civs in `End.centres` order.
 fn founded() -> (World, [u32; 3]) {
@@ -376,9 +377,9 @@ fn at_founding_a_clan_as_close_to_a_capital_as_its_festival_switches_to_it() {
 
 #[test]
 fn a_civ_serialises_its_store_where_it_always_was_and_reads_back() {
-    const KEYS: [&str; 19] = [
+    const KEYS: [&str; 22] = [
         "id", "name", "color", "market", "capital", "founded", "store", "lost", "clan", "army", "keep", "gift",
-        "posted", "given", "joined", "gifted", "revealed", "claim", "guard",
+        "posted", "given", "joined", "gifted", "revealed", "claim", "guard", "pressed", "besieged", "fallen",
     ];
     let (w, ids) = founded();
     let civ = &w.civs[&ids[0]];
@@ -390,4 +391,125 @@ fn a_civ_serialises_its_store_where_it_always_was_and_reads_back() {
     let back: Civ = serde_json::from_str(&json).unwrap();
     assert_eq!((back.home, back.store), (civ.capital, civ.store));
     assert_eq!(serde_json::to_string(&back).unwrap(), json);
+}
+
+/// Red's army of `people` on Blue's capital, Blue's own camp taken away: a rival on the capital with
+/// nobody of Blue's but its guard, its clan there and the guard's people.
+fn invade_capital(w: &mut World, red: u32, blue: u32, people: f64) -> usize {
+    let cap = w.civs[&blue].capital;
+    let own = camp_id(w, blue);
+    w.units.remove(&own);
+    let r = put_camp(w, red, cap);
+    let u = camp_mut(w, r);
+    u.actor.people = people;
+    u.actor.store = [0.0; N];
+    let c = u.camp_mut().unwrap();
+    c.stack = [people, 0.0];
+    c.dest = None;
+    w.civs.get_mut(&blue).unwrap().store = CIV.endowment;
+    cap
+}
+
+#[test]
+fn a_capital_with_no_guard_army_or_militia_left_falls_and_its_civ_is_out() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let cap = invade_capital(&mut w, red, blue, 5.0);
+    let bc = w.civs[&blue].clan;
+    w.clans.get_mut(&bc).unwrap().people = 0.5;
+    no_guard(&mut w, blue);
+    let before = total_people(&w);
+    let holders = fight::army_holders(&w);
+    fight::step(&mut w, &holders);
+    let fallen: f64 = w.civs.values().map(|c| c.army.fallen).sum();
+    assert!(w.civs[&blue].is_out(), "its capital fell");
+    assert_eq!(w.civs[&blue].fallen, Some((w.turn, red)));
+    assert!((before - total_people(&w) - fallen).abs() < 1e-9, "people are conserved");
+    assert!(w.clans.values().all(|k| k.civ != Some(blue)), "its clans are unaligned");
+    assert!(w.clans.values().filter(|k| k.home == cap).all(|k| k.leaning.is_empty()));
+    assert!(w.civs[&blue].claim.is_empty());
+    assert_ne!(engine::claim::tile_civ(&w, cap), Some(blue));
+    assert_eq!(engine::stats::standing(&w)[&blue], 0.0);
+    assert!(w.units.values().all(|u| u.civ != blue), "its armies and guard are gone");
+    assert!(w.civs[&red].army.taken == 0, "a fall is not a tile taken");
+    assert!(w.units[&camp_id(&w, red)].store.iter().sum::<f64>() > 0.0, "its store fills the taker's pack");
+    assert_eq!(w.civs[&blue].store, [0.0; N], "the rest is lost");
+    assert_eq!(kinds(&w, EventKind::CapitalFell), 1);
+    assert!(
+        w.notes[&blue].iter().any(|n| n.text.contains("fell")) && w.notes[&red].iter().any(|n| n.text.contains("took"))
+    );
+    // Its orders are refused, and the game goes on.
+    let refused =
+        w.check_order(blue, &Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None });
+    assert_eq!(refused, Err("your civ has fallen".to_string()));
+    end_turn(&mut w);
+    end_turn(&mut w);
+}
+
+#[test]
+fn a_capital_with_a_guard_left_on_it_does_not_fall() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let cap = invade_capital(&mut w, red, blue, 1.0);
+    let bc = w.civs[&blue].clan;
+    w.clans.get_mut(&bc).unwrap().people = 0.5;
+    let holders = fight::army_holders(&w);
+    fight::step(&mut w, &holders);
+    assert!(!w.civs[&blue].is_out(), "its guard is on the capital");
+    assert_eq!(engine::claim::tile_civ(&w, cap), Some(blue));
+}
+
+#[test]
+fn a_capital_with_a_clan_of_a_person_or_more_left_as_militia_does_not_fall() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    invade_capital(&mut w, red, blue, 1.0);
+    no_guard(&mut w, blue);
+    let bc = w.civs[&blue].clan;
+    w.clans.get_mut(&bc).unwrap().people = 14.0;
+    let holders = fight::army_holders(&w);
+    fight::step(&mut w, &holders);
+    assert!(!w.civs[&blue].is_out(), "one person of militia or more holds it");
+}
+
+#[test]
+fn a_fallen_civs_units_go_to_the_nearest_clan_and_a_rival_pack_is_filled() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let cap = invade_capital(&mut w, red, blue, 5.0);
+    let r = camp_id(&w, red);
+    let scout = led_scout_of(&w, blue);
+    let before = total_people(&w);
+    civs::fall(&mut w, blue, red);
+    assert!(!w.units.contains_key(&scout), "its scout disbanded");
+    assert!((before - total_people(&w)).abs() < 1e-9, "people are conserved");
+    assert!(w.units[&r].store.iter().sum::<f64>() > 0.0, "the taker's army takes the store");
+    assert_eq!(w.units[&r].home, cap);
+}
+
+fn led_scout_of(w: &World, civ: u32) -> u32 {
+    engine::units::scout(w, civ).expect("a scout").id
+}
+
+fn total_people(w: &World) -> f64 {
+    w.clans.values().map(|c| c.people).sum::<f64>() + w.units.values().map(|u| u.people).sum::<f64>()
+}
+
+#[test]
+fn a_fallen_capitals_market_fades_like_any_festival() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let mid = w.civs[&blue].market;
+    invade_capital(&mut w, red, blue, 5.0);
+    no_guard(&mut w, blue);
+    let bc = w.civs[&blue].clan;
+    w.clans.get_mut(&bc).unwrap().people = 0.5;
+    w.markets.get_mut(&mid).unwrap().activity = 0.0;
+    engine::markets::fade(&mut w);
+    assert!(w.markets.contains_key(&mid), "a civ's market is kept while it stands");
+    let holders = fight::army_holders(&w);
+    fight::step(&mut w, &holders);
+    assert!(w.civs[&blue].is_out());
+    engine::markets::fade(&mut w);
+    assert!(!w.markets.contains_key(&mid), "no longer kept: it fades like any festival");
 }

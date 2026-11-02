@@ -69,3 +69,5 @@ says.
 - A civ's gifts go to every clan at its festival that isn't its own, a rival's clans included. Trade leaning reaches its own clans too. (#102)
 - A clan that joins a civ, or leaves for one, starts at the joining line toward it, and its other leanings are cleared. (#102)
 - A civ keeps a turn of its guard's food in its store, out of gifts. (#102)
+- A civ may have any number of armies, of warriors and archers. Raising names a kind and a place: a new army at the capital, or into an army. Disbanding names a kind, or takes all kinds in proportion. (#104)
+- A civ may raise a scout at any time, and have any number, each with its pack filled from the store. (#104)

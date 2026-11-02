@@ -177,7 +177,7 @@ function refresh() {
   pullEvents();
   const scout = v.player != null ? Object.values(v.units).find((u) => u.civ === v.player && u.kind === 'scout') : null;
   document.body.dataset.scout = scout ? scout.id : '';
-  document.body.dataset.routeState = scout?.route ? 'set' : (outcome ?? 'none');
+  document.body.dataset.routeState = scout?.route && outcome !== 'found' ? 'set' : (outcome ?? 'none');
   document.body.dataset.armed = routing.arm ?? '';
   markChips();
   panelDraw();
@@ -717,7 +717,7 @@ function fillTip(i) {
   const lines = [`<b>${tileKind(ctx(), i)}</b>`];
   if (layout.terrain[i] !== 0 && TERRAIN[layout.terrain[i]].land) {
     lines.push(h ? clanTip(i, h) : 'Held by nobody');
-    for (const u of model.holders(i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s camp`);
+    for (const u of model.holders(i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s army`);
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
     lines.push(...wearTip(i));
   }

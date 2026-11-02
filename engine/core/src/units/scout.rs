@@ -6,8 +6,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::line::{line, path_between, walkable};
-use super::{rival_of, room, strip, supply, EPS};
-use crate::actors::{stride, Route};
+use super::{rival_of, room, strip, strip_at, supply, EPS};
+use crate::actors::{stride, walk_cost, Route};
+use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::{self, build_trail, cost_map, path_by, steps, trailable};
@@ -24,6 +25,39 @@ pub struct ScoutState {
     pub heard: bool,
     /// A scout has reported that it is blocked, so says it once.
     pub blocked: bool,
+    /// A scout has said its trails are built, so says it once while the route stays set.
+    pub built: bool,
+    /// Whether it forages (pillages on a rival's land) round it for what its pack lacks, and
+    /// refills its pack from the store along its line, each turn.
+    pub auto_forage: bool,
+    pub auto_supply: bool,
+    /// One-shot orders for this turn's end.
+    pub resupply: bool,
+    pub forage: bool,
+    pub pillage: bool,
+}
+
+impl ScoutState {
+    /// A scout with no route and its switches on.
+    pub fn new() -> Self {
+        ScoutState {
+            route: None,
+            heard: false,
+            blocked: false,
+            built: false,
+            auto_forage: true,
+            auto_supply: true,
+            resupply: false,
+            forage: false,
+            pillage: false,
+        }
+    }
+}
+
+impl Default for ScoutState {
+    fn default() -> Self {
+        ScoutState::new()
+    }
 }
 
 /// The scout state of unit `id` (the unit is a scout; the callers have checked).
@@ -275,6 +309,7 @@ fn clear_route(w: &mut World, id: u32) {
         s.route = None;
         s.heard = false;
         s.blocked = false;
+        s.built = false;
     }
 }
 
@@ -358,9 +393,12 @@ fn search(w: &mut World, id: u32, left: &mut f64, start: f64) -> f64 {
         let trail = needs.iter().find_map(|&j| approach(w, &costs, home, j).map(|p| (j, p)));
         let Some((j, path)) = trail else {
             match known_cost {
+                // Its trails are built: the route stays set until cleared, and is said once.
                 Some(cost) if !no_reveal && needs.is_empty() => {
-                    clear_route(w, id);
-                    scout_event(w, EventKind::ScoutRouteFound, home, civ, id, Some(cost));
+                    if !sc(w, id).built {
+                        sc_mut(w, id).built = true;
+                        scout_event(w, EventKind::ScoutRouteFound, home, civ, id, Some(cost));
+                    }
                 }
                 _ => blocked(w, id, civ),
             }
@@ -393,9 +431,118 @@ fn reveal(w: &mut World, id: u32, civ: u32, j: usize) {
         scout_event(w, EventKind::ScoutPassFound, j, civ, id, None);
     }
 }
-/// One scout's turn: it spoils, feeds itself (forage only on a route and off rival land, then the
-/// line for what is still short), searches on the labour left, and eats. Its people go hungry as a
-/// camp's do; a scout that starves to nothing is gone.
+/// The tiles within `reach` steps of `from`, `from` first, then by tile.
+fn near(w: &World, from: usize, reach: usize) -> Vec<usize> {
+    let mut seen = vec![from];
+    let mut frontier = vec![from];
+    for _ in 0..reach {
+        let mut next = Vec::new();
+        for t in frontier {
+            for n in land::neighbours(w, t) {
+                if !seen.contains(&n) {
+                    seen.push(n);
+                    next.push(n);
+                }
+            }
+        }
+        frontier = next;
+    }
+    let rest = seen.split_off(1);
+    let mut rest = rest;
+    rest.sort_unstable();
+    seen.extend(rest);
+    seen
+}
+
+/// Whether tile `t` is a rival's land to scout `id`'s civ.
+fn rival_tile(w: &World, id: u32, t: usize) -> bool {
+    claim::tile_civ(w, t).is_some_and(|c| c != w.units[&id].civ)
+}
+
+/// The labour a unit of food costs on the scout's line: the line's cost over what a unit of labour
+/// carries. `None` when the store holds nothing to bring, or no line reaches it.
+fn line_price(w: &World, id: u32) -> Option<f64> {
+    let civ = w.units[&id].civ;
+    let (_, cost, _) = line(w, id)?;
+    (total(&w.civs[&civ].store) > EPS).then_some(cost / UNIT.carry)
+}
+
+/// The scout forages (pillages, on a rival's land) its own tile and the tiles within `SCOUT.reach`
+/// steps for up to `want` of food, richest first, paying each walk there and back from its labour
+/// `left`. A tile that costs more labour a unit of food than the line does is left while the store
+/// has food to bring. Returns the food taken.
+fn forage_round(w: &mut World, id: u32, left: &mut f64, want: f64) -> f64 {
+    let home = w.units[&id].home;
+    let line_price = if sc(w, id).auto_supply { line_price(w, id) } else { None };
+    let mut tiles: Vec<(f64, usize)> = near(w, home, SCOUT.reach)
+        .into_iter()
+        .filter(|&t| t == home || walkable(w, t))
+        .map(|t| (total(&w.tiles[t].stock), t))
+        .filter(|&(held, t)| held > 0.0 && w.tiles[t].fallow == 0)
+        .collect();
+    tiles.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
+    let mut got = 0.0;
+    for (held, t) in tiles {
+        let need = want - got;
+        if need <= EPS || *left <= EPS {
+            break;
+        }
+        let walk = if t == home {
+            0.0
+        } else {
+            match path_between(w, home, t) {
+                Some((_, cost)) => walk_cost(cost, 1.0),
+                None => continue,
+            }
+        };
+        if walk >= *left {
+            continue;
+        }
+        let rate = if rival_tile(w, id, t) { UNIT.pillage } else { UNIT.forage };
+        let price = walk / held.min(need) + 1.0 / rate;
+        if line_price.is_some_and(|p| price > p + EPS) {
+            continue;
+        }
+        let (used, food) = strip_at(w, id, t, *left - walk, need.min(room(&w.units[&id])), rate);
+        if food > 0.0 {
+            *left -= walk + used;
+            got += food;
+        }
+    }
+    got
+}
+
+/// Brings up to `want` of food along the line into the pack on `left` labour, the line's tiles
+/// counting as walked.
+fn bring(w: &mut World, id: u32, left: &mut f64, want: f64) {
+    let (used, food) = supply(w, id, *left, want);
+    *left -= used;
+    if food > 0.0 {
+        let people = w.units[&id].people;
+        for &t in line(w, id).iter().flat_map(|(p, _, _)| p) {
+            w.tiles[t].traffic += people;
+            w.tiles[t].used = true;
+        }
+    }
+}
+
+/// While a scout's route is settled (its trails built, or none needed), the tiles of the path it
+/// knows count as walked, so its trail holds.
+fn keep_route(w: &mut World, id: u32) {
+    let civ = w.units[&id].civ;
+    let s = sc(w, id);
+    let (Some((from, to)), true) = (s.route, s.heard || s.built) else { return };
+    if let Some((path, _)) = route_plan(w, civ, from, to).known {
+        for t in path {
+            w.tiles[t].used = true;
+        }
+    }
+}
+
+/// One scout's turn: it spoils, walks home if it has no route, feeds itself (its one-shot orders,
+/// then foraging round it for what its pack lacks, then the line to fill the pack), searches on the
+/// labour left, and eats. Its people go hungry as a camp's do; a scout that starves to nothing is
+/// gone.
 pub(super) fn scout_turn(w: &mut World, id: u32) {
     let civ = w.units[&id].civ;
     w.units.get_mut(&id).unwrap().spoil();
@@ -406,7 +553,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     w.units.get_mut(&id).unwrap().banked = 0.0;
 
     // Without a route it walks home to the capital, to be fed there rather than starve out in the
-    // country (where it forages nothing).
+    // country.
     if sc(w, id).route.is_none() {
         let (home, capital) = (w.units[&id].home, w.civs[&civ].capital);
         if let Some((p, _)) = path_between(w, home, capital) {
@@ -416,27 +563,43 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
         }
     }
 
-    // Feeds first: foraging only while it has a route, and never on rival land.
-    if sc(w, id).route.is_some() && !rival_of(w, &w.units[&id]) {
-        let short = (need - total(&w.units[&id].store)).max(0.0);
-        let (used, _) = strip(w, id, left, short.min(room(&w.units[&id])), UNIT.forage);
+    // One-shot orders, on this turn's labour.
+    let (once_forage, once_pillage, once_supply) = {
+        let s = sc_mut(w, id);
+        let once = (s.forage, s.pillage, s.resupply);
+        (s.forage, s.pillage, s.resupply) = (false, false, false);
+        once
+    };
+    let here = rival_of(w, &w.units[&id]);
+    if (once_forage && !here) || (once_pillage && here) {
+        let rate = if here { UNIT.pillage } else { UNIT.forage };
+        let (used, _) = strip(w, id, left, room(&w.units[&id]), rate);
         left -= used;
     }
-    let short = (need - total(&w.units[&id].store)).max(0.0);
-    let (used, food) = supply(w, id, left, short.min(room(&w.units[&id])));
-    left -= used;
-    if food > 0.0 {
-        let people = w.units[&id].people;
-        for &t in line(w, id).iter().flat_map(|(p, _, _)| p) {
-            w.tiles[t].traffic += people;
-            w.tiles[t].used = true;
-        }
+    if once_supply {
+        bring(w, id, &mut left, room(&w.units[&id]));
+    }
+    // It feeds itself first: auto-forage covers what eating needs that the pack doesn't, round the
+    // scout's tile, and auto-supply the rest of it along the line.
+    let short = |w: &World| (need - total(&w.units[&id].store)).max(0.0).min(room(&w.units[&id]));
+    if sc(w, id).auto_forage {
+        let want = short(w);
+        forage_round(w, id, &mut left, want);
+    }
+    if sc(w, id).auto_supply {
+        let want = short(w);
+        bring(w, id, &mut left, want);
     }
 
     // Searches on what labour is left.
     let start = left;
     if sc(w, id).route.is_some() {
         banked = search(w, id, &mut left, start);
+        keep_route(w, id);
+    }
+    // Auto-supply refills the pack to full on what the search left.
+    if sc(w, id).auto_supply {
+        bring(w, id, &mut left, room(&w.units[&id]));
     }
     w.units.get_mut(&id).unwrap().banked = banked;
 

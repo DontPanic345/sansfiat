@@ -8,6 +8,7 @@ mod replay;
 mod report;
 mod retro;
 mod run;
+mod story;
 mod sweep;
 mod view;
 
@@ -24,14 +25,16 @@ use map::map;
 use play::play;
 use replay::replay;
 use run::run;
+use story::story;
 use sweep::sweep;
 
 pub(crate) const USAGE: &str = "\
 sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--every N] [--save file.json] [--json | --events-json] [--no-events] [--why ID]   (--why prints the reasons of a clan, market, civ or unit, newest first)
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
-sansfiat play --game FILE [--seed N --size NAME [--civ K]]   (a game a line at a time: the file is a save, resumed by each call; without --civ a new game prints the civs' cards; lines on stdin, the view after each accepted one; FILE.lines.jsonl records every line)
+sansfiat play --game FILE [--seed N --size NAME [--civ K] [--no-fight]]   (a game a line at a time: the file is a save, resumed by each call; without --civ a new game prints the civs' cards; lines on stdin, the view after each accepted one; FILE.lines.jsonl records every line; --no-fight starts a new game with fighting off)
 sansfiat judge FILE [--json]   (a played game judged turn by turn, beside the same map with every civ on the AI: Standing, doubt, motion and the player's decisions)
+sansfiat story skirmish|stack|surrender [--seed N --size NAME --civ K] [--no-fight] [--turns N] --save FILE   (a scripted story of war on a retro map: the led civ K (1-based, id order) gives its orders through the engine's door and the AI plays the rest; the save is a normal save that `judge FILE` scores and `play --game FILE` resumes; --no-fight is the control; --trace prints a line a turn)
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
 sansfiat sweep --judge [--json] [--solo]   (the retro maps, every civ on the AI: the army run twice, the --no-army control and the no-claims control, scored by the judge over 200 turns past the pick; --solo adds each civ claiming alone; a report, with no verdict)
 sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--no-zone] [--no-claims] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army, --no-gifts, --no-zone (AI camps paint no zone) and --no-claims (no civ claims land) are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
@@ -61,6 +64,7 @@ fn main() {
         Some("map") => map(&args[1..]),
         Some("play") => play(&args[1..]),
         Some("judge") => judge_game(&args[1..]),
+        Some("story") => story(&args[1..]),
         Some("clear") => clear_file(args.get(1).map(String::as_str).unwrap_or("-")),
         Some("goods") => {
             println!("{}", GOODS.join(" "));

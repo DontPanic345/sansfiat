@@ -211,6 +211,10 @@ pub fn led() -> (World, [u32; 3], [u32; 3]) {
     let (mut w, ids, clans) = three();
     w.act(Action::ChooseCiv { civ: Some(ids[0]) }).unwrap();
     w.events.clear();
+    // The scouts' packs are full, as a scout refills its pack to full from the store.
+    for u in w.units.values_mut().filter(|u| u.kind() == units::UnitKind::Scout) {
+        u.actor.store = [units::pack_cap(u.people) / N as f64; N];
+    }
     (w, ids, clans)
 }
 
@@ -311,6 +315,14 @@ pub fn hold_land(w: &mut World, civ: u32, tiles: &[usize]) {
     }
     let claim = engine::claim::check(w, civ, tiles).expect("a claim the civ may hold");
     engine::claim::set(w, civ, claim);
+}
+
+/// Removes `civ`'s scout, for a test that counts the civ's store to the last food: a scout refills
+/// its pack from it.
+pub fn no_scout(w: &mut World, civ: u32) {
+    if let Some(id) = units::scout(w, civ).map(|u| u.id) {
+        w.units.remove(&id);
+    }
 }
 
 /// Disbands `civ`'s guard, for a test that counts the civ's store to the last food: the guard eats
