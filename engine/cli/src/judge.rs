@@ -144,7 +144,7 @@ struct Report {
 
 /// One run to the end: the world, and its watch.
 fn played(radius: i32, seed: u32, army: bool) -> (World, Watch) {
-    let mut w = to_pick(Config { seed, radius, army, gifts: true, zone: true });
+    let mut w = to_pick(Config { seed, radius, army, gifts: true, zone: true, ..Config::default() });
     w.act(Action::ChooseCiv { civ: None }).expect("watching is always allowed at the pick");
     let mut watch = Watch::new(&w);
     for _ in 0..AFTER {

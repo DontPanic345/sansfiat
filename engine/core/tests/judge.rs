@@ -4,6 +4,7 @@ use common::*;
 use engine::data::JUDGE;
 use engine::judge::Watch;
 use engine::stats::{self, standing};
+use engine::units::UnitKind;
 use engine::{Action, Config, Order, Phase, World};
 
 /// Three civs' clans from `three`, with no units; the first two clans are the civs' with the given
@@ -49,7 +50,7 @@ fn a_civ_with_no_people_has_no_standing() {
 
 #[test]
 fn standing_is_empty_for_a_world_with_nobody() {
-    let w = World::new(Config { seed: 2, radius: 6, army: true, gifts: true, zone: true });
+    let w = World::new(Config { seed: 2, radius: 6, army: true, gifts: true, zone: true, ..Config::default() });
     assert!(standing(&w).values().all(|&s| s == 0.0));
     assert!(stats::summary(&w).standing.values().all(|&s| s == 0.0));
 }
@@ -59,7 +60,7 @@ fn raising_a_camp_moves_no_standing() {
     let (mut w, ids, _) = led();
     fill_stores(&mut w);
     let before = standing(&w);
-    w.order(ids[0], Order::Raise { n: 2 }).unwrap();
+    w.order(ids[0], Order::Raise { n: 2, kind: UnitKind::Camp }).unwrap();
     assert!(engine::units::camp(&w, ids[0]).is_some(), "the raise made a camp");
     let after = standing(&w);
     for id in ids {
@@ -71,7 +72,7 @@ fn raising_a_camp_moves_no_standing() {
 fn an_accepted_order_counts_under_its_kind_and_a_refused_one_does_not() {
     let (mut w, ids, _) = led();
     fill_stores(&mut w);
-    w.act(Action::Order { civ: ids[0], order: Order::Raise { n: 1 } }).unwrap();
+    w.act(Action::Order { civ: ids[0], order: Order::Raise { n: 1, kind: UnitKind::Camp } }).unwrap();
     w.act(Action::SetGift { food: 1.0 }).unwrap();
     assert_eq!(w.orders[&ids[0]]["raise"], 1);
     assert_eq!(w.orders[&ids[0]]["setGift"], 1);
@@ -84,13 +85,13 @@ fn an_accepted_order_counts_under_its_kind_and_a_refused_one_does_not() {
 fn the_orders_counter_is_not_in_the_save_or_the_json() {
     let (mut w, ids, _) = led();
     fill_stores(&mut w);
-    w.act(Action::Order { civ: ids[0], order: Order::Raise { n: 1 } }).unwrap();
+    w.act(Action::Order { civ: ids[0], order: Order::Raise { n: 1, kind: UnitKind::Camp } }).unwrap();
     assert!(!serde_json::to_string(&w).unwrap().contains("orders"));
 }
 
 #[test]
 fn the_ai_orders_are_counted_too() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true, ..Config::default() });
     while w.phase == Phase::Pregame {
         w.run(1);
     }
@@ -102,7 +103,7 @@ fn the_ai_orders_are_counted_too() {
 #[test]
 fn each_order_kind_is_its_wire_name() {
     let samples = [
-        Order::Raise { n: 1 },
+        Order::Raise { n: 1, kind: UnitKind::Camp },
         Order::Disband { unit: 1, n: None },
         Order::Move { unit: 1, to: 0 },
         Order::Zone { unit: 1, tiles: vec![] },
@@ -169,7 +170,8 @@ fn equal_worlds_give_equal_scores() {
 #[test]
 fn a_played_game_scores_the_same_twice() {
     let run = || {
-        let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
+        let mut w =
+            World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true, ..Config::default() });
         while w.phase == Phase::Pregame {
             w.run(1);
         }

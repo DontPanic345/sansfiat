@@ -159,9 +159,9 @@ export class MapView {
     this.civShapes = [];
     this.clanCiv = new Map(v.clan_civ || []);
     for (const c of Object.values(v.civs || {})) {
-      const land = new Set(c.territory);
+      const land = new Set(c.land);
       const edge = new Path2D();
-      for (const i of c.territory) {
+      for (const i of c.land) {
         for (let d = 0; d < 6; d++) {
           const j = this.nb[i * 6 + d];
           if (j >= 0 && land.has(j)) continue;
@@ -171,10 +171,6 @@ export class MapView {
         }
       }
       const work = new Path2D();
-      for (const i of c.work) {
-        work.moveTo(this.px[i] + 0.9, this.py[i]);
-        work.arc(this.px[i], this.py[i], 0.9, 0, 2 * Math.PI);
-      }
       this.civShapes.push({ civ: c, edge, work });
     }
   }

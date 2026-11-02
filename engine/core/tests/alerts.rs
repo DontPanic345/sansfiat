@@ -37,14 +37,17 @@ fn a_led_camp_going_hungry_alerts_once_and_its_starving_once_per_loss() {
     let red = ids[0];
     w.act(Action::ChooseCiv { civ: Some(red) }).unwrap();
     starve_camp_on(&mut w, red, at_big(-5, 8));
+    let camp = camp_id(&w, red);
     for _ in 0..UNIT.hungry_turns + 3 {
         w.act(Action::EndTurn).unwrap();
     }
     let hungry = about(&w, EventKind::CampHungry, red);
     assert_eq!(hungry.len(), 1, "announced once");
     assert!(hungry[0].alert, "its hunger starts: an alert");
-    // Each turn the starving camp loses a warrior: the first is an alert, the next turns' are not.
-    let starved = about(&w, EventKind::WarriorsStarved, red);
+    // Each turn the starving camp loses a warrior: the first is an alert, the next turns' are not. (A guard
+    // that starves is its own unit, with its own alert.)
+    let starved: Vec<&Event> =
+        about(&w, EventKind::WarriorsStarved, red).into_iter().filter(|e| e.unit == Some(camp)).collect();
     assert!(starved.len() >= 2, "warriors starve on more than one turn: {}", starved.len());
     assert!(starved[0].alert, "the first loss is an alert");
     assert!(starved[1..].iter().all(|e| !e.alert), "the losses that follow are not");

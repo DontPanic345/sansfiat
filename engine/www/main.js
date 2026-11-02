@@ -648,7 +648,7 @@ function fillTip(i) {
     const c = v.civs[civ];
     const name = `<i class="sw" style="background:${c.color}"></i>${c.name}`;
     if (c.capital === i) lines.push(`${name}'s capital`);
-    else if (c.territory.includes(i)) lines.push(`${name}'s land <span class="dim">(capital territory)</span>`);
+    else if (c.land.includes(i)) lines.push(`${name}'s land`);
     else if (h) lines.push(`${name}, clan ${h}'s territory`);
     else lines.push(`${name}'s land`);
   }

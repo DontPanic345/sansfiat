@@ -16,7 +16,7 @@ const RADIUS: i32 = 16;
 
 /// The real map of `seed`, run to the pick, led by its first civ.
 fn lead(seed: u32) -> World {
-    let mut w = World::new(Config { seed, radius: RADIUS, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed, radius: RADIUS, army: true, gifts: true, zone: true, ..Config::default() });
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }
@@ -284,12 +284,16 @@ fn a_route_order_replays_to_the_same_world() {
     let target = open_ray(&w, cap, 6)[5];
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     w.run(15);
-    w.act(led_order(&w, Order::ClearRoute { unit: led_scout(&w) })).expect("the scout is still there");
+    // The guard eats from the civ's store, which on this seed can't feed the scout past a route's walk: a
+    // scout that starved out has no route to clear, and its hunger is the event that says so.
+    let civ = w.player.unwrap();
+    match units::scout(&w, civ).map(|u| u.id) {
+        Some(id) => w.act(led_order(&w, Order::ClearRoute { unit: id })).expect("the scout is still there"),
+        None => assert!(w.events.iter().any(|e| e.kind == EventKind::ScoutStarved), "the scout starved"),
+    }
     w.run(5);
     let again = World::replay(&w.save()).unwrap();
     assert_eq!(digest(&again), digest(&w));
-    assert!(
-        w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: cap })).is_err(),
-        "a route needs two tiles"
-    );
+    let unit = units::scout(&w, civ).map_or(0, |u| u.id);
+    assert!(w.act(led_order(&w, Order::Route { unit, from: cap, to: cap })).is_err(), "a route needs two tiles");
 }

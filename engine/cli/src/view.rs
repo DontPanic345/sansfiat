@@ -187,6 +187,9 @@ fn unit_line(w: &World, u: &Unit) -> String {
             };
             format!("  scout {} at {}: {route}, hungry {} turns\n", u.id, tile(w, u.tile()), u.hungry)
         }
+        UnitKind::Guard => {
+            format!("  guard {} at {}: {:.1} people, hungry {} turns\n", u.id, tile(w, u.tile()), u.people, u.hungry)
+        }
     }
 }
 
@@ -211,7 +214,7 @@ fn feed(w: &World, me: u32, since: usize) -> String {
 fn legal(w: &World, me: u32) -> String {
     let ok = |o: Order| w.validate(&Action::Order { civ: me, order: o }).is_ok();
     let mut out = String::from("legal orders:\n");
-    if ok(Order::Raise { n: 1 }) {
+    if ok(Order::Raise { n: 1, kind: UnitKind::Camp }) {
         out += "  {\"type\":\"raise\",\"n\":1}\n";
     }
     for u in w.units.values().filter(|u| u.civ == me) {
@@ -250,6 +253,11 @@ fn legal(w: &World, me: u32) -> String {
                     if ok(o) {
                         out += &format!("  {{\"type\":\"{kind}\",\"unit\":{id}}}\n");
                     }
+                }
+            }
+            UnitKind::Guard => {
+                if ok(Order::Disband { unit: id, n: None }) {
+                    out += &format!("  {{\"type\":\"disband\",\"unit\":{id}}}\n");
                 }
             }
             UnitKind::Scout => {

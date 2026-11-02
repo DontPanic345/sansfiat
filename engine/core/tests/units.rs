@@ -24,9 +24,9 @@ fn founding_with_no_centre_clan_makes_the_biggest_near_clan_the_civ_and_moves_no
     assert_eq!(red.army.raised, 1);
     let camp = units::camp(&w, red.id).unwrap();
     assert_eq!((camp.tile(), camp.people), (at_big(-5, 0), f64::from(UNIT.start)));
-    // One person from each clan in turn, biggest first: the far clan twice; then the scout's two, one
-    // each from the biggest in turn.
-    assert_eq!((w.clans[&small].people, w.clans[&far].people), (3.0, 17.0));
+    // One person from each clan in turn, biggest first: the camp's three, then the scout's two, then the
+    // guard's three (the far clan takes two of each round, the near one the last).
+    assert_eq!((w.clans[&small].people, w.clans[&far].people), (2.0, 15.0));
     // A pack each from the store: the goods are the store's, the camp's and the scout's packs.
     assert!((total(&camp.store) - pack_total(camp.people)).abs() < 1e-9);
     let scout = units::scout(&w, red.id).unwrap();
@@ -96,7 +96,8 @@ fn the_levy_comes_only_from_clans_walking_to_the_capital_out_of_their_basket_bef
     let mid = w.civs[&red].market;
     let walker = put(&mut w, &[at_big(-4, 1)], 4.0);
     let stayer = put(&mut w, &[at_big(-6, 1)], 4.0);
-    let stranger = put(&mut w, &[at_big(-4, -1)], 4.0);
+    // Far from Red's land, so it is a stranger to the civ whatever the claims are.
+    let stranger = put(&mut w, &[at_big(-9, -3)], 4.0);
     let twin = put(&mut w, &[at_big(-7, -1)], 4.0);
     harvested(&mut w, walker, Some(mid), Some(red));
     harvested(&mut w, stayer, None, Some(red));
@@ -145,7 +146,7 @@ fn raising_drops_n_clans_by_one_each() {
     let before = [people(&w, clans[0]), people(&w, b), people(&w, c), people(&w, d)];
     w.civs.get_mut(&red).unwrap().store = CIV.endowment;
     let (camp_before, store_before) = (units::camp(&w, red).unwrap().people, total(&w.civs[&red].store));
-    w.act(led_order(&w, Order::Raise { n: 2 })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 2, kind: UnitKind::Camp })).unwrap();
     // The two biggest that can give gave one each; the third gave nothing, nor the one under UNIT.min_clan.
     let able = [clans[0], b, c];
     let mut order = [0, 1, 2];
@@ -163,8 +164,8 @@ fn raising_drops_n_clans_by_one_each() {
     assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 3, "still one camp a civ");
     // The store can't fill the packs.
     w.civs.get_mut(&red).unwrap().store = [0.0; N];
-    assert!(w.act(led_order(&w, Order::Raise { n: 1 })).is_err());
-    assert!(w.act(led_order(&w, Order::Raise { n: 0 })).is_err());
+    assert!(w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp })).is_err());
+    assert!(w.act(led_order(&w, Order::Raise { n: 0, kind: UnitKind::Camp })).is_err());
 }
 
 #[test]
@@ -174,7 +175,7 @@ fn raising_with_no_camp_makes_one_at_the_capital() {
     w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None })).unwrap();
     assert!(units::camp(&w, red).is_none());
     fill_stores(&mut w);
-    w.act(led_order(&w, Order::Raise { n: 3 })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 3, kind: UnitKind::Camp })).unwrap();
     let camp = units::camp(&w, red).unwrap();
     assert_eq!(camp.tile(), w.civs[&red].capital);
     assert_eq!(camp.people, 1.0, "only one clan to give");
@@ -206,16 +207,17 @@ fn disbanding_returns_the_warriors_to_the_civs_clan() {
     assert_eq!(kinds(&w, EventKind::WarriorsDisbanded), 2);
     assert_eq!(
         w.act(led_order(&w, Order::Disband { unit: led_scout(&w), n: None })),
-        Err("that unit is not a camp".to_string())
+        Err("that unit is not a camp or a guard".to_string())
     );
     fill_stores(&mut w);
-    w.act(led_order(&w, Order::Raise { n: 1 })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp })).unwrap();
 }
 
 #[test]
 fn a_camp_at_the_capital_fills_with_no_labour() {
     let (mut w, ids, _) = three();
     let red = ids[0];
+    no_guard(&mut w, red);
     let id = camp_id(&w, red);
     assert_eq!(units::line(&w, id), Some((Vec::new(), 0.0, f64::INFINITY)));
     assert!(!units::cut_off(&w, id));
@@ -291,10 +293,14 @@ fn corridor() -> (World, u32, u32) {
         }
     }
     let ms = [open(&mut w, at_big(-5, 0)), open(&mut w, at_big(5, 0))];
-    put(&mut w, &[at_big(-5, 0)], 8.0);
-    put(&mut w, &[at_big(5, 0)], 8.0);
+    put(&mut w, &[at_big(-5, 0)], 14.0);
+    put(&mut w, &[at_big(5, 0)], 14.0);
     found(&mut w, &ms);
     let ids: Vec<u32> = w.civs.keys().copied().collect();
+    // Blue holds the corridor from its capital to seven tiles east: the land the line can't pass.
+    hold_land(&mut w, ids[1], &[at_big(3, 0), at_big(4, 0), at_big(6, 0), at_big(7, 0)]);
+    // Red holds the corridor from its capital to one tile east of it.
+    hold_land(&mut w, ids[0], &[at_big(-4, 0), at_big(-3, 0), at_big(-2, 0), at_big(-1, 0)]);
     (w, ids[0], ids[1])
 }
 
@@ -392,6 +398,7 @@ fn pillage_yields_more_than_forage() {
 fn with_the_switches_off_it_neither_forages_nor_supplies() {
     let (mut w, ids, _) = led();
     let red = ids[0];
+    no_guard(&mut w, red);
     let t = at_big(-3, 1);
     w.tiles[t].stock = [0.0, 10.0, 0.0, 0.0, 0.0];
     let id = put_camp(&mut w, red, t);
@@ -420,6 +427,7 @@ fn with_the_switches_off_it_neither_forages_nor_supplies() {
 fn hunger_loses_warriors() {
     let (mut w, ids, clans) = led();
     let red = ids[0];
+    no_guard(&mut w, red);
     let id = put_camp(&mut w, red, at_big(-5, 8));
     {
         let c = camp_mut(&mut w, id);
@@ -441,11 +449,12 @@ fn hunger_loses_warriors() {
     assert!(units::camp(&w, red).is_none());
     let a = &w.civs[&red].army;
     assert_eq!((a.starved, a.lost, a.hungry), (3, 1, 5));
-    assert_eq!(kinds(&w, EventKind::WarriorsStarved), 3);
+    let camp_starved = w.events.iter().filter(|e| e.kind == EventKind::WarriorsStarved && e.unit == Some(id)).count();
+    assert_eq!(camp_starved, 3);
     assert_eq!(w.clans[&clans[0]].people, own + 3.0, "they went home");
     // Fed again, the count starts over.
     fill_stores(&mut w);
-    w.act(led_order(&w, Order::Raise { n: 1 })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp })).unwrap();
 }
 
 #[test]
@@ -483,7 +492,7 @@ fn with_the_army_off_no_camp_is_founded_and_nothing_is_levied() {
     assert_eq!(w.civs[&red].store, [0.0; N]);
     assert_eq!(w.clans[&a].harvest, HARVEST);
     w.act(Action::ChooseCiv { civ: Some(red) }).unwrap();
-    assert!(w.act(led_order(&w, Order::Raise { n: 1 })).is_err(), "armies are off");
+    assert!(w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp })).is_err(), "armies are off");
     w.act(Action::ChooseCiv { civ: None }).unwrap_err();
     // The AI raises none either.
     let mut v = big();
@@ -522,7 +531,7 @@ fn the_ai_raises_a_lost_camp_and_posts_it_off_the_capital() {
 
 #[test]
 fn a_real_map_replays_with_the_camp_under_orders() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true, ..Config::default() });
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }
@@ -539,7 +548,7 @@ fn a_real_map_replays_with_the_camp_under_orders() {
         let n = w.turn - pick;
         let camp = units::camp(&w, me).map(|u| u.id);
         if n > 0 && n.is_multiple_of(20) {
-            let _ = w.act(led_order(&w, Order::Raise { n: 1 }));
+            let _ = w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp }));
         }
         if let (3, Some(unit)) = (n, camp) {
             let to = w.civs.values().find(|c| c.id != me).unwrap().capital;
@@ -580,8 +589,8 @@ fn a_real_map_replays_with_the_camp_under_orders() {
         r#"{"type":"order","civ":1,"order":{"type":"move","unit":12,"to":5}}"#
     );
     assert_eq!(
-        serde_json::to_string(&order(Order::Raise { n: 2 })).unwrap(),
-        r#"{"type":"order","civ":1,"order":{"type":"raise","n":2}}"#
+        serde_json::to_string(&order(Order::Raise { n: 2, kind: UnitKind::Camp })).unwrap(),
+        r#"{"type":"order","civ":1,"order":{"type":"raise","n":2,"kind":"camp"}}"#
     );
     assert_eq!(
         serde_json::to_string(&order(Order::Disband { unit: 12, n: None })).unwrap(),
@@ -604,7 +613,7 @@ fn a_real_map_replays_with_the_camp_under_orders() {
 
 #[test]
 fn the_control_run_has_no_army_and_never_levies() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: false, gifts: true, zone: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: false, gifts: true, zone: true, ..Config::default() });
     w.run(400);
     assert!(w.phase == Phase::Main && w.turn > w.end.as_ref().unwrap().turn + 50);
     assert!(w.units.is_empty());
@@ -615,20 +624,33 @@ fn the_control_run_has_no_army_and_never_levies() {
 }
 
 #[test]
-fn on_a_real_map_every_ai_civ_keeps_the_camp_it_raised_at_the_pick_on_a_line_from_its_capital() {
-    let mut w =
-        World::new(Config { seed: 2, radius: size_radius("small").unwrap(), army: true, gifts: true, zone: true });
+fn on_a_real_map_the_ai_camps_that_survive_the_pick_are_fed_by_their_line() {
+    let mut w = World::new(Config {
+        seed: 2,
+        radius: size_radius("small").unwrap(),
+        army: true,
+        gifts: true,
+        zone: true,
+        ..Config::default()
+    });
     while w.phase == Phase::Pregame {
         w.run(1);
     }
     w.act(Action::ChooseCiv { civ: None }).unwrap();
     w.run(100);
+    // The guard eats from the store the camps are fed from, so on this map a civ can starve its camp
+    // out (`army.lost`, and the sweep's report): those civs have no camp to check.
     for c in w.civs.values() {
+        if c.army.lost > 0 {
+            continue;
+        }
         let camp = units::camp(&w, c.id).unwrap_or_else(|| panic!("civ {} has its camp", c.id));
-        assert_eq!(c.army.lost, 0, "civ {} lost no camp", c.id);
         assert!(camp.people > 0.0, "civ {} has {} warriors", c.id, camp.people);
+        // A post keeps to the civ's held land (`ai::post`): off the capital wherever that land reaches.
         let (path, cost, _) = units::line(&w, camp.id).unwrap();
-        assert!(!path.is_empty() && cost > 0.0, "civ {}'s camp is posted off its capital", c.id);
+        if engine::claim::held(&w, c.id).len() > 1 {
+            assert!(!path.is_empty() && cost > 0.0, "civ {}'s camp is posted off its capital", c.id);
+        }
         assert!(!units::cut_off(&w, camp.id), "civ {}'s camp is fed by its line", c.id);
     }
 }
@@ -720,8 +742,8 @@ fn corridor_off() -> (World, u32, u32) {
         }
     }
     let ms = [open(&mut w, at_big(-5, 0)), open(&mut w, at_big(5, -1))];
-    put(&mut w, &[at_big(-5, 0)], 8.0);
-    put(&mut w, &[at_big(5, -1)], 8.0);
+    put(&mut w, &[at_big(-5, 0)], 14.0);
+    put(&mut w, &[at_big(5, -1)], 14.0);
     found(&mut w, &ms);
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     (w, ids[0], ids[1])

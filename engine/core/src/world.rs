@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::civs::{self, Civ};
+use crate::claim;
 use crate::clans::{self, Clan};
 use crate::data::{Config, CIV, NOTES};
 use crate::events::{Event, EventKind};
@@ -130,6 +131,7 @@ pub const TURN: &[Step] = &[
     Step { name: "civs", run: civs::upkeep },
     Step { name: "ai", run: units::ai },
     Step { name: "units", run: units::step },
+    Step { name: "claim", run: claim::step },
     Step { name: "hold", run: land::tend },
     Step { name: "markets", run: markets::form_and_fade },
     Step { name: "end", run: pregame::check_end },
@@ -301,6 +303,7 @@ impl World {
             | EventKind::ScoutStarved
             | EventKind::PeopleLeft => e.civ == Some(me),
             EventKind::ClanJoined => e.civ.is_some_and(|c| c != me),
+            EventKind::ClanLeft | EventKind::ClaimTaken => e.civ == Some(me) || e.other == Some(me),
             _ => false,
         };
         if !mine {

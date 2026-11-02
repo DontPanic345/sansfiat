@@ -41,7 +41,11 @@ fn a_led_scouts_reasons_follow_its_route() {
         .find(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && w.tiles[i].hex().distance(w.tiles[cap].hex()) == 7)
         .expect("a forest or hills tile seven steps out");
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to })).unwrap();
-    w.run(60);
+    // Fed each turn, so the scout is still walking its route at the end (the store on this seed can't feed it).
+    for _ in 0..60 {
+        fill_stores(&mut w);
+        w.run(1);
+    }
     let scout = units::scout(&w, red).expect("a scout").id;
     let texts: Vec<&str> = w.notes[&scout].iter().map(|n| n.text.as_str()).collect();
     assert!(texts.iter().any(|t| t.starts_with("route set from")), "the route is set: {texts:?}");

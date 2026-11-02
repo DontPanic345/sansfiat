@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use engine::civs::{self, cards, tile_civ, Civ};
+use engine::civs::{self, cards, Civ};
 use engine::clans::eat;
 use engine::data::*;
 use engine::{Action, Config, EventKind, Phase, Save, World};
@@ -75,7 +75,7 @@ fn fewer_than_three_centres_found_fewer_civs() {
         assert_eq!(w.phase, Phase::Choose);
         assert_eq!(w.civs.values().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["Red", "Blue"][..n]);
         assert_eq!(civ_of(&w, id), w.civs.keys().next().copied(), "the one clan joins the first civ if there is one");
-        let mut v = World::new(Config { seed: 1, radius: 6, army: true, gifts: true, zone: true });
+        let mut v = World::new(Config { seed: 1, radius: 6, army: true, gifts: true, zone: true, ..Config::default() });
         v.clans.clear();
         found(&mut v, &[]);
         assert_eq!((v.phase, v.civs.len()), (Phase::Choose, 0));
@@ -233,45 +233,11 @@ fn a_civs_market_never_fades() {
 }
 
 #[test]
-fn a_tile_belongs_to_the_capital_then_the_clan_that_holds_it() {
-    let (mut w, ids) = founded();
-    let blue_clan = put(&mut w, &[at_big(-3, 0), at_big(-1, 0)], 6.0);
-    let loner = put(&mut w, &[at_big(0, 8)], 6.0);
-    w.clans.get_mut(&blue_clan).unwrap().civ = Some(ids[1]);
-    assert_eq!(tile_civ(&w, at_big(-3, 0)), Some(ids[0]), "within 2 of Red's capital, on Blue's clan's round");
-    assert_eq!(tile_civ(&w, at_big(-1, 0)), Some(ids[1]), "beyond it, the clan's civ");
-    assert_eq!(tile_civ(&w, at_big(0, 8)), None, "an unaligned clan's round");
-    assert_eq!(tile_civ(&w, at_big(1, 3)), None, "nobody's");
-    assert_eq!(tile_civ(&w, at_big(5, 2)), Some(ids[1]));
-    let land = civs::land(&w, ids[1]);
-    assert!(land.contains(&at_big(-1, 0)) && land.contains(&at_big(5, 0)) && !land.contains(&at_big(-3, 0)));
-    assert!(land.windows(2).all(|p| p[0] < p[1]));
-    assert_eq!(civs::territory(&w, ids[0]).len(), 19);
-    assert!(civs::territory(&w, ids[0]).contains(&at_big(-3, 0)));
-    let work = civs::work_tiles(&w, ids[0]);
-    assert_eq!(work.len(), 7);
-    assert_eq!(work[0], at_big(-5, 0));
-    assert!(work[1..].iter().all(|&t| steps(&w, t, work[0]) == 1));
-    let _ = loner;
-}
-
-#[test]
-fn the_territory_stops_at_the_edge_of_the_map() {
-    let mut w = big();
-    let m = open(&mut w, at_big(0, -11));
-    found(&mut w, &[m]);
-    let id = *w.civs.keys().next().unwrap();
-    let t = civs::territory(&w, id);
-    assert!(t.len() < 19 && t.contains(&at_big(0, -11)));
-    assert_eq!(civs::work_tiles(&w, id).len() as i32, 1 + 6);
-}
-
-#[test]
 fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     let mut w = big();
     // Red's site is its bigger clan's home, as the pre-game leaves it.
     let ms = [open(&mut w, at_big(-4, 1)), open(&mut w, at_big(7, 0)), open(&mut w, at_big(0, -10))];
-    // Red's land (round the capital at (-4, 1)): the 19 tiles round it and a clan's tile beyond: 16 plains, 2 forest, 2 hills.
+    // Red's land (round the capital at (-4, 1)): the 19 tiles round it: 15 plains, 2 forest, 2 hills.
     for (t, k) in [(at_big(-5, 1), FOREST), (at_big(-6, 1), FOREST), (at_big(-4, -1), HILLS), (at_big(-4, 0), HILLS)] {
         w.tiles[t].terrain = k;
     }
@@ -279,9 +245,14 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     hearth(&mut w, at_big(-5, -1), 3.0);
     hearth(&mut w, at_big(-5, 2), 3.0);
     hearth(&mut w, at_big(-1, 0), 3.0);
-    let a = put(&mut w, &[at_big(-4, 1)], 5.0);
+    let a = put(&mut w, &[at_big(-4, 1)], 12.0);
     let b = put(&mut w, &[at_big(-1, 1)], 2.5);
     found(&mut w, &ms);
+    // Red's land is the 19 tiles within two steps of its capital, held by its guard.
+    let ring: Vec<usize> =
+        w.tiles[at_big(-4, 1)].hex().within(2).into_iter().filter_map(|h| engine::map::index(BIG, h)).collect();
+    let red_id = *w.civs.keys().next().unwrap();
+    hold_land(&mut w, red_id, &ring);
     assert_eq!([civ_of(&w, a), civ_of(&w, b)], [w.civs.keys().next().copied(); 2]);
     let cs = cards(&w);
     assert_eq!(cs.len(), 3);
@@ -289,11 +260,12 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     // The bigger clan is the civ, its home the capital.
     assert_eq!((red.name.as_str(), red.capital, red.q, red.r), ("Red", at_big(-4, 1), -4, 1));
     assert_eq!(w.civs.values().next().unwrap().clan, a);
-    // 7.5 people, less the three the camp and the two the scout took from the clans.
-    assert_eq!((red.clans, red.people, red.hearths), (2, 2.5, 1));
+    // 14.5 people, less the three the camp, the two the scout and the three the guard took from the clans.
+    assert_eq!((red.clans, red.people, red.hearths), (2, 6.5, 1));
     let names: Vec<&str> = red.terrain.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(names, ["plains", "forest", "hills"], "ties by terrain index");
-    assert!((red.terrain[0].1 - 16.0 / 20.0).abs() < 1e-12 && (red.terrain[1].1 - 2.0 / 20.0).abs() < 1e-12);
+    // Of the 19 land tiles: 15 plains, 2 forest, 2 hills (the clan's tile beyond is not Red's land now).
+    assert!((red.terrain[0].1 - 15.0 / 19.0).abs() < 1e-12 && (red.terrain[1].1 - 2.0 / 19.0).abs() < 1e-12);
     assert_eq!([cs[0].rival_steps, cs[1].rival_steps, cs[2].rival_steps], [Some(11), Some(11), Some(11)]);
     assert_eq!((cs[1].clans, cs[1].people, cs[1].hearths), (0, 0.0, 0));
     assert!(cs.iter().all(|c| c.rival_by_land));
@@ -318,7 +290,7 @@ fn a_rival_across_the_sea_is_not_by_land() {
 
 #[test]
 fn watching_and_leading_replay_to_the_same_world() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true, ..Config::default() });
     while w.end.is_none() {
         w.run(1);
     }
@@ -342,7 +314,7 @@ fn watching_and_leading_replay_to_the_same_world() {
 
 #[test]
 fn a_real_map_founds_three_civs_that_live_on() {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true, ..Config::default() });
     while w.end.is_none() {
         w.run(1);
     }
@@ -404,9 +376,9 @@ fn at_founding_a_clan_as_close_to_a_capital_as_its_festival_switches_to_it() {
 
 #[test]
 fn a_civ_serialises_its_store_where_it_always_was_and_reads_back() {
-    const KEYS: [&str; 17] = [
+    const KEYS: [&str; 19] = [
         "id", "name", "color", "market", "capital", "founded", "store", "lost", "clan", "army", "keep", "gift",
-        "posted", "given", "joined", "gifted", "revealed",
+        "posted", "given", "joined", "gifted", "revealed", "claim", "guard",
     ];
     let (w, ids) = founded();
     let civ = &w.civs[&ids[0]];

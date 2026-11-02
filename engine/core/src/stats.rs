@@ -116,12 +116,16 @@ pub fn summary(w: &World) -> Summary {
     }
 }
 
-/// Each civ's Standing: the people of its clans and of its units over the people of every clan and
-/// every unit. Warriors and scouts are people the civ took from its clans, so raising a camp moves
-/// nobody between civs. Every civ is there, at 0 when the world has nobody.
+/// Each civ's Standing: the people of its clans (wherever they live) and of its units, and of the
+/// unaligned clans whose homes are on its held land, over the people of every clan and every unit.
+/// Warriors, guards and scouts are people the civ took from its clans, so raising one moves nobody
+/// between civs. Every civ is there, at 0 when the world has nobody.
 pub fn standing(w: &World) -> BTreeMap<u32, f64> {
     let mut mine: BTreeMap<u32, f64> = w.civs.keys().map(|&c| (c, 0.0)).collect();
-    let clans = w.clans.values().filter_map(|k| k.civ.map(|c| (c, k.people)));
+    let clans = w.clans.values().filter_map(|k| match k.civ {
+        Some(c) => Some((c, k.people)),
+        None => crate::claim::tile_civ(w, k.home).map(|c| (c, k.people)),
+    });
     let units = w.units.values().map(|u| (u.civ, u.people));
     for (civ, people) in clans.chain(units) {
         *mine.entry(civ).or_insert(0.0) += people;

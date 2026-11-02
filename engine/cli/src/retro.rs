@@ -1,4 +1,4 @@
-use engine::data::{LEANING, UNIT};
+use engine::data::{Claims, LEANING, UNIT};
 
 use engine::units;
 use engine::{Action, Config, Order, Phase, World};
@@ -55,7 +55,7 @@ pub(crate) struct MapRun {
 }
 
 /// One map of the camp sweep: runs to the pick with every civ on the AI, then `after` turns on, and
-/// reports each civ (`army`, `gifts` or `zone` off is the control). With `lever` the lowest civ id is led
+/// reports each civ (`army`, `gifts`, `zone` or `claims` off is the control). With `lever` the lowest civ id is led
 /// with that gift, and its camp is raised and posted where the AI would.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn after_run(
@@ -66,9 +66,11 @@ pub(crate) fn after_run(
     army: bool,
     gifts: bool,
     zone: bool,
+    claims: bool,
     lever: Option<f64>,
 ) -> MapRun {
-    let mut w = to_pick(Config { seed, radius, army, gifts, zone });
+    let claims = if claims { Claims::All } else { Claims::None };
+    let mut w = to_pick(Config { seed, radius, army, gifts, zone, claims });
     let led = lever.and_then(|_| w.civs.keys().next().copied());
     w.act(Action::ChooseCiv { civ: led }).expect("a civ can be chosen at the pick");
     if let Some(g) = lever {
@@ -78,7 +80,8 @@ pub(crate) fn after_run(
     while w.turn < pick + after {
         if let Some(civ) = led.filter(|_| army) {
             if units::camp(&w, civ).is_none() {
-                let _ = w.act(Action::Order { civ, order: Order::Raise { n: UNIT.start } });
+                let _ =
+                    w.act(Action::Order { civ, order: Order::Raise { n: UNIT.start, kind: units::UnitKind::Camp } });
             }
             if let Some(u) = units::camp(&w, civ).filter(|u| u.camp().is_some_and(|c| c.dest.is_none())) {
                 let at = units::post(&w, civ);
@@ -160,13 +163,14 @@ pub(crate) fn sweep_after(
     army: bool,
     gifts: bool,
     zone: bool,
+    claims: bool,
     lever: Option<f64>,
 ) -> Result<(), String> {
     let runs: Vec<MapRun> = std::thread::scope(|scope| {
         let handles: Vec<_> = maps
             .iter()
             .map(|(name, radius, seed)| {
-                scope.spawn(move || after_run(name, *radius, *seed, after, army, gifts, zone, lever))
+                scope.spawn(move || after_run(name, *radius, *seed, after, army, gifts, zone, claims, lever))
             })
             .collect();
         handles.into_iter().map(|h| h.join().unwrap()).collect()

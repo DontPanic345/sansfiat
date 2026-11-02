@@ -10,7 +10,7 @@ use crate::{land, units, Order, World};
 /// the unit it names.
 ///
 /// 1. At `Choose`: lead the lowest civ id.
-/// 2. In `Main`, when `n > 0 && n.is_multiple_of(20)`: `Order::Raise { n: 1 }` (a refusal is ignored).
+/// 2. In `Main`, when `n > 0 && n.is_multiple_of(20)`: `Order::Raise { n: 1, kind: UnitKind::Camp }` (a refusal is ignored).
 /// 3. When `n == 30`: `Order::Switches` both off; when `n == 40`: both on. When `n > 0 &&
 ///    n.is_multiple_of(25)`: `Order::Resupply` (a refusal is ignored).
 /// 4. If the player's camp has no `dest`: `Order::Move` to the first accepted of the other civs'
@@ -45,7 +45,7 @@ impl Lead {
         let camp = |w: &World| units::camp(w, me).map(|u| u.id);
         let scout = |w: &World| units::scout(w, me).map(|u| u.id);
         if n > 0 && n.is_multiple_of(20) {
-            let _ = w.act(order(Order::Raise { n: 1 }));
+            let _ = w.act(order(Order::Raise { n: 1, kind: units::UnitKind::Camp }));
         }
         if let (30, Some(unit)) = (n, camp(w)) {
             let _ = w.act(order(Order::Switches { unit, forage: false, supply: false }));

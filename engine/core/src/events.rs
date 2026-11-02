@@ -39,10 +39,14 @@ pub enum EventKind {
     Held,
     LineCut,
     PeopleLeft,
+    ClanLeft,
+    ClaimTaken,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
-/// zone's size (`Deployed`, `Held`) or the civ whose army cut a line (`LineCut`); `unit` is for units.
+/// zone's size (`Deployed`, `Held`), the civ whose army cut a line (`LineCut`), the civ a clan left
+/// for (`ClanLeft`, whose `civ` is the one it left) or the civ whose unit took a tile (`ClaimTaken`,
+/// whose `civ` is the one that lost it); `unit` is for units, and `amount` is the tiles lost.
 /// `alert` marks the events the led civ must hear of as they start (`flag_alerts`); the page and
 /// the CLI read it from the JSON as they read the rest.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -128,6 +132,17 @@ impl Event {
                 let by = self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str());
                 format!("{}'s camp's line is cut by {by}'s army", self.civ_name(w))
             }
+            EventKind::ClanLeft => format!(
+                "Clan {clan} leaves {} for {}",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str())
+            ),
+            EventKind::ClaimTaken => format!(
+                "{}'s claim at {at} is taken by {}'s unit: {:.0} tile(s) lost",
+                self.civ_name(w),
+                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
+                self.amount.unwrap_or(0.0)
+            ),
             EventKind::PregameEnded => match &w.end {
                 Some(e) => {
                     let n = e.centres.len();

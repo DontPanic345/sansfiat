@@ -1,4 +1,4 @@
-use engine::data::{CIV, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{CIV, CLAIM, GUARD, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::script::Lead;
 use engine::units::UnitKind;
@@ -17,7 +17,7 @@ pub struct Sim {
 impl Sim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, radius: i32) -> Sim {
-        Sim { world: World::new(Config { seed, radius, army: true, gifts: true, zone: true }), lead: Lead::default() }
+        Sim { world: World::new(Config { seed, radius, ..Config::default() }), lead: Lead::default() }
     }
 
     /// Rebuilds the world from a save's JSON.
@@ -127,8 +127,9 @@ impl Sim {
                     "lost": c.lost,
                     "people": mine.clone().map(|k| k.people).sum::<f64>(),
                     "clans": mine.count(),
-                    "territory": civs::territory(w, c.id),
-                    "work": civs::work_tiles(w, c.id),
+                    "claim": c.claim,
+                    "guard": c.guard,
+                    "land": civs::land(w, c.id),
                     "army": c.army,
                     "keep": civs::keep(w, c.id),
                     "keep_set": c.keep,
@@ -334,7 +335,7 @@ pub fn goods() -> String {
 }
 
 /// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
-/// hungry_turns, store_cap, territory, join, gift_max, notes_shown}`. `join` is the leaning at which a
+/// hungry_turns, store_cap, floor, join, gift_max, notes_shown}`. `join` is the leaning at which a
 /// clan joins a civ; `gift_max` is the most a civ can give a turn (its store cap); `notes_shown` is how
 /// many reasons the panel shows.
 #[wasm_bindgen]
@@ -346,7 +347,8 @@ pub fn rules() -> String {
         "unit_food": UNIT.food,
         "hungry_turns": UNIT.hungry_turns,
         "store_cap": CIV.store_cap,
-        "territory": CIV.territory,
+        "floor": CLAIM.floor,
+        "guard_keep_turns": GUARD.keep_turns,
         "join": LEANING.join,
         "gift_max": CIV.store_cap,
         "notes_shown": NOTES.shown,

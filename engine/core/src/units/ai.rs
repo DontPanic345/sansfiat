@@ -1,12 +1,15 @@
-//! The AI's camps: each civ the player doesn't lead raises its camp, posts it on its way to a
-//! rival or its farthest clan, and zones it along its line home. The AI gives its orders through
-//! `World::order` (`Raise`, `Move`, `Zone`), not logged: a replay re-derives them.
+//! The AI's civs: each civ the player doesn't lead claims its stand-in land and keeps its guard
+//! (`land`), raises its camp, posts it on its way to a rival or its farthest clan, and zones it along
+//! its line home. The AI gives its orders through `World::order` (`Claim`, `Raise`, `Disband`, `Move`,
+//! `Zone`), not logged: a replay re-derives them.
 
 use super::line::{line_by, path_between};
-use super::{camp, zone_cap, zone_of, zone_ok, EPS};
+use super::{camp, guard_of, zone_cap, zone_of, zone_ok, UnitKind, EPS};
 use crate::civs;
+use crate::claim;
 use crate::data::*;
 use crate::land::steps;
+use crate::market::total;
 use crate::orders::Order;
 use crate::world::{Phase, World};
 
@@ -41,16 +44,21 @@ pub fn post(w: &World, civ: u32) -> usize {
     at
 }
 
-/// The `ai` step, before `units`: each civ the player doesn't lead raises its camp if it has none
-/// and can, and sends it to its post if it is idle somewhere else. Draws no random numbers.
+/// The `ai` step, before `units`: each civ the player doesn't lead keeps its land (`land`), raises its
+/// camp if it has none and can, and sends it to its post if it is idle somewhere else. Draws no random
+/// numbers.
 pub fn ai(w: &mut World) {
-    if w.phase != Phase::Main || !w.config.army {
+    if w.phase != Phase::Main {
         return;
     }
     let ids: Vec<u32> = w.civs.keys().copied().filter(|&c| Some(c) != w.player).collect();
     for civ in ids {
+        land(w, civ);
+        if !w.config.army {
+            continue;
+        }
         if camp(w, civ).is_none() {
-            let _ = w.order(civ, Order::Raise { n: UNIT.start });
+            let _ = w.order(civ, Order::Raise { n: UNIT.start, kind: UnitKind::Camp });
         }
         let Some(u) = camp(w, civ) else { continue };
         if u.camp().is_some_and(|c| c.dest.is_some()) {
@@ -65,6 +73,39 @@ pub fn ai(w: &mut World) {
         } else if w.config.zone {
             ai_zone(w, civ, id);
         }
+    }
+}
+
+/// The AI's land for `civ`: its stand-in claim is sent whenever it differs from the claim, where
+/// `Config.claims` lets it claim. Its guard is raised a person a turn while a claimed tile under
+/// `CLAIM.floor` has no guard and its store, after `keep`, holds `GUARD.keep_turns` turns of food for
+/// one more guard; a guard that went hungry last turn loses a person.
+fn land(w: &mut World, civ: u32) {
+    if claim::may_claim(w, civ) {
+        let want = claim::ai_claim(w, civ);
+        if want != w.civs[&civ].claim {
+            w.order(civ, Order::Claim { tiles: want }).expect("the stand-in claim passes the claim's check");
+        }
+    }
+    if !w.config.army || !claim::may_claim(w, civ) {
+        return;
+    }
+    if let Some((id, hungry)) = guard_of(w, civ).map(|u| (u.id, u.hungry)) {
+        if hungry > 0 {
+            let _ = w.order(civ, Order::Disband { unit: id, n: Some(1) });
+            return;
+        }
+    }
+    let c = &w.civs[&civ];
+    let short = c
+        .claim
+        .iter()
+        .enumerate()
+        .any(|(k, &t)| t != c.capital && c.guard.get(k).copied().unwrap_or(0.0) + EPS < CLAIM.floor);
+    let people = claim::guard_people(w, civ);
+    let spare = total(&c.store) - civs::keep(w, civ);
+    if short && spare >= GUARD.keep_turns * UNIT.food * (people + 1.0) {
+        let _ = w.order(civ, Order::Raise { n: 1, kind: UnitKind::Guard });
     }
 }
 

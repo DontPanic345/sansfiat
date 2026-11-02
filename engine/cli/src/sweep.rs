@@ -64,7 +64,7 @@ pub(crate) const LEVEL_TURNS: usize = 100;
 
 pub(crate) fn sweep_run(seed: u32, radius: i32, turns: u32, every: u32) -> Run {
     let start = Instant::now();
-    let mut w = World::new(Config { seed, radius, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed, radius, army: true, gifts: true, zone: true, ..Config::default() });
     let mut series = vec![Point::of(&w)];
     // People after each turn, from turn 0.
     let mut people = vec![series[0].people];
@@ -145,6 +145,7 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
     let (mut after, mut army, mut retro) = (None, true, false);
     let (mut gifts, mut lever): (bool, Option<f64>) = (true, None);
     let mut zone = true;
+    let mut claims = true;
     let (mut judging, mut json) = (false, false);
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -155,6 +156,7 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
             "--no-army" => army = false,
             "--no-gifts" => gifts = false,
             "--no-zone" => zone = false,
+            "--no-claims" => claims = false,
             "--lever" => {
                 lever = Some(
                     it.next()
@@ -183,7 +185,7 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
         }
     }
     if judging {
-        if after.is_some() || lever.is_some() || !army || !gifts || !zone || !seeds.is_empty() {
+        if after.is_some() || lever.is_some() || !army || !gifts || !zone || !claims || !seeds.is_empty() {
             return Err(format!("--judge runs the retro maps, all on the AI: it takes only --json\n{USAGE}"));
         }
         return judge(json);
@@ -203,10 +205,12 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
             }
             sizes.iter().flat_map(|(name, radius)| seeds.iter().map(move |&s| (name.clone(), *radius, s))).collect()
         };
-        return sweep_after(&maps, after, army, gifts, zone, lever);
+        return sweep_after(&maps, after, army, gifts, zone, claims, lever);
     }
-    if !army || !gifts || !zone || lever.is_some() || retro {
-        return Err(format!("--no-army, --no-gifts, --no-zone, --lever and --maps retro need --after N\n{USAGE}"));
+    if !army || !gifts || !zone || !claims || lever.is_some() || retro {
+        return Err(format!(
+            "--no-army, --no-gifts, --no-zone, --no-claims, --lever and --maps retro need --after N\n{USAGE}"
+        ));
     }
     if seeds.is_empty() {
         seeds = (1..=10).collect();

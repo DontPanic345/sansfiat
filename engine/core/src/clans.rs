@@ -44,6 +44,13 @@ pub struct Clan {
     /// Turns in a row it has gone to its current festival; 0 with none.
     #[serde(default)]
     pub market_turns: u32,
+    /// Turns in a row its strongest leaning is to a rival civ it is drawn to (`LEANING.leave_at`
+    /// and above its own civ's); 0 otherwise. At `LEANING.leave_run` it leaves (`leaning.rs`).
+    #[serde(default)]
+    pub drawn: u32,
+    /// The clan it divided from or sent out as a daughter; its daughters leave with it.
+    #[serde(default)]
+    pub parent: Option<u32>,
 }
 
 impl Deref for Clan {
@@ -117,6 +124,8 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         civ: None,
         leaning: BTreeMap::new(),
         market_turns: 0,
+        drawn: 0,
+        parent: None,
     }
 }
 
@@ -477,6 +486,7 @@ fn divide_land(w: &mut World, id: u32) {
     d.fed_ratio = c.fed_ratio;
     d.civ = c.civ;
     d.leaning = c.leaning.clone();
+    d.parent = Some(id);
     let took = hers.len();
     d.territory = hers;
     let m = w.clans.get_mut(&id).unwrap();
@@ -504,6 +514,7 @@ fn split(w: &mut World, id: u32) {
     let mut d = new_clan(w.next_id, c.home, people);
     d.civ = c.civ;
     d.leaning = c.leaning.clone();
+    d.parent = Some(id);
     d.store = c.store.map(|v| v * share);
     let scored: Vec<(usize, f64)> =
         sites(w, &c, CLAN.scout_range).into_iter().map(|s| (s, site_value(w, s, people, &d.store))).collect();

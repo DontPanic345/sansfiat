@@ -150,7 +150,7 @@ function campPanel(ctx, id) {
   if (u.cut_at) html += `<p><b style="color:#ff7b72">Line cut</b> by ${civName(ctx, u.cut_at.by)}'s army at ${hex(ctx, u.cut_at.at)}.</p>`;
   else if (u.cut_off) html += '<p><b style="color:#ffb347">Cut off</b>: its line can not feed it.</p>';
   // Its zone: the tiles it spreads over and how many its warriors hold, with each one's guard share.
-  if (u.territory.length > 1) {
+  if (u.kind === 'camp' && u.territory.length > 1) {
     const share = u.guard.length ? u.guard.reduce((a, b) => a + b, 0) / u.guard.length : 0;
     html += `<p>Zone ${u.territory.length} of ${u.zone_cap} tiles · holds ${u.held.length} · guard ${f2(share)} a tile <span class="dim">(least ${f2(u.guard.length ? Math.min(...u.guard) : 0)})</span></p>`;
   } else {
@@ -190,7 +190,7 @@ function campPanel(ctx, id) {
       action: unitOrder(u, { type: 'switches', forage: u.auto_forage, supply: !u.auto_supply }),
     });
     if (u.dest != null) actions.push({ label: 'Stop', action: unitOrder(u, { type: 'move', to: u.tile }) });
-    if (u.territory.length > 1) actions.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
+    if (u.kind === 'camp' && u.territory.length > 1) actions.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
   }
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 }
@@ -267,7 +267,7 @@ function capitalPanel(ctx, id) {
   if (!c) return null;
   const mine = id === v.player;
   let html = `<p class="dim">${civName(ctx, id)} · capital at ${hex(ctx, c.capital)} · founded turn ${c.founded}</p>`;
-  html += `<p>${f2(c.people)} people in ${c.clans} clan${c.clans === 1 ? '' : 's'}<br>land: ${c.territory.length} tiles · work tiles: ${c.work.length}</p>`;
+  html += `<p>${f2(c.people)} people in ${c.clans} clan${c.clans === 1 ? '' : 's'}<br>land: ${c.land.length} tiles · claim: ${c.claim.length} tiles</p>`;
   html += '<table>';
   goods.forEach((g, f) => {
     if (c.store[f] > 0.005) html += `<tr><td>${g}</td><td>${f2(c.store[f])}</td></tr>`;

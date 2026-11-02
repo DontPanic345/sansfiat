@@ -179,8 +179,12 @@ the world is the judge's health group, not compare.sh.
     keep_turns: 5 }`, and `LEANING` gains `land: 0.01, guarded: 0.1, leave_run: 10, leave_at: 0.3`. At
     founding each civ that may claim raises `GUARD.start` guards beside its camp. Measured
     (`spec-review.md`): Red's stand-in claim on small seed 2 is at most 37 tiles, the farthest 4 steps out;
-    three guards at these numbers hold the capital and the 7 nearest, six hold all 37. The store is
-    empty at the pick and takes in 5–9 food a turn in the first turns, so three guards are fed.
+    three guards at these numbers hold the capital and the 7 nearest, six hold all 37.
+    **Correction (build-2):** the store is empty at the pick and, after build-1's festivals, takes in about
+    one food a turn at first (small seed 2: 1.1 at turn 1, none at turns 2–3), and the camp's and scout's
+    packs take the endowment first. So the founding guard is not fed: it starves in about five turns, and
+    the claim falls back to its capital. The measured numbers are in `build-2-land.md`; the food is the
+    canvas's to tune (the levy, `keep`, the guard's size), not `GUARD.guarding`'s.
 
 ### Protected
 

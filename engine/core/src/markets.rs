@@ -174,12 +174,13 @@ pub fn trade(w: &mut World) {
         let mut posted = 0.0;
         if let Some(civ) = civ {
             let spare = (w.civs[&civ].store.iter().sum::<f64>() - civs::keep(w, civ)).max(0.0);
-            let unaligned: Vec<usize> = (0..ids.len()).filter(|&i| w.clans[&ids[i]].civ.is_none()).collect();
+            // Gifts go to every clan there that isn't the civ's own: unaligned clans and rivals' alike.
+            let others: Vec<usize> = (0..ids.len()).filter(|&i| w.clans[&ids[i]].civ != Some(civ)).collect();
             let pool = if w.config.gifts { w.civs[&civ].gift.min(spare) } else { 0.0 };
-            let mut gifts: Vec<Basket> = unaligned.iter().map(|&i| kept[i]).collect();
-            let unaligned_ids: Vec<u32> = unaligned.iter().map(|&i| ids[i]).collect();
-            let given = leaning::give(w, civ, &unaligned_ids, &mut gifts, pool);
-            for (&i, g) in unaligned.iter().zip(gifts) {
+            let mut gifts: Vec<Basket> = others.iter().map(|&i| kept[i]).collect();
+            let other_ids: Vec<u32> = others.iter().map(|&i| ids[i]).collect();
+            let given = leaning::give(w, civ, &other_ids, &mut gifts, pool);
+            for (&i, g) in others.iter().zip(gifts) {
                 kept[i] = g;
             }
             let rest = (spare - given).max(0.0);
@@ -193,7 +194,7 @@ pub fn trade(w: &mut World) {
             c.gifted += given;
             c.posted = posted;
             if given > 0.0 {
-                w.note(civ, format!("gave food to {} unaligned clan(s) at its market", unaligned.len()));
+                w.note(civ, format!("gave food to {} clan(s) at its market that are not its own", others.len()));
             }
         }
         let m = w.markets.get_mut(&mid).unwrap();
@@ -215,13 +216,10 @@ pub fn trade(w: &mut World) {
             for f in 0..N {
                 store[f] += back[f];
             }
-            // Trade leaning: the food a person an unaligned clan gained in the clearing.
+            // Trade leaning: the food a person a clan gained in the clearing, its own clans included.
             if c.cleared {
                 for (i, id) in ids.iter().enumerate() {
                     let clan = w.clans.get_mut(id).unwrap();
-                    if clan.civ.is_some() {
-                        continue;
-                    }
                     let p = clan.people;
                     let gained = (nutrition(&c.after[i], p) - nutrition(&brought[i], p)).max(0.0);
                     if gained > 0.0 {
