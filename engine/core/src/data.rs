@@ -31,7 +31,8 @@ pub const DESERT: usize = 6;
 pub const MARSH: usize = 7;
 
 /// Coast tiles stand for the shore and the shallows, so they carry the sea foods. A mountain is
-/// not land: clans don't stand on it and nobody walks it. Marsh is wet and rich, and slow.
+/// not land: clans don't stand on it and nobody walks it. Marsh is wet and rich, and slow. Desert
+/// is barren and costs 2 to enter: clans route round it, not through it (owner note 1).
 pub const TERRAIN: [Terrain; 8] = [
     Terrain { name: "sea", color: "#2b5d8a", land: false, move_cost: None, food: [0.0; N] },
     Terrain { name: "coast", color: "#c9b77a", land: true, move_cost: Some(1.0), food: [1.0, 0.0, 0.0, 4.0, 3.0] },
@@ -39,7 +40,7 @@ pub const TERRAIN: [Terrain; 8] = [
     Terrain { name: "forest", color: "#3f7a3a", land: true, move_cost: Some(2.0), food: [3.0, 0.0, 4.0, 0.0, 0.0] },
     Terrain { name: "hills", color: "#8a7a5c", land: true, move_cost: Some(2.0), food: [2.0, 0.0, 1.0, 0.0, 0.0] },
     Terrain { name: "mountain", color: "#6e6a73", land: false, move_cost: None, food: [0.0; N] },
-    Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(1.0), food: [0.0; N] },
+    Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(2.0), food: [0.0; N] },
     Terrain { name: "marsh", color: "#5b8c78", land: true, move_cost: Some(3.0), food: [2.0, 2.0, 0.0, 4.0, 3.0] },
 ];
 
@@ -204,16 +205,24 @@ pub const FOOD: [Food; N] = [
 pub const FERTILITY: (f64, f64) = (0.4, 2.0);
 
 pub struct TrailRules {
-    /// Turns in a row walked (inside a territory or on a route) before a tile gets a trail.
-    pub after: u32,
-    /// Turns in a row unwalked before its trail wears away.
-    pub fade: u32,
+    /// How much of a tile's traffic is kept from one turn to the next.
+    pub keep: f64,
+    /// A tile whose traffic (people-walks, smoothed) reaches this gets a trail…
+    pub on: f64,
+    /// …and keeps it until its traffic falls under this (`off < on`).
+    pub off: f64,
     /// Labour to finish a built trail, by the terrain it goes on (`scout`'s work: forest, hills, a
     /// mountain pass). A trail brings a tile to its hidden `trail_cost`, not to a flat cost.
     pub work: [(usize, f64); 3],
 }
 
-pub const TRAIL: TrailRules = TrailRules { after: 10, fade: 30, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)] };
+/// Traffic is people-walks, so a tile's steady traffic is ten times a turn's. On the retro maps at
+/// the pick a home carries a median of ~185 (a quarter under ~140) and a tile two clans' routes
+/// share ~225, while a worked tile carries ~70 (a quarter over ~110): `on` 110 trails most homes
+/// and shared routes and under a third of the worked tiles; `off` 90 lets a trail ride out a dip
+/// without keeping the ones once worn.
+pub const TRAIL: TrailRules =
+    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)] };
 
 pub struct DepletionRules {
     /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
@@ -271,15 +280,19 @@ pub struct MarketRules {
     pub company_cap: usize,
     /// How much more another festival must be worth, in labour, for a clan to change to it.
     pub switch_margin: f64,
+    /// Turns a clan keeps a festival it has just started going to, whatever the worths.
+    pub keep_turns: u32,
+    /// After `keep_turns` a clan keeps its festival while its worth is above minus this.
+    pub stay_margin: f64,
     /// A store of at least this × people is a surplus.
     pub surplus_at: f64,
 }
 
 pub const MARKET: MarketRules = MarketRules {
     form_after: 20,
-    spacing: 8,
+    spacing: 6,
     reach: 3.0,
-    reach_walk: 20.0,
+    reach_walk: 14.0,
     fade: 0.9,
     min_attendance: 0.5,
     carry: 0.2,
@@ -289,6 +302,8 @@ pub const MARKET: MarketRules = MarketRules {
     company: 1.0,
     company_cap: 6,
     switch_margin: 1.0,
+    keep_turns: 5,
+    stay_margin: 3.0,
     surplus_at: 0.1,
 };
 

@@ -42,12 +42,12 @@ pub struct Tile {
     pub tame: u32,
     /// The clan whose territory holds the tile.
     pub claim: Option<u32>,
-    /// Walked this turn, on a path inside a territory (not its home) or on a route: set in the
-    /// harvest step.
-    pub walked: bool,
-    /// Turns in a row walked, and in a row not.
-    pub walk_run: u32,
-    pub rest_run: u32,
+    /// People-walks across the tile, smoothed: each turn `TRAIL.keep × traffic` plus the people
+    /// who walked it this turn (clans' walks and routes, a camp's line, a scout's walk).
+    pub traffic: f64,
+    /// A camp's line or a scout's route was walked here this turn: its trail is kept.
+    #[serde(default)]
+    pub used: bool,
     /// Turns in a row held, and held by nobody.
     #[serde(rename = "held")]
     pub claim_run: u32,
@@ -335,9 +335,8 @@ fn finish(
             wild_grain: 0.0,
             tame: 0,
             claim: None,
-            walked: false,
-            walk_run: 0,
-            rest_run: 0,
+            traffic: 0.0,
+            used: false,
             claim_run: 0,
             free_run: 0,
             trail: false,

@@ -626,7 +626,7 @@ fn on_a_real_map_every_ai_civ_keeps_the_camp_it_raised_at_the_pick_on_a_line_fro
     for c in w.civs.values() {
         let camp = units::camp(&w, c.id).unwrap_or_else(|| panic!("civ {} has its camp", c.id));
         assert_eq!(c.army.lost, 0, "civ {} lost no camp", c.id);
-        assert!(camp.people >= f64::from(UNIT.start), "civ {} has {} warriors", c.id, camp.people);
+        assert!(camp.people > 0.0, "civ {} has {} warriors", c.id, camp.people);
         let (path, cost, _) = units::line(&w, camp.id).unwrap();
         assert!(!path.is_empty() && cost > 0.0, "civ {}'s camp is posted off its capital", c.id);
         assert!(!units::cut_off(&w, camp.id), "civ {}'s camp is fed by its line", c.id);

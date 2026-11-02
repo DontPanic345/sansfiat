@@ -43,6 +43,9 @@ fn land_civs(w: &World) -> Vec<Option<u32>> {
     (0..w.tiles.len()).map(|i| if TERRAIN[w.tiles[i].terrain].land { tile_civ(w, i) } else { None }).collect()
 }
 
+/// A clan's festival now, and the festivals it left within the flip window with the turn it left each.
+type Festivals = (Option<u32>, Vec<(Option<u32>, u32)>);
+
 /// A game watched turn by turn from its pick.
 pub struct Watch {
     pick: u32,
@@ -62,7 +65,7 @@ pub struct Watch {
     trails_200: Option<stats::Trails>,
     /// Each clan's festival now, and the festivals it left within the flip window: (festival, turn
     /// it left).
-    festival: BTreeMap<u32, (Option<u32>, Vec<(Option<u32>, u32)>)>,
+    festival: BTreeMap<u32, Festivals>,
     clan_turns: u32,
     festival_changes: u32,
     flips: u32,

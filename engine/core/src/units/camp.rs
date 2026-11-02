@@ -271,6 +271,13 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
             a.pillaged_tiles += 1;
         }
     }
+    if brought > 0.0 {
+        let people = w.units[&id].people;
+        for &t in line_now.iter().flat_map(|(p, _, _)| p) {
+            w.tiles[t].traffic += people;
+            w.tiles[t].used = true;
+        }
+    }
     let (was_foraging, was_supplying) = (cs(w, id).foraging, cs(w, id).supplying);
     let (now_foraging, now_supplying) = (foraged + pillaged > 0.0, brought > 0.0);
     let at = w.at(tile);

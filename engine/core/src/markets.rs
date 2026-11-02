@@ -84,16 +84,23 @@ pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
         .collect()
 }
 
-/// The festival a clan goes to, from `worths`: the best worth above 0 (ties to the lower id), but
-/// its current one while that's still above 0 and no other beats it by `MARKET.switch_margin`.
-pub fn choose(worths: &[(u32, f64, f64)], current: Option<u32>) -> Option<u32> {
+/// The festival a clan goes to, from `worths`: the best worth above 0 (ties to the lower id). A clan
+/// that has gone to its current festival (`turns` in a row) fewer than `MARKET.keep_turns` keeps it
+/// whatever the worths; after that it keeps it while its worth is above `−MARKET.stay_margin` and no
+/// other beats it by `MARKET.switch_margin`. A current festival not among the worths (faded, or out
+/// of reach) is no festival.
+pub fn choose(worths: &[(u32, f64, f64)], current: Option<u32>, turns: u32) -> Option<u32> {
     let best = worths.iter().filter(|w| w.1 > 0.0).fold(None, |b: Option<&(u32, f64, f64)>, w| match b {
         Some(b) if b.1 >= w.1 => Some(b),
         _ => Some(w),
-    })?;
+    });
     match worths.iter().find(|w| Some(w.0) == current) {
-        Some(cur) if cur.1 > 0.0 && best.1 <= cur.1 + MARKET.switch_margin => Some(cur.0),
-        _ => Some(best.0),
+        Some(cur) if turns < MARKET.keep_turns => Some(cur.0),
+        Some(cur) if cur.1 > -MARKET.stay_margin => match best {
+            Some(b) if b.1 > cur.1 + MARKET.switch_margin => Some(b.0),
+            _ => Some(cur.0),
+        },
+        _ => best.map(|b| b.0),
     }
 }
 
@@ -108,7 +115,7 @@ pub fn go(w: &mut World) {
         let mut considered = Vec::new();
         let choice = civ_market.or_else(|| {
             considered = worths(w, c);
-            choose(&considered, c.market)
+            choose(&considered, c.market, c.market_turns)
         });
         let route = choice.and_then(|mid| {
             let to = w.markets[&mid].tile;
@@ -118,6 +125,8 @@ pub fn go(w: &mut World) {
         let c = w.clans.get_mut(&id).unwrap();
         let was = c.market;
         c.market = route.as_ref().and(choice);
+        c.market_turns =
+            if c.market.is_some() && c.market == was { c.market_turns + 1 } else { u32::from(c.market.is_some()) };
         c.routes = route.into_iter().collect();
         let now = c.market;
         if now != was {
@@ -129,7 +138,13 @@ pub fn go(w: &mut World) {
                         None => format!("went to the festival at {at}"),
                     }
                 }
-                None => "stopped going to a festival: none is worth the walk".to_string(),
+                None => match was.and_then(|m| considered.iter().find(|x| x.0 == m)) {
+                    Some(x) => format!(
+                        "stopped going to its festival: the walk is not worth it by {:.1} (worth {:.1})",
+                        MARKET.stay_margin, x.1
+                    ),
+                    None => "stopped going to a festival: none is worth the walk".to_string(),
+                },
             };
             w.note(id, text);
         }
@@ -341,6 +356,7 @@ pub fn fade(w: &mut World) {
         for c in w.clans.values_mut() {
             if c.market == Some(mid) {
                 c.market = None;
+                c.market_turns = 0;
                 c.routes.clear();
             }
         }

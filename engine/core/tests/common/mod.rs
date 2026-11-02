@@ -63,9 +63,8 @@ fn flat_radius(radius: i32) -> World {
         t.wild_grain = 0.0;
         t.tame = 0;
         t.claim = None;
-        t.walked = false;
-        t.walk_run = 0;
-        t.rest_run = 0;
+        t.traffic = 0.0;
+        t.used = false;
         t.claim_run = 0;
         t.free_run = 0;
         t.trail = false;

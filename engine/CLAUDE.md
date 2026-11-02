@@ -28,11 +28,11 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `core/src/events.rs` | `Event` and `EventKind`, their wording (`text`), `Event::new` and its setters, and `World::emit`. |
 | `core/src/data.rs` | Every rule's numbers and `Config`; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs. |
-| `core/src/land.rs` | Neighbours, move costs, `path`, `steps` (the tile distance), and the `regrow`, `wear` and `tend` steps. |
-| `core/src/actors.rs` | `Actor` and what every actor does once: `spoil`, `eat_by_share`, `eat_by_diet`, `stride` (walking a path on labour), `walk_cost`, `Walks`, `divide` and the add/drop rule `change`. |
+| `core/src/land.rs` | Neighbours, move costs, `path`, `steps` (the tile distance), and the `regrow`, `wear` and `tend` steps (`tend` wears a trail where a tile's `traffic` reaches `TRAIL.on` and takes it away under `TRAIL.off`). |
+| `core/src/actors.rs` | `Actor` and what every actor does once: `spoil`, `eat_by_share`, `eat_by_diet`, `stride` (walking a path on labour), `walk_cost`, `Walks`, `add_traffic` (a clan's people onto the tiles of its walks, home included), `divide` and the add/drop rule `change`. |
 | `core/src/clans.rs` | Clans on the actor: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
 | `core/src/market.rs` | `Basket` and its helpers (`total`, `take`, `add`, `sum`); `clear`: barter exchange ratios by tâtonnement. |
-| `core/src/markets.rs` | Festivals (markets in code): reach, the `go` step, trading, forming and fading, people moving. |
+| `core/src/markets.rs` | Festivals (markets in code): reach, the `go` step (`choose` keeps a festival `MARKET.keep_turns` turns and while it is worth over `−stay_margin`), trading, forming and fading, people moving. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
 | `core/src/civs.rs` | Civs, each an actor (its store is the civ's): `found`, the `levy`, `keep`, the `civs` step, territory and the pick's `cards`. |
 | `core/src/leaning.rs` | Unaligned clans leaning toward and joining a civ: `give` and the `lean` step. |
@@ -44,7 +44,7 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `core/src/orders.rs` | `Order` (the wire form of a unit's order), `World::order` and `check_order`: every order's checks and its applying, the player's and the AI's. |
 | `core/src/units/ai.rs` | The AI's `post` and `ai`, and its zone (`ai_zone`). |
 | `core/src/stats.rs` | `summary`, `standing` (each civ's share of the people), the evidence reports, and `digest` and `state_digest` to compare builds. |
-| `core/src/judge.rs` | `Watch`: a game scored turn by turn from its pick (Standing, the leader and lead changes, the spread and swings, what changes hands), and its `Scores` in the five groups. Reads the world, changes nothing. |
+| `core/src/judge.rs` | `Watch`: a game scored turn by turn from its pick (Standing, the leader and lead changes, the spread and swings, what changes hands), and its `Scores` in the five groups plus `land` (trail shares and festivals at the pick and +200, festival changes and flips per 100 clan-turns; `stats::trails` reads a world). Reads the world, changes nothing. |
 | `core/src/hex.rs` | Axial pointy-top hexes. |
 | `core/src/rng.rs` | Mulberry32, matching the JS prototypes bit for bit. |
 | `core/src/lib.rs` | The crate root: one `pub mod` line per module. |
@@ -54,7 +54,7 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `cli/src/digest.rs` | `digest`: a turn and its digest per line; `--lead` plays the scripted game, `--state` hashes the world without its log. |
 | `cli/src/sweep.rs` | `sweep`: the pre-game over seeds in parallel, its series lines, and the `Run` and `Point` they keep. |
 | `cli/src/retro.rs` | `sweep --after`: the retro maps past the pick, each civ's camp and clans, and the controls. `to_pick` and `kept_camp` are shared. |
-| `cli/src/judge.rs` | `sweep --judge`: the retro maps judged, the totals in six groups (standing, doubt, decisions, motion, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, the text and `--json` report. |
+| `cli/src/judge.rs` | `sweep --judge`: the retro maps judged, the totals in seven groups (standing, doubt, decisions, motion, land, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, the text and `--json` report. |
 | `cli/src/play.rs` | `play`: a game file resumed per call (`World::replay`), each stdin line applied through `act`, the save and the lines file (`FILE.lines.jsonl`) written after each. |
 | `cli/src/view.rs` | `view::text`: the led civ's text view (standing, store, units, clans, reach, places, feed, legal orders), under 80 lines at the pick and +100. |
 | `cli/src/replay.rs` | `replay`: a save's world, printed as `run` prints it. |

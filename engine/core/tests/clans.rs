@@ -139,7 +139,7 @@ fn a_clan_harvests_nothing_off_its_territory() {
             assert_eq!(t.stock, before[i], "tile {i}");
         }
     }
-    assert!(!w.tiles.iter().any(|t| t.walked), "a home-only clan walks nowhere");
+    assert!(!w.tiles.iter().any(|t| t.traffic > 0.0), "a home-only clan walks nowhere");
 }
 
 #[test]
@@ -157,7 +157,8 @@ fn a_far_tile_costs_its_walk_and_its_tiles_are_walked() {
     // b is 5 away, through forest into marsh: its walk eats its third of one person's labour.
     assert_eq!(c.walk, 2.0 * CLAN.inside * (2.0 + 5.0));
     const { assert!(CLAN.work / 3.0 < 2.0 * CLAN.inside * 5.0) };
-    assert!(w.tiles[a].walked && w.tiles[b].walked && !w.tiles[o].walked);
+    // Its people walk to a and b: a is on both walks, b on one, and home starts both.
+    assert_eq!((w.tiles[o].traffic, w.tiles[a].traffic, w.tiles[b].traffic), (2.0, 2.0, 1.0));
     let got = total(&c.harvest);
     let share = CLAN.work / 3.0;
     let want = (share + (share - 2.0 * CLAN.inside * 2.0)) / CLAN.harvest_labour;

@@ -196,7 +196,7 @@ fn step_cost_ignores_the_hidden_rolls() {
 #[test]
 fn mountains_are_not_land_and_split_landmasses() {
     assert!(!TERRAIN[MOUNTAIN].land && TERRAIN[MOUNTAIN].move_cost.is_none());
-    assert!(TERRAIN[DESERT].land && TERRAIN[DESERT].move_cost == Some(1.0));
+    assert!(TERRAIN[DESERT].land && TERRAIN[DESERT].move_cost == Some(2.0));
     assert!(TERRAIN[MARSH].land && TERRAIN[MARSH].move_cost == Some(3.0));
     assert_eq!(TERRAIN[DESERT].food, [0.0; N]);
     let tiles = made(16, 1);

@@ -146,18 +146,17 @@ fn a_trail_goes_only_where_a_hidden_cost_is_rolled_and_a_mountain_span_is_bridge
 }
 
 #[test]
-fn building_a_trail_takes_its_terrains_work_and_starts_the_rest_run_over() {
+fn building_a_trail_takes_its_terrains_work_and_gives_it_the_traffic_to_live_on() {
     let mut w = flat();
     let t = at(0, 0);
     w.tiles[t].terrain = HILLS;
     w.tiles[t].trail_cost = Some(1.0);
-    w.tiles[t].rest_run = 200;
     let need = TRAIL.work.iter().find(|&&(terrain, _)| terrain == HILLS).unwrap().1;
     assert!(!build_trail(&mut w, t, need - 0.5));
     assert!(!w.tiles[t].trail);
     assert!(build_trail(&mut w, t, 0.5));
     assert!(w.tiles[t].trail);
-    assert_eq!((w.tiles[t].trail_work, w.tiles[t].rest_run), (0.0, 0));
+    assert_eq!((w.tiles[t].trail_work, w.tiles[t].traffic), (0.0, TRAIL.on));
 
     let plains = at(1, 0);
     assert!(!build_trail(&mut w, plains, 100.0), "plains have no trail to build");
