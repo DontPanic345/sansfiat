@@ -358,6 +358,8 @@ fn foraging_strips_a_tile_so_a_clan_harvests_nothing_there_for_fallow_turns() {
     assert_eq!((w.tiles[t].stock, w.tiles[t].fallow), ([0.0, 7.0, 0.0, 0.0, 0.0], 2));
     assert_eq!(units::camp(&w, red).unwrap().hungry, 0);
     assert_eq!(kinds(&w, EventKind::CampForaged), 1);
+    // (It stops foraging, or it would strip what is left of the tile as soon as it rests no more.)
+    camp_mut(&mut w, id).camp_mut().unwrap().auto_forage = false;
     for turn in 1..=w.tiles[t].fallow {
         regrow(&mut w);
         harvest(&mut w);

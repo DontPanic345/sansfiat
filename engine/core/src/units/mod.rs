@@ -408,7 +408,7 @@ pub(crate) fn name_of(w: &World, civ: u32) -> String {
 }
 
 /// The clans of `civ` that can give a person, biggest first (ties to the lower id).
-pub(crate) fn givers(w: &World, civ: u32) -> Vec<u32> {
+pub fn givers(w: &World, civ: u32) -> Vec<u32> {
     let mut ids: Vec<u32> =
         w.clans.values().filter(|c| c.civ == Some(civ) && c.people >= UNIT.min_clan).map(|c| c.id).collect();
     ids.sort_by(|a, b| w.clans[b].people.total_cmp(&w.clans[a].people).then(a.cmp(b)));

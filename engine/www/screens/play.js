@@ -177,7 +177,7 @@ function refresh() {
   pullEvents();
   const scout = v.player != null ? Object.values(v.units).find((u) => u.civ === v.player && u.kind === 'scout') : null;
   document.body.dataset.scout = scout ? scout.id : '';
-  document.body.dataset.routeState = scout?.route ? 'set' : (outcome ?? 'none');
+  document.body.dataset.routeState = scout?.route && outcome !== 'found' ? 'set' : (outcome ?? 'none');
   document.body.dataset.armed = routing.arm ?? '';
   markChips();
   panelDraw();
