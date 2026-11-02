@@ -9,7 +9,7 @@ actions. One engine, two front ends: a CLI and a wasm web page. The game's desig
 cargo run -p sansfiat -- map [--seed N] [--size small|medium|large]   # the map as ASCII
 cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--save game.json] [--why ID]   # to the pick unless --turns; --why prints a subject's reasons
 cargo run -p sansfiat -- sweep [seed ...] [--size small|medium|large|all] [--turns N]   # the pre-game, seeds in parallel
-cargo run -p sansfiat -- sweep --judge [--json]   # the retro maps played (army twice, --no-army once) and scored by the judge: a report, with no verdict
+cargo run -p sansfiat -- sweep --judge [--json] [--solo]   # the retro maps played (army twice, --no-army once, no claims once; --solo adds each civ claiming alone) and scored by the judge: a report, with no verdict
 cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army] [--no-gifts] [--no-zone] [--lever G]   # the retro maps past the pick, one line per civ and the totals; the --no-* flags are controls
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a game a line at a time: the file is a save, each call resumes it; stdin lines (orders, actions, end, why, view, map, note); g.lines.jsonl records them
 cargo run -p sansfiat -- judge g.json [--json]   # a played game judged turn by turn, beside the same map with every civ on the AI
@@ -44,8 +44,8 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `core/src/script.rs` | `Lead`, the scripted game (`digest --lead`, `Sim::lead_orders`): the engine's second player. |
 | `core/src/orders.rs` | `Order` (the wire form of a unit's order: `Raise` with its `kind`, `Claim`), `World::order` and `check_order`: every order's checks and its applying, the player's and the AI's. |
 | `core/src/units/ai.rs` | The AI's `post`, `ai` (its stand-in claim and guard, `land`) and its zone (`ai_zone`). |
-| `core/src/stats.rs` | `summary`, `standing` (each civ's share of the people, its clans on its held land counted), the evidence reports, and `digest` and `state_digest` to compare builds. |
-| `core/src/judge.rs` | `Watch`: a game scored turn by turn from its pick (Standing, the leader and lead changes, the spread and swings, what changes hands), and its `Scores` in the five groups plus `land` (trail shares and festivals at the pick and +200, festival changes and flips per 100 clan-turns; `stats::trails` reads a world). Reads the world, changes nothing. |
+| `core/src/stats.rs` | `summary`, `standing_parts` and `standing` (each civ's share of the people in two parts: its clans and units, and the unaligned clans on its held land), the evidence reports, and `digest` and `state_digest` to compare builds. |
+| `core/src/judge.rs` | `Watch`: a game scored turn by turn from its pick (Standing in its two parts, the leader and lead changes, the spread and swings, what changes hands: clans left and joined, claimed tiles taken), and its `Scores` in the five groups plus `land` (trail shares and festivals at the pick and +200, festival changes and flips per 100 clan-turns, each civ's claim, held land and guard at +200 via `civ_lands`; `stats::trails` reads a world). Reads the world, changes nothing. |
 | `core/src/hex.rs` | Axial pointy-top hexes. |
 | `core/src/rng.rs` | Mulberry32, matching the JS prototypes bit for bit. |
 | `core/src/lib.rs` | The crate root: one `pub mod` line per module. |
@@ -55,9 +55,9 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `cli/src/digest.rs` | `digest`: a turn and its digest per line; `--lead` plays the scripted game, `--state` hashes the world without its log. |
 | `cli/src/sweep.rs` | `sweep`: the pre-game over seeds in parallel, its series lines, and the `Run` and `Point` they keep. |
 | `cli/src/retro.rs` | `sweep --after`: the retro maps past the pick, each civ's camp and clans, and the controls. `to_pick` and `kept_camp` are shared. |
-| `cli/src/judge.rs` | `sweep --judge`: the retro maps judged, the totals in seven groups (standing, doubt, decisions, motion, land, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, the text and `--json` report. |
+| `cli/src/judge.rs` | `sweep --judge`: the retro maps judged (the army run twice, the `--no-army` and no-claims controls, and with `--solo` each civ's claim-alone run), the totals in groups (standing, doubt, decisions, motion, land, solo, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, its led civ's claim and land beside the control's, the text and `--json` report. |
 | `cli/src/play.rs` | `play`: a game file resumed per call (`World::replay`), each stdin line applied through `act`, the save and the lines file (`FILE.lines.jsonl`) written after each. |
-| `cli/src/view.rs` | `view::text`: the led civ's text view (standing, store, units, clans, reach, places, feed, legal orders), under 80 lines at the pick and +100. |
+| `cli/src/view.rs` | `view::text`: the led civ's text view (standing, store, units, the claim with its held land, paper and guard, clans, reach, places, feed, legal orders), under 80 lines at the pick and +100. |
 | `cli/src/replay.rs` | `replay`: a save's world, printed as `run` prints it. |
 | `cli/src/bench.rs` | `bench`: the time per turn for each seed. |
 | `cli/src/clear.rs` | `clear`: the barter clearing of a basket file (`basket_of`, `clear_file`). |
@@ -75,6 +75,7 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `www/play-lean.mjs` | A civ's gift: raised above the default, and the clan that leans to it. |
 | `www/play-read.mjs` | The reasons and alerts: a clan's and the camp's panels, with Hidden country on. |
 | `www/play-scout.mjs` | A scout's route: the scout selected, and its start and end picked by clicking. |
+| `www/play-claim.mjs` | A civ's claim: painted out from the capital, three guards raised, ten turns; the border (held and paper), the tints and a festival's walkers screenshotted. Exits non-zero if the border or the claim's counts are missing. |
 | `www/pkg/` | The wasm build (`build-web.sh`), not committed. |
 
 ## Adding a mechanic

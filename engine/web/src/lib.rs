@@ -73,16 +73,22 @@ impl Sim {
     /// revealed, tame, claims, wear, civs, units, clan_civ, summary}`. `trails` lists the tiles with one,
     /// `trail_work` is `[tile, labour, need]` for each tile with a trail under way (`need` its labour to
     /// finish), `revealed` the led civ's revealed tiles (empty when it leads none), `tame` is `[tile, turns]`
-    /// where above zero, `claims` is `[tile, clan]` for every tile in a territory, `wear` is `[tile, worn,
+    /// where above zero, `claims` is `[tile, clan]` for every tile in a clan's territory, `wear` is `[tile, worn,
     /// unworn]` for every tile with some food worn (each food's wear as a share, `0..=1`, and its cap before
     /// wear, in `goods()` order). `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
-    /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, territory (the
-    /// capital's tiles), work (its work tiles), army (its `units::Counters`), keep (the food it keeps
+    /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, claim (the civ's claimed
+    /// tiles, sorted, the capital among them), guard (the guard share on each claimed tile, aligned with
+    /// `claim`: the guard's people's share there plus its camps' shares), land (its held tiles: the capital
+    /// and each claimed tile whose guard share reaches `CLAIM.floor`; the rest of the claim is paper),
+    /// army (its `units::Counters`), keep (the food it keeps
     /// in force, `civs::keep`), keep_set (the food the player set it to, null for the default), gift
     /// (the most it gives a turn), posted (food posted to its market last turn), given (food given
     /// last turn), joined (clans joined since founding), gifted (food given since founding)}}`. Each
-    /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ). `units` is the camps,
+    /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ), and `routes`
+    /// (its festival route: `[{to, path, cost}]`, the path from home, so its walk is home then the path).
+    /// `markets` is `{id: market}`, each market with `clans` (the clans whose festival it is).
+    /// `rules()` gives `join`, the leaning a clan joins a civ at, for the tints. `units` is the camps,
     /// `{id: camp}`, a camp being its engine fields (`kind`, `people` (warriors), `home`, `store` (the
     /// pack, a basket), `dest`, `banked`, `hungry`, `auto_forage`, `auto_supply`, `routes`, ...) and
     /// `tile`, `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
@@ -183,13 +189,24 @@ impl Sim {
             })
             .collect();
         let clan_civ: Vec<(u32, u32)> = w.clans.values().filter_map(|c| c.civ.map(|civ| (c.id, civ))).collect();
+        // Each festival with the clans that go to it.
+        let markets: BTreeMap<u32, serde_json::Value> = w
+            .markets
+            .values()
+            .map(|m| {
+                let mut row = serde_json::to_value(m).unwrap();
+                row["clans"] =
+                    w.clans.values().filter(|k| k.market == Some(m.id)).map(|k| k.id).collect::<Vec<u32>>().into();
+                (m.id, row)
+            })
+            .collect();
         serde_json::json!({
             "turn": w.turn,
             "end": w.end,
             "phase": self.phase(),
             "player": w.player,
             "clans": w.clans,
-            "markets": w.markets,
+            "markets": markets,
             "trails": trails,
             "trail_work": trail_work,
             "revealed": revealed,

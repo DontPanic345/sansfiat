@@ -7,7 +7,9 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 
 use crate::civs::tile_civ;
+use crate::claim;
 use crate::data::{JUDGE, TERRAIN};
+use crate::events::EventKind;
 use crate::stats;
 use crate::world::World;
 
@@ -46,6 +48,29 @@ fn land_civs(w: &World) -> Vec<Option<u32>> {
 /// A clan's festival now, and the festivals it left within the flip window with the turn it left each.
 type Festivals = (Option<u32>, Vec<(Option<u32>, u32)>);
 
+/// A civ's land at a turn: the tiles it claims, the tiles it holds (`claim::held`) and its guard's
+/// people.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct CivLand {
+    pub id: u32,
+    pub claimed: usize,
+    pub held: usize,
+    pub guard: f64,
+}
+
+/// Every civ's land, in id order.
+pub fn civ_lands(w: &World) -> Vec<CivLand> {
+    w.civs
+        .keys()
+        .map(|&id| CivLand {
+            id,
+            claimed: w.civs[&id].claim.len(),
+            held: claim::held(w, id).len(),
+            guard: claim::guard_people(w, id),
+        })
+        .collect()
+}
+
 /// A game watched turn by turn from its pick.
 pub struct Watch {
     pick: u32,
@@ -69,6 +94,16 @@ pub struct Watch {
     clan_turns: u32,
     festival_changes: u32,
     flips: u32,
+    /// The index of the first event not yet scored.
+    event_mark: usize,
+    clans_left: u32,
+    clans_joined: u32,
+    /// Tiles of claims lost to a rival's unit (`ClaimTaken`).
+    claim_taken: u32,
+    /// Each civ's Standing in its parts at +200.
+    parts_200: Option<BTreeMap<u32, stats::Parts>>,
+    /// Each civ's land at +200.
+    civs_200: Vec<CivLand>,
 }
 
 impl Watch {
@@ -92,6 +127,12 @@ impl Watch {
             clan_turns: 0,
             festival_changes: 0,
             flips: 0,
+            event_mark: w.events.len(),
+            clans_left: 0,
+            clans_joined: 0,
+            claim_taken: 0,
+            parts_200: None,
+            civs_200: Vec::new(),
         }
     }
 
@@ -127,6 +168,16 @@ impl Watch {
         self.land_changed += self.land.iter().zip(&land).filter(|(a, b)| a != b).count() as u32;
         self.land = land;
 
+        for e in &w.events[self.event_mark..] {
+            match e.kind {
+                EventKind::ClanLeft => self.clans_left += 1,
+                EventKind::ClanJoined => self.clans_joined += 1,
+                EventKind::ClaimTaken => self.claim_taken += e.amount.unwrap_or(0.0) as u32,
+                _ => {}
+            }
+        }
+        self.event_mark = w.events.len();
+
         let now = self.turns();
         let mut festival = BTreeMap::new();
         for (&id, c) in &w.clans {
@@ -148,6 +199,8 @@ impl Watch {
         self.festival = festival;
         if now == 200 {
             self.trails_200 = Some(stats::trails(w));
+            self.parts_200 = Some(stats::standing_parts(w));
+            self.civs_200 = civ_lands(w);
         }
     }
 
@@ -230,6 +283,7 @@ impl Watch {
         let share = |offset: u32| at(offset).map(|s| s.values().sum::<f64>());
         let top = |offset: u32| at(offset).map(|s| s.values().copied().fold(0.0, f64::max));
         let (lowest, highest) = self.spread_range();
+        let parts = self.parts_200.as_ref();
         Scores {
             standing: StandingScores {
                 civs: at(0)
@@ -239,12 +293,15 @@ impl Watch {
                                 id,
                                 at_100: at(100).and_then(|m| m.get(&id).copied()),
                                 at_200: at(200).and_then(|m| m.get(&id).copied()),
+                                clans_200: parts.and_then(|p| p.get(&id)).map(|p| p.clans),
+                                land_200: parts.and_then(|p| p.get(&id)).map(|p| p.land),
                             })
                             .collect()
                     })
                     .unwrap_or_default(),
                 top_200: top(200),
                 aligned_200: share(200),
+                on_land_200: parts.map(|p| p.values().map(|p| p.land).sum()),
             },
             doubt: DoubtScores {
                 lead_changes: self.lead_changes,
@@ -259,6 +316,9 @@ impl Watch {
                 clans_changed: self.clans_changed,
                 people_changed: self.people_changed,
                 land_changed: self.land_changed,
+                clans_left: self.clans_left,
+                clans_joined: self.clans_joined,
+                claim_taken: self.claim_taken,
             },
             land: LandScores {
                 at_pick: self.trails_pick.clone(),
@@ -268,6 +328,7 @@ impl Watch {
                 flips: self.flips,
                 festival_changes_per_100: per_100(self.festival_changes, self.clan_turns),
                 flips_per_100: per_100(self.flips, self.clan_turns),
+                civs_200: self.civs_200.clone(),
             },
         }
     }
@@ -304,6 +365,8 @@ pub struct LandScores {
     pub flips: u32,
     pub festival_changes_per_100: f64,
     pub flips_per_100: f64,
+    /// Each civ's land at +200 (empty before +200).
+    pub civs_200: Vec<CivLand>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -314,6 +377,8 @@ pub struct StandingScores {
     pub top_200: Option<f64>,
     /// The civs' Standing summed at +200: the share of the world in any civ.
     pub aligned_200: Option<f64>,
+    /// The share of the world in unaligned clans on some civ's held land at +200.
+    pub on_land_200: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -321,6 +386,10 @@ pub struct CivStanding {
     pub id: u32,
     pub at_100: Option<f64>,
     pub at_200: Option<f64>,
+    /// At +200, the part of `at_200` from the civ's clans and units, and from unaligned clans on its
+    /// held land.
+    pub clans_200: Option<f64>,
+    pub land_200: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -372,4 +441,10 @@ pub struct MotionScores {
     pub clans_changed: u32,
     pub people_changed: f64,
     pub land_changed: u32,
+    /// Civ clans that left a civ for another (`ClanLeft`, daughters included).
+    pub clans_left: u32,
+    /// Unaligned clans that joined a civ (`ClanJoined`).
+    pub clans_joined: u32,
+    /// Tiles of claims a rival's unit took (`ClaimTaken`).
+    pub claim_taken: u32,
 }

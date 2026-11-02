@@ -146,11 +146,12 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
     let (mut gifts, mut lever): (bool, Option<f64>) = (true, None);
     let mut zone = true;
     let mut claims = true;
-    let (mut judging, mut json) = (false, false);
+    let (mut judging, mut json, mut solo) = (false, false, false);
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--judge" => judging = true,
+            "--solo" => solo = true,
             "--json" => json = true,
             "--after" => after = Some(it.next().and_then(|v| v.parse().ok()).ok_or("--after needs a number")?),
             "--no-army" => army = false,
@@ -186,12 +187,17 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
     }
     if judging {
         if after.is_some() || lever.is_some() || !army || !gifts || !zone || !claims || !seeds.is_empty() {
-            return Err(format!("--judge runs the retro maps, all on the AI: it takes only --json\n{USAGE}"));
+            return Err(format!(
+                "--judge runs the retro maps, all on the AI: it takes only --json and --solo\n{USAGE}"
+            ));
         }
-        return judge(json);
+        return judge(json, solo);
     }
     if json {
         return Err(format!("--json needs --judge\n{USAGE}"));
+    }
+    if solo {
+        return Err(format!("--solo needs --judge\n{USAGE}"));
     }
     if let Some(after) = after {
         let maps = if retro {

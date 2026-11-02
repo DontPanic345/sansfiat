@@ -28,7 +28,7 @@ try {
     };
     const camp = Object.values(v.units).find((u) => u.civ === civ);
     // The land tile nearest three steps out (a small map's land may not reach that far).
-    const target = v.civs[civ].territory
+    const target = v.civs[civ].land
       .filter((i) => i !== cap)
       .sort((a, b) => Math.abs(steps(a, cap) - 3) - Math.abs(steps(b, cap) - 3) || a - b)[0];
     return { civ, camp: camp.id, cap, target };
@@ -51,7 +51,7 @@ try {
       const dq = L.q[a] - L.q[b], dr = L.r[a] - L.r[b];
       return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr));
     };
-    const rival = new Set(Object.entries(v.civs).filter(([id]) => +id !== civ).flatMap(([, c]) => c.territory));
+    const rival = new Set(Object.entries(v.civs).filter(([id]) => +id !== civ).flatMap(([, c]) => c.land));
     return [...Array(L.q.length).keys()]
       .filter((i) => steps(i, cap) >= 7 && !rival.has(i))
       .sort((a, b) => steps(a, cap) - steps(b, cap) || a - b)

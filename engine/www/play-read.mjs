@@ -63,7 +63,7 @@ try {
       const dq = L.q[a] - L.q[b], dr = L.r[a] - L.r[b];
       return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr));
     };
-    const rival = new Set(Object.entries(v.civs).filter(([id]) => +id !== ${civ}).flatMap(([, c]) => c.territory));
+    const rival = new Set(Object.entries(v.civs).filter(([id]) => +id !== ${civ}).flatMap(([, c]) => c.land));
     return [...Array(L.q.length).keys()].filter((i) => steps(i, cap) >= 7 && !rival.has(i)).sort((a, b) => steps(a, cap) - steps(b, cap) || a - b).slice(0, 40);
   })()`);
   await page.select(cap, 'unit');

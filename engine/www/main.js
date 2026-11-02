@@ -163,6 +163,9 @@ function routes() {
   const mineCamp = v.player != null ? Object.values(v.units).find((u) => u.civ === v.player && u.kind === 'camp') : null;
   view.setHomeLine(mineCamp?.line?.path.length ? [mineCamp.tile, ...mineCamp.line.path] : null);
   view.setFocus(selected?.kind === 'tile' ? (selected.clan ?? view.clanAt(selected.tile)) : null);
+  // A selected festival (a market's tile, or its row): its walkers' routes are drawn bright.
+  const festival = selected?.kind === 'tile' && selected.clan == null ? (selected.market ?? marketOn(ctx(), selected.tile)?.id) : null;
+  view.setFocusMarket(festival ?? null);
   const camp = selected?.kind === 'unit' ? v.units[selected.id] : null;
   if (camp && camp.cut_at) {
     // Cut by held ground: the line it would have, drawn to the tile where it stops, marked.
@@ -182,14 +185,18 @@ function routes() {
   }
 }
 
-// ---- painting a zone ---------------------------------------------------------------------------
+// ---- painting a zone and a claim ---------------------------------------------------------------
 
-/** 'paint', 'unpaint' or null: what a left press and drag on the map do to the selected camp's zone. */
+/** 'paint', 'unpaint' (a camp's zone), 'claim', 'unclaim' (the player's civ's claim) or null: what a
+ *  left press and drag on the map do. */
 let painting = null;
 
 function setPainting(mode) {
   const u = selected?.kind === 'unit' ? v?.units[selected.id] : null;
-  painting = u && u.kind === 'camp' && u.civ === v.player ? mode : null;
+  const capital = selected?.kind === 'capital' && selected.civ === v.player;
+  if (mode === 'paint' || mode === 'unpaint') painting = u && u.kind === 'camp' && u.civ === v.player ? mode : null;
+  else if (mode === 'claim' || mode === 'unclaim') painting = capital ? mode : null;
+  else painting = null;
   view.setPainting(painting != null);
   document.body.dataset.painting = painting ?? '';
   panel();
@@ -216,6 +223,10 @@ function pruneZone(zone, home) {
  *  then no longer connected to the camp (paint-army's prune). The zone goes to the engine at once;
  *  a refusal says why under the panel. */
 function onPaint(i) {
+  if (painting === 'claim' || painting === 'unclaim') {
+    onPaintClaim(i);
+    return;
+  }
   const u = selected?.kind === 'unit' ? v.units[selected.id] : null;
   if (!painting || !u || u.civ !== v.player || i === u.tile) return;
   let zone = new Set(u.territory);
@@ -228,6 +239,25 @@ function onPaint(i) {
     zone = pruneZone(zone, u.tile);
   }
   order(unitOrder(u, { type: 'zone', tiles: [...zone].filter((t) => t !== u.tile).sort((a, b) => a - b) }));
+}
+
+/** A painted tile of the claim: added (land only, the engine says why not), or in unclaim mode taken
+ *  out with whatever is then no longer connected to the capital. The claim goes to the engine at once,
+ *  as the zone does. */
+function onPaintClaim(i) {
+  const c = v.civs[v.player];
+  if (!c || i === c.capital) return;
+  let claim = new Set(c.claim);
+  if (painting === 'claim') {
+    if (claim.has(i) || !TERRAIN[layout.terrain[i]].land) return;
+    claim.add(i);
+  } else {
+    if (!claim.has(i)) return;
+    claim.delete(i);
+    claim = pruneZone(claim, c.capital);
+  }
+  claim.add(c.capital);
+  order({ type: 'order', civ: v.player, order: { type: 'claim', tiles: [...claim].filter((t) => t !== c.capital).sort((a, b) => a - b) } });
 }
 
 /** A camp's line home, coloured by how much of its labour the line takes to feed it: green where a
@@ -424,7 +454,7 @@ function select(sel) {
   // Picking another thing forgets a route being set; the same unit keeps its start.
   if (unit !== routing.unit) routing = { arm: null, start: null, unit };
   else routing.arm = null;
-  if (painting && !(sel?.kind === 'unit' && selected?.kind === 'unit' && sel.id === selected.id)) {
+  if (painting && keyOf(sel) !== keyOf(selected)) {
     painting = null;
     view.setPainting(false);
     document.body.dataset.painting = '';
@@ -647,10 +677,10 @@ function fillTip(i) {
   if (civ >= 0 && v.civs[civ]) {
     const c = v.civs[civ];
     const name = `<i class="sw" style="background:${c.color}"></i>${c.name}`;
-    if (c.capital === i) lines.push(`${name}'s capital`);
-    else if (c.land.includes(i)) lines.push(`${name}'s land`);
-    else if (h) lines.push(`${name}, clan ${h}'s territory`);
-    else lines.push(`${name}'s land`);
+    lines.push(c.capital === i ? `${name}'s capital` : `${name}'s land`);
+  }
+  for (const c of Object.values(v.civs)) {
+    if (c.claim.includes(i) && !c.land.includes(i)) lines.push(`paper of <i class="sw" style="background:${c.color}"></i>${c.name}`);
   }
   const here = Object.values(v.units).filter((u) => u.tile === i);
   if (here.length) {
@@ -713,7 +743,9 @@ function legend() {
     [sw('background:hsl(120,70%,55%);border:2px solid #ff2a2a;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'clan (red ring: starving)'],
     [sw('background:hsl(120,70%,55%);border:3px solid #d6a63b;border-radius:50%;width:10px;height:10px;margin:2px 3px;box-shadow:0 0 0 1px #000'), 'civ clan (ring in the civ colour)'],
     [sw('background:#d64545;border:2px solid #fff;outline:2px solid #000;width:10px;height:10px;margin:2px 4px;clip-path:polygon(0 25%,50% 0,100% 25%,100% 100%,0 100%)'), 'capital'],
-    [sw('background:transparent;border:3px solid #3b6fd6;box-shadow:0 0 0 1px #000;width:12px;height:12px;margin:1px 3px'), 'civ land (capital territory)'],
+    [sw('background:transparent;border:3px solid #3b6fd6;box-shadow:0 0 0 1px #000;width:12px;height:12px;margin:1px 3px'), 'civ land (border: held)'],
+    [sw('background:transparent;border:3px dashed #3b6fd6;box-shadow:0 0 0 1px #000;width:12px;height:12px;margin:1px 3px'), 'paper (dashed: claimed, not held)'],
+    [sw('background:linear-gradient(90deg,hsl(120,70%,55%),#3b6fd6);border:2px solid #000;width:12px;height:12px;margin:1px 3px'), 'unaligned clan tinted by the civ it leans to'],
     [sw('background:#3b6fd6;border:2px solid #000;width:10px;height:12px;margin:0 4px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)'), 'warrior'],
     [sw('background:#3b6fd6;border:2px solid #ff2a2a;width:10px;height:12px;margin:0 4px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)'), 'hungry warrior'],
     [sw('background:transparent;border:0;border-top:3px dashed #fff;height:0;margin:5px 0'), 'route (selected unit)'],
@@ -835,6 +867,7 @@ window.game = {
   tileCiv: (i) => sim.tile_civ(i),
   save: () => JSON.parse(sim.save()),
   map: view,
+  border: (civ) => view.border(civ),
   feed,
   notes: (id) => sim.notes(id),
 };

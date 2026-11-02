@@ -144,6 +144,8 @@ export const open = async (query = '', { width = 1280, height = 800 } = {}) => {
 
   // A tile's centre on screen, fitting the whole map first when it's out of view.
   const tile = async (i) => {
+    // A map still easing to a centre (after Lead, say) moves the tile under the pointer: wait for it.
+    await until('!game.map.anim', 10_000);
     const at = () => evaluate(`(() => { const p = game.map.screenOf(${i}); return [p.x, p.y]; })()`);
     let [x, y] = await at();
     if (x < 0 || y < 0 || x >= width || y >= height) {

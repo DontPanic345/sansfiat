@@ -3,7 +3,7 @@
 
 use engine::data::{CIV, LEANING, UNIT};
 use engine::units::{self, Unit, UnitKind};
-use engine::{civs, markets, stats, Action, Clan, Event, Order, World, FOODS};
+use engine::{civs, claim, markets, stats, Action, Clan, Event, Order, World, FOODS};
 
 /// The largest clans the view names.
 const CLANS_NAMED: usize = 5;
@@ -87,6 +87,7 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     for u in &units {
         out += &unit_line(w, u);
     }
+    out += &claim_lines(w, me);
 
     let mut clans: Vec<&Clan> = w.clans.values().filter(|k| k.civ == Some(me)).collect();
     clans.sort_by(|a, b| b.people.total_cmp(&a.people).then(a.id.cmp(&b.id)));
@@ -135,6 +136,34 @@ pub(crate) fn text(w: &World, since: usize) -> String {
 
     out += &feed(w, me, since);
     out += &legal(w, me);
+    out
+}
+
+/// The led civ's claim: its tiles, held (the capital and the claimed tiles its guard holds) and paper,
+/// its guard's people and the thinnest share of a held tile besides the capital; and the unaligned
+/// clans whose homes are on its land.
+fn claim_lines(w: &World, me: u32) -> String {
+    let c = &w.civs[&me];
+    let held = claim::held(w, me);
+    let thinnest = c
+        .claim
+        .iter()
+        .enumerate()
+        .filter(|&(_, &t)| t != c.capital && held.contains(&t))
+        .map(|(k, &t)| (c.guard.get(k).copied().unwrap_or(0.0), t))
+        .min_by(|a, b| a.0.total_cmp(&b.0));
+    let thin = thinnest.map_or("none".to_string(), |(g, t)| format!("{g:.2} at {}", tile(w, t)));
+    let mut out = format!(
+        "claim: {} tiles, held {}, paper {}; guard {:.1} people, thinnest held share {thin}\n",
+        c.claim.len(),
+        held.len(),
+        c.claim.len() - held.len(),
+        claim::guard_people(w, me)
+    );
+    let on_land: Vec<&Clan> =
+        w.clans.values().filter(|k| k.civ.is_none() && claim::tile_civ(w, k.home) == Some(me)).collect();
+    let people = on_land.iter().fold(0.0, |p, k| p + k.people);
+    out += &format!("unaligned clans on your land: {} with {people:.1} people\n", on_land.len());
     out
 }
 
@@ -216,6 +245,16 @@ fn legal(w: &World, me: u32) -> String {
     let mut out = String::from("legal orders:\n");
     if ok(Order::Raise { n: 1, kind: UnitKind::Camp }) {
         out += "  {\"type\":\"raise\",\"n\":1}\n";
+    }
+    if ok(Order::Raise { n: 1, kind: UnitKind::Guard }) {
+        out += "  {\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}  a guard at your capital, from your clans\n";
+    }
+    let claimed = w.civs[&me].claim.clone();
+    if ok(Order::Claim { tiles: claimed.clone() }) {
+        out += &format!(
+            "  {{\"type\":\"claim\",\"tiles\":[<tile>, ...]}}  paints your claim (now {} tiles); connected to your capital\n",
+            claimed.len()
+        );
     }
     for u in w.units.values().filter(|u| u.civ == me) {
         let id = u.id;

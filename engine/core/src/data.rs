@@ -654,6 +654,9 @@ pub struct JudgeRules {
     /// A clan's festival change back to one it had within this many turns is a flip. A fixed window,
     /// so a build with no `MARKET.keep_turns` counts as one with it.
     pub flip_window: u32,
+    /// A civ's Standing gain from claiming alone (`sweep --judge --solo`) counts as a gain above this.
+    /// It is the lead margin's size: a gain of less is noise in the Standing the judge reads.
+    pub solo_above: f64,
 }
 
-pub const JUDGE: JudgeRules = JudgeRules { lead_margin: 0.005, sample: 10, flip_window: 10 };
+pub const JUDGE: JudgeRules = JudgeRules { lead_margin: 0.005, sample: 10, flip_window: 10, solo_above: 0.005 };

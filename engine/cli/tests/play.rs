@@ -179,3 +179,31 @@ fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
     let out = sansfiat(&["play", "--game", &game], &format!("why {id}\n"));
     assert!(out.contains(&format!("why {id}: its reasons, newest first")), "{out}");
 }
+
+#[test]
+fn the_view_at_the_pick_lists_the_claim_and_its_new_legal_orders() {
+    let (_dir, game) = game_in("claim-view");
+    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    assert!(made.lines().any(|l| l.starts_with("claim: ") && l.contains("held") && l.contains("paper")), "{made}");
+    assert!(made.contains("unaligned clans on your land:"), "{made}");
+    assert!(made.contains(r#"  {"type":"claim","tiles":"#), "{made}");
+    assert!(made.contains(r#"  {"type":"raise","n":1,"kind":"guard"}"#), "{made}");
+    assert!(made.lines().count() < 80, "{} lines", made.lines().count());
+    let map = sansfiat(&["play", "--game", &game], "map\n");
+    assert!(map.contains("L your land  p your paper"), "{map}");
+    assert!(map.lines().any(|l| l.contains(" L ") || l.contains(" L\n") || l.ends_with(" L")), "{map}");
+}
+
+#[test]
+fn judge_prints_the_claim_lines_for_the_led_civ() {
+    let (_dir, game) = game_in("judge-claim");
+    sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    sansfiat(&["play", "--game", &game], "{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}\nend 10\n");
+    let out = sansfiat(&["judge", &game], "");
+    let claim = out
+        .lines()
+        .find(|l| l.starts_with("claim (game / control): "))
+        .unwrap_or_else(|| panic!("no claim line in:\n{out}"));
+    assert!(claim.contains(" tiles claimed, ") && claim.contains(" held, guard "), "{claim}");
+    assert!(out.lines().any(|l| l.starts_with("motion (game / control):") && l.contains("clans left")), "{out}");
+}

@@ -116,27 +116,46 @@ pub fn summary(w: &World) -> Summary {
     }
 }
 
-/// Each civ's Standing: the people of its clans (wherever they live) and of its units, and of the
-/// unaligned clans whose homes are on its held land, over the people of every clan and every unit.
-/// Warriors, guards and scouts are people the civ took from its clans, so raising one moves nobody
-/// between civs. Every civ is there, at 0 when the world has nobody.
-pub fn standing(w: &World) -> BTreeMap<u32, f64> {
-    let mut mine: BTreeMap<u32, f64> = w.civs.keys().map(|&c| (c, 0.0)).collect();
-    let clans = w.clans.values().filter_map(|k| match k.civ {
-        Some(c) => Some((c, k.people)),
-        None => crate::claim::tile_civ(w, k.home).map(|c| (c, k.people)),
-    });
-    let units = w.units.values().map(|u| (u.civ, u.people));
-    for (civ, people) in clans.chain(units) {
-        *mine.entry(civ).or_insert(0.0) += people;
+/// One civ's Standing in two parts, each a share of the people of the world: its clans' and units'
+/// people (`clans`), and the unaligned people whose homes are on its held land (`land`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+pub struct Parts {
+    pub clans: f64,
+    pub land: f64,
+}
+
+/// Each civ's Standing in its parts (`Parts`): the people of its clans (wherever they live) and of
+/// its units, and of the unaligned clans whose homes are on its held land, over the people of every
+/// clan and every unit. Warriors, guards and scouts are people the civ took from its clans, so raising
+/// one moves nobody between civs. Every civ is there, at 0 when the world has nobody.
+pub fn standing_parts(w: &World) -> BTreeMap<u32, Parts> {
+    let mut mine: BTreeMap<u32, Parts> = w.civs.keys().map(|&c| (c, Parts::default())).collect();
+    for k in w.clans.values() {
+        match k.civ {
+            Some(c) => mine.entry(c).or_default().clans += k.people,
+            None => {
+                if let Some(c) = crate::claim::tile_civ(w, k.home) {
+                    mine.entry(c).or_default().land += k.people;
+                }
+            }
+        }
+    }
+    for u in w.units.values() {
+        mine.entry(u.civ).or_default().clans += u.people;
     }
     let all: f64 = w.clans.values().map(|k| k.people).sum::<f64>() + w.units.values().map(|u| u.people).sum::<f64>();
     if all > 0.0 {
-        for share in mine.values_mut() {
-            *share /= all;
+        for p in mine.values_mut() {
+            p.clans /= all;
+            p.land /= all;
         }
     }
     mine
+}
+
+/// Each civ's Standing: `standing_parts`, its two parts summed.
+pub fn standing(w: &World) -> BTreeMap<u32, f64> {
+    standing_parts(w).into_iter().map(|(c, p)| (c, p.clans + p.land)).collect()
 }
 
 /// Hex steps from a centre's market within which fertility is compared.

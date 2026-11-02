@@ -1,0 +1,30 @@
+small  seed   2 pick 237  standing +200 top 0.061 aligned 0.155  lead changes 1  spread +100 0.025 +200 0.025 swings 1  orders/100 3.50 levers 2.0  motion: clans changed 0 people 0.0 land 33  armies: camps kept 2/3 starved 3 lost 1 people vs control 1.01  land: markets 20/18 trading 0.89/0.91 homes 0.80/0.80 worked 0.29/0.31 route 1.00/1.00 changes 0.25 flips 0.01  health: centres 1 digests differ 0
+        claims: on land at +200 0.000; per civ at +200 claimed 20.7, held 6.0, guard 1.0; no claims: lead changes 0, spread +200 0.031
+        solo: civ 472 -0.0067 (clans -0.0067, land +0.0000); civ 473 +0.0054 (clans +0.0054, land +0.0000); civ 474 -0.0072 (clans -0.0107, land +0.0035)
+small  seed   3 pick 245  standing +200 top 0.118 aligned 0.223  lead changes 0  spread +100 0.093 +200 0.095 swings 3  orders/100 4.33 levers 2.3  motion: clans changed 0 people 0.0 land 36  armies: camps kept 2/3 starved 2 lost 0 people vs control 0.97  land: markets 17/17 trading 0.95/0.94 homes 0.88/0.86 worked 0.34/0.28 route 0.94/0.94 changes 0.50 flips 0.04  health: centres 1 digests differ 0
+        claims: on land at +200 0.000; per civ at +200 claimed 20.7, held 2.3, guard 0.0; no claims: lead changes 0, spread +200 0.076
+        solo: civ 267 -0.0038 (clans -0.0038, land +0.0000); civ 268 -0.0143 (clans -0.0143, land +0.0000); civ 269 -0.0048 (clans -0.0048, land +0.0000)
+small  seed   6 pick 318  standing +200 top 0.077 aligned 0.187  lead changes 5  spread +100 0.052 +200 0.043 swings 1  orders/100 5.67 levers 3.0  motion: clans changed 1 people 2.6 land 26  armies: camps kept 1/3 starved 3 lost 0 people vs control 0.99  land: markets 20/21 trading 0.94/0.94 homes 0.88/0.90 worked 0.31/0.27 route 0.98/1.00 changes 0.47 flips 0.11  health: centres 1 digests differ 0
+        claims: on land at +200 0.000; per civ at +200 claimed 28.0, held 2.0, guard 0.3; no claims: lead changes 1, spread +200 0.057
+        solo: civ 353 -0.0288 (clans -0.0288, land +0.0000); civ 354 +0.0001 (clans +0.0001, land +0.0000); civ 355 -0.0107 (clans -0.0107, land +0.0000)
+small  seed   9 pick 240  standing +200 top 0.115 aligned 0.259  lead changes 0  spread +100 0.049 +200 0.050 swings 6  orders/100 6.50 levers 2.0  motion: clans changed 4 people 20.0 land 75  armies: camps kept 2/3 starved 5 lost 1 people vs control 0.97  land: markets 18/16 trading 0.88/0.87 homes 0.88/0.86 worked 0.30/0.30 route 0.95/1.00 changes 0.51 flips 0.04  health: centres 1 digests differ 0
+        claims: on land at +200 0.000; per civ at +200 claimed 23.3, held 7.7, guard 2.0; no claims: lead changes 1, spread +200 0.048
+        solo: civ 485 -0.0146 (clans -0.0146, land +0.0000); civ 486 +0.0326 (clans +0.0326, land +0.0000); civ 487 +0.0174 (clans +0.0174, land +0.0000)
+medium seed   8 pick 273  standing +200 top 0.045 aligned 0.099  lead changes 0  spread +100 0.032 +200 0.030 swings 0  orders/100 12.17 levers 2.7  motion: clans changed 1 people 4.7 land 24  armies: camps kept 1/3 starved 3 lost 0 people vs control 0.98  land: markets 36/36 trading 0.96/0.96 homes 0.85/0.85 worked 0.32/0.32 route 0.97/0.98 changes 0.33 flips 0.04  health: centres 1 digests differ 0
+        claims: on land at +200 0.000; per civ at +200 claimed 22.0, held 1.7, guard 0.3; no claims: lead changes 0, spread +200 0.034
+        solo: civ 931 +0.0056 (clans +0.0056, land +0.0000); civ 932 +0.0051 (clans +0.0051, land +0.0000); civ 933 +0.0005 (clans +0.0005, land +0.0000)
+medium seed   9 pick 431  standing +200 top 0.065 aligned 0.128  lead changes 0  spread +100 0.033 +200 0.035 swings 5  orders/100 26.00 levers 3.3  motion: clans changed 6 people 31.4 land 210  armies: camps kept 3/3 starved 0 lost 0 people vs control 0.94  land: markets 34/34 trading 0.74/0.75 homes 0.81/0.84 worked 0.28/0.28 route 0.94/0.98 changes 1.31 flips 0.13  health: centres 1 digests differ 0
+        claims: on land at +200 0.000; per civ at +200 claimed 18.3, held 6.7, guard 1.7; no claims: lead changes 1, spread +200 0.013
+        solo: civ 877 +0.0086 (clans +0.0086, land +0.0000); civ 878 -0.0069 (clans -0.0069, land +0.0000); civ 879 -0.0062 (clans -0.0062, land +0.0000)
+large  seed   8 pick 369  standing +200 top 0.023 aligned 0.060  lead changes 1  spread +100 0.010 +200 0.005 swings 0  orders/100 39.50 levers 1.7  motion: clans changed 47 people 199.0 land 385  armies: camps kept 3/3 starved 0 lost 0 people vs control 0.98  land: markets 73/72 trading 0.93/0.92 homes 0.81/0.82 worked 0.32/0.32 route 0.99/0.99 changes 0.85 flips 0.15  health: centres 1 digests differ 0
+        claims: on land at +200 0.003; per civ at +200 claimed 23.3, held 13.3, guard 3.7; no claims: lead changes 0, spread +200 0.005
+        solo: civ 2708 +0.0022 (clans +0.0022, land +0.0000); civ 2709 -0.0008 (clans -0.0008, land +0.0000); civ 2710 +0.0023 (clans +0.0023, land +0.0000)
+total standing: top at +200 0.072, aligned at +200 0.159, on land at +200 0.000
+total doubt: lead changes 7 on 3 maps, spread +100 0.042 +200 0.040, swings 16; no claims: lead changes 3 on 3 maps
+total decisions: AI orders per 100 turns 13.95 (claim 10.60, disband 0.76, move 1.93, raise 0.26, zone 0.40), levers repeated 2.43
+total motion: clans changed 59, people 257.7, land tiles 789; clans left 0, joined 59; claimed tiles taken 0
+total land: markets 218 at the pick, 214 at +200; trading 0.90/0.90; homes trailed 0.85/0.85; worked trailed 0.31/0.30; route trailed 0.97/0.98 (pick/+200); festival changes 0.69 and flips 0.10 per 100 clan-turns; per civ at +200 claimed 22.33, held 5.67, guard 1.29
+total solo: gain -0.0012 (clans -0.0014, land +0.0002) per civ over 21 civs; above 6 of 21 civs by more than 0.005
+total armies: camps kept 14 of 21, warriors starved 16, camps lost 2, people vs control 0.976
+total health: pre-games by centres 7 of 7, panics 0, digest mismatches 0
+seconds 34.3
