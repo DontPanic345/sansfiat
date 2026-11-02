@@ -364,8 +364,13 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
     cs_mut(w, id).bows = false;
     // An army hungry `FIGHT.surrender` turns in a row whose line a rival's land cuts surrenders whole,
     // before hunger takes a warrior (with fighting on, `Config.fight`). An army still on the march
-    // has somewhere to go and doesn't.
-    if hungry >= FIGHT.surrender && w.config.fight && w.units[&id].camp().is_some_and(|c| c.dest.is_none()) {
+    // has somewhere to go, and one fighting on its tile this turn stands, so neither does.
+    let home = w.units[&id].home;
+    if hungry >= FIGHT.surrender
+        && w.config.fight
+        && w.units[&id].camp().is_some_and(|c| c.dest.is_none())
+        && !w.contested.contains(&home)
+    {
         if let Some(by) = cut_by_rival(w, id) {
             if surrender(w, id, by) {
                 return;

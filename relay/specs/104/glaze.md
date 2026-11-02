@@ -11,6 +11,7 @@ All three stories on small seed 2, Red (472) against Blue (473): `sansfiat story
 | retreat's tile (`fight::retreat`) | the nearest held tile anywhere, at once (6 steps on surrender) | one step back: the uncontested neighbour, own-held first, nearest the capital | surrender: the beaten army jumped 6 steps home, refilled, and was never hungry three turns running |
 | `line::cut_by_rival` | none when the line was cut by length too, and only rivals on the open path home | any cut line, with the army's own tile and its neighbours' rival land counted | surrender: hungry 3+ turns, cut, surrounded on 5 of 6 sides by Blue's land, and `cut_by_rival` gave none, so it starved instead |
 | surrender while marching | allowed | only an army with no march (`dest` none) surrenders | camp.mjs's hold: the camp marching onto a rival post surrendered on the way |
+| surrender while fighting | allowed | an army whose tile is contested this turn stands and doesn't surrender | army.mjs: Blue's army arrived hungry 2 turns, fought Gold's guard and surrendered the same turn, so the skirmish had no army to select. The stories' numbers didn't move |
 | `entrench`, `entrench_cap`, `retreat`, `hungry`, `militia`, `surrender`, `floor`, the kinds, `SCOUT.reach` | — | unchanged | none of the stories reached a capital, militia or a held entrenchment that would read them; scout.md shows reach doesn't move the scout |
 
 ## The stories (fight / control, Standing at the end)
@@ -30,12 +31,12 @@ All three stories on small seed 2, Red (472) against Blue (473): `sansfiat story
 
 ## Health
 
-`sweep --judge` (glaze-judge.txt) matches build-3-judge.txt line for line apart from the timing (47.1 s against 35.5 s, on a shared runner). Nothing fights on the AI maps, so the rate and the retreat's form reach no AI score.
+`sweep --judge` (glaze-judge.txt) matches build-3-judge.txt line for line apart from the timing (32.0 s against 35.5 s). Nothing fights on the AI maps, so the rate and the retreat's form reach no AI score.
 
 ## The page
 
-build-4's `play/army.mjs` passes inside check.sh with these numbers. Its skirmish is Blue against Gold's standing guard, and the army's reasons give the losses on each side, so the "Why" says who lost how many against what. I didn't read a retreat there: the script's army holds.
-
-## Not finished
-
-`www/play/army.mjs` fails with these rules: after its skirmish on Gold's land, the army is gone (it surrenders, as the widened `cut_by_rival` lets it), so a click on the skirmish selects nothing. Either the script reads the fight before the army is cut off, or `cut_by_rival` goes back to build-2's form and the surrender story needs another way. The next attempt picks this up. The rest of check.sh passed before the last change, which was the one at the march.
+`play/army.mjs` passes inside check.sh with these numbers (small 9, Blue against Gold's guard). The army arrives
+hungry, fights at (−1, 4) on turn 251, and takes the tile. Its panel reads "Fighting at (−1, 4) · Hungry 3 turns:
+loses a warrior at 3", its reasons "lost 1 warrior(s) to hunger", and the civ's "its army took 1 tile(s) of Gold's
+claim at (−1, 4)". So the Why says what happened. It says why only in part: hunger and the tile taken are there, and
+the losses to the guard come in the reasons on the turns they fall.

@@ -20,4 +20,4 @@ total land: markets 218 at the pick, 211 at +200; trading 0.90/0.89; homes trail
 total armies: camps kept 13 of 21, warriors starved 26, camps lost 6, people vs control 0.993
 total fight (control, fighting off): people fallen 0.00 (0.00), tiles taken 0 (0), armies surrendered 0 (0)
 total health: pre-games by centres 7 of 7, panics 0, digest mismatches 0
-seconds 47.1
+seconds 32.0

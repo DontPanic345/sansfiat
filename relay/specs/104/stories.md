@@ -40,4 +40,4 @@ Standing at the end (+80, surrender +60); the led civ is Red (472), the rival Bl
 
 ## Final runs (build-5, glaze)
 
-With `FIGHT.rate` 0.2, the one-step retreat and the widened `cut_by_rival`, the table is in `glaze.md`. Skirmish: Red +2.9, Blue −1.0. Stack: the push surrenders to Blue at +32 (Blue +2.1). Surrender: it fires at +20 (Red +0.6). No capital falls: every push runs out of food 9–10 of 13 steps out.
+With `FIGHT.rate` 0.2, the one-step retreat and the widened `cut_by_rival` and no surrender on the march or in a fight, the table is in `glaze.md`. Skirmish: Red +2.9, Blue −1.0. Stack: the push surrenders to Blue at +32 (Blue +1.1). Surrender: it fires at +20 (Red +0.6). No capital falls: every push runs out of food 9–10 of 13 steps out.

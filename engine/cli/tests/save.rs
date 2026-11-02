@@ -41,11 +41,11 @@ fn the_save_version_pins_the_rules() {
     assert_eq!(digest("1", "334", false), "6b186798ea9ee7d7");
     assert_eq!(digest("2", "256", false), "355c846c0bd03cec");
     assert_eq!(digest("3", "264", false), "d380582070e8fc7a");
-    assert_eq!(digest("2", "256", true), "4b30e8b6d88d9156");
+    assert_eq!(digest("2", "256", true), "ccbe2c83fe822dd6");
 }
 
 #[test]
 fn the_led_game_state_digest_is_its_baseline() {
     // The led game's world without its log: the rules' fingerprint, which the log's shape does not move.
-    assert_eq!(digest_with("2", "256", true, true), "0203298c05ff7bdf");
+    assert_eq!(digest_with("2", "256", true, true), "3bc5bf1f093071c1");
 }
