@@ -9,16 +9,17 @@ what main and the spec's variants measured. Read both first.
 
 Add the measures (below) and run `cargo run --release -p sansfiat -- sweep --judge` on main's rules.
 Save it as `relay/specs/102/build-1-main.txt`: the baseline your targets are read against (main's
-`flips`, `markets`, `held_trailed`).
+`flips`, `markets`, `worked_trailed`).
 
 ## What to build, and where
 
 1. **The measures** (spec item 5), in `core/src/judge.rs`'s `Watch`/`Scores` as a `land` group, and
-   `cli/src/judge.rs`'s text and `--json`: `homes_trailed`, `held_trailed`, `route_trailed`, `markets`
+   `cli/src/judge.rs`'s text and `--json`: `homes_trailed`, `worked_trailed`, `route_trailed`, `markets`
    and `trading` at the pick and +200; `festival_changes` and `flips` per 100 clan-turns after the pick.
    The trail shares are pure functions of a world: put them in `stats.rs` (`stats::trails(w)`) so the
    view and tests can read them. `Watch` keeps each clan's last few festivals to count flips; it stays
-   read-only.
+   read-only, and counts a flip within `JUDGE.flip_window` (10) turns, so the baseline on main
+   counts as the new rules do.
 2. **Desert** (spec item 1): `TERRAIN[DESERT].move_cost` 2.0, its note saying why (owner note 1: clans
    routed through desert).
 3. **Festivals stick** (spec item 2) in `core/src/markets.rs` (`choose`, `go`), with `Clan.market_turns`
@@ -28,7 +29,7 @@ Save it as `relay/specs/102/build-1-main.txt`: the baseline your targets are rea
 4. **Spacing and reach** (spec item 3): `MARKET.spacing` 6, `MARKET.reach_walk` 14 to start; move within
    5–7 and 12–16 if the targets need it.
 5. **Trails by traffic** (spec item 4) in `core/src/land.rs` (`tend`), `core/src/actors.rs` (what
-   `mark_walked` becomes: adding a walker's people to the tiles of its walks, home included),
+   `mark_walked` becomes: adding a walker's people to the tiles of its walks, home included: `Walks::path` leaves home out, so add it),
    `core/src/clans.rs` (the harvest step's call), `core/src/units/camp.rs` (the line on a turn it
    resupplies, and keeping its trail) and `core/src/units/scout.rs` (its walk and route). `Tile.traffic`
    replaces `walked`, `walk_run` and `rest_run` (`core/src/map.rs`); grep for every reader. `TRAIL` gains
@@ -56,7 +57,7 @@ On the seven retro maps, from `sweep --judge`:
 
 - pre-games by centres 7 of 7, and the run's health otherwise as main's (no panics, no digest mismatch);
 - `flips` at least 80% below `build-1-main.txt`'s;
-- `homes_trailed` ≥ 0.8, `held_trailed` ≤ 0.35, `route_trailed` ≥ 0.5, at the pick and at +200;
+- `homes_trailed` ≥ 0.8, `worked_trailed` ≤ 0.35, `route_trailed` ≥ 0.5, at the pick and at +200;
 - `markets` at the pick at least main's.
 
 Save the final run as `relay/specs/102/build-1-judge.txt` and a table of what you tried (variant, the

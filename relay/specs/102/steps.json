@@ -1,7 +1,45 @@
 [
-  {"id": "build-1", "title": "Easel: festivals that stick, nearer festivals, trails by traffic, desert at 2, with their measures and targets", "part": "easel", "model": "sonnet", "effort": "medium", "points": 8, "why": "Open 2, New 1, Miss 3, Reach 2 = 8, which is sonnet high; this is the piece's step a rung below, at sonnet medium. Open 2: the rules are exact and the targets are numbers, but the trail thresholds are found by running. Miss 3: only the retro maps show the targets met and the pre-game still ending. Reach 2: go, harvest and tend run every turn. I expect Sonnet medium to build the rules cleanly and land the targets in two or three sweeps; if it stops at the first variant that passes or misses a target, the retro learns that real-map tuning in an easel wants high effort. About 10 files, 500 lines (markets.rs, land.rs, actors.rs, clans.rs, camp.rs, scout.rs, judge.rs core and CLI, stats.rs, tests ~150). Part and score agree: an easel under 11, its unsettled numbers measured against fixed targets."},
-  {"id": "build-2", "title": "Easel: the claim, the guard, land as the held claim, leaning and leaving by land, the levy and Standing by land, the AI's stand-in, Config.claims", "part": "easel", "model": "haiku", "effort": "high", "points": 4, "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high, on the ladder. Every rule and starting number is in spec items 7-25; the guard is adapted from the camp's hold over its zone, the claim order from the zone order, leaving from joining; the tests it writes on built maps catch slips, and the canvas tunes what the numbers do. Reach 2: tile_civ, lean, levy and a new step run every turn. About 14 files, 900 lines (claim.rs ~300, units guard ~120, orders, leaning, civs, ai, stats, events, data, tests ~250). The most files in the piece, which costs minutes, not a bigger model. Part and score agree."},
-  {"id": "build-3", "title": "Easel: the judge's no-claims and solo controls and land measures, the text view, the page's border, tints, claim painting, guard and festival walkers", "part": "easel", "model": "haiku", "effort": "high", "points": 5, "why": "Open 2, New 1, Miss 1, Reach 1 = 5: haiku high. Open 2 because the page's drawing is judged partly by eye (the canvas and review look again); the judge's measures and the view's lines are exact. New 1: the claim painting reuses the zone's, the judge runs reuse #101's. Miss 1: play-claim.mjs and the CLI tests it writes. Reach 1: no rule changes. About 10 files, 800 lines (judge ~250, view ~60, lib.rs ~60, map-view ~150, select ~100, main ~60, play-claim ~80, tests ~80). Part and score agree."},
-  {"id": "build-4", "title": "Canvas: tune the land until claiming pays and the lead moves, health held; two played games; the page re-shot", "part": "canvas", "model": "opus", "effort": "low", "points": 10, "why": "Open 4, New 1, Miss 3, Reach 2 = 10: opus low for a canvas, on the ladder. Open 4: whether claiming pays is found by searching the numbers and maybe a rule. New 1: tuning against sweep --judge has #101's pattern. Miss 3: only the retro maps and play show it. Reach 2: the numbers move every turn. A canvas at 10 holds the hard part, as the shape expects. About 3 files changed and a record, plus easel fixes; most of its time is sweeps of a few minutes each."},
-  {"id": "review", "title": "Review the piece", "model": "opus", "effort": "medium", "why": "The goal is a mechanic the player meets and is judged partly by play (a claim painted on the page and through sansfiat play), so Opus by the rule, at medium because the crew refuses a judging step at low effort. It reruns check.sh and sweep --judge --solo, plays thirty turns, runs play-claim.mjs, answers the question in the PR beside main and the controls, and adds the decisions to the Decided ledgers of war.md, clans.md, founding.md, supply.md and map.md."}
+ {
+  "id": "build-1",
+  "title": "Easel: festivals that stick, nearer festivals, trails by traffic, desert at 2, with their measures and targets",
+  "part": "easel",
+  "model": "sonnet",
+  "effort": "medium",
+  "points": 8,
+  "why": "Open 2, New 1, Miss 3, Reach 2 = 8, which is sonnet high; this is the piece's step a rung below, at sonnet medium. Open 2: the rules are exact and the targets are numbers, but the trail thresholds are found by running. Miss 3: only the retro maps show the targets met and the pre-game still ending. Reach 2: go, harvest and tend run every turn. I expect Sonnet medium to build the rules cleanly and land the targets in two or three sweeps; if it stops at the first variant that passes or misses a target, the retro learns that real-map tuning in an easel wants high effort. About 10 files, 500 lines (markets.rs, land.rs, actors.rs, clans.rs, camp.rs, scout.rs, judge.rs core and CLI, stats.rs, tests ~150). Part and score agree: an easel under 11, its unsettled numbers measured against fixed targets."
+ },
+ {
+  "id": "build-2",
+  "title": "Easel: the claim, the guard, land as the held claim, leaning and leaving by land, the levy and Standing by land, the AI's stand-in, Config.claims",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 4,
+  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high, on the ladder. Every rule and starting number is in spec items 7-25; the guard is adapted from the camp's hold over its zone, the claim order from the zone order, leaving from joining; the tests it writes on built maps catch slips, and the canvas tunes what the numbers do. Reach 2: tile_civ, lean, levy and a new step run every turn. About 14 files, 900 lines (claim.rs ~300, units guard ~120, orders, leaning, civs, ai, stats, events, data, tests ~250). The most files in the piece, which costs minutes, not a bigger model. Part and score agree. Spec-review checked the starting numbers on small seed 2 (spec-review.md): the spec's guard held nothing past the capital, so they were raised to ones that hold the near ring; the brief gives a sanity bar on its own sweep rather than tuning."
+ },
+ {
+  "id": "build-3",
+  "title": "Easel: the judge's no-claims and solo controls and land measures, the text view, the page's border, tints, claim painting, guard and festival walkers",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 5,
+  "why": "Open 2, New 1, Miss 1, Reach 1 = 5: haiku high. Open 2 because the page's drawing is judged partly by eye (the canvas and review look again); the judge's measures and the view's lines are exact. New 1: the claim painting reuses the zone's, the judge runs reuse #101's. Miss 1: play-claim.mjs and the CLI tests it writes. Reach 1: no rule changes. About 10 files, 800 lines (judge ~250, view ~60, lib.rs ~60, map-view ~150, select ~100, main ~60, play-claim ~80, tests ~80). Part and score agree."
+ },
+ {
+  "id": "build-4",
+  "title": "Canvas: tune the land until claiming pays and the lead moves, health held; two played games; the page re-shot",
+  "part": "canvas",
+  "model": "opus",
+  "effort": "low",
+  "points": 10,
+  "why": "Open 4, New 1, Miss 3, Reach 2 = 10: opus low for a canvas, on the ladder. Open 4: whether claiming pays is found by searching the numbers and maybe a rule. New 1: tuning against sweep --judge has #101's pattern. Miss 3: only the retro maps and play show it. Reach 2: the numbers move every turn. A canvas at 10 holds the hard part, as the shape expects. About 3 files changed and a record, plus easel fixes; most of its time is sweeps of a few minutes each. Spec-review added GUARD.inside and LEANING.leave_at to what it tunes, and the guards a wide claim needs to its played proof."
+ },
+ {
+  "id": "review",
+  "title": "Review the piece",
+  "model": "opus",
+  "effort": "medium",
+  "why": "The goal is a mechanic the player meets and is judged partly by play (a claim painted on the page and through sansfiat play), so Opus by the rule, at medium because the crew refuses a judging step at low effort. It reruns check.sh and sweep --judge --solo, plays thirty turns, runs play-claim.mjs, answers the question in the PR beside main and the controls, and adds the decisions to the Decided ledgers of war.md, clans.md, founding.md, supply.md and map.md."
+ }
 ]

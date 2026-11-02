@@ -10,7 +10,7 @@ rules. Read `spec.md` and the summaries of build-1 and build-2 first. No rule of
 1. **The judge** (items 26–27), `cli/src/judge.rs` with the measures in `core/src/judge.rs`'s `Watch`
    and `Scores`: the no-claims control per map (`Config { claims: none, .. }`), `--solo` adding the
    three `only(k)` runs, `standing.on_land_200`, `standing.solo_gain` per map and in total (mean, count
-   above +0.005 of 21), doubt beside the no-claims control, `motion.clans_left`, `clans_joined`,
+   above +0.005 of 21) with its two parts (clans and units; unaligned people on the land), doubt beside the no-claims control, `motion.clans_left`, `clans_joined`,
    `claim_taken` (from the events, as `Watch` reads the world each turn), `land.claimed`, `land.held`,
    `land.guard`. If `judge.rs` in the CLI passes ~800 lines, move the runs into `cli/src/judge_runs.rs`
    and keep the printing where it is. `sansfiat judge FILE` prints the led civ's claim, held land and

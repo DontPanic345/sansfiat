@@ -54,7 +54,8 @@ the world is the judge's health group, not compare.sh.
    (`market_turns`, 0 with none). `markets::choose`: a clan with a festival keeps it, whatever the
    worths, while `market_turns < MARKET.keep_turns`; after that it keeps it while its worth is above
    `−MARKET.stay_margin` and no other beats it by `MARKET.switch_margin`. A clan with none goes to the
-   best worth above 0, as now. A festival that fades frees its clans as now. A civ's own clan still
+   best worth above 0, as now. A festival that fades, or falls out of the clan's reach (it isn't among
+   its worths: the clan moved on, or the path grew), frees it as now. A civ's own clan still
    always goes to the capital's. So stopping needs the walk to be clearly not worth it, and a clan
    that just started doesn't flip back.
 3. **Nearer and more festivals.** `MARKET.spacing` 6 and `MARKET.reach_walk` 14 to start (`probe.md`:
@@ -62,7 +63,8 @@ the world is the judge's health group, not compare.sh.
 4. **Trails by traffic.** `Tile.walked`, `walk_run` and `rest_run` give way to `Tile.traffic`, the
    people-walks across the tile, smoothed: each turn `traffic = TRAIL.keep × traffic + this turn's`.
    This turn's: every clan adds its people once to each tile on each walk it made inside its
-   territory (`Walks`' paths, **home included**: every walk starts there), and its people to each
+   territory (`Walks`' paths, **home included**: every walk starts there, though `Walks::path` leaves
+   home out), and its people to each
    tile of its festival route; a camp adds its people to each tile of its line on a turn it
    resupplies; a scout its people to each tile it walks. A tile with `traffic ≥ TRAIL.on` gets a trail;
    one with a trail loses it when `traffic < TRAIL.off` (`off < on`), except that a tile on a camp's line
@@ -72,14 +74,16 @@ the world is the judge's health group, not compare.sh.
 5. **Measures** (build-1 adds them to the judge, `sweep --judge`, as a `land` group at the pick and at
    +200, and records main's numbers before changing anything):
    - `homes_trailed`: share of clans of `CLAN.split_at / 2` people or more whose home has a trail;
-   - `held_trailed`: share of held tiles that aren't a home and have a trail (main: 72–79%, M2 retro);
+   - `worked_trailed`: share of tiles in some clan's territory (`Tile.claim`: a clan's, not a civ's)
+     that aren't a home and have a trail (the M2 retro's "held tiles": 72–79% on main);
    - `route_trailed`: share of tiles on two or more clans' festival routes that have a trail;
    - `markets`: festivals at the pick and +200; `trading`: share of clans going to one;
    - `festival_changes` and `flips` per 100 clan-turns after the pick: a change is a clan's festival
      differing from last turn's (start, stop or switch); a flip is a change back to the festival (or
-     none) it had within the last `MARKET.keep_turns` × 2 turns.
+     none) it had within the last `JUDGE.flip_window` (10) turns: a fixed window, so main, which has
+     no `keep_turns`, is counted as the new rules are.
 6. **Targets** (build-1's done): pre-game 7 of 7 by centres; `flips` at least 80% below main;
-   `homes_trailed` ≥ 0.8; `held_trailed` ≤ 0.35; `route_trailed` ≥ 0.5; `markets` at the pick at least
+   `homes_trailed` ≥ 0.8; `worked_trailed` ≤ 0.35; `route_trailed` ≥ 0.5; `markets` at the pick at least
    main's. Numbers it lands on go in `data.rs` with a note; misses are reported, not hidden.
 
 ## Settled: the land (build-2)
@@ -94,7 +98,9 @@ the world is the judge's health group, not compare.sh.
    camp's own tile is to its zone), and refuses it when `Config.claims` doesn't let this civ claim.
    It costs nothing and has no size limit: a civ can claim land it can't hold.
 9. **At founding** every civ claims the AI's stand-in claim (item 22) when it may claim; otherwise its
-   claim is its capital alone. The player repaints from there.
+   claim is its capital alone. Its guard is raised (item 24) and divided at once, so the pick's cards
+   read land. The player repaints from there.
+   (`Civ.claim` is the civ's; `Tile.claim` stays what it is, the clan whose territory holds the tile.)
 
 ### The guard
 
@@ -110,9 +116,13 @@ the world is the judge's health group, not compare.sh.
     the guard's food to what the civ keeps out of posting and gifts. Holding costs food, which is the
     levy's; that's the cost of a wide claim.
 12. **The guard divides** `people × GUARD.guarding` over the claim with `actors::divide`, each tile's
-    share paying its walk from the capital (`Walks`, at `UNIT.inside`), as `camp::hold` does over a
-    zone. A tile's **guard** is that share plus the guard share of any of the civ's camps holding it.
-    `Civ.guard: Vec<f64>`, aligned with `claim`, saved, set in the `claim` step (item 14).
+    share paying its walk from the capital (`Walks`, at `GUARD.inside`), as `camp::hold` does over a
+    zone. A guard does nothing else, so `GUARD.guarding` is a person's whole labour (`UNIT.labour`);
+    guards live out on the claim, so their walk weighs `GUARD.inside`, a quarter of a camp's
+    (`spec-review.md`: at the camp's 1.0 and 0.2, three guards hold nothing past the capital). A
+    tile's **guard** is that share plus the guard share of any of the civ's camps holding it.
+    `Civ.guard: Vec<f64>`, aligned with `claim`, saved, set in the `claim` step (item 14), at founding
+    (item 9) and when a `Claim` order is applied: `tile_civ` reads it and never divides.
 13. **Land.** A claimed tile whose guard is at least `CLAIM.floor` is **held**, and so is the capital
     always. A civ's **land** is its held tiles; the rest of its claim is **paper**. `civs::tile_civ(i)`
     becomes: the civ whose land holds `i`; held by two, the one with the thicker guard there, a tie to
@@ -139,7 +149,7 @@ the world is the judge's health group, not compare.sh.
     `LEANING.join`. A clan that joins, at founding or by leaning, starts with its leaning to its civ at
     `LEANING.join` and its other leanings cleared.
 19. **Leaving.** `Clan` gains `drawn: u32`, the turns in a row its strongest leaning to another civ has
-    been more than its leaning to its own. At `LEANING.leave_run` it leaves to that civ: as joining
+    been more than its leaning to its own and at least `LEANING.leave_at` (otherwise `drawn` is 0). At `LEANING.leave_run` it leaves to that civ: as joining
     (item 18), plus the `ClanLeft` event (its old civ, its new, the clan), notes on all three, an alert
     for the player's civ when it is either. **Its daughters go with it:** `Clan` gains `parent:
     Option<u32>`, set when a clan divides or sends a daughter; when a clan leaves, its living daughters
@@ -165,9 +175,12 @@ the world is the judge's health group, not compare.sh.
     `only(k)` (the k-th civ in id order, 0-based, claims and guards as under `all`; the others as under
     `none`). Serde as `"all"`, `"none"`, `{"only":1}`.
 24. **The numbers**, in `data.rs` with notes, starting values that run (the canvas tunes them):
-    `CLAIM { floor: 0.1, ai_ring: 1, ai_reach: 4 }`, `GUARD { start: 3, guarding: 1.0, keep_turns: 5 }`,
-    and `LEANING` gains `land: 0.01, guarded: 0.1, leave_run: 10`. At founding each civ that may claim
-    raises `GUARD.start` guards beside its camp.
+    `CLAIM { floor: 0.1, ai_ring: 1, ai_reach: 4 }`, `GUARD { start: 3, guarding: 3.5, inside: 0.05,
+    keep_turns: 5 }`, and `LEANING` gains `land: 0.01, guarded: 0.1, leave_run: 10, leave_at: 0.3`. At
+    founding each civ that may claim raises `GUARD.start` guards beside its camp. Measured
+    (`spec-review.md`): Red's stand-in claim on small seed 2 is at most 37 tiles, the farthest 4 steps out;
+    three guards at these numbers hold the capital and the 7 nearest, six hold all 37. The store is
+    empty at the pick and takes in 5–9 food a turn in the first turns, so three guards are fed.
 
 ### Protected
 
@@ -184,7 +197,9 @@ the world is the judge's health group, not compare.sh.
       land at +200;
     - `standing.solo_gain` (with `--solo`): per civ, its Standing at +200 when it alone claims less its
       Standing in the no-claims control; reported per map, and in total the mean and the count of civs
-      above +0.005 of 21: the question's first half;
+      above +0.005 of 21: the question's first half. Beside it, the gain in two parts: its clans' and
+      units' people, and the unaligned people on its land, so the answer can say how much is clans won
+      and how much is the land's people counted;
     - `doubt` beside its no-claims control: lead changes and maps with a change in each;
     - `motion.clans_left` (a civ clan changing to another civ, from `ClanLeft`), `motion.clans_joined`,
       `motion.claim_taken` (tiles taken by rival units), and `land_changed` as now (it reads land);
@@ -219,7 +234,9 @@ canvas may change any easel rule that the runs show wrong, saying so as a decisi
   targets of item 6 still met.
 - **A wide claim is thin:** on one retro map, a led civ that claims everything within 6 steps with
   the starting guard ends with less land held at +100 than one that claims the stand-in ring. Played
-  through `sansfiat play`, with `sansfiat judge` on each.
+  through `sansfiat play`, with `sansfiat judge` on each. At the starting guard that follows from the
+  division alone, so the record also says how many guards the wide claim takes to hold what the ring
+  holds, and whether its store feeds them: the cost of width in food, which is the point.
 - **Motion is not a rout:** `clans_left` reported, and no civ loses half its clans by +200 on a map.
 
 If claiming doesn't pay on the retro maps however it's tuned within the rules, the canvas says so with
@@ -232,6 +249,12 @@ the numbers, which answers the question no.
   biggest free claim wins: a civ would gain Standing by painting the map.
 - The guard is one unit per civ at the capital, eating from the store, with no pack or line; the camp's
   held tiles add to the guard on its own claim.
+- A guard's labour all goes to guarding, and its walk weighs a quarter of a camp's (`GUARD.inside`),
+  since guards stay out on the land; at the camp's weights three guards hold nothing past the capital
+  (`spec-review.md`).
+- Design says a civ clan leaves when its leaning to another civ exceeds its own civ's for a run of
+  turns; the piece also asks that leaning reach `LEANING.leave_at`. Every leaning fades at one rate, so
+  without it a crumb from one gift long ago outlasts a faded own leaning and draws the clan away.
 - Overlapping held claims go to the thicker guard, a tie to the lower id (as `supply.md`'s contested
   tile does); fighting over them is A's.
 - A rival unit takes a tile only by ending its turn on it; the part of the claim cut off from the

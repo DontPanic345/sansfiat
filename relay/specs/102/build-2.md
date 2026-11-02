@@ -4,7 +4,10 @@ You build the land in core: a civ's claim, its guard, what land it holds, clans 
 and leaving their civ, the levy and Standing by land, the AI's stand-in, and the `claims` control.
 `spec.md` items 7–25 are the full rules, with the starting numbers; this brief says where they go and
 what done is. Read `spec.md` and build-1's summary first. You don't tune: the numbers are starting
-values that must run; the canvas (build-4) tunes them.
+values that must run; the canvas (build-4) tunes them. They were checked against a real map
+(`spec-review.md`): at the spec's numbers three guards hold the 7 tiles nearest the capital on small
+seed 2. `Tile.claim` is the clan whose territory holds a tile and stays; the civ's claim is
+`Civ.claim`.
 
 ## What to build, and where
 
@@ -14,7 +17,8 @@ values that must run; the canvas (build-4) tunes them.
    (the claim's tiles still joined to the capital), the guard's division (spec item 12, reusing
    `actors::divide` and `Walks` as `units/camp.rs::hold` does), `held(w, civ)`, the new `tile_civ` (spec
    item 13; `civs::tile_civ` stays as the name callers use, calling here, or callers move: your call),
-   the `claim` step (item 14, in `TURN` after `units`), and the AI's stand-in claim (item 22).
+   the `claim` step (item 14, in `TURN` after `units`; the guard is also divided at founding and when a
+   `Claim` is applied, and `tile_civ` only reads `Civ.guard`), and the AI's stand-in claim (item 22).
    `CIV.territory`, `civs::territory` and `civs::work_tiles` go, with their tests; `web/src/lib.rs`'s
    `territory`/`work` fields become `claim`, `guard`, `land` (build-3 draws them; keep `www/check.mjs`
    passing).
@@ -30,7 +34,7 @@ values that must run; the canvas (build-4) tunes them.
 4. **Leaning and leaving** in `core/src/leaning.rs` (items 15–19): every clan's leanings fade; leaning
    by land; joining as now plus the start at `LEANING.join`; `Clan.drawn` and `Clan.parent`
    (`core/src/clans.rs`, saved, `#[serde(default)]`; `parent` set where a clan divides and sends a
-   daughter); leaving with daughters; the civ's own clan never leaves. Founding's joins
+   daughter); leaving with daughters (drawn only while the rival leaning is at least `LEANING.leave_at`); the civ's own clan never leaves. Founding's joins
    (`civs::found`) set the starting leaning. `ClanLeft` and `ClaimTaken` in `core/src/events.rs` with
    their wording, alerts for the player's civ (`World::flag_alerts`).
 5. **Gifts and trade** (item 17) in `core/src/markets.rs::trade` and `leaning::give`.
@@ -67,7 +71,9 @@ values that must run; the canvas (build-4) tunes them.
   `relay/specs/102/build-2-judge.txt`: it runs with no panic, pre-games 7 of 7 by centres, and the
   claims show (land tiles changing, clans joining). Say in your summary what the starting numbers did:
   how many tiles each civ held at +200, its guard, clans that left. It is the canvas's starting point,
-  not a verdict.
+  not a verdict. If the AI civs hold nothing past the capital at +200 on most maps, the starting
+  numbers don't show the mechanic: raise `GUARD.guarding` until they hold at least their capital's
+  neighbours, and say so as a decision.
 - `sweep --after 200 --maps retro --no-claims` runs.
 
 Build-3 relies on: `Civ.claim`, `Civ.guard`, `claim::held`, `tile_civ` on land, `Order::Claim` and
