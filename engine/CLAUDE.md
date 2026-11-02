@@ -12,6 +12,7 @@ cargo run -p sansfiat -- sweep [seed ...] [--size small|medium|large|all] [--tur
 cargo run -p sansfiat -- sweep --judge [--json] [--solo]   # the retro maps played (army twice, --no-army once, no claims once; --solo adds each civ claiming alone) and scored by the judge: a report, with no verdict
 cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army] [--no-gifts] [--no-zone] [--lever G]   # the retro maps past the pick, one line per civ and the totals; the --no-* flags are controls
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a game a line at a time: the file is a save, each call resumes it; stdin lines (orders, actions, end, why, view, map, note); g.lines.jsonl records them
+cargo run -p sansfiat -- story skirmish|stack|surrender [--seed N --size NAME --civ K] [--no-fight] [--turns N] [--trace] --save FILE   # a scripted story of war on small seed 2 (default); the save is a normal save for judge and play
 cargo run -p sansfiat -- judge g.json [--json]   # a played game judged turn by turn, beside the same map with every civ on the AI
 cargo run -p sansfiat -- replay game.json | bench | digest [--lead] [--state] | digest --game FILE   # replay a save; time turns; digests to compare builds (--state: the world without its log; --game: a saved game's `<turn> <digest>`, to match the page's `Sim.digest()`)
 node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in headless Chrome; import { open } from it to click
@@ -60,6 +61,7 @@ node www/assets/draw-atlas.mjs               # redraws assets/atlas.png and atla
 | `cli/src/retro.rs` | `sweep --after`: the retro maps past the pick, each civ's camp and clans, and the controls. `to_pick` and `kept_camp` are shared. |
 | `cli/src/judge.rs` | `sweep --judge`: the retro maps judged (the army run twice, the `--no-army` and no-claims controls, and with `--solo` each civ's claim-alone run), the totals in groups (standing, doubt, decisions, motion, land, solo, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, its led civ's claim and land beside the control's, the text and `--json` report. |
 | `cli/src/play.rs` | `play`: a game file resumed per call (`World::replay`), each stdin line applied through `act`, the save and the lines file (`FILE.lines.jsonl`) written after each. |
+| `cli/src/story.rs` | `story`: the three stories (skirmish, stack, surrender) as scripts that give the led civ's orders through `World::act` each turn, reading the world for its units, tiles and the nearest rival; the AI plays the rest. Each story's doc comment says what it does on which turn. |
 | `cli/src/view.rs` | `view::text`: the led civ's text view (standing, store, units, the claim with its held land, paper and guard, clans, reach, places, feed, legal orders), under 80 lines at the pick and +100. |
 | `cli/src/replay.rs` | `replay`: a save's world, printed as `run` prints it. |
 | `cli/src/bench.rs` | `bench`: the time per turn for each seed. |

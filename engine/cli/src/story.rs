@@ -283,13 +283,16 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
 }
 
 /// **skirmish.** The led civ claims a corridor along the path to the nearest rival's capital, out
-/// until it overlaps the rival's claim by two tiles, and keeps it; its army is posted on its own land
-/// off the capital.
+/// until it overlaps the rival's stand-in claim by two tiles, and keeps it.
 ///
-/// - +0: the army goes to the AI's post (`units::post`: up to `UNIT.post` steps along that path, on its
-///   own land), off the capital and beside no guard.
-/// - Every turn: the claim is the stand-in (`claim::ai_claim`) with the corridor, sent whenever it
-///   differs from the claim (a tile lost to fighting is claimed again).
+/// - Every turn: the claim is the capital and the corridor, sent whenever it differs from the claim (a
+///   tile lost is claimed again). Its guard is kept by the AI's rule, so its guard holds what its share
+///   reaches, and a tile of the corridor the rival also holds is contested.
+/// - +0: the starting army is disbanded (it would eat the store beside the guard). From turn 30, or
+///   when the store fills three warriors' packs, those warriors are raised into one army, staged
+///   (`stage_then_push`) and posted on the last corridor tile outside the rival's claim, with its zone
+///   over the two tiles beyond. On small seed 2 the store never fills three packs, so the army is
+///   the one warrior it can raise and the skirmish is the guards'.
 fn skirmish(s: &mut Story) {
     let way = s.way();
     let theirs = claim::ai_claim(&s.w, s.rival);
