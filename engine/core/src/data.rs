@@ -662,7 +662,7 @@ pub struct FightRules {
 }
 
 pub const FIGHT: FightRules = FightRules {
-    rate: 0.1,
+    rate: 0.2,
     entrench: 0.1,
     entrench_cap: 0.5,
     retreat: 0.5,
@@ -670,7 +670,10 @@ pub const FIGHT: FightRules = FightRules {
     floor: 0.01,
     militia: 0.3,
     surrender: 3,
-    note: "Starting numbers for the glaze (build-5) to tune together against the stories.",
+    note: "Tuned on small seed 2's stories (relay/specs/104/glaze.md): rate 0.2 makes the guards' skirmish \
+           move Standing (Red +2.9, Blue -1.0 against the control) while a guard of 2-3 still lasts its \
+           19 contested turns; the rest held, since a beaten stack still retreats a step and starves or \
+           surrenders at surrender 3 (the stack's and surrender story's armies both do).",
 };
 
 /// Which civs may claim land (`claim.rs`): `All` (the default), `None` (the control: no civ claims

@@ -37,3 +37,7 @@ Standing at the end (+80, surrender +60); the led civ is Red (472), the rival Bl
 
 - The led civ's guard: every story gives `units::guard_order` through `act`, so the save replays. The guard still falls to 1–2 people, since the store is 0 at the pick and the levy brings 3–4 food a turn.
 - Every store is 0 at the pick and stays under 14 for the first 40 turns on this map, so "every warrior the store fills" is 2–3, not nine.
+
+## Final runs (build-5, glaze)
+
+With `FIGHT.rate` 0.2, the one-step retreat and the widened `cut_by_rival`, the table is in `glaze.md`. Skirmish: Red +2.9, Blue −1.0. Stack: the push surrenders to Blue at +32 (Blue +2.1). Surrender: it fires at +20 (Red +0.6). No capital falls: every push runs out of food 9–10 of 13 steps out.

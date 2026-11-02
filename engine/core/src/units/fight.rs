@@ -433,20 +433,22 @@ fn unhold(w: &mut World, id: u32, t: usize) {
     }
 }
 
-/// Moves army `id` off tile `from` at once, to the nearest tile by path cost its civ holds
-/// (`civs::holder`) that isn't contested, a tie to the lower tile. It ends its march and keeps its
-/// zone only if the zone is still connected. Returns where it went; none when there is nowhere.
+/// Moves army `id` off tile `from` one step back: to the neighbour that isn't contested and is
+/// nearest its capital by path cost, a tile its civ holds (`civs::holder`) before one it doesn't, a
+/// tie to the lower tile. It ends its march and keeps its zone only if the zone is still connected.
+/// Returns where it went; none when there is nowhere.
 fn retreat(w: &mut World, id: u32, contested: &BTreeSet<usize>, from: usize) -> Option<usize> {
     let civ = w.units[&id].civ;
-    let mut cand: Vec<usize> = claim::held(w, civ);
-    cand.extend(w.units.values().filter(|u| u.civ == civ).flat_map(|u| u.held().to_vec()));
-    cand.sort_unstable();
-    cand.dedup();
+    let cap = w.civs[&civ].capital;
+    let cand: Vec<usize> = neighbours(w, from).collect();
     let to = cand
         .into_iter()
-        .filter(|&i| i != from && !contested.contains(&i) && civs::holder(w, i) == Some(civ))
-        .filter_map(|i| path_between(w, from, i).map(|(_, cost)| (i, cost)))
-        .min_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)))?
+        .filter(|&i| !contested.contains(&i) && path_between(w, from, i).is_some())
+        .map(|i| {
+            let home = if i == cap { 0.0 } else { path_between(w, i, cap).map_or(f64::INFINITY, |(_, c)| c) };
+            (i, civs::holder(w, i) != Some(civ), home)
+        })
+        .min_by(|a, b| a.1.cmp(&b.1).then(a.2.total_cmp(&b.2)).then(a.0.cmp(&b.0)))?
         .0;
     let zone = zone_of(to, &w.units[&id].actor.territory);
     let keep = zone.len() > 1 && connected(w, to, &zone);

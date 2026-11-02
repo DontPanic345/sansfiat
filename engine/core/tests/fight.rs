@@ -117,9 +117,11 @@ fn two_armies_lose_by_the_others_strength_and_the_weaker_retreats() {
     // Red attacks at 10, Blue defends at 4.
     assert!((w.units[&r].people - (10.0 - FIGHT.rate * 4.0)).abs() < 1e-9);
     assert!((w.units[&b].people - (4.0 - FIGHT.rate * 10.0)).abs() < 1e-9);
-    assert!((w.civs[&red].army.fallen - 0.4).abs() < 1e-9 && (w.civs[&blue].army.fallen - 1.0).abs() < 1e-9);
-    // 3 is under half of 9.6: Blue retreats home, and Red holds.
+    assert!((w.civs[&red].army.fallen - FIGHT.rate * 4.0).abs() < 1e-9);
+    assert!((w.civs[&blue].army.fallen - FIGHT.rate * 10.0).abs() < 1e-9);
+    // Blue is under `FIGHT.retreat` of Red after the losses: it retreats a step, and Red holds.
     assert_ne!(w.units[&b].home, t, "Blue's army retreated");
+    assert!(engine::land::neighbours(&w, t).any(|n| n == w.units[&b].home), "a step back");
     assert_eq!(claim::tile_civ(&w, w.units[&b].home).or(engine::civs::holder(&w, w.units[&b].home)), Some(blue));
     assert!(w.units[&r].held().contains(&t));
     assert!(!w.units[&b].held().contains(&t));
