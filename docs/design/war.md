@@ -71,3 +71,12 @@ panel (`page.md`).
 
 - No stacks of doom: an army eats, and far from home most of its labour goes on staying fed.
 - No fog, and no alliances yet. No walls or cities yet (`../roadmap.md`, M9).
+
+## Decided
+
+- A civ's land is the part of its claim its guard holds: a claimed tile whose guard falls under a floor is paper, and counts for nothing. The capital is always held. (#102)
+- A civ raises one guard, which stands at the capital, takes no orders, and eats from the store and then from its clans' stores. Its camp's held tiles add to the guard on its claim. (#102)
+- Where two civs hold the same tile, it is the land of the one with the thicker guard there, and a tie goes to the older civ. A claim can't cover a rival's capital. (#102)
+- A rival unit that ends its turn on paper takes that tile, and with it any part of the claim no longer joined to the capital. (#102)
+- Standing counts unaligned clans whose homes are on a civ's land. (#102)
+- Until the AI learns to claim, it claims every land tile within a step of its capital or of any clan's home within four steps of it, and raises a guard while some of that claim is paper and it can feed one. (#102)

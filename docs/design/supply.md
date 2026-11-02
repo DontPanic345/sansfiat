@@ -68,3 +68,4 @@ first, so there's no reserve to set.
 - Foraging past the line takes only what's needed, and the tile rests in proportion. (M2 retro, owner note 9)
 - A contested tile goes to the side guarding it more; capitals can't be held. (#90)
 - Held ground blocks rivals' lines, and lets your own line through their land. (#88, #90)
+- Lines, and forage against pillage, read a civ's land as the part of its claim its guard holds. (#102)

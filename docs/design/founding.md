@@ -65,3 +65,7 @@ says.
 - Only unaligned clans lean toward a civ. Gifts and trade at its festival draw them, the leaning fades, and enough of it makes them join. (#81)
 - A civ gives its spare food at its festival to win clans; how much it gives is the player's choice. (#81)
 - A civ can lose clans and people to its rivals. (#58, #63, M3 answer 2)
+- Unaligned clans whose homes are on a civ's land pay its levy at its festival, as its own clans do. (#102)
+- A civ's gifts go to every clan at its festival that isn't its own, a rival's clans included. Trade leaning reaches its own clans too. (#102)
+- A clan that joins a civ, or leaves for one, starts at the joining line toward it, and its other leanings are cleared. (#102)
+- A civ keeps a turn of its guard's food in its store, out of gifts. (#102)
