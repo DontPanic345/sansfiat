@@ -89,7 +89,7 @@ node www/assets/draw-atlas.mjs               # redraws assets/atlas.png and atla
 | `www/feed.js` | The event feed: newest first, a filter by kind; `KINDS` is every event kind with its icon and colour; the alerts box holds every alert not yet seen (clicked, or its subject selected), and `onUnread` gets their count for the Feed toggle. |
 | `www/check.mjs` | The page's data checks under Node, sending the wire forms through `Sim`; `check.sh` runs it. |
 | `www/play.mjs` | Drives the page in headless Chrome: clicks by tile (on the map's canvas) and label, waits on state, screenshots; `SIZES`, `open(query, {size})`, `goto`, `reload`, `key`, `file`, `drag`, `tip`, `panel()` (the bottom panel as drawn), `stepper(label, {n, option, go})`, `download(dir)` and `lead(page, {seed, civ})`; the play scripts import it. |
-| `www/play/all.mjs` | Runs every other script in `www/play/` and prints pass and seconds; fails without Chrome under `CI`; runs layout with its 60% share check and game.mjs (the 30-turn played game, about 15 s). |
+| `www/play/all.mjs` | Runs every other script in `www/play/` and prints pass and seconds; fails without Chrome under `CI`; runs layout with its 60% share check and game.mjs (the 30-turn played game, about 9 s). |
 | `www/play/start.mjs` | Touch points 1-4: a bare URL shows start; New game, the pre-game and Skip to the pick; 🎲; Load a file into play; another version's save shows its error; Continue. |
 | `www/play/pick.mjs` | Touch point 5: three cards; Show highlights; Lead selects the capital; Watch leaves no civ led. |
 | `www/play/bar.mjs` | Touch points 7-9: the counts and the chips with tooltips, End turn and space, Play and space, speed, each menu and Escape; at phone width the one-line bar and ☰. |

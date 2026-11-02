@@ -33,8 +33,10 @@ function chart(history, civs, player) {
   const top = [0.1, 0.25, 0.5, 1].find((t) => t >= high * 1.1) ?? 1;
   const x = (t) => L + (t1 === t0 ? 1 : (t - t0) / (t1 - t0)) * (W - L - R);
   const y = (s) => T + (1 - s / top) * (H - T - B);
-  const grid = [0, 0.25, 0.5, 0.75, 1]
-    .map((f) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(f * top)}" y2="${y(f * top)}"/><text x="${L - 8}" y="${y(f * top) + 4}" text-anchor="end">${pct(f * top)}</text>`)
+  // Five steps of a whole percentage: 2% to 10%, 5% to 25%, 10% to 50%, 20% to 100%.
+  const grid = [0, 1, 2, 3, 4, 5]
+    .map((k) => (k * top) / 5)
+    .map((s) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(s)}" y2="${y(s)}"/><text x="${L - 8}" y="${y(s) + 4}" text-anchor="end">${Math.round(s * 100)}%</text>`)
     .join('');
   const lastAt = history[history.length - 1][1];
   const ids = Object.keys(civs);
