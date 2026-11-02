@@ -1,0 +1,40 @@
+turn 237, 0 turns since the pick at 237, phase main, leading civ 472
+standing, share of the people:
+  civ 474 Gold 5.8%, rank 1 leader
+  civ 473 Blue 5.0%, rank 2
+  civ 472 Red 4.2%, rank 3 you
+store 0.0: game 0.0, grain 0.0, fruit 0.0, fish 0.0, shellfish 0.0
+keep 30.0 in force (the default, the camp's full pack); gift 2.0 a turn, the most 60
+last turn posted 0.0, gave 0.0; since founding gave 0.0, clans joined 0
+  camp 475 at 301 (-3, -11): 3.0 warriors, pack 15.0 of 15.0 (5.0 turns), dest none, at the capital, no limit, hungry 0 turns, zone 301 (-3, -11), held 301 (-3, -11)
+  scout 476 at 301 (-3, -11): no route, hungry 0 turns
+  guard 477 at 301 (-3, -11): 3.0 people, hungry 0 turns
+claim: 17 tiles, held 17, paper 0; guard 3.0 people, thinnest held share 0.22 at 218 (-6, -7)
+unaligned clans on your land: 0 with 0.0 people
+clans: 5 with 22.1 people; the largest:
+  clan 29 at 301 (-3, -11): 4.9 people, fed 1.02
+  clan 8 at 243 (-5, -10): 4.6 people, fed 1.00
+  clan 161 at 300 (-3, -12): 4.4 people, fed 0.99
+  clan 394 at 361 (-1, -14): 4.2 people, fed 0.95
+  clan 51 at 245 (-5, -8): 3.9 people, fed 1.00
+unaligned clans in reach of your market, leaning to each civ (join at 1.0; a gift reaches only those that trade there):
+  none
+places: capitals civ 472 301 (-3, -11), civ 473 39 (-14, 2), civ 474 594 (6, 3)
+  your clans' homes: 301 (-3, -11), 243 (-5, -10), 300 (-3, -12), 361 (-1, -14), 245 (-5, -8)
+  the AI would post your camp at 217 (-6, -8)
+feed since the last call: 0 about you, 0 others
+legal orders:
+  {"type":"raise","n":1,"kind":"guard"}  a guard at your capital, from your clans
+  {"type":"claim","tiles":[<tile>, ...]}  paints your claim (now 17 tiles); connected to your capital
+  {"type":"disband","unit":475}
+  {"type":"move","unit":475,"to":<tile>}  to: 331 (-2, -12), 300 (-3, -12), 271 (-4, -11), 272 (-4, -10), 217 (-6, -8)
+  {"type":"zone","unit":475,"tiles":[<tile>]}  tiles: 331 (-2, -12), 300 (-3, -12), 271 (-4, -11), 272 (-4, -10)
+  {"type":"zone","unit":475,"tiles":[]}  undeploys
+  {"type":"switches","unit":475,"forage":<true or false>,"supply":<true or false>}
+  {"type":"resupply","unit":475}
+  {"type":"forage","unit":475}
+  {"type":"route","unit":476,"from":301,"to":<tile>}  to: 331 (-2, -12), 300 (-3, -12), 271 (-4, -11), 272 (-4, -10)
+  {"type":"disband","unit":477}
+  {"type":"setKeep","food":<0 or more, or null for the camp's full pack>}
+  {"type":"setGift","food":<0 to 60>}
+  end [N]: end N turns (1 by default)

@@ -136,3 +136,8 @@ placing them?
 - Taming keeps going, but slows past the hearth. (#62, #65)
 - A trail wears where many people walk often: under homes and along shared routes. Holding a tile makes none. (#62, M2 retro, owner note 5)
 - The pre-game ends once people have levelled off. (#65)
+- A clan keeps a festival it has just started going to for a few turns. After that it keeps it until the walk is clearly not worth it, or another festival is clearly better. (#102)
+- Festivals sit closer together, and clans walk less far to reach one, so there are more of them. (#102)
+- Trails follow traffic. Each walk adds its people to every tile it crosses, home included, and a tile keeps its trail only while enough people walk it. A camp's line and a scout's route keep their trails while they're used. (#102)
+- Every clan leans to civs, a civ's own clans included. A clan whose home is on a civ's land leans to that civ every turn, more under a thicker guard. (#102)
+- A civ's clan that leans to a rival more than to its own civ, and by enough, for five turns in a row leaves for the rival, and its daughters still in the old civ go with it. A civ's own clan never leaves. (#102)

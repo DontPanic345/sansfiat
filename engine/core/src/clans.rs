@@ -41,6 +41,16 @@ pub struct Clan {
     /// belongs to one.
     #[serde(default)]
     pub leaning: BTreeMap<u32, f64>,
+    /// Turns in a row it has gone to its current festival; 0 with none.
+    #[serde(default)]
+    pub market_turns: u32,
+    /// Turns in a row its strongest leaning is to a rival civ it is drawn to (`LEANING.leave_at`
+    /// and above its own civ's); 0 otherwise. At `LEANING.leave_run` it leaves (`leaning.rs`).
+    #[serde(default)]
+    pub drawn: u32,
+    /// The clan it divided from or sent out as a daughter; its daughters leave with it.
+    #[serde(default)]
+    pub parent: Option<u32>,
 }
 
 impl Deref for Clan {
@@ -113,6 +123,9 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         walk: 0.0,
         civ: None,
         leaning: BTreeMap::new(),
+        market_turns: 0,
+        drawn: 0,
+        parent: None,
     }
 }
 
@@ -191,18 +204,19 @@ pub fn site_value(w: &World, site: usize, people: f64, store: &Basket) -> f64 {
 
 /// The `harvest` step: each clan in a shuffled order walks to every tile of its territory and
 /// harvests what its labour divided over them reaps, first come first served. Every tile walked
-/// this turn, inside a territory or on a route, is marked `walked`; each tile's take is recorded
-/// for `land::wear`.
+/// this turn, inside a territory or on a route, carries the clan's people as traffic (`TRAIL.keep`
+/// of last turn's stays); each tile's take is recorded for `land::wear`.
 pub fn harvest(w: &mut World) {
     for t in &mut w.tiles {
-        t.walked = false;
+        t.traffic *= TRAIL.keep;
+        t.used = false;
         t.take = [0.0; N];
     }
     for id in shuffled(w) {
         let c = &w.clans[&id];
         let (walks, yearly) = walks(w, c.home, &c.territory);
         let takes = reap(w, c.people, &c.store, &c.routes, &c.territory, &yearly);
-        let routes = c.routes.clone();
+        let (routes, home, people) = (c.routes.clone(), c.home, c.people);
         for (&i, t) in walks.tiles.iter().zip(&takes) {
             let tile = &mut w.tiles[i];
             for (f, x) in t.iter().enumerate() {
@@ -210,7 +224,7 @@ pub fn harvest(w: &mut World) {
                 tile.take[f] += x;
             }
         }
-        actors::mark_walked(w, &walks, &routes);
+        actors::add_traffic(w, home, people, &walks, &routes);
         let food = sum(&takes);
         let c = w.clans.get_mut(&id).unwrap();
         c.walk = yearly.iter().sum();
@@ -472,6 +486,7 @@ fn divide_land(w: &mut World, id: u32) {
     d.fed_ratio = c.fed_ratio;
     d.civ = c.civ;
     d.leaning = c.leaning.clone();
+    d.parent = Some(id);
     let took = hers.len();
     d.territory = hers;
     let m = w.clans.get_mut(&id).unwrap();
@@ -499,6 +514,7 @@ fn split(w: &mut World, id: u32) {
     let mut d = new_clan(w.next_id, c.home, people);
     d.civ = c.civ;
     d.leaning = c.leaning.clone();
+    d.parent = Some(id);
     d.store = c.store.map(|v| v * share);
     let scored: Vec<(usize, f64)> =
         sites(w, &c, CLAN.scout_range).into_iter().map(|s| (s, site_value(w, s, people, &d.store))).collect();

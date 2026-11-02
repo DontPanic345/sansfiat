@@ -196,7 +196,7 @@ fn step_cost_ignores_the_hidden_rolls() {
 #[test]
 fn mountains_are_not_land_and_split_landmasses() {
     assert!(!TERRAIN[MOUNTAIN].land && TERRAIN[MOUNTAIN].move_cost.is_none());
-    assert!(TERRAIN[DESERT].land && TERRAIN[DESERT].move_cost == Some(1.0));
+    assert!(TERRAIN[DESERT].land && TERRAIN[DESERT].move_cost == Some(2.0));
     assert!(TERRAIN[MARSH].land && TERRAIN[MARSH].move_cost == Some(3.0));
     assert_eq!(TERRAIN[DESERT].food, [0.0; N]);
     let tiles = made(16, 1);
@@ -239,7 +239,7 @@ fn tiny_maps_generate() {
 fn every_landmass_that_can_feed_has_a_clan() {
     for &(name, radius) in &SIZES {
         for seed in 1..=5 {
-            let w = World::new(Config { seed, radius, army: true, gifts: true, zone: true });
+            let w = World::new(Config { seed, radius, army: true, gifts: true, zone: true, ..Config::default() });
             for mass in map::landmasses(&w.tiles, radius) {
                 // Nobody is seeded in a sealed valley (a landmass of its own).
                 let fed = mass
@@ -264,7 +264,7 @@ fn same_seed_same_tiles_and_replay_matches() {
         assert_eq!(made(radius, 7), made(radius, 7));
         assert_ne!(made(radius, 7), made(radius, 8));
     }
-    let mut w = World::new(Config { seed: 3, radius: 16, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed: 3, radius: 16, army: true, gifts: true, zone: true, ..Config::default() });
     w.run(40);
     assert_eq!(World::replay(&w.save()).unwrap(), w);
 }

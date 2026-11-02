@@ -334,16 +334,26 @@ pub fn trim(w: &World, home: usize, territory: &[usize], radius: i32) -> Vec<usi
     near.iter().zip(&walks.cost).filter(|(_, c)| c.is_finite()).map(|(&t, _)| t).collect()
 }
 
-/// Marks every tile on `walks`' paths (not home) and on every route's path as walked this turn.
-pub fn mark_walked(w: &mut World, walks: &Walks, routes: &[Route]) {
-    for (k, &t) in walks.tiles.iter().enumerate() {
-        if walks.cost[k].is_finite() && walks.before[k].is_some() {
-            w.tiles[t].walked = true;
+/// Adds `people` to the traffic of every tile on each of `walks`' paths and each route's path, home
+/// included: every walk starts there, though `Walks::path` leaves it out.
+pub fn add_traffic(w: &mut World, home: usize, people: f64, walks: &Walks, routes: &[Route]) {
+    for k in 0..walks.tiles.len() {
+        let path = walks.path(k);
+        if path.is_empty() {
+            continue;
+        }
+        w.tiles[home].traffic += people;
+        for t in path {
+            w.tiles[t].traffic += people;
         }
     }
     for r in routes {
+        if r.path.is_empty() {
+            continue;
+        }
+        w.tiles[home].traffic += people;
         for &t in &r.path {
-            w.tiles[t].walked = true;
+            w.tiles[t].traffic += people;
         }
     }
 }

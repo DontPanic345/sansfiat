@@ -1,5 +1,6 @@
-//! `sweep --judge`: the retro maps played twice with the army and once without, each civ on the AI,
-//! scored by `engine::judge`: a report, with no verdict.
+//! `sweep --judge`: the retro maps played with the army twice, the `--no-army` control, the no-claims
+//! control and, with `--solo`, each civ claiming alone; every civ on the AI, scored by `engine::judge`:
+//! a report, with no verdict.
 
 use std::any::Any;
 use std::collections::BTreeMap;
@@ -8,8 +9,9 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 use std::time::Instant;
 
-use engine::data::JUDGE;
-use engine::judge::{Scores, Watch};
+use engine::data::{Claims, JUDGE};
+use engine::judge::{civ_lands, CivLand, Scores, Watch};
+use engine::stats::Trails;
 use engine::world::SAVE_VERSION;
 use engine::{stats, Action, Config, Save, World};
 use serde::Serialize;
@@ -41,6 +43,17 @@ struct Armies {
     control_people_at_200: f64,
 }
 
+/// One civ's gain from claiming alone on a map (`--solo`): its Standing at +200 when only it claims,
+/// less its Standing at +200 in the no-claims control. `clans` and `land` are the two parts of that
+/// gain: its clans' and units' people, and the unaligned people on its held land.
+#[derive(Clone, Debug, Serialize)]
+struct SoloGain {
+    civ: u32,
+    gain: f64,
+    clans: f64,
+    land: f64,
+}
+
 /// One map that was judged.
 #[derive(Clone, Debug, Serialize)]
 struct MapJudged {
@@ -49,6 +62,10 @@ struct MapJudged {
     pick: u32,
     #[serde(flatten)]
     scores: Scores,
+    /// The same map with no civ claiming: the control the claims are read against.
+    no_claims: Scores,
+    /// With `--solo`: each civ's gain from claiming alone, in id order.
+    solo: Option<Vec<SoloGain>>,
     armies: Armies,
     health: Health,
 }
@@ -61,21 +78,42 @@ struct Panicked {
     message: String,
 }
 
-/// The sweep's totals, in six groups.
+/// The sweep's totals, in groups.
 #[derive(Clone, Debug, Serialize)]
 struct Total {
     standing: TotalStanding,
     doubt: TotalDoubt,
     decisions: TotalDecisions,
     motion: TotalMotion,
+    land: TotalLand,
+    solo: Option<TotalSolo>,
     armies: TotalArmies,
     health: TotalHealth,
+}
+
+/// The land group over the maps: festivals summed, shares averaged over the maps that have one, and
+/// each civ's land at +200 (mean tiles and guard people per civ, over the maps).
+#[derive(Clone, Debug, Serialize)]
+struct TotalLand {
+    markets_pick: usize,
+    markets_200: usize,
+    trading_pick: f64,
+    trading_200: f64,
+    homes_trailed: (Option<f64>, Option<f64>),
+    worked_trailed: (Option<f64>, Option<f64>),
+    route_trailed: (Option<f64>, Option<f64>),
+    festival_changes_per_100: f64,
+    flips_per_100: f64,
+    claimed_200: Option<f64>,
+    held_200: Option<f64>,
+    guard_200: Option<f64>,
 }
 
 #[derive(Clone, Debug, Serialize)]
 struct TotalStanding {
     top_200: f64,
     aligned_200: f64,
+    on_land_200: f64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -85,6 +123,8 @@ struct TotalDoubt {
     spread_100: f64,
     spread_200: f64,
     swings: u32,
+    no_claims_lead_changes: u32,
+    no_claims_maps_with_lead_change: u32,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -99,6 +139,20 @@ struct TotalMotion {
     clans_changed: u32,
     people_changed: f64,
     land_changed: u32,
+    clans_left: u32,
+    clans_joined: u32,
+    claim_taken: u32,
+}
+
+/// The solo gains over every civ of every map: the mean gain and its two parts, and the civs whose
+/// gain is above `JUDGE.solo_above`.
+#[derive(Clone, Debug, Serialize)]
+struct TotalSolo {
+    civs: usize,
+    gain: f64,
+    clans: f64,
+    land: f64,
+    above: u32,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -127,8 +181,8 @@ struct Report {
 }
 
 /// One run to the end: the world, and its watch.
-fn played(radius: i32, seed: u32, army: bool) -> (World, Watch) {
-    let mut w = to_pick(Config { seed, radius, army, gifts: true, zone: true });
+fn played(config: Config) -> (World, Watch) {
+    let mut w = to_pick(config);
     w.act(Action::ChooseCiv { civ: None }).expect("watching is always allowed at the pick");
     let mut watch = Watch::new(&w);
     for _ in 0..AFTER {
@@ -138,11 +192,33 @@ fn played(radius: i32, seed: u32, army: bool) -> (World, Watch) {
     (w, watch)
 }
 
-/// Judges one map: the army run twice (their digests must agree) and the control once.
-fn judge_map(name: &str, radius: i32, seed: u32) -> MapJudged {
-    let (w, watch) = played(radius, seed, true);
-    let (again, _) = played(radius, seed, true);
-    let (control, _) = played(radius, seed, false);
+/// The runs of `configs`, all at once, in order.
+fn played_all(configs: &[Config]) -> Vec<(World, Watch)> {
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = configs.iter().map(|&c| scope.spawn(move || played(c))).collect();
+        handles.into_iter().map(|h| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e))).collect()
+    })
+}
+
+/// A civ's Standing at +200, and its clans' and its land's parts of it, from a run's scores.
+fn at_200(s: &Scores, civ: u32) -> (f64, f64, f64) {
+    s.standing
+        .civs
+        .iter()
+        .find(|c| c.id == civ)
+        .map_or((0.0, 0.0, 0.0), |c| (c.at_200.unwrap_or(0.0), c.clans_200.unwrap_or(0.0), c.land_200.unwrap_or(0.0)))
+}
+
+/// Judges one map: the army run twice (their digests must agree), the `--no-army` control, the
+/// no-claims control and, with `solo`, each civ claiming alone (civ `k` in id order, `Only(k)`).
+fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
+    let base = Config { seed, radius, ..Config::default() };
+    let configs = [base, base, Config { army: false, ..base }, Config { claims: Claims::None, ..base }];
+    let mut runs = played_all(&configs).into_iter();
+    let (w, watch) = runs.next().expect("the army run");
+    let (again, _) = runs.next().expect("the army run again");
+    let (control, _) = runs.next().expect("the control with no armies");
+    let (none, none_watch) = runs.next().expect("the control with no claims");
     let civs: Vec<u32> = w.civs.keys().copied().collect();
     let kept = civs.iter().filter(|&&c| kept_camp(&w, c)).count() as u32;
     let people = |w: &World| stats::summary(w).people;
@@ -158,7 +234,28 @@ fn judge_map(name: &str, radius: i32, seed: u32) -> MapJudged {
         pregame_by_centres: w.end.as_ref().is_some_and(|e| !e.by_limit) as u32,
         digest_mismatches: (stats::digest(&w) != stats::digest(&again)) as u32,
     };
-    MapJudged { size: name.to_string(), seed, pick: watch.pick(), scores: watch.scores(&w, &civs), armies, health }
+    let no_claims = none_watch.scores(&none, &civs);
+    let solo = solo.then(|| {
+        let configs: Vec<Config> = (0..civs.len() as u32).map(|k| Config { claims: Claims::Only(k), ..base }).collect();
+        civs.iter()
+            .zip(played_all(&configs))
+            .map(|(&civ, (sw, swatch))| {
+                let (g, cl, la) = at_200(&swatch.scores(&sw, &civs), civ);
+                let (n, ncl, nla) = at_200(&no_claims, civ);
+                SoloGain { civ, gain: g - n, clans: cl - ncl, land: la - nla }
+            })
+            .collect()
+    });
+    MapJudged {
+        size: name.to_string(),
+        seed,
+        pick: watch.pick(),
+        scores: watch.scores(&w, &civs),
+        no_claims,
+        solo,
+        armies,
+        health,
+    }
 }
 
 fn message(e: Box<dyn Any + Send>) -> String {
@@ -174,6 +271,64 @@ fn mean(v: &[f64]) -> f64 {
     } else {
         v.iter().sum::<f64>() / v.len() as f64
     }
+}
+
+fn mean_some(v: &[Option<f64>]) -> Option<f64> {
+    let v: Vec<f64> = v.iter().flatten().copied().collect();
+    if v.is_empty() {
+        None
+    } else {
+        Some(mean(&v))
+    }
+}
+
+/// Mean claimed tiles, held tiles and guard people per civ over `civs`.
+fn civ_means(civs: &[CivLand]) -> (f64, f64, f64) {
+    let n = civs.len().max(1) as f64;
+    let sum = |f: fn(&CivLand) -> f64| civs.iter().map(f).sum::<f64>() / n;
+    (sum(|c| c.claimed as f64), sum(|c| c.held as f64), sum(|c| c.guard))
+}
+
+fn total_land(maps: &[MapJudged]) -> TotalLand {
+    let pick = |f: fn(&Trails) -> Option<f64>| {
+        let at_200: Vec<Option<f64>> = maps.iter().map(|m| m.scores.land.at_200.as_ref().and_then(f)).collect();
+        let at_pick: Vec<Option<f64>> = maps.iter().map(|m| f(&m.scores.land.at_pick)).collect();
+        (mean_some(&at_pick), mean_some(&at_200))
+    };
+    let clan_turns: u32 = maps.iter().map(|m| m.scores.land.clan_turns).sum();
+    let changes: u32 = maps.iter().map(|m| m.scores.land.festival_changes).sum();
+    let flips: u32 = maps.iter().map(|m| m.scores.land.flips).sum();
+    let n = maps.len().max(1) as f64;
+    let civs: Vec<CivLand> = maps.iter().flat_map(|m| m.scores.land.civs_200.clone()).collect();
+    let mean_civs = |f: fn(&(f64, f64, f64)) -> f64| (!civs.is_empty()).then(|| f(&civ_means(&civs)));
+    TotalLand {
+        markets_pick: maps.iter().map(|m| m.scores.land.at_pick.markets).sum(),
+        markets_200: maps.iter().filter_map(|m| m.scores.land.at_200.as_ref()).map(|t| t.markets).sum(),
+        trading_pick: maps.iter().map(|m| m.scores.land.at_pick.trading).sum::<f64>() / n,
+        trading_200: maps.iter().filter_map(|m| m.scores.land.at_200.as_ref()).map(|t| t.trading).sum::<f64>() / n,
+        homes_trailed: pick(|t| t.homes_trailed),
+        worked_trailed: pick(|t| t.worked_trailed),
+        route_trailed: pick(|t| t.route_trailed),
+        festival_changes_per_100: engine::judge::per_100(changes, clan_turns),
+        flips_per_100: engine::judge::per_100(flips, clan_turns),
+        claimed_200: mean_civs(|m| m.0),
+        held_200: mean_civs(|m| m.1),
+        guard_200: mean_civs(|m| m.2),
+    }
+}
+
+fn total_solo(maps: &[MapJudged]) -> Option<TotalSolo> {
+    if maps.iter().all(|m| m.solo.is_none()) {
+        return None;
+    }
+    let gains: Vec<&SoloGain> = maps.iter().filter_map(|m| m.solo.as_ref()).flatten().collect();
+    Some(TotalSolo {
+        civs: gains.len(),
+        gain: mean(&gains.iter().map(|g| g.gain).collect::<Vec<_>>()),
+        clans: mean(&gains.iter().map(|g| g.clans).collect::<Vec<_>>()),
+        land: mean(&gains.iter().map(|g| g.land).collect::<Vec<_>>()),
+        above: gains.iter().filter(|g| g.gain > JUDGE.solo_above).count() as u32,
+    })
 }
 
 /// The totals over the maps that judged (panicked maps are not in them).
@@ -193,6 +348,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
         standing: TotalStanding {
             top_200: mean(&at(|m| m.scores.standing.top_200)),
             aligned_200: mean(&at(|m| m.scores.standing.aligned_200)),
+            on_land_200: mean(&at(|m| m.scores.standing.on_land_200)),
         },
         doubt: TotalDoubt {
             lead_changes: maps.iter().map(|m| m.scores.doubt.lead_changes).sum(),
@@ -200,6 +356,8 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             spread_100: mean(&at(|m| m.scores.doubt.spread_100)),
             spread_200: mean(&at(|m| m.scores.doubt.spread_200)),
             swings: maps.iter().map(|m| m.scores.doubt.swings).sum(),
+            no_claims_lead_changes: maps.iter().map(|m| m.no_claims.doubt.lead_changes).sum(),
+            no_claims_maps_with_lead_change: maps.iter().filter(|m| m.no_claims.doubt.lead_changes > 0).count() as u32,
         },
         decisions: TotalDecisions {
             ai_orders_per_100: mean(&maps.iter().map(|m| m.scores.decisions.orders_per_100).collect::<Vec<_>>()),
@@ -210,7 +368,12 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             clans_changed: maps.iter().map(|m| m.scores.motion.clans_changed).sum(),
             people_changed: maps.iter().map(|m| m.scores.motion.people_changed).sum(),
             land_changed: maps.iter().map(|m| m.scores.motion.land_changed).sum(),
+            clans_left: maps.iter().map(|m| m.scores.motion.clans_left).sum(),
+            clans_joined: maps.iter().map(|m| m.scores.motion.clans_joined).sum(),
+            claim_taken: maps.iter().map(|m| m.scores.motion.claim_taken).sum(),
         },
+        land: total_land(maps),
+        solo: total_solo(maps),
         armies: TotalArmies {
             camps_kept: sum(|m| m.armies.camps_kept),
             camps_of: sum(|m| m.armies.camps_of),
@@ -227,24 +390,22 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
 }
 
 /// The retro maps judged and the report printed.
-pub(crate) fn judge(json: bool) -> Result<(), String> {
+pub(crate) fn judge(json: bool, solo: bool) -> Result<(), String> {
     let start = Instant::now();
     let maps = retro_maps()?;
-    let results: Vec<Result<MapJudged, Panicked>> = std::thread::scope(|scope| {
-        let handles: Vec<_> = maps
-            .iter()
-            .map(|(name, radius, seed)| {
-                scope.spawn(move || {
-                    catch_unwind(AssertUnwindSafe(|| judge_map(name, *radius, *seed))).map_err(|e| Panicked {
-                        size: name.clone(),
-                        seed: *seed,
-                        message: message(e),
+    let results: Vec<Result<MapJudged, Panicked>> =
+        std::thread::scope(|scope| {
+            let handles: Vec<_> =
+                maps.iter()
+                    .map(|(name, radius, seed)| {
+                        scope.spawn(move || {
+                            catch_unwind(AssertUnwindSafe(|| judge_map(name, *radius, *seed, solo)))
+                                .map_err(|e| Panicked { size: name.clone(), seed: *seed, message: message(e) })
+                        })
                     })
-                })
-            })
-            .collect();
-        handles.into_iter().map(|h| h.join().expect("a map's thread joins")).collect()
-    });
+                    .collect();
+            handles.into_iter().map(|h| h.join().expect("a map's thread joins")).collect()
+        });
     let mut judged = Vec::new();
     let mut panics = Vec::new();
     for r in results {
@@ -269,9 +430,10 @@ fn print_text(r: &Report) {
     }
     for m in &r.maps {
         let s = &m.scores;
-        let (a, h) = (&m.armies, &m.health);
+        let (a, h, l) = (&m.armies, &m.health, &s.land);
+        let f = |v: Option<f64>| v.map_or("-".to_string(), |v| format!("{v:.2}"));
         println!(
-            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  armies: camps kept {}/{} starved {} lost {} people vs control {:.2}  health: centres {} digests differ {}",
+            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  armies: camps kept {}/{} starved {} lost {} people vs control {:.2}  land: markets {}/{} trading {:.2}/{:.2} homes {}/{} worked {}/{} route {}/{} changes {:.2} flips {:.2}  health: centres {} digests differ {}",
             m.size,
             m.seed,
             m.pick,
@@ -291,15 +453,50 @@ fn print_text(r: &Report) {
             a.warriors_starved,
             a.camps_lost,
             a.people_at_200 / a.control_people_at_200.max(f64::MIN_POSITIVE),
+            l.at_pick.markets,
+            l.at_200.as_ref().map_or(0, |t| t.markets),
+            l.at_pick.trading,
+            l.at_200.as_ref().map_or(0.0, |t| t.trading),
+            f(l.at_pick.homes_trailed),
+            f(l.at_200.as_ref().and_then(|t| t.homes_trailed)),
+            f(l.at_pick.worked_trailed),
+            f(l.at_200.as_ref().and_then(|t| t.worked_trailed)),
+            f(l.at_pick.route_trailed),
+            f(l.at_200.as_ref().and_then(|t| t.route_trailed)),
+            l.festival_changes_per_100,
+            l.flips_per_100,
             h.pregame_by_centres,
             h.digest_mismatches,
         );
+        let (claimed, held, guard) = civ_means(&l.civs_200);
+        println!(
+            "        claims: on land at +200 {:.3}; per civ at +200 claimed {claimed:.1}, held {held:.1}, guard {guard:.1}; no claims: lead changes {}, spread +200 {:.3}",
+            s.standing.on_land_200.unwrap_or(0.0),
+            m.no_claims.doubt.lead_changes,
+            m.no_claims.doubt.spread_200.unwrap_or(0.0),
+        );
+        if let Some(gains) = &m.solo {
+            let parts: Vec<String> = gains
+                .iter()
+                .map(|g| format!("civ {} {:+.4} (clans {:+.4}, land {:+.4})", g.civ, g.gain, g.clans, g.land))
+                .collect();
+            println!("        solo: {}", parts.join("; "));
+        }
     }
     let t = &r.total;
-    println!("total standing: top at +200 {:.3}, aligned at +200 {:.3}", t.standing.top_200, t.standing.aligned_200);
     println!(
-        "total doubt: lead changes {} on {} maps, spread +100 {:.3} +200 {:.3}, swings {}",
-        t.doubt.lead_changes, t.doubt.maps_with_lead_change, t.doubt.spread_100, t.doubt.spread_200, t.doubt.swings
+        "total standing: top at +200 {:.3}, aligned at +200 {:.3}, on land at +200 {:.3}",
+        t.standing.top_200, t.standing.aligned_200, t.standing.on_land_200
+    );
+    println!(
+        "total doubt: lead changes {} on {} maps, spread +100 {:.3} +200 {:.3}, swings {}; no claims: lead changes {} on {} maps",
+        t.doubt.lead_changes,
+        t.doubt.maps_with_lead_change,
+        t.doubt.spread_100,
+        t.doubt.spread_200,
+        t.doubt.swings,
+        t.doubt.no_claims_lead_changes,
+        t.doubt.no_claims_maps_with_lead_change
     );
     let kinds: Vec<String> = t.decisions.by_kind.iter().map(|(k, v)| format!("{k} {v:.2}")).collect();
     println!(
@@ -309,9 +506,40 @@ fn print_text(r: &Report) {
         t.decisions.levers_repeated
     );
     println!(
-        "total motion: clans changed {}, people {:.1}, land tiles {}",
-        t.motion.clans_changed, t.motion.people_changed, t.motion.land_changed
+        "total motion: clans changed {}, people {:.1}, land tiles {}; clans left {}, joined {}; claimed tiles taken {}",
+        t.motion.clans_changed,
+        t.motion.people_changed,
+        t.motion.land_changed,
+        t.motion.clans_left,
+        t.motion.clans_joined,
+        t.motion.claim_taken
     );
+    let l = &t.land;
+    let f = |v: Option<f64>| v.map_or("-".to_string(), |v| format!("{v:.2}"));
+    println!(
+        "total land: markets {} at the pick, {} at +200; trading {:.2}/{:.2}; homes trailed {}/{}; worked trailed {}/{}; route trailed {}/{} (pick/+200); festival changes {:.2} and flips {:.2} per 100 clan-turns; per civ at +200 claimed {}, held {}, guard {}",
+        l.markets_pick,
+        l.markets_200,
+        l.trading_pick,
+        l.trading_200,
+        f(l.homes_trailed.0),
+        f(l.homes_trailed.1),
+        f(l.worked_trailed.0),
+        f(l.worked_trailed.1),
+        f(l.route_trailed.0),
+        f(l.route_trailed.1),
+        l.festival_changes_per_100,
+        l.flips_per_100,
+        f(l.claimed_200),
+        f(l.held_200),
+        f(l.guard_200)
+    );
+    if let Some(s) = &t.solo {
+        println!(
+            "total solo: gain {:+.4} (clans {:+.4}, land {:+.4}) per civ over {} civs; above {} of {} civs by more than {}",
+            s.gain, s.clans, s.land, s.civs, s.above, s.civs, JUDGE.solo_above
+        );
+    }
     let a = &t.armies;
     println!(
         "total armies: camps kept {} of {}, warriors starved {}, camps lost {}, people vs control {:.3}",
@@ -328,8 +556,8 @@ fn print_text(r: &Report) {
     println!("seconds {:.1}", r.seconds);
 }
 
-/// A played game read back: the led civ's Standing beside the control's, the scores of both, and the
-/// player's own decisions from the log and the lines file.
+/// A played game read back: the led civ's Standing beside the control's, the scores of both, the
+/// led civ's land beside the control's, and the player's own decisions from the log and the lines file.
 #[derive(Serialize)]
 struct GameJudged {
     pick: u32,
@@ -338,6 +566,7 @@ struct GameJudged {
     game: Scores,
     control: Scores,
     standing: Ending,
+    land: Lands,
     player: Player,
 }
 
@@ -348,6 +577,13 @@ struct Ending {
     game_rank: usize,
     control: f64,
     control_rank: usize,
+}
+
+/// The led civ's land at the end, in the game and in the control.
+#[derive(Serialize)]
+struct Lands {
+    game: CivLand,
+    control: CivLand,
 }
 
 /// What the player did: accepted orders and actions by kind (from the log), how often a turn had
@@ -440,6 +676,7 @@ pub(crate) fn judge_game(args: &[String]) -> Result<(), String> {
     let control_scores = cwatch.scores(&control, &[led]);
     let g_end = wt.standing_at(n).expect("scored to the end");
     let c_end = cwatch.standing_at(n).expect("scored to the end");
+    let land_of = |w: &World| civ_lands(w).into_iter().find(|c| c.id == led).expect("the led civ is in the world");
     let entries = read_entries(path)?;
     let refused: Vec<Entry> = entries.iter().filter(|e| e.result.starts_with("refused")).cloned().collect();
     let noted = entries.iter().filter(|e| e.result == "noted").count();
@@ -456,6 +693,7 @@ pub(crate) fn judge_game(args: &[String]) -> Result<(), String> {
             control: c_end.get(&led).copied().unwrap_or(0.0),
             control_rank: rank_of(c_end, led),
         },
+        land: Lands { game: land_of(&w), control: land_of(&control) },
         player: Player {
             orders_per_100: if n > 0 { f64::from(player_orders) * 100.0 / f64::from(n) } else { 0.0 },
             orders_by_kind: by_kind,
@@ -474,7 +712,8 @@ pub(crate) fn judge_game(args: &[String]) -> Result<(), String> {
 }
 
 /// The judgement as text: the score line every `JUDGE.sample` turns, the led civ at the end beside
-/// the control, the doubt and motion of both, the player's decisions and refusals.
+/// the control, its claim and land beside the control's, the doubt and motion of both, the player's
+/// decisions and refusals.
 fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
     let shares = |s: &BTreeMap<u32, f64>| -> String {
         s.iter().map(|(id, v)| format!("civ {id} {:.1}%", v * 100.0)).collect::<Vec<_>>().join(", ")
@@ -494,6 +733,11 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
         s.control * 100.0,
         s.control_rank
     );
+    let (l, c) = (&j.land.game, &j.land.control);
+    println!(
+        "claim (game / control): {} / {} tiles claimed, {} / {} held, guard {:.1} / {:.1} people",
+        l.claimed, c.claimed, l.held, c.held, l.guard, c.guard
+    );
     let (g, c) = (&j.game.doubt, &j.control.doubt);
     println!(
         "doubt (game / control): lead changes {} / {}, spread +{} {:.3} / {:.3}, swings {} / {}",
@@ -507,8 +751,17 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
     );
     let (gm, cm) = (&j.game.motion, &j.control.motion);
     println!(
-        "motion (game / control): clans changed {} / {}, people {:.1} / {:.1}, land tiles {} / {}",
-        gm.clans_changed, cm.clans_changed, gm.people_changed, cm.people_changed, gm.land_changed, cm.land_changed
+        "motion (game / control): clans changed {} / {}, people {:.1} / {:.1}, land tiles {} / {}, clans left {} / {}, claimed tiles taken {} / {}",
+        gm.clans_changed,
+        cm.clans_changed,
+        gm.people_changed,
+        cm.people_changed,
+        gm.land_changed,
+        cm.land_changed,
+        gm.clans_left,
+        cm.clans_left,
+        gm.claim_taken,
+        cm.claim_taken
     );
     let p = &j.player;
     let kinds: Vec<String> = p.orders_by_kind.iter().map(|(k, v)| format!("{k} {v}")).collect();

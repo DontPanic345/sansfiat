@@ -16,13 +16,24 @@ const RADIUS: i32 = 16;
 
 /// The real map of `seed`, run to the pick, led by its first civ.
 fn lead(seed: u32) -> World {
-    let mut w = World::new(Config { seed, radius: RADIUS, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed, radius: RADIUS, army: true, gifts: true, zone: true, ..Config::default() });
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }
     let first = w.civs.keys().next().copied();
     w.act(Action::ChooseCiv { civ: first }).unwrap();
     w
+}
+
+/// Ends a turn with the led civ's store full: its capital's market may or may not feed it, and these
+/// tests are about the scout. (Not for tests that replay: the store is set outside the log.)
+fn end_fed(w: &mut World) {
+    let me = w.player.unwrap();
+    w.civs.get_mut(&me).unwrap().store = [100.0; N];
+    // …and the scout's pack, since a line of six tiles carries it less than it eats.
+    let id = led_scout(w);
+    w.units.get_mut(&id).unwrap().store = [1.0; N];
+    w.act(Action::EndTurn).unwrap();
 }
 
 /// Every land tile plains and bare: no rivers, trails or hidden costs, and the player's civ has
@@ -44,13 +55,14 @@ fn plain(w: &mut World) {
 }
 
 /// The `n` tiles from `from` straight out in the first direction that stays on land (none of them
-/// sea), in order, as `from`'s own tile is not among them.
+/// sea, none of them a rival's land), in order, as `from`'s own tile is not among them.
 fn open_ray(w: &World, from: usize, n: i32) -> Vec<usize> {
     let h = w.tiles[from].hex();
     for d in DIRS {
         let tiles: Vec<usize> =
             (1..=n).filter_map(|k| index(w.config.radius, Hex { q: h.q + d.0 * k, r: h.r + d.1 * k })).collect();
-        if tiles.len() == n as usize && tiles.iter().all(|&i| w.tiles[i].terrain != SEA) {
+        let mine = |i: usize| engine::civs::tile_civ(w, i).is_none_or(|c| Some(c) == w.player);
+        if tiles.len() == n as usize && tiles.iter().all(|&i| w.tiles[i].terrain != SEA && mine(i)) {
             return tiles;
         }
     }
@@ -82,7 +94,7 @@ fn has_event(w: &World, kind: EventKind) -> bool {
 /// Ends turns until the scout's route is cleared; returns how many turns it took.
 fn until_route_done(w: &mut World, max: u32) -> u32 {
     for turn in 1..=max {
-        w.act(Action::EndTurn).unwrap();
+        end_fed(w);
         if scout(w).scout().unwrap().route.is_none() {
             return turn;
         }
@@ -144,7 +156,9 @@ fn a_route_across_rough_country_is_searched_and_its_trails_built() {
     assert_eq!(built.len(), 6, "every tile of the route has its trail when the route is found");
     // Six tiles at their hidden cost of 1 once every trail is built.
     assert!(w.events.iter().any(|e| e.kind == EventKind::ScoutRouteFound && e.cost == Some(6.0)));
-    assert!(!has_event(&w, EventKind::ScoutHungry) && !has_event(&w, EventKind::ScoutStarved));
+    let me = led_scout(&w);
+    let mine = |kind| w.events.iter().any(|e| e.kind == kind && e.unit == Some(me));
+    assert!(!mine(EventKind::ScoutHungry) && !mine(EventKind::ScoutStarved));
     assert_eq!(scout(&w).people, SCOUT.people as f64, "no one starved");
 }
 
@@ -252,11 +266,14 @@ fn a_mountain_pass_is_crossed_by_the_camp_only_once_built() {
 fn an_idle_scout_at_the_capital_neither_forages_nor_starves() {
     let mut w = lead(2);
     let (cap, _) = capital(&w);
-    w.run(50);
+    for _ in 0..50 {
+        end_fed(&mut w);
+    }
     let s = scout(&w);
     assert_eq!((s.home, s.scout().unwrap().route, s.hungry), (cap, None, 0));
     assert_eq!(s.people, SCOUT.people as f64);
-    assert!(!has_event(&w, EventKind::ScoutHungry) && !has_event(&w, EventKind::ScoutStarved));
+    let mine = |kind| w.events.iter().any(|e| e.kind == kind && e.unit == Some(s.id));
+    assert!(!mine(EventKind::ScoutHungry) && !mine(EventKind::ScoutStarved));
     assert!(w.events.iter().all(|e| e.kind != EventKind::CampForaged || e.unit != Some(s.id)));
 }
 
@@ -267,12 +284,16 @@ fn a_route_order_replays_to_the_same_world() {
     let target = open_ray(&w, cap, 6)[5];
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     w.run(15);
-    w.act(led_order(&w, Order::ClearRoute { unit: led_scout(&w) })).expect("the scout is still there");
+    // The guard eats from the civ's store, which on this seed can't feed the scout past a route's walk: a
+    // scout that starved out has no route to clear, and its hunger is the event that says so.
+    let civ = w.player.unwrap();
+    match units::scout(&w, civ).map(|u| u.id) {
+        Some(id) => w.act(led_order(&w, Order::ClearRoute { unit: id })).expect("the scout is still there"),
+        None => assert!(w.events.iter().any(|e| e.kind == EventKind::ScoutStarved), "the scout starved"),
+    }
     w.run(5);
     let again = World::replay(&w.save()).unwrap();
     assert_eq!(digest(&again), digest(&w));
-    assert!(
-        w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: cap })).is_err(),
-        "a route needs two tiles"
-    );
+    let unit = units::scout(&w, civ).map_or(0, |u| u.id);
+    assert!(w.act(led_order(&w, Order::Route { unit, from: cap, to: cap })).is_err(), "a route needs two tiles");
 }

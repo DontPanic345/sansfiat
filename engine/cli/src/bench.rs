@@ -21,7 +21,7 @@ pub(crate) fn bench(args: &[String]) -> Result<(), String> {
     }
     for seed in seeds {
         let start = Instant::now();
-        let mut w = World::new(Config { seed, radius, army: true, gifts: true, zone: true });
+        let mut w = World::new(Config { seed, radius, army: true, gifts: true, zone: true, ..Config::default() });
         let built = start.elapsed();
         w.run(turns);
         let total = start.elapsed();

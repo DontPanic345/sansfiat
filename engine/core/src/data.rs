@@ -31,7 +31,8 @@ pub const DESERT: usize = 6;
 pub const MARSH: usize = 7;
 
 /// Coast tiles stand for the shore and the shallows, so they carry the sea foods. A mountain is
-/// not land: clans don't stand on it and nobody walks it. Marsh is wet and rich, and slow.
+/// not land: clans don't stand on it and nobody walks it. Marsh is wet and rich, and slow. Desert
+/// is barren and costs 2 to enter: clans route round it, not through it (owner note 1).
 pub const TERRAIN: [Terrain; 8] = [
     Terrain { name: "sea", color: "#2b5d8a", land: false, move_cost: None, food: [0.0; N] },
     Terrain { name: "coast", color: "#c9b77a", land: true, move_cost: Some(1.0), food: [1.0, 0.0, 0.0, 4.0, 3.0] },
@@ -39,7 +40,7 @@ pub const TERRAIN: [Terrain; 8] = [
     Terrain { name: "forest", color: "#3f7a3a", land: true, move_cost: Some(2.0), food: [3.0, 0.0, 4.0, 0.0, 0.0] },
     Terrain { name: "hills", color: "#8a7a5c", land: true, move_cost: Some(2.0), food: [2.0, 0.0, 1.0, 0.0, 0.0] },
     Terrain { name: "mountain", color: "#6e6a73", land: false, move_cost: None, food: [0.0; N] },
-    Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(1.0), food: [0.0; N] },
+    Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(2.0), food: [0.0; N] },
     Terrain { name: "marsh", color: "#5b8c78", land: true, move_cost: Some(3.0), food: [2.0, 2.0, 0.0, 4.0, 3.0] },
 ];
 
@@ -204,16 +205,24 @@ pub const FOOD: [Food; N] = [
 pub const FERTILITY: (f64, f64) = (0.4, 2.0);
 
 pub struct TrailRules {
-    /// Turns in a row walked (inside a territory or on a route) before a tile gets a trail.
-    pub after: u32,
-    /// Turns in a row unwalked before its trail wears away.
-    pub fade: u32,
+    /// How much of a tile's traffic is kept from one turn to the next.
+    pub keep: f64,
+    /// A tile whose traffic (people-walks, smoothed) reaches this gets a trail…
+    pub on: f64,
+    /// …and keeps it until its traffic falls under this (`off < on`).
+    pub off: f64,
     /// Labour to finish a built trail, by the terrain it goes on (`scout`'s work: forest, hills, a
     /// mountain pass). A trail brings a tile to its hidden `trail_cost`, not to a flat cost.
     pub work: [(usize, f64); 3],
 }
 
-pub const TRAIL: TrailRules = TrailRules { after: 10, fade: 30, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)] };
+/// Traffic is people-walks, so a tile's steady traffic is ten times a turn's. On the retro maps at
+/// the pick a home carries a median of ~185 (a quarter under ~140) and a tile two clans' routes
+/// share ~225, while a worked tile carries ~70 (a quarter over ~110): `on` 110 trails most homes
+/// and shared routes and under a third of the worked tiles; `off` 90 lets a trail ride out a dip
+/// without keeping the ones once worn.
+pub const TRAIL: TrailRules =
+    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)] };
 
 pub struct DepletionRules {
     /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
@@ -271,15 +280,19 @@ pub struct MarketRules {
     pub company_cap: usize,
     /// How much more another festival must be worth, in labour, for a clan to change to it.
     pub switch_margin: f64,
+    /// Turns a clan keeps a festival it has just started going to, whatever the worths.
+    pub keep_turns: u32,
+    /// After `keep_turns` a clan keeps its festival while its worth is above minus this.
+    pub stay_margin: f64,
     /// A store of at least this × people is a surplus.
     pub surplus_at: f64,
 }
 
 pub const MARKET: MarketRules = MarketRules {
     form_after: 20,
-    spacing: 8,
+    spacing: 6,
     reach: 3.0,
-    reach_walk: 20.0,
+    reach_walk: 14.0,
     fade: 0.9,
     min_attendance: 0.5,
     carry: 0.2,
@@ -289,6 +302,8 @@ pub const MARKET: MarketRules = MarketRules {
     company: 1.0,
     company_cap: 6,
     switch_margin: 1.0,
+    keep_turns: 5,
+    stay_margin: 3.0,
     surplus_at: 0.1,
 };
 
@@ -416,8 +431,6 @@ pub const CLAN: ClanRules = ClanRules {
 pub const CIVS: [(&str, &str); 3] = [("Red", "#d64545"), ("Blue", "#3b6fd6"), ("Gold", "#d6a63b")];
 
 pub struct CivRules {
-    /// Hex steps from the capital that count as the capital's land.
-    pub territory: i32,
     /// What a civ's store starts with, standing in for the boon year.
     pub endowment: [f64; N],
     /// The widest a mountain's span may be for a trail to bridge it: every civ has the shortest span
@@ -432,14 +445,8 @@ pub struct CivRules {
     pub pull: f64,
 }
 
-pub const CIV: CivRules = CivRules {
-    territory: 2,
-    endowment: [0.0, 20.0, 0.0, 0.0, 0.0],
-    bridge_span: 1,
-    levy: 0.2,
-    store_cap: 60.0,
-    pull: 3.0,
-};
+pub const CIV: CivRules =
+    CivRules { endowment: [0.0, 20.0, 0.0, 0.0, 0.0], bridge_span: 1, levy: 0.2, store_cap: 60.0, pull: 3.0 };
 
 pub struct ScoutRules {
     /// People a scout is made with, from the civ's clans, one each.
@@ -468,6 +475,14 @@ pub struct LeaningRules {
     pub gift_default: f64,
     /// A leaning under this is dropped.
     pub floor: f64,
+    /// Leaning a clan gains each turn towards the civ whose held land its home is on.
+    pub land: f64,
+    /// Further leaning a turn per share of guard its home tile has (`Civ.guard`).
+    pub guarded: f64,
+    /// Turns in a row a civ clan must be drawn to a rival before it leaves for it.
+    pub leave_run: u32,
+    /// The leaning to a rival a civ clan must reach to be drawn to it at all; below it, it never leaves.
+    pub leave_at: f64,
 }
 
 pub const LEANING: LeaningRules = LeaningRules {
@@ -479,7 +494,46 @@ pub const LEANING: LeaningRules = LeaningRules {
     join: 1.0,
     gift_default: 2.0,
     floor: 0.001,
+    // A clan on a held home gains land + guarded × guard a turn, against a fade of 0.03: land alone
+    // settles at 3.3, past the join line, so a held home joins in about 11 turns (canvas.md).
+    land: 0.1,
+    guarded: 0.5,
+    // Leaving after 5 turns drawn at 0.1: a held rival home wins a clan; 10/0.3 left none (canvas.md).
+    leave_run: 5,
+    leave_at: 0.1,
 };
+
+/// The land a civ claims and holds (`claim.rs`). The floor is the guard share a claimed tile must keep
+/// to be held; the AI's stand-in claim is every land tile within `ai_ring` steps of the capital or of
+/// a clan's home within `ai_reach` steps of it.
+pub struct ClaimRules {
+    pub floor: f64,
+    pub ai_ring: i32,
+    pub ai_reach: i32,
+}
+
+// The floor 0.05 lets three guards hold the ring around the clans' homes near the capital; 0.1 held 13 tiles a
+// civ, 0.05 holds 16 and wins 14 of 21 solo gains (canvas.md). Ring 1 and reach 4 keep the
+// stand-in near; ring 2 or reach 6 claimed more than the guard holds and the solo gain fell.
+pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05, ai_ring: 1, ai_reach: 4 };
+
+/// The guard: the people a civ keeps on its claim at its capital (`units/guard.rs`, `claim.rs`).
+pub struct GuardRules {
+    /// Guards raised at founding, from the civ's clans, one person each.
+    pub start: u32,
+    /// Labour a guard person puts into holding the claim: its whole labour (`UNIT.labour`), since a
+    /// guard does nothing else. Divided over the claim with `inside`.
+    pub guarding: f64,
+    /// The weight of a guard's walk from the capital over the claim (`walk_cost`): a quarter of a
+    /// camp's `UNIT.inside`, since guards stand out on the land. At the camp's weight three guards
+    /// hold nothing past the capital (`spec-review.md`).
+    pub inside: f64,
+    /// Turns of a guard's food the civ keeps in its store out of posting and gifts (`civs::keep`).
+    pub keep_turns: f64,
+}
+
+// Inside 0.02 (a tenth of a camp's) and keep_turns 1, so the store still gives (canvas.md).
+pub const GUARD: GuardRules = GuardRules { start: 3, guarding: 3.5, inside: 0.02, keep_turns: 1.0 };
 
 pub struct UnitRules {
     /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
@@ -533,6 +587,18 @@ pub const UNIT: UnitRules = UnitRules {
     zone: 2,
 };
 
+/// Which civs may claim land (`claim.rs`): `All` (the default), `None` (the control: no civ claims
+/// past its capital and raises no guard), or `Only(k)` (the k-th civ in id order, 0-based, claims as
+/// under `All`; the others as under `None`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Claims {
+    #[default]
+    All,
+    None,
+    Only(u32),
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub seed: u32,
@@ -549,6 +615,9 @@ pub struct Config {
     /// Old saves load with it on.
     #[serde(default = "yes")]
     pub zone: bool,
+    /// Which civs may claim land: see `Claims`. Old saves load with `All`.
+    #[serde(default)]
+    pub claims: Claims,
 }
 
 fn yes() -> bool {
@@ -558,7 +627,7 @@ fn yes() -> bool {
 impl Default for Config {
     /// Radius 16: three centres 10 steps apart need the room.
     fn default() -> Self {
-        Config { seed: 1, radius: 16, army: true, gifts: true, zone: true }
+        Config { seed: 1, radius: 16, army: true, gifts: true, zone: true, claims: Claims::All }
     }
 }
 
@@ -584,6 +653,12 @@ pub struct JudgeRules {
     pub lead_margin: f64,
     /// Turns between the samples the swings are counted on.
     pub sample: u32,
+    /// A clan's festival change back to one it had within this many turns is a flip. A fixed window,
+    /// so a build with no `MARKET.keep_turns` counts as one with it.
+    pub flip_window: u32,
+    /// A civ's Standing gain from claiming alone (`sweep --judge --solo`) counts as a gain above this.
+    /// It is the lead margin's size: a gain of less is noise in the Standing the judge reads.
+    pub solo_above: f64,
 }
 
-pub const JUDGE: JudgeRules = JudgeRules { lead_margin: 0.005, sample: 10 };
+pub const JUDGE: JudgeRules = JudgeRules { lead_margin: 0.005, sample: 10, flip_window: 10, solo_above: 0.005 };

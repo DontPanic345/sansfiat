@@ -144,7 +144,7 @@ fn the_view_at_the_pick_is_under_80_lines() {
     let (_dir, game) = game_in("view");
     let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
     assert!(made.lines().count() < 80, "{} lines", made.lines().count());
-    assert!(made.contains("leader, you"), "the led civ is marked");
+    assert!(made.lines().any(|l| l.starts_with("  civ ") && l.ends_with(" you")), "the led civ is marked");
     assert!(made.contains("legal orders:"), "{made}");
 }
 
@@ -164,14 +164,46 @@ fn judge_prints_a_score_line_and_the_control_for_the_led_civ() {
 
 #[test]
 fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
-    // The trial game's save (relay/specs/101/trial/g.json): at its last turn clan 321 is in reach of Red's
-    // market but trades at another, so Red's gift never reaches it.
+    // On small seed 9, 5 turns after the pick, an unaligned clan is in reach of the led civ's market
+    // but trades at another, so the civ's gift never reaches it: the view says so, and `why` for that
+    // clan gives its reasons.
     let (_dir, game) = game_in("reach");
-    let trial = concat!(env!("CARGO_MANIFEST_DIR"), "/../../relay/specs/101/trial/g.json");
-    fs::copy(trial, &game).unwrap();
-    let out = sansfiat(&["play", "--game", &game], "why 321\n");
+    sansfiat(&["play", "--game", &game, "--seed", "9", "--size", "small", "--civ", "1"], "");
+    let out = sansfiat(&["play", "--game", &game], "end 5\n");
     assert!(out.contains("a gift reaches only those that trade there"), "{out}");
-    let clan = out.lines().find(|l| l.starts_with("  clan 321 at")).expect("clan 321 is in reach");
-    assert!(clan.contains("so your gift doesn't reach it"), "{clan}");
-    assert!(out.contains("why 321: its reasons, newest first"), "{out}");
+    let clan = out
+        .lines()
+        .find(|l| l.starts_with("  clan ") && l.contains("so your gift doesn't reach it"))
+        .unwrap_or_else(|| panic!("a clan in reach trades elsewhere:\n{out}"));
+    let id = clan["  clan ".len()..].split(' ').next().unwrap();
+    let out = sansfiat(&["play", "--game", &game], &format!("why {id}\n"));
+    assert!(out.contains(&format!("why {id}: its reasons, newest first")), "{out}");
+}
+
+#[test]
+fn the_view_at_the_pick_lists_the_claim_and_its_new_legal_orders() {
+    let (_dir, game) = game_in("claim-view");
+    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    assert!(made.lines().any(|l| l.starts_with("claim: ") && l.contains("held") && l.contains("paper")), "{made}");
+    assert!(made.contains("unaligned clans on your land:"), "{made}");
+    assert!(made.contains(r#"  {"type":"claim","tiles":"#), "{made}");
+    assert!(made.contains(r#"  {"type":"raise","n":1,"kind":"guard"}"#), "{made}");
+    assert!(made.lines().count() < 80, "{} lines", made.lines().count());
+    let map = sansfiat(&["play", "--game", &game], "map\n");
+    assert!(map.contains("L your land  p your paper"), "{map}");
+    assert!(map.lines().any(|l| l.contains(" L ") || l.contains(" L\n") || l.ends_with(" L")), "{map}");
+}
+
+#[test]
+fn judge_prints_the_claim_lines_for_the_led_civ() {
+    let (_dir, game) = game_in("judge-claim");
+    sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    sansfiat(&["play", "--game", &game], "{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}\nend 10\n");
+    let out = sansfiat(&["judge", &game], "");
+    let claim = out
+        .lines()
+        .find(|l| l.starts_with("claim (game / control): "))
+        .unwrap_or_else(|| panic!("no claim line in:\n{out}"));
+    assert!(claim.contains(" tiles claimed, ") && claim.contains(" held, guard "), "{claim}");
+    assert!(out.lines().any(|l| l.starts_with("motion (game / control):") && l.contains("clans left")), "{out}");
 }

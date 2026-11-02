@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::civs::{self, Civ};
+use crate::claim;
 use crate::clans::{self, Clan};
 use crate::data::{Config, CIV, NOTES};
 use crate::events::{Event, EventKind};
@@ -130,6 +131,7 @@ pub const TURN: &[Step] = &[
     Step { name: "civs", run: civs::upkeep },
     Step { name: "ai", run: units::ai },
     Step { name: "units", run: units::step },
+    Step { name: "claim", run: claim::step },
     Step { name: "hold", run: land::tend },
     Step { name: "markets", run: markets::form_and_fade },
     Step { name: "end", run: pregame::check_end },
@@ -138,7 +140,7 @@ pub const TURN: &[Step] = &[
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
 /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
 /// into a different world.
-pub const SAVE_VERSION: u32 = 2;
+pub const SAVE_VERSION: u32 = 3;
 
 /// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -301,6 +303,7 @@ impl World {
             | EventKind::ScoutStarved
             | EventKind::PeopleLeft => e.civ == Some(me),
             EventKind::ClanJoined => e.civ.is_some_and(|c| c != me),
+            EventKind::ClanLeft | EventKind::ClaimTaken => e.civ == Some(me) || e.other == Some(me),
             _ => false,
         };
         if !mine {

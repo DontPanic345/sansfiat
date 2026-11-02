@@ -14,7 +14,7 @@ assert.deepEqual(SIZES.map((s) => s.name), ['small', 'medium', 'large']);
 const TERRAIN = JSON.parse(terrain());
 const RULES = JSON.parse(rules());
 assert.ok(RULES.tame_turns > 0 && RULES.players === 3);
-for (const key of ['unit_labour', 'unit_food', 'hungry_turns', 'store_cap', 'territory']) assert.ok(RULES[key] > 0, `rules.${key}`);
+for (const key of ['unit_labour', 'unit_food', 'hungry_turns', 'store_cap', 'floor']) assert.ok(RULES[key] > 0, `rules.${key}`);
 const GOODS = JSON.parse(goods());
 
 const medium = SIZES.find((s) => s.name === 'medium');
@@ -60,7 +60,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);
@@ -143,6 +143,14 @@ for (const c of Object.values(v.clans)) {
   }
 }
 
+// Festivals: each lists the clans going to it, and the civs' claims are land-first: held tiles are claimed.
+for (const m of Object.values(v.markets)) {
+  assert.deepEqual([...m.clans].sort((a, b) => a - b), Object.values(v.clans).filter((k) => k.market === m.id).map((k) => k.id).sort((a, b) => a - b), `market ${m.id} lists its clans`);
+}
+for (const c of Object.values(v.civs)) {
+  assert.ok(c.land.every((t) => c.claim.includes(t)) && c.land.includes(c.capital), `civ ${c.id}: its land is held claim, capital included`);
+}
+
 // Wear: the tiles with some food worn, each food's share and the cap it would have unworn.
 const worn = [];
 for (let i = 0; i < n; i++) if (JSON.parse(sim.tile(i)).wear.some((x) => x > 0)) worn.push(i);
@@ -182,11 +190,11 @@ assert.equal(sim.check(JSON.stringify({ type: 'chooseCiv', civ: cards[0].civ }))
 const civs = Object.values(v.civs);
 assert.equal(civs.length, 3);
 for (const c of civs) {
-  for (const key of ['id', 'name', 'color', 'market', 'capital', 'store', 'lost', 'people', 'clans', 'territory', 'work']) {
+  for (const key of ['id', 'name', 'color', 'market', 'capital', 'store', 'lost', 'people', 'clans', 'claim', 'guard', 'land']) {
     assert.ok(key in c, `civ carries ${key}`);
   }
   assert.equal(c.store.length, GOODS.length);
-  assert.ok(c.territory.includes(c.capital) && c.work.includes(c.capital));
+  assert.ok(c.land.includes(c.capital) && c.claim.includes(c.capital) && c.guard.length === c.claim.length);
   assert.equal(sim.tile_civ(c.capital), c.id, 'a capital belongs to its civ');
   assert.equal(v.clans[Object.keys(v.clans).find((id) => v.clan_civ.some(([k, k2]) => k === Number(id) && k2 === c.id))].civ, c.id);
 }
@@ -199,6 +207,13 @@ assert.ok(camps.every((u) => u.line !== undefined && 'cut_off' in u), 'a camp ca
 // which is its line's carry under its warriors' need (no line, or a line that can't feed it, is cut off).
 const checkCamps = (view) => {
   for (const u of Object.values(view.units)) {
+    // A guard holds its civ's claim, not a zone, and has no pack: it is checked below.
+    if (u.kind === 'guard') {
+      assert.deepEqual(u.territory, view.civs[u.civ].claim, 'a guard holds its civ\'s claim');
+      assert.equal(u.tile, view.civs[u.civ].capital, 'a guard stands at the capital');
+      assert.ok(u.people > 0 && typeof u.hungry === 'number', 'a guard carries its people and hunger');
+      continue;
+    }
     assert.equal(typeof u.pack_cap, 'number', 'a camp carries its pack cap');
     assert.ok(u.food_turns >= 0 && Number.isFinite(u.food_turns), 'a camp carries its food in turns');
     assert.equal(typeof u.auto_forage, 'boolean', 'a camp carries its forage switch');
@@ -243,7 +258,7 @@ for (const c of civs) {
 }
 for (const k of Object.values(v.clans)) {
   assert.equal(typeof k.leaning, 'object', 'a clan carries its leanings');
-  if (k.civ != null) assert.deepEqual(k.leaning, {}, 'a civ clan leans to none');
+  // Every clan leans, a civ's own clans included (`lean`).
   for (const [civ, x] of Object.entries(k.leaning)) {
     assert.ok(v.civs[civ], 'a leaning is to a civ');
     assert.ok(x > 0 && Number.isFinite(x), 'a leaning is a positive number');
@@ -284,8 +299,13 @@ assert.notEqual(sim.check('{"type":"setKeep","food":-1}'), '', 'a negative keep 
 sim.act('{"type":"setGift","food":3}');
 sim.act('{"type":"setKeep","food":5}');
 w = JSON.parse(sim.view());
+// The keep in force is the one set plus the guard's food for `guard_keep_turns` (`civs::keep`).
+const guardFood = (view) => {
+  const g = Object.values(view.units).find((u) => u.civ === view.player && u.kind === 'guard');
+  return g ? g.people * RULES.unit_food * RULES.guard_keep_turns : 0;
+};
 assert.equal(w.civs[w.player].gift, 3, 'the gift is set');
-assert.equal(w.civs[w.player].keep, 5, 'the keep in force is set');
+assert.equal(w.civs[w.player].keep, 5 + guardFood(w), 'the keep in force is set, and the guard\'s food');
 assert.equal(w.civs[w.player].keep_set, 5, 'keep_set is the set keep');
 sim.act('{"type":"setKeep","food":null}');
 w = JSON.parse(sim.view());
@@ -304,11 +324,60 @@ if (made === '') {
 const unit = Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'camp');
 assert.equal(sim.route(unit.id), 'null', 'no route without a destination');
 
-// Order it towards a rival capital, or if no land route goes there, to land 5+ steps away.
 const hexSteps = (a, b) => {
   const dq = layout.q[a] - layout.q[b], dr = layout.r[a] - layout.r[b];
   return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr));
 };
+// Watching (all three on the AI, as the page's "Watch all three" sends): a gift is refused while nobody leads.
+// Its save is also the control's: the same log under `claims: none`.
+const watch = new Sim(seed, medium.radius);
+while (!watch.ended()) watch.act('{"type":"endTurn"}');
+watch.act('{"type":"chooseCiv","civ":null}');
+assert.equal(watch.phase(), 'main');
+assert.notEqual(watch.check('{"type":"setGift","food":3}'), '', 'a gift is refused while watching');
+
+// The claim and the guard. A claim is connected land holding the capital, and a refused one says why.
+const claimOrder = (civ, tiles) => JSON.stringify({ type: 'order', civ, order: { type: 'claim', tiles } });
+const guardOrder = (civ) => JSON.stringify({ type: 'order', civ, order: { type: 'raise', n: 1, kind: 'guard' } });
+{
+  const c0 = w.civs[w.player];
+  assert.ok(c0.claim.every((t, k) => k === 0 || c0.claim[k - 1] < t), 'a claim is sorted');
+  assert.ok(c0.land.every((t) => c0.claim.includes(t)), 'land is in the claim');
+  const beside = [...Array(n).keys()].find((i) => landOf(i) && !c0.claim.includes(i) && c0.claim.some((t) => hexSteps(i, t) === 1));
+  assert.ok(beside !== undefined, 'some land lies beside the claim');
+  const wider = [...c0.claim, beside];
+  assert.equal(sim.check(claimOrder(w.player, wider)), '', 'a claim one tile wider, still connected, is accepted');
+  assert.match(sim.check(claimOrder(w.player, [...wider, water])), /land/, 'a claim over water is refused, with its reason');
+  assert.match(sim.check(claimOrder(w.player, [...wider, n + 4])), /not a tile/, 'a claim off the map is refused');
+  // A land tile no walk from the capital reaches: a claim that is not connected is refused.
+  const cut = [...Array(n).keys()].find((i) => landOf(i) && !wider.includes(i) && sim.check(claimOrder(w.player, [...wider, i])).includes('connected'));
+  assert.ok(cut !== undefined, 'some land is cut off from the capital');
+  assert.match(sim.check(claimOrder(w.player, [...wider, cut])), /connected to the capital/, 'a claim not connected to the capital is refused');
+  sim.act(claimOrder(w.player, wider));
+  w = JSON.parse(sim.view());
+  assert.deepEqual(w.civs[w.player].claim, [...new Set([...wider, c0.capital])].sort((a, b) => a - b), 'the claim is the order\'s');
+  assert.equal(w.civs[w.player].guard.length, w.civs[w.player].claim.length, 'the guard is divided over the claim');
+  assert.ok(w.civs[w.player].land.includes(c0.capital), 'the capital is held');
+  // The guard: raised from the civ's clans onto its claim, at the capital.
+  const before = Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'guard')?.people ?? 0;
+  assert.equal(sim.check(guardOrder(w.player)), '', 'a guard is raised from the clans');
+  sim.act(guardOrder(w.player));
+  w = JSON.parse(sim.view());
+  const guard = Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'guard');
+  assert.ok(guard && guard.people > before && guard.tile === c0.capital, 'the guard grows at the capital');
+  assert.deepEqual(guard.territory, w.civs[w.player].claim, 'the guard holds the claim');
+  // The control: with Config.claims none, a claim and a guard are refused with the reason. The watch
+  // game's log, without its watching, replays under that config to the pick, and a civ is led.
+  const off = JSON.parse(watch.save());
+  off.config.claims = 'none';
+  off.log = off.log.filter((a) => a.type !== 'chooseCiv');
+  const none = Sim.load(JSON.stringify(off));
+  const led = Number(Object.keys(JSON.parse(none.view()).civs)[0]);
+  none.act(JSON.stringify({ type: 'chooseCiv', civ: led }));
+  assert.match(none.check(claimOrder(led, [])), /claims control is off/, 'a claim is refused when the control is off');
+  assert.match(none.check(guardOrder(led)), /may not claim/, 'a guard is refused when the control is off');
+}
+// Order it towards a rival capital, or if no land route goes there, to land 5+ steps away.
 let target = rival.capital;
 if (JSON.parse(sim.path(unit.tile, target)) === null) {
   target = [...Array(n).keys()].find((i) => hexSteps(i, unit.tile) >= 5 && JSON.parse(sim.path(unit.tile, i)) !== null);
@@ -399,17 +468,11 @@ for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.
 
 // A save carries its version, and one without it is refused with a reason that names the version.
 const save = JSON.parse(sim.save());
-assert.equal(save.version, 2, 'a save carries its version');
+assert.equal(save.version, 3, 'a save carries its version');
 assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
 const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');
 assert.throws(() => Sim.load(JSON.stringify({ ...save, version: 1 })), /version 1/, 'a save of another version fails, naming it');
 
-// Watching (all three on the AI, as the page's "Watch all three" sends): a gift is refused while nobody leads.
-const watch = new Sim(seed, medium.radius);
-while (!watch.ended()) watch.act('{"type":"endTurn"}');
-watch.act('{"type":"chooseCiv","civ":null}');
-assert.equal(watch.phase(), 'main');
-assert.notEqual(watch.check('{"type":"setGift","food":3}'), '', 'a gift is refused while watching');
 
 console.log(`ok: medium seed ${seed}, ${n} tiles, ended turn ${v.end.turn}${v.end.by_limit ? ' by the limit' : ''}, ${all.length} events, ${Object.keys(v.clans).length} clans`);

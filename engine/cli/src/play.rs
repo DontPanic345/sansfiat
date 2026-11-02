@@ -239,14 +239,17 @@ fn unknown(text: &str) -> String {
     "unknown".to_string()
 }
 
-/// The map as `sansfiat map` prints it, with the led civ's capital `C` and its units `U`.
+/// The map as `sansfiat map` prints it, with the led civ's capital `C`, its units `U`, and its land `L`
+/// and paper `p` (the claimed tiles its guard doesn't hold).
 fn map_text(w: &World) -> String {
     let mut marks: Vec<(usize, char)> = Vec::new();
     if let Some(me) = w.player {
         marks.push((w.civs[&me].capital, 'C'));
         marks.extend(w.units.values().filter(|u| u.civ == me).map(|u| (u.tile(), 'U')));
+        let held = engine::claim::held(w, me);
+        marks.extend(w.civs[&me].claim.iter().map(|&t| (t, if held.contains(&t) { 'L' } else { 'p' })));
     }
     let mut out = engine::map::ascii_marked(&w.tiles, w.config.radius, &marks);
-    out += "C your capital  U your units\n";
+    out += "C your capital  U your units  L your land  p your paper\n";
     out
 }

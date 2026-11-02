@@ -10,7 +10,7 @@ use engine::{Action, Config, Order, Phase, World};
 
 /// A real map at its pick: three civs, each with a camp and a scout.
 fn at_pick() -> World {
-    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed: 2, radius: 16, army: true, gifts: true, zone: true, ..Config::default() });
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }
@@ -46,7 +46,7 @@ fn scout_orders(unit: u32) -> Vec<Order> {
 #[test]
 fn every_order_has_its_wire_name() {
     let orders = [
-        Order::Raise { n: 1 },
+        Order::Raise { n: 1, kind: units::UnitKind::Camp },
         Order::Disband { unit: 1, n: None },
         Order::Move { unit: 1, to: 2 },
         Order::Zone { unit: 1, tiles: vec![2] },
@@ -105,7 +105,13 @@ fn every_order_is_refused_for_a_unit_of_the_wrong_kind() {
     let me = w.player.unwrap();
     let (camp, scout) = (led_camp(&w), led_scout(&w));
     for order in camp_orders(scout) {
-        assert_eq!(w.check_order(me, &order), Err("that unit is not a camp".to_string()), "{order:?}");
+        // Disband takes a camp or a guard, so its refusal names both.
+        let want = if matches!(order, Order::Disband { .. }) {
+            "that unit is not a camp or a guard"
+        } else {
+            "that unit is not a camp"
+        };
+        assert_eq!(w.check_order(me, &order), Err(want.to_string()), "{order:?}");
     }
     for order in scout_orders(camp) {
         assert_eq!(w.check_order(me, &order), Err("that unit is not a scout".to_string()), "{order:?}");
@@ -119,7 +125,7 @@ fn every_order_is_refused_before_the_game_has_begun() {
     let civ = *w.civs.keys().next().unwrap();
     let camp = units::camp(&w, civ).unwrap().id;
     let scout = units::scout(&w, civ).unwrap().id;
-    let raise = Order::Raise { n: 1 };
+    let raise = Order::Raise { n: 1, kind: units::UnitKind::Camp };
     assert_eq!(w.check_order(civ, &raise), Err("the game has not begun".to_string()));
     for order in camp_orders(camp).into_iter().chain(scout_orders(scout)) {
         assert_eq!(w.check_order(civ, &order), Err("the game has not begun".to_string()), "{order:?}");

@@ -47,7 +47,7 @@ pub fn at_big(q: i32, r: i32) -> usize {
 }
 
 fn flat_radius(radius: i32) -> World {
-    let mut w = World::new(Config { seed: 1, radius, army: true, gifts: true, zone: true });
+    let mut w = World::new(Config { seed: 1, radius, army: true, gifts: true, zone: true, ..Config::default() });
     w.clans.clear();
     w.rng = 4151932303;
     w.next_id = 4;
@@ -63,9 +63,8 @@ fn flat_radius(radius: i32) -> World {
         t.wild_grain = 0.0;
         t.tame = 0;
         t.claim = None;
-        t.walked = false;
-        t.walk_run = 0;
-        t.rest_run = 0;
+        t.traffic = 0.0;
+        t.used = false;
         t.claim_run = 0;
         t.free_run = 0;
         t.trail = false;
@@ -194,13 +193,14 @@ pub fn found(w: &mut World, centres: &[u32]) {
     civs::found(w);
 }
 
-/// A big world of three civs, each with a clan of 8 on its market's tile. Returns the world, the
+/// A big world of three civs, each with a clan of 14 on its market's tile (founding's camp, scout and
+/// guard take 8 of them). Returns the world, the
 /// civs and their clans.
 pub fn three() -> (World, [u32; 3], [u32; 3]) {
     let mut w = big();
     let ms = markets3(&mut w);
     let clans =
-        [put(&mut w, &[at_big(-5, 0)], 8.0), put(&mut w, &[at_big(5, 0)], 8.0), put(&mut w, &[at_big(0, -10)], 8.0)];
+        [put(&mut w, &[at_big(-5, 0)], 14.0), put(&mut w, &[at_big(5, 0)], 14.0), put(&mut w, &[at_big(0, -10)], 14.0)];
     found(&mut w, &ms);
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     (w, [ids[0], ids[1], ids[2]], clans)
@@ -300,4 +300,24 @@ pub fn keys_in_order(json: &str) -> Vec<String> {
         }
     }
     keys
+}
+
+/// Gives `civ` the land `tiles` (its capital is added): the claim, held by its guard, which is raised
+/// to `GUARD.start` people if it has none. Up to about two steps from the capital its guard holds
+/// every tile.
+pub fn hold_land(w: &mut World, civ: u32, tiles: &[usize]) {
+    if engine::units::guard_of(w, civ).is_none() {
+        engine::units::guard::raise(w, civ, GUARD.start);
+    }
+    let claim = engine::claim::check(w, civ, tiles).expect("a claim the civ may hold");
+    engine::claim::set(w, civ, claim);
+}
+
+/// Disbands `civ`'s guard, for a test that counts the civ's store to the last food: the guard eats
+/// from it each turn, and its claim goes with it.
+pub fn no_guard(w: &mut World, civ: u32) {
+    if let Some(id) = units::guard_of(w, civ).map(|u| u.id) {
+        w.units.remove(&id);
+    }
+    engine::claim::divide(w, civ);
 }

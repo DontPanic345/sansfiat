@@ -56,6 +56,7 @@ export class MapView {
     this.plan = null; // {known, possible}: the selected scout's route as tile lists from its start, or null
     this.revealed = new Uint8Array(0); // 1 where the led civ has revealed the tile
     this.work = []; // [tile, labour, need]: trails under way
+    this.focusMarket = null; // the selected festival's id: its walkers' routes are drawn bright
     this.civShapes = [];
     this.cx = 0; this.cy = 0; this.k = 8;
     this.w = 1; this.h = 1; this.dpr = 1;
@@ -101,7 +102,6 @@ export class MapView {
     this.nvis = 0;
     this.claim = new Int32Array(n);
     this.worn = new Float64Array(n);
-    this.reach = new Uint8Array(n);
     this.v = null;
     this.selected = -1;
     this.highlight = null;
@@ -117,13 +117,12 @@ export class MapView {
     return this.grid[(q + R) * this.side + (r + R)];
   }
 
-  /** Takes `Sim.view()` (already parsed) and works out territory, wear, hearths and reach. */
+  /** Takes `Sim.view()` (already parsed) and works out territory, wear and hearths. */
   setDynamic(v) {
     this.v = v;
     const n = this.n;
     this.claim.fill(0);
     this.worn.fill(0);
-    this.reach.fill(0);
     for (const [i, c] of v.claims) this.claim[i] = c;
     this.revealed = new Uint8Array(n);
     for (const i of v.revealed) this.revealed[i] = 1;
@@ -141,42 +140,53 @@ export class MapView {
       ? v.end.centres.map((id) => v.markets[id]?.tile).filter((t) => t != null)
       : v.summary.centres.map((id) => v.clans[id]?.home).filter((t) => t != null);
     this.buildCivs(v);
-    // A market's reach, approximated by hex steps over land (as the page always has).
-    for (const m of Object.values(v.markets)) {
-      const q0 = this.l.q[m.tile], r0 = this.l.r[m.tile];
-      for (let dq = -3; dq <= 3; dq++) {
-        for (let dr = Math.max(-3, -dq - 3); dr <= Math.min(3, -dq + 3); dr++) {
-          const j = this.at(q0 + dq, r0 + dr);
-          if (j >= 0 && this.land[j]) this.reach[j] = 1;
-        }
-      }
-    }
   }
 
-  /** The civ marks that change only with a turn: each civ's land outline (one path per civ, built
-   *  here and not per frame), and which clans belong to a civ. */
+  /** The civ marks that change only with a turn, built here and not per frame: each civ's border, the
+   *  solid one round its held land and the dashed one round its paper (claimed, not held) against the
+   *  ground its claim doesn't cover; and which clans belong to a civ. */
   buildCivs(v) {
     this.civShapes = [];
     this.clanCiv = new Map(v.clan_civ || []);
     for (const c of Object.values(v.civs || {})) {
-      const land = new Set(c.territory);
-      const edge = new Path2D();
-      for (const i of c.territory) {
-        for (let d = 0; d < 6; d++) {
-          const j = this.nb[i * 6 + d];
-          if (j >= 0 && land.has(j)) continue;
-          const e = (d + 1) % 6;
-          edge.moveTo(this.px[i] + CORNER[d][0], this.py[i] + CORNER[d][1]);
-          edge.lineTo(this.px[i] + CORNER[e][0], this.py[i] + CORNER[e][1]);
-        }
-      }
-      const work = new Path2D();
-      for (const i of c.work) {
-        work.moveTo(this.px[i] + 0.9, this.py[i]);
-        work.arc(this.px[i], this.py[i], 0.9, 0, 2 * Math.PI);
-      }
-      this.civShapes.push({ civ: c, edge, work });
+      const land = new Set(c.land);
+      const claim = new Set(c.claim);
+      const solid = new Path2D();
+      const dashed = new Path2D();
+      for (const i of c.land) this.outline(solid, i, (j) => land.has(j));
+      for (const i of c.claim) if (!land.has(i)) this.outline(dashed, i, (j) => claim.has(j));
+      this.civShapes.push({ civ: c, solid, dashed, held: c.land.length, paper: c.claim.length - c.land.length });
     }
+  }
+
+  /** Adds to `path` the edges of tile `i` that face a neighbour `same` is false for. */
+  outline(path, i, same) {
+    for (let d = 0; d < 6; d++) {
+      const j = this.nb[i * 6 + d];
+      if (j >= 0 && same(j)) continue;
+      const e = (d + 1) % 6;
+      path.moveTo(this.px[i] + CORNER[d][0], this.py[i] + CORNER[d][1]);
+      path.lineTo(this.px[i] + CORNER[e][0], this.py[i] + CORNER[e][1]);
+    }
+  }
+
+  /** A civ's border as the page draws it: its held tiles and its paper, counted; null for a civ not
+   *  in the view. */
+  border(civ) {
+    const s = this.civShapes.find((x) => x.civ.id === civ);
+    return s ? { held: s.held, paper: s.paper } : null;
+  }
+
+  /** The civ an unaligned clan leans to most, with the tint it draws: its colour, the more opaque the
+   *  nearer its leaning is to the join line. Null for a clan with a civ, or leaning to none. */
+  tintOf(c) {
+    if (c.civ != null) return null;
+    let best = null;
+    for (const [civ, x] of Object.entries(c.leaning)) if (best == null || x > best[1]) best = [civ, x];
+    if (!best) return null;
+    const civ = this.v.civs[best[0]];
+    if (!civ) return null;
+    return { color: civ.color, alpha: 0.85 * Math.min(1, best[1] / this.opts.rules.join) };
   }
 
   /** The routes to draw: `[{unit, tiles, selected}]`, the tiles from where the unit stands to its destination. */
@@ -206,6 +216,12 @@ export class MapView {
   /** The clan to show bright (its territory and festival route), the rest dimmed; null for none. */
   setFocus(clanId) {
     this.focus = clanId ?? null;
+    this.requestDraw();
+  }
+
+  /** The festival whose walkers (the clans going to it) are drawn bright, the rest dimmed; null for none. */
+  setFocusMarket(id) {
+    this.focusMarket = id ?? null;
     this.requestDraw();
   }
 
@@ -736,23 +752,25 @@ export class MapView {
     }
   }
 
-  /** Civs, drawn over the clans with a dark casing: land outlines, work tiles, rings on civ clans,
-   *  routes, capitals, units. */
+  /** Civs, drawn over the clans with a dark casing: borders (solid round held land, dashed round paper),
+   *  rings on civ clans, routes, capitals, units. */
   drawCivs(ctx, v, onScreen) {
     const px = 1 / this.k;
     const casing = 'rgba(0,0,0,0.8)';
-    for (const { civ, edge, work } of this.civShapes) {
-      ctx.lineWidth = Math.max(px * 1.6, 0.12);
-      ctx.strokeStyle = civ.color;
-      ctx.globalAlpha = 0.28;
-      ctx.stroke(work);
-      ctx.globalAlpha = 1;
-      for (const [col, extra] of [[casing, px * 3], [civ.color, 0]]) {
-        ctx.strokeStyle = col;
-        ctx.lineWidth = Math.max(px * 2.2, 0.16) + extra;
-        ctx.stroke(edge);
+    for (const { civ, solid, dashed } of this.civShapes) {
+      for (const [path, dash] of [
+        [dashed, [Math.max(px * 6, 0.4), Math.max(px * 4, 0.25)]],
+        [solid, []],
+      ]) {
+        for (const [col, extra] of [[casing, px * 3], [civ.color, 0]]) {
+          ctx.setLineDash(dash);
+          ctx.strokeStyle = col;
+          ctx.lineWidth = Math.max(px * 2.2, 0.16) + extra;
+          ctx.stroke(path);
+        }
       }
     }
+    ctx.setLineDash([]);
     // A ring in the civ's colour round each of its clans' circles.
     for (const c of Object.values(v.clans)) {
       const civId = this.clanCiv.get(c.id);
@@ -801,6 +819,7 @@ export class MapView {
     }
     // Each camp's zone: its outline in the civ's colour, the tiles its warriors hold filled faintly.
     for (const u of Object.values(v.units || {})) {
+      if (u.kind !== 'camp') continue;
       const col = v.civs[u.civ]?.color || '#fff';
       const zone = new Set(u.territory);
       if (zone.size > 1) {
@@ -1060,12 +1079,15 @@ export class MapView {
     // (dashed, so a route does not read as a river).
     if (this.options.routes) {
       const clans = Object.values(v.clans).filter((c) => walkOf(c).length >= 2);
+      const market = this.focusMarket;
       ctx.setLineDash([Math.max(px * 6, 0.5), Math.max(px * 4, 0.35)]);
       for (const casing of [true, false]) {
         for (const c of clans) {
-          const on = this.focus == null || this.focus === c.id;
-          ctx.globalAlpha = on ? 1 : 0.25;
-          const w = this.focus === c.id ? 1.6 : 1;
+          // A clan's focus is bright; a selected festival's walkers are, the rest dim.
+          const walks = market != null && c.market === market;
+          const bright = this.focus === c.id || walks;
+          ctx.globalAlpha = this.focus != null ? (this.focus === c.id ? 1 : 0.25) : market == null || walks ? 1 : 0.12;
+          const w = bright ? 1.6 : 1;
           ctx.lineWidth = (casing ? Math.max(px * 5, 0.25) : Math.max(px * 2.6, 0.14)) * w;
           ctx.strokeStyle = casing ? 'rgba(0,0,0,0.5)' : hue(c.id);
           ctx.beginPath();
@@ -1080,11 +1102,8 @@ export class MapView {
       ctx.globalAlpha = 1;
     }
 
-    // Markets: a ring with the reach outlined; centres picked out.
+    // Markets: a ring on each festival's tile; centres picked out.
     if (this.options.markets) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-      ctx.lineWidth = Math.max(px, 0.05);
-      this.edges(ctx, (i) => this.reach[i] === 1, (i, j) => this.reach[j] === 1);
       for (const m of Object.values(v.markets)) {
         const x = this.px[m.tile], y = this.py[m.tile];
         if (!onScreen(m.tile)) continue;
@@ -1107,6 +1126,13 @@ export class MapView {
       ctx.arc(x, y, r, 0, 2 * Math.PI);
       ctx.fillStyle = hue(c.id);
       ctx.fill();
+      const tint = this.tintOf(c);
+      if (tint) {
+        ctx.globalAlpha = tint.alpha;
+        ctx.fillStyle = tint.color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
       ctx.lineWidth = Math.max(px, 0.04);
       ctx.strokeStyle = 'rgba(0,0,0,0.75)';
       ctx.stroke();

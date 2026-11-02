@@ -52,8 +52,8 @@ pub fn step_cost(w: &World, from: usize, to: usize) -> Option<f64> {
 
 /// Puts `labour` into a trail on tile `i`, which must be `trailable`. It is finished when its work
 /// reaches `TRAIL.work` for its terrain: then it has its trail, its work starts again from nothing
-/// and its `rest_run` is 0, so `tend` doesn't wear it away on the turn it is built. Returns whether
-/// it is finished.
+/// and its traffic is `TRAIL.on`, so `tend` doesn't wear it away on the turn it is built. Returns
+/// whether it is finished.
 pub fn build_trail(w: &mut World, i: usize, labour: f64) -> bool {
     let terrain = w.tiles[i].terrain;
     let Some(&(_, need)) = TRAIL.work.iter().find(|&&(t, _)| t == terrain) else { return false };
@@ -67,7 +67,7 @@ pub fn build_trail(w: &mut World, i: usize, labour: f64) -> bool {
     }
     t.trail = true;
     t.trail_work = 0.0;
-    t.rest_run = 0;
+    t.traffic = t.traffic.max(TRAIL.on);
     true
 }
 
@@ -247,9 +247,9 @@ pub fn wear(w: &mut World) {
     }
 }
 
-/// The `tend` step, after eating: each tile counts the turns in a row it was walked, and the turns
-/// in a row it wasn't. Walked `TRAIL.after` turns in a row it gets a trail; unwalked `TRAIL.fade`
-/// turns in a row the trail wears away. Holding a tile makes no trail. Each tile also counts the
+/// The `tend` step, after eating: a tile whose traffic has reached `TRAIL.on` gets a trail, and a
+/// trail whose traffic has fallen under `TRAIL.off` wears away, unless a camp's line or a scout's
+/// route was walked on it this turn. Each tile also counts the
 /// turns it has been held, or held by nobody: grain held `TENDING.after` turns tames a step a turn
 /// with no ceiling, unheld it goes wild a step a turn; its unworn grain cap follows `domestic`.
 pub fn tend(w: &mut World) {
@@ -264,17 +264,10 @@ pub fn tend(w: &mut World) {
             t.claim_run = 0;
             t.free_run += 1;
         }
-        if t.walked {
-            t.walk_run += 1;
-            t.rest_run = 0;
-        } else {
-            t.rest_run += 1;
-            t.walk_run = 0;
-        }
         // Worn trails never land on a mountain: nobody walks one bare, so only a built pass is on one.
-        if t.walk_run >= TRAIL.after && t.terrain != MOUNTAIN {
+        if t.traffic >= TRAIL.on && t.terrain != MOUNTAIN {
             t.trail = true;
-        } else if t.trail && t.rest_run >= TRAIL.fade {
+        } else if t.trail && t.traffic < TRAIL.off && !t.used {
             t.trail = false;
         }
         if t.wild_grain <= 0.0 {

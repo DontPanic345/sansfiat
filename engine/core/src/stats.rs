@@ -42,6 +42,47 @@ pub struct Summary {
     pub standing: BTreeMap<u32, f64>,
 }
 
+/// The shares the land measures read off a world (`judge`'s `land` group): how far trails follow the
+/// traffic, and the festivals clans go to. A share is `None` when nothing could count toward it.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Trails {
+    /// Clans of `CLAN.split_at / 2` people or more whose home has a trail.
+    pub homes_trailed: Option<f64>,
+    /// Tiles in some clan's territory that aren't a home, with a trail.
+    pub worked_trailed: Option<f64>,
+    /// Tiles on two or more clans' festival routes, with a trail.
+    pub route_trailed: Option<f64>,
+    pub markets: usize,
+    /// The share of clans that go to a festival.
+    pub trading: f64,
+}
+
+/// The trail shares and festival counts of a world; it changes nothing.
+pub fn trails(w: &World) -> Trails {
+    let share = |yes: usize, of: usize| if of == 0 { None } else { Some(yes as f64 / of as f64) };
+    let homes: Vec<usize> = w.clans.values().map(|c| c.home).collect();
+    let big: Vec<usize> = w.clans.values().filter(|c| c.people >= CLAN.split_at / 2.0).map(|c| c.home).collect();
+    let worked: Vec<&crate::map::Tile> =
+        w.tiles.iter().enumerate().filter(|(i, t)| t.claim.is_some() && !homes.contains(i)).map(|(_, t)| t).collect();
+    let mut walkers: BTreeMap<usize, usize> = BTreeMap::new();
+    for c in w.clans.values() {
+        let mut path: Vec<usize> = c.routes.iter().flat_map(|r| r.path.iter().copied()).collect();
+        path.sort_unstable();
+        path.dedup();
+        for t in path {
+            *walkers.entry(t).or_insert(0) += 1;
+        }
+    }
+    let shared: Vec<usize> = walkers.into_iter().filter(|&(_, n)| n >= 2).map(|(t, _)| t).collect();
+    Trails {
+        homes_trailed: share(big.iter().filter(|&&h| w.tiles[h].trail).count(), big.len()),
+        worked_trailed: share(worked.iter().filter(|t| t.trail).count(), worked.len()),
+        route_trailed: share(shared.iter().filter(|&&t| w.tiles[t].trail).count(), shared.len()),
+        markets: w.markets.len(),
+        trading: w.clans.values().filter(|c| c.market.is_some()).count() as f64 / w.clans.len().max(1) as f64,
+    }
+}
+
 pub fn summary(w: &World) -> Summary {
     let n = w.clans.len().max(1) as f64;
     let (centres, cover) = match &w.end {
@@ -75,23 +116,46 @@ pub fn summary(w: &World) -> Summary {
     }
 }
 
-/// Each civ's Standing: the people of its clans and of its units over the people of every clan and
-/// every unit. Warriors and scouts are people the civ took from its clans, so raising a camp moves
-/// nobody between civs. Every civ is there, at 0 when the world has nobody.
-pub fn standing(w: &World) -> BTreeMap<u32, f64> {
-    let mut mine: BTreeMap<u32, f64> = w.civs.keys().map(|&c| (c, 0.0)).collect();
-    let clans = w.clans.values().filter_map(|k| k.civ.map(|c| (c, k.people)));
-    let units = w.units.values().map(|u| (u.civ, u.people));
-    for (civ, people) in clans.chain(units) {
-        *mine.entry(civ).or_insert(0.0) += people;
+/// One civ's Standing in two parts, each a share of the people of the world: its clans' and units'
+/// people (`clans`), and the unaligned people whose homes are on its held land (`land`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
+pub struct Parts {
+    pub clans: f64,
+    pub land: f64,
+}
+
+/// Each civ's Standing in its parts (`Parts`): the people of its clans (wherever they live) and of
+/// its units, and of the unaligned clans whose homes are on its held land, over the people of every
+/// clan and every unit. Warriors, guards and scouts are people the civ took from its clans, so raising
+/// one moves nobody between civs. Every civ is there, at 0 when the world has nobody.
+pub fn standing_parts(w: &World) -> BTreeMap<u32, Parts> {
+    let mut mine: BTreeMap<u32, Parts> = w.civs.keys().map(|&c| (c, Parts::default())).collect();
+    for k in w.clans.values() {
+        match k.civ {
+            Some(c) => mine.entry(c).or_default().clans += k.people,
+            None => {
+                if let Some(c) = crate::claim::tile_civ(w, k.home) {
+                    mine.entry(c).or_default().land += k.people;
+                }
+            }
+        }
+    }
+    for u in w.units.values() {
+        mine.entry(u.civ).or_default().clans += u.people;
     }
     let all: f64 = w.clans.values().map(|k| k.people).sum::<f64>() + w.units.values().map(|u| u.people).sum::<f64>();
     if all > 0.0 {
-        for share in mine.values_mut() {
-            *share /= all;
+        for p in mine.values_mut() {
+            p.clans /= all;
+            p.land /= all;
         }
     }
     mine
+}
+
+/// Each civ's Standing: `standing_parts`, its two parts summed.
+pub fn standing(w: &World) -> BTreeMap<u32, f64> {
+    standing_parts(w).into_iter().map(|(c, p)| (c, p.clans + p.land)).collect()
 }
 
 /// Hex steps from a centre's market within which fertility is compared.

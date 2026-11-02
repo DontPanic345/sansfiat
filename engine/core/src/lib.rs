@@ -4,6 +4,7 @@
 
 pub mod actors;
 pub mod civs;
+pub mod claim;
 pub mod clans;
 pub mod data;
 pub mod events;

@@ -12,6 +12,7 @@
 
 mod ai;
 mod camp;
+pub mod guard;
 mod line;
 mod scout;
 
@@ -21,7 +22,7 @@ use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
 use crate::actors::Actor;
-use crate::civs;
+use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::market::{add, take, total, Basket};
@@ -35,11 +36,13 @@ pub use scout::{route_plan, Plan, ScoutState};
 
 use camp::{camp_march, camp_turn, hold};
 use scout::scout_turn;
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum UnitKind {
+    #[default]
     Camp,
     Scout,
+    Guard,
 }
 
 impl UnitKind {
@@ -47,6 +50,7 @@ impl UnitKind {
         match self {
             UnitKind::Camp => "camp",
             UnitKind::Scout => "scout",
+            UnitKind::Guard => "guard",
         }
     }
 }
@@ -97,11 +101,13 @@ pub struct Unit {
     pub state: UnitState,
 }
 
-/// What a unit is, and the state only that kind has.
+/// What a unit is, and the state only that kind has. A guard has none: its people and hunger are the
+/// unit's (`claim.rs` divides them over the claim).
 #[derive(Clone, Debug, PartialEq)]
 pub enum UnitState {
     Camp(CampState),
     Scout(ScoutState),
+    Guard,
 }
 
 /// A unit's JSON: the flat object every unit has always written, the fields in their old order.
@@ -147,6 +153,7 @@ impl From<Unit> for UnitFlat {
         let (camp, scout) = match u.state {
             UnitState::Camp(c) => (c, ScoutState { route: None, heard: false, blocked: false }),
             UnitState::Scout(s) => (scout_camp_fields(), s),
+            UnitState::Guard => (scout_camp_fields(), ScoutState { route: None, heard: false, blocked: false }),
         };
         UnitFlat {
             id: u.id,
@@ -195,6 +202,7 @@ impl From<UnitFlat> for Unit {
                 cut_by: f.cut_by,
             }),
             UnitKind::Scout => UnitState::Scout(ScoutState { route: f.route, heard: f.heard, blocked: f.blocked }),
+            UnitKind::Guard => UnitState::Guard,
         };
         Unit { id: f.id, civ: f.civ, actor: f.actor, banked: f.banked, hungry: f.hungry, state }
     }
@@ -243,34 +251,35 @@ impl Unit {
         match self.state {
             UnitState::Camp(_) => UnitKind::Camp,
             UnitState::Scout(_) => UnitKind::Scout,
+            UnitState::Guard => UnitKind::Guard,
         }
     }
 
     pub fn camp(&self) -> Option<&CampState> {
         match &self.state {
             UnitState::Camp(c) => Some(c),
-            UnitState::Scout(_) => None,
+            UnitState::Scout(_) | UnitState::Guard => None,
         }
     }
 
     pub fn camp_mut(&mut self) -> Option<&mut CampState> {
         match &mut self.state {
             UnitState::Camp(c) => Some(c),
-            UnitState::Scout(_) => None,
+            UnitState::Scout(_) | UnitState::Guard => None,
         }
     }
 
     pub fn scout(&self) -> Option<&ScoutState> {
         match &self.state {
             UnitState::Scout(s) => Some(s),
-            UnitState::Camp(_) => None,
+            UnitState::Camp(_) | UnitState::Guard => None,
         }
     }
 
     pub fn scout_mut(&mut self) -> Option<&mut ScoutState> {
         match &mut self.state {
             UnitState::Scout(s) => Some(s),
-            UnitState::Camp(_) => None,
+            UnitState::Camp(_) | UnitState::Guard => None,
         }
     }
 
@@ -292,13 +301,23 @@ pub fn scout(w: &World, civ: u32) -> Option<&Unit> {
     w.units.values().find(|u| u.civ == civ && u.kind() == UnitKind::Scout)
 }
 
+/// `civ`'s guard, if it has one.
+pub fn guard_of(w: &World, civ: u32) -> Option<&Unit> {
+    w.units.values().find(|u| u.civ == civ && u.kind() == UnitKind::Guard)
+}
+
+/// `civ`'s guard, if it has one, for changing.
+pub(crate) fn guard_of_mut(w: &mut World, civ: u32) -> Option<&mut Unit> {
+    w.units.values_mut().find(|u| u.civ == civ && u.kind() == UnitKind::Guard)
+}
+
 /// The food `people` warriors' packs hold.
 pub fn pack_cap(people: f64) -> f64 {
     people * UNIT.pack * UNIT.food
 }
 
 /// The name of `civ`, for a note.
-fn name_of(w: &World, civ: u32) -> String {
+pub(crate) fn name_of(w: &World, civ: u32) -> String {
     w.civs.get(&civ).map_or_else(|| "a rival".to_string(), |c| c.name.clone())
 }
 
@@ -392,7 +411,7 @@ pub fn raise_at_founding(w: &mut World, civ: u32) {
 
 /// Takes `n` people from the civ's clans, one from each in turn, biggest first; round again when
 /// there are fewer clans. Returns how many were taken.
-fn take_people(w: &mut World, civ: u32, n: u32) -> f64 {
+pub(crate) fn take_people(w: &mut World, civ: u32, n: u32) -> f64 {
     let mut k = 0.0;
     let mut given: Vec<u32> = Vec::new();
     for _ in 0..n {
@@ -457,7 +476,7 @@ pub fn raise(w: &mut World, civ: u32, n: u32) -> Result<u32, String> {
 /// the pack; with no clan to take them they are lost. All of them removes the camp. `starved` picks
 /// the event and, if it empties the camp, counts it lost.
 pub fn disband(w: &mut World, id: u32, n: Option<u32>, starved: bool) {
-    let Some(civ) = w.units.get(&id).map(|u| u.civ) else { return };
+    let Some((civ, was)) = w.units.get(&id).map(|u| (u.civ, u.kind())) else { return };
     let people = w.units[&id].people;
     let k = n.map_or(people, |n| f64::from(n).min(people));
     if k <= 0.0 {
@@ -473,7 +492,7 @@ pub fn disband(w: &mut World, id: u32, n: Option<u32>, starved: bool) {
     }
     if k >= people {
         w.units.remove(&id);
-        if starved {
+        if starved && was == UnitKind::Camp {
             w.civs.get_mut(&civ).unwrap().army.lost += 1;
         }
     } else {
@@ -488,10 +507,14 @@ pub fn disband(w: &mut World, id: u32, n: Option<u32>, starved: bool) {
         format!("sent {k:.0} warrior(s) back; {home}")
     };
     w.note(id, text);
+    if was == UnitKind::Guard {
+        claim::divide(w, civ);
+    }
 }
+
 /// The civ whose land the camp stands on, if it isn't its own.
 pub(crate) fn rival_of(w: &World, u: &Unit) -> bool {
-    civs::tile_civ(w, u.home).is_some_and(|c| c != u.civ)
+    claim::tile_civ(w, u.home).is_some_and(|c| c != u.civ)
 }
 
 /// Strips the camp's tile for up to `labour` of work, taking at most `room` of food into the
@@ -558,6 +581,7 @@ pub fn step(w: &mut World) {
                 camp_turn(w, id, left.max(0.0));
             }
             Some(UnitKind::Scout) => scout_turn(w, id),
+            Some(UnitKind::Guard) => guard::turn(w, id),
             None => {}
         }
     }

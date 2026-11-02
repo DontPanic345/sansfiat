@@ -102,16 +102,36 @@ export function clanRole(c, i) {
 
 export const marketOn = (ctx, i) => Object.values(ctx.v.markets).find((m) => m.tile === i);
 
+/** A civ's claim as counts: the tiles claimed, held, paper (claimed, not held), and the thinnest guard
+ *  share on a held tile (0 with none held). */
+export function claimCounts(c) {
+  const share = new Map(c.claim.map((t, k) => [t, c.guard[k] ?? 0]));
+  const held = c.land.map((t) => share.get(t) ?? 0);
+  return {
+    claimed: c.claim.length,
+    held: c.land.length,
+    paper: c.claim.length - c.land.length,
+    thinnest: held.length ? Math.min(...held) : 0,
+  };
+}
+
+/** The claim's counts as one line. */
+const claimLine = (cc) =>
+  `claim ${cc.claimed} tile${cc.claimed === 1 ? '' : 's'} · held ${cc.held} · paper ${cc.paper} · thinnest held guard ${f2(cc.thinnest)}`;
+
 function clanHtml(c, how, i) {
   const cost = c.routes.reduce((a, r) => a + r.cost, 0);
   const festival = c.market != null ? `festival ${c.market}, route ${f2(cost)} labour a year` : 'no festival in reach';
   return `<p><b style="color:${clanHue(c.id)}">Clan ${c.id}</b> <span class="dim">(${how})</span><br>${f2(c.people)} people · territory ${c.territory.length} tiles<br>${festival}<br>fed ${f2(c.fed_ratio)}${c.starving ? ' · <b style="color:#ff7b72">starving</b>' : ''}${i == null ? '' : `<br><span class="dim">this tile: ${clanRole(c, i).join(', ') || 'outside it'}</span>`}</p>`;
 }
 
+/** A festival's panel: its age, traders and prices, and the clans going to it (each row selects its home). */
 function marketHtml(ctx, m, how) {
   const { v, goods } = ctx;
   const prices = goods.map((g, f) => `${g} ${f2(m.prices[f])}`).join(', ');
-  return `<p><b>Market ${m.id}</b> <span class="dim">(${how})</span>${v.end && v.end.centres.includes(m.id) ? ' · <b style="color:#ffc800">centre</b>' : ''}<br>age ${v.turn - m.founded} · ${m.traders} traders · activity ${f2(m.activity)}<br><span class="dim">prices ${prices}</span></p>${whyHtml(ctx, m.id)}`;
+  const going = m.clans.map((id) => `<button type="button" class="link" data-select="clan:${id}">Clan ${id}</button> ${f2(v.clans[id]?.people ?? 0)} people`);
+  const clans = going.length ? `<p class="units"><span class="dim">Clans going here</span><br>${going.join('<br>')}</p>` : '<p class="dim">No clan goes here.</p>';
+  return `<p><b>Market ${m.id}</b> <span class="dim">(${how})</span>${v.end && v.end.centres.includes(m.id) ? ' · <b style="color:#ffc800">centre</b>' : ''}<br>age ${v.turn - m.founded} · ${m.traders} traders · activity ${f2(m.activity)}<br><span class="dim">prices ${prices}</span></p>${clans}${whyHtml(ctx, m.id)}`;
 }
 
 const unitName = (u) => `${u.kind[0].toUpperCase()}${u.kind.slice(1)} ${u.id}`;
@@ -150,7 +170,7 @@ function campPanel(ctx, id) {
   if (u.cut_at) html += `<p><b style="color:#ff7b72">Line cut</b> by ${civName(ctx, u.cut_at.by)}'s army at ${hex(ctx, u.cut_at.at)}.</p>`;
   else if (u.cut_off) html += '<p><b style="color:#ffb347">Cut off</b>: its line can not feed it.</p>';
   // Its zone: the tiles it spreads over and how many its warriors hold, with each one's guard share.
-  if (u.territory.length > 1) {
+  if (u.kind === 'camp' && u.territory.length > 1) {
     const share = u.guard.length ? u.guard.reduce((a, b) => a + b, 0) / u.guard.length : 0;
     html += `<p>Zone ${u.territory.length} of ${u.zone_cap} tiles · holds ${u.held.length} · guard ${f2(share)} a tile <span class="dim">(least ${f2(u.guard.length ? Math.min(...u.guard) : 0)})</span></p>`;
   } else {
@@ -190,7 +210,7 @@ function campPanel(ctx, id) {
       action: unitOrder(u, { type: 'switches', forage: u.auto_forage, supply: !u.auto_supply }),
     });
     if (u.dest != null) actions.push({ label: 'Stop', action: unitOrder(u, { type: 'move', to: u.tile }) });
-    if (u.territory.length > 1) actions.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
+    if (u.kind === 'camp' && u.territory.length > 1) actions.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
   }
   return { title: `${unitName(u)} (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
 }
@@ -261,13 +281,34 @@ function leaningsHtml(ctx, clan) {
   return `<p>Leans to<br>${rows.join('<br>')}</p>`;
 }
 
+/** A guard's panel: its people and hunger, and its civ's claim as counts. A guard takes no order but
+ *  raising and disbanding. */
+function guardPanel(ctx, id) {
+  const { v, rules } = ctx;
+  const u = v.units[id];
+  if (!u) return null;
+  const mine = u.civ === v.player;
+  let html = `<p class="dim">${civName(ctx, u.civ)} · guard at ${hex(ctx, u.tile)}${v.civs[u.civ]?.capital === u.tile ? ' (the capital)' : ''}</p>`;
+  html += `<p>${f2(u.people)} people on the claim</p>`;
+  if (u.hungry > 0) html += `<p><b style="color:#ff7b72">Hungry for ${u.hungry} turn${u.hungry === 1 ? '' : 's'}</b> <span class="dim">(loses a person at ${rules.hungry_turns})</span></p>`;
+  if (v.civs[u.civ]) html += `<p>${claimLine(claimCounts(v.civs[u.civ]))}</p>`;
+  html += whyHtml(ctx, id);
+  const actions = [];
+  if (mine) {
+    actions.push({ label: 'Raise guard', action: civOrder(u.civ, { type: 'raise', n: 1, kind: 'guard' }) });
+    actions.push({ label: 'Disband 1', action: unitOrder(u, { type: 'disband', n: 1 }) });
+    actions.push({ label: 'Disband all', action: unitOrder(u, { type: 'disband', n: null }) });
+  }
+  return { title: `Guard (${v.civs[u.civ]?.name ?? '?'})`, html, actions };
+}
+
 function capitalPanel(ctx, id) {
-  const { v, goods, rules } = ctx;
+  const { v, goods, rules, painting } = ctx;
   const c = v.civs[id];
   if (!c) return null;
   const mine = id === v.player;
   let html = `<p class="dim">${civName(ctx, id)} · capital at ${hex(ctx, c.capital)} · founded turn ${c.founded}</p>`;
-  html += `<p>${f2(c.people)} people in ${c.clans} clan${c.clans === 1 ? '' : 's'}<br>land: ${c.territory.length} tiles · work tiles: ${c.work.length}</p>`;
+  html += `<p>${f2(c.people)} people in ${c.clans} clan${c.clans === 1 ? '' : 's'}<br>${claimLine(claimCounts(c))}</p>`;
   html += '<table>';
   goods.forEach((g, f) => {
     if (c.store[f] > 0.005) html += `<tr><td>${g}</td><td>${f2(c.store[f])}</td></tr>`;
@@ -288,6 +329,12 @@ function capitalPanel(ctx, id) {
     if (c.keep_set != null) actions.push({ label: 'Keep default', row: 'keep', action: { type: 'setKeep', food: null } });
     html += '<div data-actions></div>';
     actions.push({ label: 'Raise warrior', action: civOrder(c.id, { type: 'raise', n: 1 }) });
+    // The claim: painted from the capital as a camp's zone is, the capital kept and the claim connected.
+    const on = (m) => (painting === m ? ' aria-pressed="true" style="outline:2px solid #fff"' : '');
+    html += `<p><button type="button" data-paint="claim"${on('claim')}>Claim (paint)</button> <button type="button" data-paint="unclaim"${on('unclaim')}>Unclaim</button>${painting === 'claim' || painting === 'unclaim' ? ' <span class="dim">click or drag on the map; Esc stops</span>' : ''}</p>`;
+    actions.push({ label: 'Raise guard', action: civOrder(c.id, { type: 'raise', n: 1, kind: 'guard' }) });
+    const guard = Object.values(v.units).find((u) => u.civ === c.id && u.kind === 'guard');
+    if (guard) actions.push({ label: 'Disband guard', action: unitOrder(guard, { type: 'disband', n: 1 }) });
   }
   html += leaningList(ctx, id);
   const units = Object.values(v.units).filter((u) => u.civ === id).sort((a, b) => a.id - b.id);
@@ -304,6 +351,7 @@ function tilePanel(ctx, sel) {
   let html = `<p class="dim">${tileKind(ctx, i)}${land ? ` · fertility ${f2(t.fertility)} · trail ${t.trail ? 'yes' : 'no'}` : ''}</p>`;
   const civ = sim.tile_civ(i);
   if (civ >= 0) html += `<p>Land of ${civName(ctx, civ)}</p>`;
+  for (const c of Object.values(v.civs)) if (c.claim.includes(i) && !c.land.includes(i)) html += `<p>Paper of ${civName(ctx, c.id)}: claimed, not held</p>`;
   for (const u of holders(ctx, i)) html += `<p>Held by ${civName(ctx, u.civ)}'s camp</p>`;
   if (land) {
     html += '<table>';
@@ -335,7 +383,12 @@ function tilePanel(ctx, sel) {
 /** The panel for a selection: `{title, html, actions: [{label, action}]}`, or null if it is gone. */
 export function describe(ctx, sel) {
   if (!sel) return null;
-  if (sel.kind === 'unit') return ctx.v.units[sel.id]?.kind === 'scout' ? scoutPanel(ctx, sel.id) : campPanel(ctx, sel.id);
+  if (sel.kind === 'unit') {
+    const kind = ctx.v.units[sel.id]?.kind;
+    if (kind === 'scout') return scoutPanel(ctx, sel.id);
+    if (kind === 'guard') return guardPanel(ctx, sel.id);
+    return campPanel(ctx, sel.id);
+  }
   if (sel.kind === 'capital') return capitalPanel(ctx, sel.civ);
   return tilePanel(ctx, sel);
 }

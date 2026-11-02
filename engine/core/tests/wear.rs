@@ -2,6 +2,8 @@
 mod common;
 
 use common::{at, flat, put};
+use engine::actors::Route;
+use engine::clans::harvest;
 use engine::data::*;
 use engine::land::{build_trail, domestic, tend, wear};
 use engine::stats::summary;
@@ -17,13 +19,17 @@ fn full(w: &mut World, tile: usize, f: usize, cap: f64) {
     t.stock[f] = cap;
 }
 
-/// One turn of walking: `walked` is the tiles walked this turn, the rest are not.
+/// People walking the tiles in `walked` each turn in the tests that don't run a clan.
+const WALKERS: f64 = 14.0;
+
+/// One turn of walking: `walked` is the tiles `WALKERS` people walk this turn, the rest are not.
 fn walk(w: &mut World, walked: &[usize]) {
     for t in &mut w.tiles {
-        t.walked = false;
+        t.traffic *= TRAIL.keep;
+        t.used = false;
     }
     for &i in walked {
-        w.tiles[i].walked = true;
+        w.tiles[i].traffic += WALKERS;
     }
     tend(w);
 }
@@ -106,25 +112,103 @@ fn game_yields_its_breeding_most_and_wearing_it_leaves_the_fruit() {
 }
 
 #[test]
-fn a_tile_walked_long_enough_gets_a_trail_and_an_unwalked_one_fades() {
+fn a_tile_with_traffic_gets_a_trail_and_one_without_loses_it() {
     let mut w = flat();
     let (home, far) = (at(0, 0), at(1, 0));
     put(&mut w, &[home, far], 3.0);
-    for _ in 0..TRAIL.after - 1 {
+    let mut turns = 0;
+    while !w.tiles[far].trail {
         walk(&mut w, &[far]);
-        assert!(!w.tiles[far].trail);
+        turns += 1;
+        assert!(turns < 200, "traffic {}", w.tiles[far].traffic);
     }
-    walk(&mut w, &[far]);
-    assert!(w.tiles[far].trail, "walked {} turns in a row", TRAIL.after);
-    assert!(!w.tiles[home].trail, "held and never walked, home makes no trail");
+    assert!(w.tiles[far].traffic >= TRAIL.on);
+    assert!(!w.tiles[home].trail, "nobody walked home");
 
-    for _ in 0..TRAIL.fade - 1 {
+    // Unwalked, the trail goes once the traffic is under `off`, not before.
+    while w.tiles[far].traffic * TRAIL.keep >= TRAIL.off {
         walk(&mut w, &[]);
-        assert!(w.tiles[far].trail, "the trail holds until it has been unwalked for {}", TRAIL.fade);
+        assert!(w.tiles[far].trail, "traffic {} is not under {}", w.tiles[far].traffic, TRAIL.off);
     }
     walk(&mut w, &[]);
     assert!(!w.tiles[far].trail);
-    assert!(!w.tiles[home].trail);
+}
+
+#[test]
+fn a_used_scout_or_camp_line_keeps_its_trail_with_no_other_traffic() {
+    let mut w = flat();
+    let t = at(1, 0);
+    w.tiles[t].trail = true;
+    for _ in 0..50 {
+        for x in &mut w.tiles {
+            x.traffic *= TRAIL.keep;
+            x.used = false;
+        }
+        w.tiles[t].used = true;
+        tend(&mut w);
+    }
+    assert!(w.tiles[t].traffic < TRAIL.off);
+    assert!(w.tiles[t].trail, "used this turn, the trail stays");
+    walk(&mut w, &[]);
+    assert!(!w.tiles[t].trail, "unused, it goes");
+}
+
+/// A turn of `harvest` and `tend`.
+fn turn(w: &mut World) {
+    harvest(w);
+    tend(w);
+}
+
+fn route(to: usize, path: &[usize]) -> Route {
+    Route { to, path: path.to_vec(), cost: 0.0 }
+}
+
+#[test]
+fn a_clans_home_gains_traffic_every_turn_it_walks_and_wears_a_trail() {
+    let mut w = flat();
+    let (o, a) = (at(0, 0), at(1, 0));
+    let id = put(&mut w, &[o, a], 12.0);
+    harvest(&mut w);
+    assert_eq!((w.tiles[o].traffic, w.tiles[a].traffic), (12.0, 12.0), "home is on the walk");
+    harvest(&mut w);
+    assert_eq!(w.tiles[o].traffic, 12.0 * TRAIL.keep + 12.0);
+    let mut turns = 0;
+    while !w.tiles[o].trail {
+        turn(&mut w);
+        turns += 1;
+        assert!(turns < 200);
+    }
+    assert!(w.tiles[a].trail && w.tiles[o].trail, "12 people on one walk reach {}", TRAIL.on);
+    // A clan with nowhere to walk adds nothing.
+    let lone = put(&mut w, &[at(-3, 0)], 12.0);
+    harvest(&mut w);
+    assert_eq!(w.tiles[at(-3, 0)].traffic, 0.0);
+    let _ = (id, lone);
+}
+
+#[test]
+fn a_tile_one_small_clan_walks_to_alone_stays_below_on_and_two_clans_routes_wear_one() {
+    let mut w = flat();
+    let (o1, o2) = (at(0, 0), at(2, 0));
+    let (alone, shared) = (at(-2, 3), at(1, 0));
+    let small = put(&mut w, &[o1], 6.0);
+    let other = put(&mut w, &[o2], 6.0);
+    w.clans.get_mut(&small).unwrap().routes = vec![route(shared, &[alone, shared])];
+    w.clans.get_mut(&other).unwrap().routes = vec![route(shared, &[shared])];
+    for _ in 0..120 {
+        turn(&mut w);
+    }
+    assert!(w.tiles[alone].traffic < TRAIL.on && !w.tiles[alone].trail, "{}", w.tiles[alone].traffic);
+    assert!(w.tiles[shared].trail, "two clans of 6 reach {}: {}", TRAIL.on, w.tiles[shared].traffic);
+}
+
+#[test]
+fn desert_costs_two_to_enter() {
+    let mut w = flat();
+    let (a, d) = (at(0, 0), at(1, 0));
+    w.tiles[d].terrain = DESERT;
+    assert_eq!(engine::land::step_cost(&w, a, d), Some(2.0));
+    assert_eq!(TERRAIN[DESERT].move_cost, Some(2.0));
 }
 
 #[test]
@@ -132,11 +216,11 @@ fn holding_a_tile_long_makes_no_trail() {
     let mut w = flat();
     let tiles = [at(0, 0), at(1, 0), at(0, 1)];
     put(&mut w, &tiles, 3.0);
-    for _ in 0..3 * TRAIL.after {
+    for _ in 0..60 {
         walk(&mut w, &[]);
     }
     assert!(tiles.iter().all(|&t| !w.tiles[t].trail));
-    assert!(tiles.iter().all(|&t| w.tiles[t].claim_run >= 3 * TRAIL.after));
+    assert!(tiles.iter().all(|&t| w.tiles[t].claim_run >= 60));
 }
 
 #[test]
@@ -199,17 +283,16 @@ fn a_built_trail_survives_the_turn_it_is_built_then_decays_unwalked() {
     let t = at(0, 0);
     w.tiles[t].terrain = FOREST;
     w.tiles[t].trail_cost = Some(1.0);
-    // An unwalked tile's rest run is in the hundreds: finishing the trail must not leave it there.
-    w.tiles[t].rest_run = 200;
     assert!(build_trail(&mut w, t, TRAIL.work[0].1));
     walk(&mut w, &[]);
     assert!(w.tiles[t].trail, "built this turn, it survives the turn's tend");
-    for _ in 0..TRAIL.fade - 2 {
+    for _ in 0..200 {
         walk(&mut w, &[]);
-        assert!(w.tiles[t].trail, "the trail holds until it has been unwalked for {}", TRAIL.fade);
+        if !w.tiles[t].trail {
+            break;
+        }
     }
-    walk(&mut w, &[]);
-    assert!(!w.tiles[t].trail);
+    assert!(!w.tiles[t].trail, "unwalked, it decays by traffic like any other");
 }
 
 #[test]
@@ -222,10 +305,10 @@ fn a_built_pass_is_kept_by_walking_and_no_mountain_gets_a_worn_trail() {
         w.tiles[m].trail_cost = Some(MAP.mountain_cost as f64);
     }
     assert!(build_trail(&mut w, pass, TRAIL.work[2].1));
-    for _ in 0..3 * TRAIL.after {
+    for _ in 0..60 {
         walk(&mut w, &[pass, bare]);
     }
     assert!(w.tiles[pass].trail, "walked, a built pass stays");
     assert!(!w.tiles[bare].trail, "walked bare, a mountain never gets a trail");
-    assert!(w.tiles[bare].walk_run >= TRAIL.after);
+    assert!(w.tiles[bare].traffic >= TRAIL.on);
 }

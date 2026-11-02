@@ -9,7 +9,7 @@ actions. One engine, two front ends: a CLI and a wasm web page. The game's desig
 cargo run -p sansfiat -- map [--seed N] [--size small|medium|large]   # the map as ASCII
 cargo run -p sansfiat -- run --seed 3 [--size NAME] [--turns N] [--save game.json] [--why ID]   # to the pick unless --turns; --why prints a subject's reasons
 cargo run -p sansfiat -- sweep [seed ...] [--size small|medium|large|all] [--turns N]   # the pre-game, seeds in parallel
-cargo run -p sansfiat -- sweep --judge [--json]   # the retro maps played (army twice, --no-army once) and scored by the judge: a report, with no verdict
+cargo run -p sansfiat -- sweep --judge [--json] [--solo]   # the retro maps played (army twice, --no-army once, no claims once; --solo adds each civ claiming alone) and scored by the judge: a report, with no verdict
 cargo run -p sansfiat -- sweep --after 200 --maps retro [--no-army] [--no-gifts] [--no-zone] [--lever G]   # the retro maps past the pick, one line per civ and the totals; the --no-* flags are controls
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a game a line at a time: the file is a save, each call resumes it; stdin lines (orders, actions, end, why, view, map, note); g.lines.jsonl records them
 cargo run -p sansfiat -- judge g.json [--json]   # a played game judged turn by turn, beside the same map with every civ on the AI
@@ -26,25 +26,26 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | --- | --- |
 | `core/src/world.rs` | `World`, `phase`, `Action`, the `TURN` steps, `act`/`run`/`save`/`replay`, reasons (`World::note`), alerts (`flag_alerts`), `SAVE_VERSION`. |
 | `core/src/events.rs` | `Event` and `EventKind`, their wording (`text`), `Event::new` and its setters, and `World::emit`. |
-| `core/src/data.rs` | Every rule's numbers and `Config`; tune here first. |
+| `core/src/data.rs` | Every rule's numbers, `Config` (with `Claims`: which civs may claim); tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs. |
-| `core/src/land.rs` | Neighbours, move costs, `path`, `steps` (the tile distance), and the `regrow`, `wear` and `tend` steps. |
-| `core/src/actors.rs` | `Actor` and what every actor does once: `spoil`, `eat_by_share`, `eat_by_diet`, `stride` (walking a path on labour), `walk_cost`, `Walks`, `divide` and the add/drop rule `change`. |
+| `core/src/land.rs` | Neighbours, move costs, `path`, `steps` (the tile distance), and the `regrow`, `wear` and `tend` steps (`tend` wears a trail where a tile's `traffic` reaches `TRAIL.on` and takes it away under `TRAIL.off`). |
+| `core/src/actors.rs` | `Actor` and what every actor does once: `spoil`, `eat_by_share`, `eat_by_diet`, `stride` (walking a path on labour), `walk_cost`, `Walks`, `add_traffic` (a clan's people onto the tiles of its walks, home included), `divide` and the add/drop rule `change`. |
 | `core/src/clans.rs` | Clans on the actor: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
 | `core/src/market.rs` | `Basket` and its helpers (`total`, `take`, `add`, `sum`); `clear`: barter exchange ratios by tâtonnement. |
-| `core/src/markets.rs` | Festivals (markets in code): reach, the `go` step, trading, forming and fading, people moving. |
+| `core/src/markets.rs` | Festivals (markets in code): reach, the `go` step (`choose` keeps a festival `MARKET.keep_turns` turns and while it is worth over `−stay_margin`), trading, forming and fading, people moving. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
-| `core/src/civs.rs` | Civs, each an actor (its store is the civ's): `found`, the `levy`, `keep`, the `civs` step, territory and the pick's `cards`. |
-| `core/src/leaning.rs` | Unaligned clans leaning toward and joining a civ: `give` and the `lean` step. |
-| `core/src/units/mod.rs` | `Unit` and `UnitState` (its flat JSON), `Counters`, the queries (`camp`, `scout`, `pack_cap`, `leader`), raising and disbanding, `strip` and `supply`, and the `units` step. |
+| `core/src/claim.rs` | The land: a civ's claim (`check`, `connected_part`, `ai_claim`, `set`), its guard's division (`divide`: `Civ.guard`), `held` and `tile_civ` (the civ whose land a tile is), and the `claim` step, where a unit on another civ's paper takes it (`take`). |
+| `core/src/civs.rs` | Civs, each an actor (its store is the civ's): `found` (the claims, the camp, the scout, the guard), the `levy` (clans at its market that are its own or on its land), `keep` (with the guard's food), the `civs` step and the pick's `cards`. |
+| `core/src/leaning.rs` | Every clan's leanings: fading, leaning by land (`lean`), gifts (`give`), joining at `LEANING.join`, and leaving for a rival it is drawn to with its daughters (`leave`). |
 | `core/src/units/line.rs` | What a camp may walk, `path_between`, `route`, the line to the capital (`line`, `cut_off`, `cut_at`) and `turns`. |
 | `core/src/units/camp.rs` | `CampState`, the camp's turn (march, `hold`, forage, supply, eat) and its zone (`zone_ok`). |
+| `core/src/units/guard.rs` | The guard: `raise` (people from the civ's clans, into one guard at the capital), its turn (eats from the civ's store, hungry, loses people to the own clan) and founding's raise. |
 | `core/src/units/scout.rs` | `ScoutState`, the scout's route search (`route_plan`, trails, reveals) and `scout_turn`. |
 | `core/src/script.rs` | `Lead`, the scripted game (`digest --lead`, `Sim::lead_orders`): the engine's second player. |
-| `core/src/orders.rs` | `Order` (the wire form of a unit's order), `World::order` and `check_order`: every order's checks and its applying, the player's and the AI's. |
-| `core/src/units/ai.rs` | The AI's `post` and `ai`, and its zone (`ai_zone`). |
-| `core/src/stats.rs` | `summary`, `standing` (each civ's share of the people), the evidence reports, and `digest` and `state_digest` to compare builds. |
-| `core/src/judge.rs` | `Watch`: a game scored turn by turn from its pick (Standing, the leader and lead changes, the spread and swings, what changes hands), and its `Scores` in the five groups. Reads the world, changes nothing. |
+| `core/src/orders.rs` | `Order` (the wire form of a unit's order: `Raise` with its `kind`, `Claim`), `World::order` and `check_order`: every order's checks and its applying, the player's and the AI's. |
+| `core/src/units/ai.rs` | The AI's `post`, `ai` (its stand-in claim and guard, `land`) and its zone (`ai_zone`). |
+| `core/src/stats.rs` | `summary`, `standing_parts` and `standing` (each civ's share of the people in two parts: its clans and units, and the unaligned clans on its held land), the evidence reports, and `digest` and `state_digest` to compare builds. |
+| `core/src/judge.rs` | `Watch`: a game scored turn by turn from its pick (Standing in its two parts, the leader and lead changes, the spread and swings, what changes hands: clans left and joined, claimed tiles taken), and its `Scores` in the five groups plus `land` (trail shares and festivals at the pick and +200, festival changes and flips per 100 clan-turns, each civ's claim, held land and guard at +200 via `civ_lands`; `stats::trails` reads a world). Reads the world, changes nothing. |
 | `core/src/hex.rs` | Axial pointy-top hexes. |
 | `core/src/rng.rs` | Mulberry32, matching the JS prototypes bit for bit. |
 | `core/src/lib.rs` | The crate root: one `pub mod` line per module. |
@@ -54,9 +55,9 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `cli/src/digest.rs` | `digest`: a turn and its digest per line; `--lead` plays the scripted game, `--state` hashes the world without its log. |
 | `cli/src/sweep.rs` | `sweep`: the pre-game over seeds in parallel, its series lines, and the `Run` and `Point` they keep. |
 | `cli/src/retro.rs` | `sweep --after`: the retro maps past the pick, each civ's camp and clans, and the controls. `to_pick` and `kept_camp` are shared. |
-| `cli/src/judge.rs` | `sweep --judge`: the retro maps judged, the totals in six groups (standing, doubt, decisions, motion, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, the text and `--json` report. |
+| `cli/src/judge.rs` | `sweep --judge`: the retro maps judged (the army run twice, the `--no-army` and no-claims controls, and with `--solo` each civ's claim-alone run), the totals in groups (standing, doubt, decisions, motion, land, solo, armies, health), the text and `--json` report. `judge FILE`: a played game replayed under a `Watch` beside its control, its led civ's claim and land beside the control's, the text and `--json` report. |
 | `cli/src/play.rs` | `play`: a game file resumed per call (`World::replay`), each stdin line applied through `act`, the save and the lines file (`FILE.lines.jsonl`) written after each. |
-| `cli/src/view.rs` | `view::text`: the led civ's text view (standing, store, units, clans, reach, places, feed, legal orders), under 80 lines at the pick and +100. |
+| `cli/src/view.rs` | `view::text`: the led civ's text view (standing, store, units, the claim with its held land, paper and guard, clans, reach, places, feed, legal orders), under 80 lines at the pick and +100. |
 | `cli/src/replay.rs` | `replay`: a save's world, printed as `run` prints it. |
 | `cli/src/bench.rs` | `bench`: the time per turn for each seed. |
 | `cli/src/clear.rs` | `clear`: the barter clearing of a basket file (`basket_of`, `clear_file`). |
@@ -74,6 +75,7 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 | `www/play-lean.mjs` | A civ's gift: raised above the default, and the clan that leans to it. |
 | `www/play-read.mjs` | The reasons and alerts: a clan's and the camp's panels, with Hidden country on. |
 | `www/play-scout.mjs` | A scout's route: the scout selected, and its start and end picked by clicking. |
+| `www/play-claim.mjs` | A civ's claim: painted out from the capital, three guards raised, ten turns; the border (held and paper), the tints and a festival's walkers screenshotted. Exits non-zero if the border or the claim's counts are missing. |
 | `www/pkg/` | The wasm build (`build-web.sh`), not committed. |
 
 ## Adding a mechanic
@@ -83,6 +85,7 @@ node www/play-<area>.mjs [out-dir]           # leads a civ through one area and 
 3. Anything the player or an AI does to a unit is an `Order` (`orders.rs`, through `World::order`; the player's go through `Action::Order` and are logged). Anything else the player does is a variant of `Action`, checked in `validate` and applied in `act`. `World::run` takes the player's pick itself (watching), so tests and the CLI that run past the end keep working; a front end that calls `act(EndTurn)` itself must send `ChooseCiv` when `phase` is `choose` (as `cross-build.mjs` does).
 4. A module of its own under `core/src/`, tests under `core/tests/`.
 5. Shared actor behaviour (spoil, eat, walk) goes in `actors.rs`; a new actor is a new state on it, not new machinery.
+6. A unit kind is a `UnitKind` and a `UnitState` variant. A kind with no state of its own (the guard) takes no order but raising and disbanding, which `unit_among` refuses with the reason, and its turn is one `match` arm in `units::step`.
 
 ## Invariants
 

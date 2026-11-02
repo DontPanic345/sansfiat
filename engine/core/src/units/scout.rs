@@ -230,8 +230,10 @@ fn ordered(w: &World, civ: u32, plan: &Plan, from: usize, to: usize, costs: &BTr
 /// end of the path.
 fn march(w: &mut World, id: u32, path: &[usize], left: &mut f64, banked: &mut f64) -> bool {
     let (taken, rest) = stride(w, w.units[&id].home, path, *left, EPS);
+    let people = w.units[&id].people;
     for &t in &path[..taken] {
-        w.tiles[t].walked = true;
+        w.tiles[t].traffic += people;
+        w.tiles[t].used = true;
     }
     *left = rest;
     let u = w.units.get_mut(&id).unwrap();
@@ -421,8 +423,15 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
         left -= used;
     }
     let short = (need - total(&w.units[&id].store)).max(0.0);
-    let (used, _) = supply(w, id, left, short.min(room(&w.units[&id])));
+    let (used, food) = supply(w, id, left, short.min(room(&w.units[&id])));
     left -= used;
+    if food > 0.0 {
+        let people = w.units[&id].people;
+        for &t in line(w, id).iter().flat_map(|(p, _, _)| p) {
+            w.tiles[t].traffic += people;
+            w.tiles[t].used = true;
+        }
+    }
 
     // Searches on what labour is left.
     let start = left;

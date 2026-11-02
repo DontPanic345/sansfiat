@@ -8,14 +8,16 @@ use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
 use crate::actors::{walk_cost, Actor, Route};
+use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
-use crate::land::{cost_map, is_hearth, neighbours, passable, path, steps};
-use crate::map;
+use crate::land::{cost_map, is_hearth, passable, path, steps};
 use crate::market::Basket;
 use crate::markets::reach;
 use crate::units::{self, Counters};
 use crate::world::{Phase, World};
+
+pub use crate::claim::tile_civ;
 
 /// A civ. Its store is its actor's (`Deref` to `Actor`), so it spoils as every actor does; its
 /// JSON is one flat object (see `CivFlat`).
@@ -54,6 +56,10 @@ pub struct Civ {
     pub gifted: f64,
     /// The tiles the civ has revealed: their hidden trail costs are known to it.
     pub revealed: BTreeSet<usize>,
+    /// The land the civ claims, sorted, with its capital (`claim.rs`); a claim may be paper.
+    pub claim: Vec<usize>,
+    /// Each claimed tile's guard share, aligned with `claim`: what its guard and its camps' hold on it.
+    pub guard: Vec<f64>,
 }
 
 impl Deref for Civ {
@@ -100,6 +106,10 @@ struct CivFlat {
     gifted: f64,
     #[serde(default)]
     revealed: BTreeSet<usize>,
+    #[serde(default)]
+    claim: Vec<usize>,
+    #[serde(default)]
+    guard: Vec<f64>,
 }
 
 impl From<Civ> for CivFlat {
@@ -122,6 +132,8 @@ impl From<Civ> for CivFlat {
             joined: c.joined,
             gifted: c.gifted,
             revealed: c.revealed,
+            claim: c.claim,
+            guard: c.guard,
         }
     }
 }
@@ -146,6 +158,8 @@ impl From<CivFlat> for Civ {
             joined: f.joined,
             gifted: f.gifted,
             revealed: f.revealed,
+            claim: f.claim,
+            guard: f.guard,
         }
     }
 }
@@ -209,6 +223,8 @@ pub fn found(w: &mut World) {
             given: 0.0,
             joined: 0,
             gifted: 0.0,
+            claim: vec![capital],
+            guard: vec![0.0],
         };
         w.civs.insert(id, civ);
         w.emit(Event::new(EventKind::CivFounded, capital).civ(id).market(mid));
@@ -234,7 +250,9 @@ pub fn found(w: &mut World) {
         })
         .collect();
     for &(clan, civ) in &joins {
-        w.clans.get_mut(&clan).unwrap().civ = Some(civ);
+        let k = w.clans.get_mut(&clan).unwrap();
+        k.civ = Some(civ);
+        k.leaning = BTreeMap::from([(civ, LEANING.join)]);
         let name = w.civs[&civ].name.clone();
         w.note(clan, format!("joined {name} at founding: in reach of its capital"));
     }
@@ -258,7 +276,9 @@ pub fn found(w: &mut World) {
             .min_by_key(|c| (steps(w, c.home, capital), c.id))
             .map(|c| c.id);
         if let Some(clan) = nearest {
-            w.clans.get_mut(&clan).unwrap().civ = Some(id);
+            let k = w.clans.get_mut(&clan).unwrap();
+            k.civ = Some(id);
+            k.leaning = BTreeMap::from([(id, LEANING.join)]);
         }
     }
     // Each civ's own clan: its centre's clan, whose home is the capital; for a site the top-up
@@ -266,7 +286,9 @@ pub fn found(w: &mut World) {
     // the lower id), else its biggest. Nothing moves: the clan's festival stays where it was.
     for (id, own) in owns {
         if let Some(clan) = own {
-            w.clans.get_mut(&clan).unwrap().civ = Some(id);
+            let k = w.clans.get_mut(&clan).unwrap();
+            k.civ = Some(id);
+            k.leaning = BTreeMap::from([(id, LEANING.join)]);
             w.civs.get_mut(&id).unwrap().clan = clan;
             w.note(clan, "is its civ's own clan: its home is the capital".to_string());
             continue;
@@ -286,42 +308,29 @@ pub fn found(w: &mut World) {
     // as close to a capital switch to it.
     crate::markets::go(w);
     switch_to_capitals(w);
+    // Each civ claims the stand-in (or its capital alone), then raises its camp, its scout and last its
+    // guard on the claim, which takes what the clans have left; its guard is divided at once, so the
+    // pick's cards read land.
     let ids: Vec<u32> = w.civs.keys().copied().collect();
+    for &id in &ids {
+        let claim = if claim::may_claim(w, id) { claim::ai_claim(w, id) } else { vec![w.civs[&id].capital] };
+        w.civs.get_mut(&id).unwrap().claim = claim;
+    }
     for id in ids {
         if w.config.army {
             units::raise_at_founding(w, id);
         }
         units::raise_scout_at_founding(w, id);
+        if w.config.army && claim::may_claim(w, id) {
+            units::guard::raise_at_founding(w, id);
+        }
+        claim::divide(w, id);
     }
     w.phase = Phase::Choose;
 }
 
-/// The tiles within `CIV.territory` hex steps of the civ's capital, on the map, sorted: the
-/// capital's land.
-pub fn territory(w: &World, civ: u32) -> Vec<usize> {
-    let Some(c) = w.civs.get(&civ) else { return Vec::new() };
-    let mut out: Vec<usize> = w.tiles[c.capital]
-        .hex()
-        .within(CIV.territory)
-        .into_iter()
-        .filter_map(|h| map::index(w.config.radius, h))
-        .collect();
-    out.sort_unstable();
-    out
-}
-
-/// The civ whose capital is within `CIV.territory` hex steps of tile `i` (capitals are far enough
-/// apart that two never claim a tile); else the civ of the clan whose territory holds it; else none.
-pub fn tile_civ(w: &World, i: usize) -> Option<u32> {
-    w.civs
-        .values()
-        .find(|c| steps(w, c.capital, i) <= CIV.territory)
-        .map(|c| c.id)
-        .or_else(|| w.tiles[i].claim.and_then(|clan| w.clans.get(&clan)).and_then(|c| c.civ))
-}
-
 /// The civ tile `i` counts for in a camp's line: the civ whose camp holds it, else its land's
-/// (`tile_civ`). Clans' claims, forage and pillage, and the AI's post read land without holding.
+/// (`tile_civ`). Forage and pillage, and the AI's post, read land without holding.
 pub fn holder(w: &World, i: usize) -> Option<u32> {
     w.units.values().find(|u| u.held().contains(&i)).map(|u| u.civ).or_else(|| tile_civ(w, i))
 }
@@ -329,12 +338,6 @@ pub fn holder(w: &World, i: usize) -> Option<u32> {
 /// Every tile whose civ is `civ` (see `tile_civ`), sorted.
 pub fn land(w: &World, civ: u32) -> Vec<usize> {
     (0..w.tiles.len()).filter(|&i| tile_civ(w, i) == Some(civ)).collect()
-}
-
-/// The tiles the capital works: its own and its on-map neighbours.
-pub fn work_tiles(w: &World, civ: u32) -> Vec<usize> {
-    let Some(c) = w.civs.get(&civ) else { return Vec::new() };
-    std::iter::once(c.capital).chain(neighbours(w, c.capital)).collect()
 }
 
 /// Whether clan `id` is the own clan of its civ.
@@ -363,19 +366,20 @@ fn repair(w: &mut World) {
 }
 
 /// The food `civ` keeps in its store out of posting and gifts: what the player set, else what its
-/// camp needs: a full pack for its warriors (a new camp's with none), and 0 with `Config.army` off.
+/// camp needs: a full pack for its warriors (a new camp's with none), and 0 with `Config.army` off;
+/// and `GUARD.keep_turns` turns of its guard's food.
 pub fn keep(w: &World, civ: u32) -> f64 {
     let Some(c) = w.civs.get(&civ) else { return 0.0 };
-    if let Some(k) = c.keep {
-        return k;
-    }
-    if !w.config.army {
-        return 0.0;
-    }
-    units::pack_cap(units::camp(w, civ).map_or(f64::from(UNIT.start), |u| u.people))
+    let guard = GUARD.keep_turns * UNIT.food * claim::guard_people(w, civ);
+    let base = match c.keep {
+        Some(k) => k,
+        None if !w.config.army => 0.0,
+        None => units::pack_cap(units::camp(w, civ).map_or(f64::from(UNIT.start), |u| u.people)),
+    };
+    base + guard
 }
 
-/// The levy at market `mid`: each clan of the civ whose capital market it is that came there pays
+/// The levy at market `mid`: each clan there that is the civ's, or whose home is on the civ's land, pays
 /// `CIV.levy` of what it brought (its basket) into the civ's store, in id order until the store is
 /// at `CIV.store_cap`; its harvest drops by the same share, so that growth, which `eat` reckons on
 /// the harvest, sees less. (A share of only the harvest beyond need brings next to nothing: clans
@@ -386,8 +390,12 @@ pub fn levy(w: &mut World, mid: u32) {
         return;
     }
     let Some(civ) = w.civs.values().find(|c| c.market == mid).map(|c| c.id) else { return };
-    let ids: Vec<u32> =
-        w.clans.values().filter(|c| c.civ == Some(civ) && c.market == Some(mid)).map(|c| c.id).collect();
+    let ids: Vec<u32> = w
+        .clans
+        .values()
+        .filter(|c| c.market == Some(mid) && (c.civ == Some(civ) || tile_civ(w, c.home) == Some(civ)))
+        .map(|c| c.id)
+        .collect();
     let mut room = (CIV.store_cap - w.civs[&civ].store.iter().sum::<f64>()).max(0.0);
     let mut paid_by = Vec::new();
     for id in ids {

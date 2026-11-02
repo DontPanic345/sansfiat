@@ -233,7 +233,7 @@ fn a_save_with_merges_and_moves_replays_to_the_same_world() {
     let mut merged = 0;
     let mut moved = 0.0;
     for seed in 1..=3 {
-        let mut w = World::new(Config { seed, radius: 12, army: true, gifts: true, zone: true });
+        let mut w = World::new(Config { seed, radius: 12, army: true, gifts: true, zone: true, ..Config::default() });
         w.run(300);
         merged += w.events.iter().filter(|e| e.kind == EventKind::ClanMerged).count();
         moved += w.moved;
@@ -244,4 +244,43 @@ fn a_save_with_merges_and_moves_replays_to_the_same_world() {
         r.run(0);
     }
     eprintln!("merged {merged}, moved {moved}");
+}
+
+#[test]
+fn a_clan_that_just_started_at_a_festival_keeps_it_then_stops_only_past_the_margin() {
+    use engine::markets::choose;
+    let (a, b) = (1, 2);
+    // It is at `a`, worth nothing now, while `b` is worth far more.
+    let worths = |at_a: f64| [(a, at_a, 2.0), (b, 20.0, 2.0)];
+    for turns in 1..MARKET.keep_turns {
+        assert_eq!(choose(&worths(-9.0), Some(a), turns), Some(a), "{turns} turns in, it stays whatever the worths");
+    }
+    assert_eq!(choose(&worths(-9.0), Some(a), MARKET.keep_turns), Some(b), "after the turns it is free to leave");
+    // Past the turns it keeps a festival worth a little under 0 (with nothing better), and stops at one
+    // worth less than the margin.
+    let just_under = [(a, -MARKET.stay_margin / 2.0, 2.0)];
+    assert_eq!(choose(&just_under, Some(a), MARKET.keep_turns), Some(a));
+    let past = [(a, -MARKET.stay_margin - 0.1, 2.0)];
+    assert_eq!(choose(&past, Some(a), MARKET.keep_turns), None);
+    assert_eq!(choose(&past, Some(a), 1), Some(a), "held by the turns, not the worth");
+    // A festival out of reach is not among the worths: the clan is free of it.
+    assert_eq!(choose(&[(b, 5.0, 2.0)], Some(a), 1), Some(b));
+}
+
+#[test]
+fn go_counts_the_turns_a_clan_has_gone_to_its_festival_and_resets_them() {
+    let mut w = flat();
+    let o = at(0, 0);
+    let id = put(&mut w, &[o], 5.0);
+    let mid = open(&mut w, out(0, 1));
+    w.markets.get_mut(&mid).unwrap().goods = vec![GRAIN];
+    w.clans.get_mut(&id).unwrap().harvest[GRAIN] = 10.0;
+    for turn in 1..=3 {
+        engine::markets::go(&mut w);
+        let c = &w.clans[&id];
+        assert_eq!((c.market, c.market_turns), (Some(mid), turn));
+    }
+    w.markets.remove(&mid);
+    engine::markets::go(&mut w);
+    assert_eq!((w.clans[&id].market, w.clans[&id].market_turns), (None, 0));
 }

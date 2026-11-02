@@ -1,10 +1,10 @@
 mod common;
 
 use common::*;
-use engine::actors::{walk_cost, Walks};
+use engine::actors::walk_cost;
 use engine::clans::harvest;
 use engine::data::*;
-use engine::land::{is_hearth, step_cost, tend};
+use engine::land::{is_hearth, tend};
 use engine::markets::{choose, desire, gain, go, worths};
 use engine::World;
 
@@ -19,45 +19,6 @@ fn free(w: &mut World, id: u32) {
     for &t in &c.territory {
         w.tiles[t].claim = None;
     }
-}
-
-#[test]
-fn a_walked_tile_wears_a_trail_and_an_unwalked_one_wears_away() {
-    let mut w = flat();
-    let (o, f) = (at(0, 0), out(0, 1));
-    w.tiles[f].terrain = FOREST;
-    w.tiles[f].trail_cost = Some(1.0);
-    let id = put(&mut w, &[o, f], 3.0);
-    let cost = |w: &World, id: u32| {
-        let c = &w.clans[&id];
-        let walks = Walks::new(w, c.home, &c.territory);
-        walks.cost[c.territory.iter().position(|&t| t == f).unwrap()]
-    };
-    assert_eq!(cost(&w, id), 2.0);
-    // The clan walks its territory each turn: the harvest marks the walk, `hold` counts it.
-    for _ in 1..TRAIL.after {
-        harvest(&mut w);
-        tend(&mut w);
-    }
-    assert!(!w.tiles[f].trail);
-    harvest(&mut w);
-    tend(&mut w);
-    assert!(w.tiles[f].trail, "walked {} turns", w.tiles[f].walk_run);
-    assert!(!w.tiles[o].trail, "home is held but never walked");
-    assert_eq!(step_cost(&w, o, f), Some(1.0));
-    assert_eq!(cost(&w, id), 1.0);
-
-    // Freed, the clan no longer walks: each turn's harvest clears the walks, and nothing walks.
-    free(&mut w, id);
-    for _ in 1..TRAIL.fade {
-        harvest(&mut w);
-        tend(&mut w);
-    }
-    assert!(w.tiles[f].trail);
-    harvest(&mut w);
-    tend(&mut w);
-    assert!(!w.tiles[f].trail, "unwalked {} turns", w.tiles[f].rest_run);
-    assert_eq!(step_cost(&w, o, f), Some(2.0));
 }
 
 #[test]
@@ -175,7 +136,7 @@ fn a_clan_goes_where_the_trade_beats_the_walk_and_its_route_is_its_trip() {
     harvest(&mut w);
     let got: f64 = w.clans[&id].harvest.iter().sum();
     assert!((got - 3.0 / CLAN.harvest_labour).abs() < EPS, "harvested {got}");
-    assert!(w.tiles[out(0, 1)].walked, "the route is walked");
+    assert!(w.tiles[out(0, 1)].traffic > 0.0, "the route is walked");
 
     // Nothing to gain (only grain ever traded there), no surplus, and the walk beats the desire.
     let k = (MARKET.desire / 2.0).floor() as i32 + 1;
@@ -211,8 +172,8 @@ fn a_clan_keeps_its_festival_unless_another_beats_it_by_the_margin() {
     let mb = w.markets.get_mut(&b).unwrap();
     (mb.goods, mb.prices) = (m.goods, m.prices);
     w.clans.get_mut(&id).unwrap().market = Some(b);
-    let pick = |w: &World| choose(&worths(w, &w.clans[&id]), w.clans[&id].market);
-    assert_eq!(choose(&worths(&w, &w.clans[&id]), None), Some(a), "ties to the lower id");
+    let pick = |w: &World| choose(&worths(w, &w.clans[&id]), w.clans[&id].market, MARKET.keep_turns);
+    assert_eq!(choose(&worths(&w, &w.clans[&id]), None, 0), Some(a), "ties to the lower id");
     assert_eq!(pick(&w), Some(b), "equal: it keeps its own");
     // One clan's company is within the margin; enough of them is not.
     let enough = (MARKET.switch_margin / MARKET.company).floor() as usize + 1;
@@ -221,7 +182,9 @@ fn a_clan_keeps_its_festival_unless_another_beats_it_by_the_margin() {
     assert_eq!(pick(&w), Some(b));
     w.markets.get_mut(&a).unwrap().traders = enough;
     assert_eq!(pick(&w), Some(a));
-    // A current festival worth nothing is left for the best.
-    assert_eq!(choose(&[(a, 0.5, 2.0), (b, -1.0, 2.0)], Some(b)), Some(a));
-    assert_eq!(choose(&[(a, -0.5, 2.0), (b, -1.0, 2.0)], Some(b)), None);
+    // A current festival worth a little under nothing is kept; worth less than the margin it is left.
+    let keep = MARKET.keep_turns;
+    assert_eq!(choose(&[(a, 0.5, 2.0), (b, -1.0, 2.0)], Some(b), keep), Some(a));
+    assert_eq!(choose(&[(a, -0.5, 2.0), (b, -1.0, 2.0)], Some(b), keep), Some(b));
+    assert_eq!(choose(&[(a, -0.5, 2.0), (b, -MARKET.stay_margin - 0.1, 2.0)], Some(b), keep), None);
 }
