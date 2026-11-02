@@ -102,7 +102,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** Opens the page with `query` (like "?size=small&seed=2") in a headless Chrome of `size` (a SIZES name,
  *  laptop 1280×800 by default, or `width` and `height`). `path` and `ready` open another page of www/ and
  *  say when it is up (for scripts that draw on a blank page). */
-export const open = async (query = '', { size = 'laptop', path = 'index.html', ready = '!!window.game && !!document.body.dataset.phase', ...dims } = {}) => {
+export const open = async (query = '', { size = 'laptop', path = 'index.html', ready = '!!window.game && !!document.body.dataset.screen', ...dims } = {}) => {
   const { width, height } = { ...SIZES[size], ...dims };
   const server = await serve();
   const profile = mkdtempSync(join(tmpdir(), 'play-'));
@@ -154,17 +154,24 @@ export const open = async (query = '', { size = 'laptop', path = 'index.html', r
   };
   await until(ready);
 
-  // A tile's centre on screen, fitting the whole map first when it's out of view.
+  // A tile's centre on screen, on the map's canvas (not under the panel or the feed): the whole map is
+  // fitted when the tile is out of view, and the map centred on it when fitting still leaves it out.
   const tile = async (i) => {
     // A map still easing to a centre (after Lead, say) moves the tile under the pointer: wait for it.
     await until('!game.map.anim', 10_000);
-    const at = () => evaluate(`(() => { const p = game.map.screenOf(${i}); return [p.x, p.y]; })()`);
-    let [x, y] = await at();
-    if (x < 0 || y < 0 || x >= width || y >= height) {
+    const at = () => evaluate(`(() => { const r = document.getElementById('map').getBoundingClientRect(); const p = game.map.screenOf(${i});
+      return { x: p.x, y: p.y, inside: p.x >= r.left && p.x < r.right && p.y >= r.top && p.y < r.bottom }; })()`);
+    let p = await at();
+    if (!p.inside) {
       await evaluate('game.map.fit()');
-      [x, y] = await at();
+      p = await at();
     }
-    return { x, y };
+    if (!p.inside) {
+      await evaluate(`game.map.centreOn(${i}, { minK: game.map.k, smooth: false })`);
+      p = await at();
+    }
+    if (!p.inside) throw new Error(`tile ${i} is not on the map's canvas`);
+    return { x: p.x, y: p.y };
   };
   const mouse = async (i, button) => {
     const { x, y } = await tile(i);
@@ -202,6 +209,8 @@ export const open = async (query = '', { size = 'laptop', path = 'index.html', r
       await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code });
       await sleep(50);
     },
+    /** Downloads (a Save to file's link) land in directory `dir`. */
+    download: (dir) => send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: dir }),
     /** Sets the files of the `<input type=file>` `selector` to `path` (or a list of paths). */
     file: async (selector, path) => {
       const { root } = await send('DOM.getDocument', { depth: 0 });

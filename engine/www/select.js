@@ -1,5 +1,5 @@
 // What the selection panel shows: one function from a selection to {title, html, actions}. Later
-// pieces add actions by adding entries to the lists below; main.js greys a button when
+// pieces add actions by adding entries to the lists below; play.js greys a button when
 // `Sim.check(action)` refuses it and runs it when clicked. An entry with `arm` (and no action) arms a map click.
 //
 // A selection is {kind: 'unit', id}, {kind: 'capital', civ} or {kind: 'tile', tile, clan?, market?}.
@@ -299,7 +299,7 @@ function capitalPanel(ctx, id) {
   html += '</table>';
   html += `<p class="dim">kept ${f2(c.keep)} · posted ${f2(c.posted)} · given ${f2(c.given)} last turn</p>`;
   html += `<p>${c.joined} clan${c.joined === 1 ? '' : 's'} joined since founding</p>`;
-  // The player's controls sit here, under the store, not below the clans: main.js puts the actions in the slot.
+  // The player's controls sit here, under the store, not below the clans: play.js puts the actions in the slot.
   const actions = [];
   if (mine) {
     html += `<p>Gift ${f2(c.gift)} food a turn</p>`;

@@ -3,7 +3,9 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { open } from '../play.mjs';
+import { KINDS } from '../feed.js';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -39,8 +41,24 @@ try {
   const stats = await page.eval('({ ...game.map.stats })');
   if (!stats.atlas || !stats.cells) fail(`the map did not draw its terrain from the atlas: ${JSON.stringify(stats)}`);
   await page.shot(join(out, 'art-pick.png'));
+
+  // The sound bus: every feed kind has a file in sounds.json, and after ten turns the bus has heard kinds.
+  const manifest = JSON.parse(readFileSync(new URL('../assets/sounds.json', import.meta.url), 'utf8'));
+  for (const kind of Object.keys(KINDS)) if (!(kind in manifest)) fail(`sounds.json has no file for ${kind}`);
+  const pageFiles = await page.eval('Object.keys(game.sound.files)');
+  for (const kind of Object.keys(KINDS)) if (!pageFiles.includes(kind)) fail(`the page's sound bus has no file for ${kind}`);
+  await page.button('Lead ');
+  await page.until("document.body.dataset.phase === 'main'");
+  for (let i = 0; i < 10; i++) await page.button('End turn');
+  const heard = await page.eval('({ ...game.sound.heard })');
+  const kinds = Object.keys(heard);
+  if (kinds.length === 0) fail('the sound bus heard no kinds in ten turns');
+  for (const kind of kinds) if (!(kind in KINDS)) fail(`the sound bus heard ${kind}, which is not a feed kind`);
+  if (Object.values(heard).some((n) => !(n > 0))) fail('the sound bus counts a kind with no events');
+  if ((await page.eval('game.sound.muted')) !== true) fail('the sound bus is not muted before the first click');
+
   for (const e of page.errors()) fail(`page error: ${e}`);
-  console.log(JSON.stringify({ cells: sheet.cells, sheet: `${sheet.width}x${sheet.height}`, terrainCells: stats.cells }));
+  console.log(JSON.stringify({ cells: sheet.cells, sheet: `${sheet.width}x${sheet.height}`, terrainCells: stats.cells, kinds: kinds.length }));
 } finally {
   await page.close();
 }

@@ -63,6 +63,31 @@ try {
   await page.key('h');
   if ((await country()) !== was) fail('H twice did not restore hidden country');
 
+  // The View and Debug menus: each item starts as its layer does, and toggling it toggles the layer.
+  const items = [
+    ['v-territory', 'territories', true],
+    ['v-routes', 'festival-routes', false],
+    ['v-country', 'country', false],
+    ['v-fertility', 'fertility', false],
+    ['v-hidden', 'hidden-costs', false],
+    ['v-wear', 'worn', false],
+  ];
+  for (const [id, layer, on] of items) {
+    const box = await page.eval(`document.getElementById('${id}').checked`);
+    if (box !== on || (await page.eval(`game.map.on['${layer}']`)) !== on) fail(`${id} starts ${box}, not ${on}`);
+    await page.eval(`document.getElementById('${id}').click()`);
+    if ((await page.eval(`game.map.on['${layer}']`)) === on) fail(`${id} did not toggle ${layer}`);
+    await page.eval(`document.getElementById('${id}').click()`);
+    if ((await page.eval(`game.map.on['${layer}']`)) !== on) fail(`${id} twice did not restore ${layer}`);
+  }
+  // Legend: the View menu's item opens and closes the legend.
+  const legend = () => page.eval("document.getElementById('legend').open");
+  const wasOpen = await legend();
+  await page.eval("document.getElementById('v-legend').click()");
+  await page.until(`document.getElementById('legend').open === ${!wasOpen}`, 2000).catch(() => fail('the Legend item did not open or close the legend'));
+  await page.eval("document.getElementById('v-legend').click()");
+  await page.until(`document.getElementById('legend').open === ${wasOpen}`, 2000).catch(() => fail('the Legend item twice did not restore the legend'));
+
   // A hover names the terrain.
   await page.eval('game.map.fit()');
   const tile = await page.eval(`(() => { const l = game.layout(), m = game.map; return l.terrain.findIndex((t, i) => m.land[i] && l.q[i] > -3 && l.q[i] < 3 && l.r[i] > -3 && l.r[i] < 3); })()`);
