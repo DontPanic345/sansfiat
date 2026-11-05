@@ -13,10 +13,7 @@ Most strategy games run on a gold coin in the corner of the screen. Sans Fiat ta
 Goods are physical and worth only what people will trade for them, and every unit and action
 costs real food and real people's time, taken from somewhere on the map.
 
-The world runs without you. Clans forage, eat, grow, move and trade on their own. You
-organise the biggest clan at the market, and you get a few touch points into that world: an
-army, your land, and the supply lines that feed both. How to get anything done without a
-treasury is the problem you spend the game solving.
+The game is just a prototype at the moment, the goal is to explore some ideas like an economy, trade routes and supply lines. With hopefully a different set of abstractions than a typical game in the genre.
 
 It's a Rust engine compiled to WebAssembly, with a CLI that plays, sweeps and judges games
 headless. Every run is deterministic: a build that shouldn't change the game must give the
@@ -24,11 +21,11 @@ same digest it gave before.
 
 ## Relay
 
-I have a few hours a week. Relay spends them on taste and decisions, and spends the rest of
-my Claude subscription on everything else.
+I have a few hours a week. I designed this system to squeeze the most out of every token and hour spent.
 
-A piece of the game starts as a proposal I approve. It becomes a GitHub issue, and from
-there Relay runs on its own in GitHub Actions:
+A piece of the game starts as a proposal that Fable and I write in a planning session. Once
+I approve it, it becomes a GitHub issue, and from there Relay runs on its own in GitHub
+Actions:
 
 ```
 proposal ─▶ issue ─▶ spec ─▶ spec-review ─▶ build-1 … build-N ─▶ review ─▶ merge
@@ -42,8 +39,8 @@ decisions, which every later step reads.
   builds, and writes a brief for each. Spec-review reads the code and runs the simulation
   to check the plan before anything is built.
 - **Prompts are pre-built.** The crew ([`relay/relay.mjs`](relay/relay.mjs)) writes each
-  session's whole prompt and runs it on the model and effort the plan chose, from Fable
-  down to Haiku.
+  session's whole prompt and runs it on the model and effort the plan chose: Opus for
+  the hard thinking, Sonnet or Haiku where the brief leaves little to decide.
 - **GitHub is the state.** Pieces are issues, steps are sub-issues, and each step's
   attempts, cost, minutes and usage live in a hidden block in its body.
 - **It paces itself to the subscription.** A step starts only if the 5-hour usage window
