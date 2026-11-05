@@ -35,40 +35,22 @@ proposal ─▶ issue ─▶ spec ─▶ spec-review ─▶ build-1 … build-N 
    me                ╰────────────── cold Claude Code sessions ──────────╯    me / crew
 ```
 
-Each step is a fresh `claude -p` session with no memory of the last. The crew
-([`relay/relay.mjs`](relay/relay.mjs)) picks the next step, writes the session's whole
-prompt, chooses its model and effort, and records how it went. The session hands on what
-it did as a summary and its decisions, which every later step reads. The baton is the
-branch, the spec, and those notes.
+Each step is a `claude -p` session with a fresh context. It hands on a summary and its
+decisions, which every later step reads.
 
-- **The designer plans its own work.** The spec step settles open rules, splits the piece
-  into builds, and picks a model, effort and expected cost for each. Spec-review then reads
-  the code and runs the simulation to check the plan before anything is built.
-- **Every piece answers a question in numbers.** The engine judges itself: a headless sweep
-  plays the same maps with and without the change and scores what moved, such as how much
-  of the world each civ holds, whether the lead changes hands, and whether anyone starves.
-- **The review merges on its own verdict.** It reviews the whole piece against the design,
-  fixes what's small, waits for CI, and writes a PR description I can judge from a phone:
-  the steps, the answer in the scores, screenshots and a verdict. Every PR deploys a
-  playable preview.
-- **The design keeps up with the code.** Each review appends what the piece decided to a
-  ledger in the design file. I promote or strike each line when I next plan.
+- **The designer plans the work.** The spec step settles open rules, splits the piece into
+  builds, and writes a brief for each. Spec-review reads the code and runs the simulation
+  to check the plan before anything is built.
+- **Prompts are pre-built.** The crew ([`relay/relay.mjs`](relay/relay.mjs)) writes each
+  session's whole prompt and runs it on the model and effort the plan chose, from Fable
+  down to Haiku.
 - **GitHub is the state.** Pieces are issues, steps are sub-issues, and each step's
-  attempts, cost, minutes and usage live in a hidden block in its body. A project board
-  shows where everything stands.
+  attempts, cost, minutes and usage live in a hidden block in its body.
 - **It paces itself to the subscription.** A step starts only if the 5-hour usage window
   will stay under 80% after it. If not, Relay sleeps until the window resets and carries on.
-- **Sessions can say no.** A step ends `done`, `pending` with a note for the next attempt,
-  or `blocked` with a question for me. Two failed attempts block it. My reply on the issue
-  unblocks it.
-- **Driven from the issue.** `/relay run`, `retry`, `skip`, `pause` and `model` let me steer
-  a piece from a comment.
-- **Sessions never see a long-lived secret.** The crew mints short-lived GitHub App tokens
-  that git and `gh` read from a file, and redacts transcripts before saving them.
 - **Every milestone ends in a retro.** Planning sessions read the milestone back from
   several angles (cost, briefs, prompts, the game) and the next proposal starts from it.
-  M2 ran 35 steps across six pieces, with no crash, timeout or compaction, at about $8 a
-  piece at list price.
+  M2 ran 35 steps across six pieces at about $8 a piece at list price.
 
 [`relay/README.md`](relay/README.md) has the detail, and
 [`docs/process.md`](docs/process.md) the loop around it.
