@@ -43,10 +43,11 @@ decisions, which every later step reads.
   the hard thinking, Sonnet or Haiku where the brief leaves little to decide.
 - **GitHub is the state.** Pieces are issues, steps are sub-issues, and each step's
   attempts, cost, minutes and usage live in a hidden block in its body.
-- **It paces itself to the subscription.** A step starts only if the 5-hour usage window
-  will stay under 80% after it. If not, Relay sleeps until the window resets and carries on.
-- **Every milestone ends in a retro.** Planning sessions read the milestone back from
-  several angles (cost, briefs, prompts, the game) and the next proposal starts from it.
+- **It paces itself to the subscription.** A step starts only while the 5-hour usage window
+  is under 75%. If not, Relay sleeps until the window resets and carries on.
+- **Every milestone ends in a retro.** Relay reads the milestone back from five angles (the
+  ladder, the architecture, Relay itself, the game and its players), waits for the owner's
+  notes, and opens the next proposal as a PR.
   M2 ran 35 steps across six pieces at about $8 a piece at list price.
 
 [`relay/README.md`](relay/README.md) has the detail, and

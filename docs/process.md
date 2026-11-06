@@ -103,8 +103,7 @@ on the retro maps against a control, and each piece adds its check.
 ## The plan
 
 Relay runs on the owner's Pro plan, beside the owner's own sessions. Its pacing is in
-`relay/README.md`: a step starts only if the 5-hour window is expected to stay under 80%
-after it, and a stop restarts when the window resets. The week is the real limit: an
+`relay/README.md`: a step starts only while the 5-hour window is under 75%, and a stop restarts when the window resets. The week is the real limit: an
 M2-sized piece took about 4 weekly points, and a retro or a proposal session takes 10–15.
 Plan on half the week for Relay and half for the owner: about six M2-sized pieces a week, or
 three M3-sized.

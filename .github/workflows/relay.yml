@@ -5,13 +5,13 @@ name: relay
 #
 # Start a run: Actions → relay → Run workflow, or comment `/relay run` on a piece.
 # Stop now: cancel the run; the step stays open and the next run starts it again.
-# Runs every six hours on the schedule below; comment it out to turn it off. A run that stops
-# on the 5-hour window starts a `wait` run, which sleeps until the window resets and then
-# starts a crew run.
+# Runs once a day on the schedule below, and whenever a piece closes; comment it out to turn
+# it off. A run that stops on the 5-hour window starts a `wait` run, which sleeps until the
+# window resets and then starts a crew run.
 
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 18 * * *"
   workflow_dispatch:
     inputs:
       command:
@@ -31,6 +31,9 @@ jobs:
   # Outside the crew's concurrency group, so a reply or `/relay run` isn't queued behind it.
   wait:
     if: inputs.command == 'wait'
+    concurrency:
+      group: relay-wait
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 340
     steps:

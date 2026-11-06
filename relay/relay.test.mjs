@@ -29,8 +29,24 @@ import {
     stepComment,
     stepsTable,
     usagePoints,
-    expectedPoints,
     waitingOn,
+    playChoice,
+    stepRank,
+    stepKind,
+    waitOver,
+    RETRO_STEPS,
+    RETRO_WAIT_MS,
+    BOT,
+    sortFindings,
+    findingText,
+    withTable,
+    isBuilt,
+    parseProposal,
+    withNumbers,
+    fixesWaitsFor,
+    retroBody,
+    milestoneTag,
+    promptPath,
     withStatus,
     writeMeta,
 } from "./relay.mjs";
@@ -38,11 +54,10 @@ import {
 const resets = new Date("2026-10-17T09:00:00Z");
 const day = (n) => new Date(resets.getTime() - 7 * 86400_000 + (n - 1) * 86400_000 + 3600_000);
 
-test("pace starts a step only if its expected points keep the 5-hour window under 80%", () => {
-    assert.equal(pace({ session: 54, weekly: 0, weeklyResetsAt: resets }, day(1), 25).ok, true);
-    assert.equal(pace({ session: 55, weekly: 0, weeklyResetsAt: resets }, day(1), 25).ok, false);
-    assert.equal(pace({ session: 70, weekly: 0, weeklyResetsAt: resets }, day(1), expectedPoints({ model: "haiku", effort: "medium" })).ok, true);
-    assert.equal(pace({ session: 70, weekly: 0, weeklyResetsAt: resets }, day(1), expectedPoints({ model: "opus", effort: "low" })).ok, false);
+test("pace starts a step only while the 5-hour window is under 75%", () => {
+    assert.equal(pace({ session: 74.6, weekly: 0, weeklyResetsAt: resets }, day(1)).ok, true);
+    assert.equal(pace({ session: 75, weekly: 0, weeklyResetsAt: resets }, day(1)).ok, false);
+    assert.equal(pace({ session: 33.333, weekly: 4.0001, weeklyResetsAt: resets }, day(1)).reason, "5-hour 33%, weekly 4% < 13.6% (day 1)");
 });
 
 test("pace spreads the weekly budget across the cycle", () => {
@@ -54,7 +69,7 @@ test("pace spreads the weekly budget across the cycle", () => {
 
 test("a stop says when it lifts", () => {
     const at = new Date("2026-10-11T02:20:00Z");
-    const five = pace({ session: 60, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: at }, day(1), 25);
+    const five = pace({ session: 80, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: at }, day(1));
     assert.equal(waitingOn(five), "5-hour usage, until 15:20");
     assert.match(five.reason, /resets 2026-10-11T02:20:00\.000Z/);
     // 14% on day 1 lifts on day 2, when the ramp reaches 27.1%.
@@ -139,6 +154,97 @@ test("pieceAction starts, plans after the spec and after spec-review, then runs 
     assert.equal(pieceAction(blocked), null);
     const finished = piece(1, [], [step("spec", "closed"), step("spec-review", "closed"), step("build-1", "closed"), step("review", "closed")]);
     assert.equal(pieceAction(finished), null);
+});
+
+test("the Play line names the play step's model, its effort and its seeds", () => {
+    assert.deepEqual(playChoice("**Play:** sonnet"), { model: "sonnet", effort: "medium", seeds: 1, why: "sonnet" });
+    assert.equal(playChoice("**Play:** sonnet, three seeds").seeds, 3);
+    assert.equal(playChoice("**Play:** opus high, 2 seeds").effort, "high");
+    assert.equal(playChoice("**Play:** none"), null);
+    assert.equal(playChoice("**Goal:** x"), null);
+});
+
+test("a piece's play step runs after its builds and before its review; a retro's steps in order", () => {
+    const ids = ["review", "play", "build-2", "spec", "build-1", "spec-review"];
+    assert.deepEqual([...ids].sort((a, b) => stepRank(a) - stepRank(b)), ["spec", "spec-review", "build-1", "build-2", "play", "review"]);
+    const retro = RETRO_STEPS.map((s) => s.id);
+    assert.deepEqual([...retro].reverse().sort((a, b) => stepRank(a) - stepRank(b)), retro);
+    assert.deepEqual(retro, ["check", "ladder", "architecture", "relay", "wait", "game", "retro", "proposal"]);
+    assert.deepEqual(["play", "wait", "ladder", "build-3"].map(stepKind), ["play", "wait", "retro", "build"]);
+    assert.equal(promptPath("players/player"), "relay/players/player.md");
+    assert.equal(promptPath("play"), "relay/prompts/play.md");
+});
+
+test("a retro waits for the owner's notes, `go`, or 72 hours after the step before", () => {
+    const closed = new Date("2026-11-01T00:00:00Z");
+    const steps = [step("relay", "closed", {}), step("wait")];
+    steps[0].closedAt = closed.toISOString();
+    const at = (ms) => new Date(closed.getTime() + ms);
+    assert.equal(waitOver(steps, steps[1], at(RETRO_WAIT_MS - 1)), false);
+    assert.equal(waitOver(steps, steps[1], at(RETRO_WAIT_MS)), true);
+    assert.equal(waitOver(steps, step("wait", "open", { notes: "the scout starves" }), at(0)), true);
+    assert.equal(waitOver(steps, step("wait", "open", { go: true }), at(0)), true);
+    const retro = { ...piece(5, ["kind:retro"]), steps };
+    assert.equal(pieceAction(retro, at(0)), null);
+    assert.deepEqual(pieceAction(retro, at(RETRO_WAIT_MS)).action, "waited");
+});
+
+test("a retro or a fixes piece the crew opened can run; a retro needs no Spec line", () => {
+    const retro = piece(5, ["kind:retro"], [], { author: BOT, body: "**Goal:** M4 read back." });
+    assert.equal(holdReason(retro), null);
+    assert.deepEqual(pieceAction(retro), { action: "start" });
+    const m4 = { number: 7, title: "M4" };
+    const fixes = piece(8, ["relay:fixes"], [], { author: BOT, milestone: m4 });
+    const others = [piece(3, [], [], { milestone: m4 }), piece(4, ["relay:paused"], [], { milestone: m4 }), piece(6, [], [], { milestone: { number: 2 } }), fixes];
+    assert.deepEqual(fixesWaitsFor(others, fixes), [3]);
+    assert.match(holdReason({ ...fixes, before: [3] }), /other pieces \(#3\)/);
+    assert.equal(holdReason({ ...fixes, before: [] }), null);
+});
+
+test("findings sort into fix and ask", () => {
+    const result = {
+        findings: [
+            { title: "Disband all sends one", class: "fix", repro: "play/disband.lines" },
+            { title: "No repro", class: "fix" },
+            { title: "Less fun", class: "ask" },
+        ],
+        ideas: [{ title: "Herds" }, { body: "no title" }],
+    };
+    const m = { number: 7, title: "M4" };
+    const { fix, ask } = sortFindings(result, { milestone: m });
+    assert.deepEqual(fix.map((i) => i.title), ["Disband all sends one"]);
+    assert.deepEqual(ask.map((i) => i.title), ["No repro", "Less fun", "Herds"]);
+    assert.equal(sortFindings(result, { milestone: m, retro: true }).fix.length, 0);
+    assert.equal(sortFindings(result).fix.length, 0);
+    assert.equal(findingText(fix[0], "#9 play"), "**Disband all sends one** Repro: play/disband.lines (#9 play)");
+});
+
+test("the crew rewrites the PR's steps table, or puts it under Closes", () => {
+    const table = "| Step | State |\n|---|---|\n| #1 review | done |\n\n$1.00 at list price so far.";
+    const old = "Closes #9.\n\n| Step | State |\n|---|---|\n| #1 review | pending |\n\n$0.50 at list price so far.\n\n## Verdict\n\nmerge";
+    assert.equal(withTable(old, table), `Closes #9.\n\n${table}\n\n## Verdict\n\nmerge`);
+    assert.equal(withTable("Closes #9.\n\n## Verdict", table), `Closes #9.\n\n${table}\n\n\n## Verdict`);
+});
+
+test("a milestone is built when every open piece is paused", () => {
+    assert.equal(isBuilt([]), true);
+    assert.equal(isBuilt([{ labels: ["relay:paused"] }]), true);
+    assert.equal(isBuilt([{ labels: ["relay:paused"] }, { labels: ["relay:ready"] }]), false);
+    assert.equal(milestoneTag({ title: "M4: Settling" }), "m4");
+    assert.equal(milestoneTag({ title: "Later" }), null);
+    assert.match(retroBody({ title: "M4" }), /docs\/proposals\/m5\.md/);
+});
+
+test("a proposal's pieces are its lettered sections with a Goal, After keys made numbers", () => {
+    const md = [
+        "# M4", "", "## 1. Foundation", "", "### S. The game proves itself", "", "**Goal:** a stage.", "", "**Spec:** sonnet high", "",
+        "### E. A game that ends", "", "**Goal:** an end.", "", "**After:** #S", "",
+        "## 3. Order and cost", "", "### Not a piece", "", "text",
+    ].join("\n");
+    const pieces = parseProposal(md);
+    assert.deepEqual(pieces.map((p) => [p.key, p.title]), [["S", "The game proves itself"], ["E", "A game that ends"]]);
+    assert.equal(pieceField(pieces[0].body, "Spec"), "sonnet high");
+    assert.equal(withNumbers(pieces[1].body, { S: 150 }), "**Goal:** an end.\n\n**After:** #150");
 });
 
 test("holdReason needs a ready piece from the owner with the spec's model", () => {
@@ -313,6 +419,29 @@ test("a review session gets the piece, the diff, the whole spec and the steps, w
     assert.match(text, /world\.rs \| 10/);
     assert.match(text, /# The whole spec/);
     assert.match(text, /# The steps\n\nPut this table .*\n\n\| Step \|/);
+});
+
+test("a play session gets the piece, its seeds, the player and the judge, and no design", () => {
+    const p = piece(4, [], [], { body: "**Goal:** rivers.\n**Play:** sonnet, three seeds" });
+    const prompts = { ...files().prompts, play: "# Play step", "players/player": "# The player", "players/judge": "# The judge" };
+    const text = sessionPrompt(p, step("play"), files({ prompts, started: "2026-11-07T01:00:00Z", cap: 90 }));
+    assert.match(text, /Play this piece's branch and write its play note, on 3 seeds/);
+    assert.match(text, /# Play step[\s\S]*# The player[\s\S]*# The judge/);
+    assert.doesNotMatch(text, /Rivers run downhill/);
+    assert.match(text, /started at 2026-11-07T01:00:00Z, and the crew stops it after 90 minutes/);
+});
+
+test("a retro session works in the milestone's retro folder, and the game step gets the owner's notes", () => {
+    const retro = piece(5, ["kind:retro"], [], { body: "**Goal:** M4 read back.", milestone: { number: 7, title: "M4" } });
+    const prompts = { ...files().prompts, retro: "# The retro" };
+    const ladder = sessionPrompt(retro, step("ladder"), files({ prompts }));
+    assert.match(ladder, /retro #5/);
+    assert.match(ladder, /relay\/retro\/m4\//);
+    assert.match(ladder, /The ladder angle, as `retro.md` says for the `ladder` step/);
+    assert.doesNotMatch(ladder, /owner's notes/);
+    const game = sessionPrompt(retro, step("game"), files({ prompts, notes: "The scout starves." }));
+    assert.match(game, /relay\/retro\/m4\/owner\.md[\s\S]*The scout starves\./);
+    assert.match(sessionPrompt(retro, step("game"), files({ prompts, notes: null })), /None came in 72 hours/);
 });
 
 test("stepsTable shows each step's state and spend", () => {

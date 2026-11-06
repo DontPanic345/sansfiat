@@ -20,6 +20,7 @@ these lines from its body, in any order:
 **Goal:** what the piece delivers, and its question in the scores with its control
 **Spec:** opus medium
 **Spec-review:** opus medium
+**Play:** sonnet
 **Shape:** Easel and Canvas: why
 **Design:** docs/design/clans.md
 **Decided:** …
@@ -29,6 +30,8 @@ these lines from its body, in any order:
 ```
 
 `Spec` and `Spec-review` are required, each on its own line: a piece without them is held.
+`Play` names the play step's model (medium unless it names an effort, and "three seeds" plays
+three maps), or `none`.
 `Shape` is a suggestion the designer may change. A
 field's value carries on over hard-wrapped lines to a blank line or the next field. A piece is
 also held until every piece its `After` line names is merged. Every `docs/design/*.md` path in
@@ -47,7 +50,8 @@ the briefs and `steps.json` live on the piece's branch, `relay/<number>`, in
 | `spec` | The designer settles what it can, picks a shape, and writes the spec, a brief per build, and `steps.json` with each build's part and each step's model, effort, points and why (`prompts/spec.md` has the shapes and the ladder). Runs on the model the piece's `Spec` line names |
 | `spec-review` | Reads the code each settled rule touches, runs the sweep or a play script where minutes settle a number, and fixes the plan where the run disagrees with the reading. Runs on the model the piece's `Spec-review` line names, never at low effort |
 | `build-N` | Builds what its brief says |
-| `review` | Merges `main` in, reviews the whole piece against the piece and its design, fixes what is small, appends the piece's decisions to each design file's `## Decided` ledger, writes the PR description for the owner to read on a phone (the steps table, the answer in the scores, the ledger lines, screenshots and a verdict), and waits for CI on its own head commit. On a merge verdict, the crew waits up to ten minutes for CI to go green and merges the PR |
+| `play` | Plays the branch through `sansfiat play` for 100 turns from the pick (`relay/players/player.md`), judges the game (`relay/players/judge.md`), and writes `play.md` with each finding classed `fix` or `ask`. The crew adds it before the review when the piece's `Play` line names a model |
+| `review` | Merges `main` in, judges the change against `main` with the rubric in `relay/players/judge.md`, reviews the whole piece against the piece and its design, fixes what is small, appends the piece's decisions to each design file's `## Decided` ledger, writes the PR description for the owner to read on a phone (the judge's verdict, the steps table, the answer in the scores, the ledger lines, screenshots and a merge verdict), and waits for CI on its own head commit. Its `result.json` must say `"merge": true` or `false`. The crew then rewrites the steps table with the review's row, and on a merge verdict waits up to ten minutes for CI to go green and merges the PR |
 
 The crew makes spec-review once the spec closes, and the builds and the review once
 spec-review closes, from `steps.json` as spec-review left it. Spec-review isn't done until
@@ -75,13 +79,39 @@ writes `relay/runs/result.json`:
 - `blocked`, with a `blocker`: the step can't go on as it stands.
 
 A blocked step labels the piece `waiting`. The owner's reply on the piece unblocks it, goes to the
-next session, and starts a run. Anything new a session notices goes under `ideas`, never into
-code. The crew lists them in the step's PR comment. They don't become issues: open one yourself
-for any worth keeping.
+next session, and starts a run.
+
+## Fix or ask
+
+Anything new a session notices goes under `ideas`, never into code, and the play step's problems go
+under `findings`. Each has a class. A `fix` names the line it breaks (a design line or its ledger,
+a piece's Goal or Decided line, a touch point, or health), has a repro, restores that line without
+editing design prose, and fits one Ford build with nothing new. Everything else is an `ask`.
+
+The crew lists both in the step's PR comment, then files them:
+
+- A `fix` goes on its milestone's **fixes piece**, "Fixes for M<n>", which the crew opens the first
+  time and keeps (`relay:fixes`). It runs after the milestone's other pieces, on Sonnet medium,
+  each repro becoming a test. A `fix` that comes after the fixes piece has started is an `ask`.
+- An `ask` becomes an issue labelled `kind:piece` and `relay:proposed`, which never runs until the
+  owner's `/relay ready` or a merged proposal.
+
+A title already open is skipped, so none is filed twice.
+
+## The milestone and its retro
+
+A milestone is built when none of its pieces can run: each merged, closed or paused, the fixes
+piece included. The crew then tags main `m<n>` and opens a `kind:retro` issue, "M<n> retro". The
+retro runs as a piece does, under the same pacing, from fixed steps (`prompts/retro.md`): the
+play check and the ladder, architecture and relay angles; a wait of up to 72 hours for the owner's
+notes, a comment on the retro issue, or `/relay retro go`; the game and players angles; the retro;
+and the proposal, which ends with a PR for the owner. Merging it closes the retro, and the crew
+opens each `### X.` section of `docs/proposals/m<n+1>.md` as a piece, `relay:ready`, in milestone
+`M<n+1>`, with `#X` in an After line made the issue's number.
 
 ## Commands
 
-On a piece's issue, from the owner only (`relay-events.yml`):
+On a piece's or a retro's issue, from the owner only (`relay-events.yml`):
 
 | Command | Effect |
 |---|---|
@@ -91,14 +121,18 @@ On a piece's issue, from the owner only (`relay-events.yml`):
 | `/relay model <step> <model> [effort]` | Change an open step's model or effort |
 | `/relay pause` / `resume` | Hold the piece, or let it go again |
 | `/relay status` | The piece's steps, with their state and spend |
+| `/relay ready` | Make a proposed issue a piece: label it `relay:ready` |
+| `/relay retro` | On a piece: open its milestone's retro now. On a retro: `/relay retro go` ends the wait for notes |
 
 ## What a session gets
 
 The crew writes each session's whole prompt and saves it beside the transcript in `runs/`.
 Spec and spec-review sessions get the piece and its design files; build sessions get only
 their brief, which carries all the design it needs; the review gets no brief, but the piece,
-the design files, the diff, the whole spec and the steps table. Every session gets the earlier steps' summaries and
-decisions, `prompts/session.md` and its kind's prompt.
+the design files, the diff, the whole spec and the steps table. The play step gets the piece,
+`prompts/play.md` and both of `players/`. A retro step gets the retro issue and `prompts/retro.md`,
+and the game step the owner's notes. Every session gets when it started and its cap, the earlier
+steps' summaries and decisions, `prompts/session.md` and its kind's prompt.
 
 Sessions never see the App's key. The crew keeps a fresh installation token in a file that
 git's credential helper and a `gh` wrapper read, so a 90-minute session never outlives its
@@ -115,9 +149,8 @@ pieces comparable. The usage probe reads the whole account, so the owner's own s
 the same hours land on Relay's steps. A crashed attempt has no result frame and records no
 cost. Usage is read once at each step boundary and rounded.
 
-A step starts only if the 5-hour window plus the points it's expected to take stays under
-80%. The expected points are by model and effort, from M2's medians (`EXPECTED_POINTS` in
-`relay.mjs`). The weekly window must also be under its share of the week. A 5-hour stop logs
+A step starts only while the 5-hour window is under 75%, and the weekly window under its share
+of the week. A 5-hour stop logs
 when the window resets and starts a `wait` run, which sleeps until then and starts a crew
 run, so a stop costs the window, not the schedule's lateness. The weekly window is the real
 limit on how much Relay gets done. The owner's own sessions share both windows.
@@ -136,7 +169,7 @@ with Status first, so one that fails doesn't stop the rest:
 | Field | Type | Options |
 |---|---|---|
 | Status | Single select | Ready, Spec, Building, Waiting, Review, Done |
-| Step | Single select | spec, spec-review, build, review |
+| Step | Single select | spec, spec-review, build, play, review, retro |
 | Model | Single select | haiku, sonnet, opus |
 | Effort | Single select | low, medium, high |
 | Attempts (sessions run), List $, Minutes, Points, 5-hour points, Weekly points | Number | |
@@ -151,7 +184,9 @@ table grouped by parent issue, summing List $ and the points.
 | File | Written by |
 |---|---|
 | `relay.mjs`, `token.mjs`, `usage.mjs`, tests | Claude Code sessions, by hand |
-| `prompts/*.md` | The owner. How the flow works, for the sessions in it. `retro.md` is for the planning sessions after a milestone |
+| `prompts/*.md` | The owner. How the flow works, for the sessions in it |
+| `players/*.md` | The owner. The player and the judge, for the play step and the review |
+| `retro/<m>/` | The retro's sessions, on the retro's branch |
 | `specs/<n>/` | Spec and spec-review sessions, on the piece's branch |
 | `runs/` | The crew and sessions: prompts, transcripts, `result.json`. Not committed |
 
@@ -159,9 +194,10 @@ table grouped by parent issue, summing List $ and the points.
 
 ## Running it
 
-A run starts every six hours (`schedule` in `.github/workflows/relay.yml`), from Actions →
-relay → Run workflow, from `/relay run`, `/relay retry` or a reply to a blocked step, or
-when a `wait` run's window resets. The crew refuses to start a session while the branch
+A run starts once a day (`schedule` in `.github/workflows/relay.yml`), whenever a piece or a
+retro closes, from Actions → relay → Run workflow, from `/relay run`, `/relay retry`, a reply to
+a blocked step or a retro's notes, or when a `wait` run's window resets. One `wait` run waits at a
+time. The crew refuses to start a session while the branch
 tracks anything under `relay/runs/`. The
 `relay` environment holds `RELAY_APP_ID`, `RELAY_APP_KEY`, `CLAUDE_CODE_OAUTH_TOKEN` and, for
 the board, `RELAY_BOARD_TOKEN`.
@@ -171,7 +207,4 @@ and model a session ran on. If a session never sends the init frame the crew
 reads (the CLI's stream-json changed, or it failed to start), the run stops without counting
 an attempt, and the Relay log issue says why.
 
-When a piece closes the last open issue of a milestone titled `M<n>`, the crew tags main
-`m<n>`.
-
-Not built yet: the `play` step and milestone play checks, and releases.
+Not built yet: releases.

@@ -2,7 +2,8 @@
 
 You're the one who runs things. The designer planned by reading; you check the plan against
 the code and the maps. Read the code each settled rule touches. Where minutes of running
-would settle a number or drop a fallback, run the sweep or a play script. Where the run
+would settle a number or drop a fallback, run the sweep or a play script. Measure on `main` with
+the piece's earlier settled steps applied where a later step relies on the number. Where the run
 disagrees with the reading, the run wins: fix the plan.
 
 Then look for what the designer didn't consider:
