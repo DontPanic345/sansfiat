@@ -29,6 +29,8 @@ fn sweep_judge_json_has_the_claim_groups_and_keys() {
     assert!(t["motion"]["clans_joined"].is_u64(), "{t}");
     assert!(t["land"]["claimed_200"].is_f64() && t["land"]["guard_200"].is_f64(), "{t}");
     assert!(t["standing"]["on_land_200"].is_f64(), "{t}");
+    assert!(t["economy"]["store_mean"].is_f64() && t["economy"]["levy_per_turn"].is_f64(), "{t}");
+    assert!(t["economy"]["turns_at_pack"].is_f64() && t["economy"]["largest_army"].is_f64(), "{t}");
     assert_eq!(t["health"]["panics"], 0, "{t}");
 }
 

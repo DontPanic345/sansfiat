@@ -6,11 +6,12 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 
-use crate::civs::tile_civ;
+use crate::civs::{alive, tile_civ};
 use crate::claim;
-use crate::data::{JUDGE, TERRAIN};
+use crate::data::{JUDGE, TERRAIN, UNIT};
 use crate::events::EventKind;
 use crate::stats;
+use crate::units::{self, UnitKind};
 use crate::world::World;
 
 /// The civ with the most Standing, the lowest id on a tie.
@@ -71,6 +72,18 @@ pub fn civ_lands(w: &World) -> Vec<CivLand> {
         .collect()
 }
 
+/// The economy's tallies over the civ-turns read so far (see `EconomyScores`).
+#[derive(Clone, Debug, Default)]
+struct Economy {
+    civ_turns: u32,
+    store_sum: f64,
+    store_max: f64,
+    turns_at_pack: u32,
+    levy_sum: f64,
+    guard_sum: f64,
+    largest_army: f64,
+}
+
 /// A game watched turn by turn from its pick.
 pub struct Watch {
     pick: u32,
@@ -104,6 +117,7 @@ pub struct Watch {
     parts_200: Option<BTreeMap<u32, stats::Parts>>,
     /// Each civ's land at +200.
     civs_200: Vec<CivLand>,
+    economy: Economy,
 }
 
 impl Watch {
@@ -133,6 +147,7 @@ impl Watch {
             claim_taken: 0,
             parts_200: None,
             civs_200: Vec::new(),
+            economy: Economy::default(),
         }
     }
 
@@ -177,6 +192,20 @@ impl Watch {
             }
         }
         self.event_mark = w.events.len();
+
+        let pack = units::pack_cap(UNIT.start as f64);
+        for c in alive(w) {
+            let store: f64 = c.store.iter().sum();
+            let e = &mut self.economy;
+            e.civ_turns += 1;
+            e.store_sum += store;
+            e.store_max = e.store_max.max(store);
+            e.turns_at_pack += (store >= pack) as u32;
+            e.levy_sum += c.levied;
+            e.guard_sum += claim::guard_people(w, c.id);
+        }
+        let camp = w.units.values().filter(|u| u.kind() == UnitKind::Camp).map(|u| u.people).fold(0.0, f64::max);
+        self.economy.largest_army = self.economy.largest_army.max(camp);
 
         let now = self.turns();
         let mut festival = BTreeMap::new();
@@ -331,6 +360,7 @@ impl Watch {
                 civs_200: self.civs_200.clone(),
             },
             fight: FightScores::of(w),
+            economy: self.economy.scores(),
         }
     }
 }
@@ -345,6 +375,40 @@ pub struct Scores {
     pub land: LandScores,
     /// What fighting cost and moved, read from the civs' counters at the end of the watch.
     pub fight: FightScores,
+    pub economy: EconomyScores,
+}
+
+/// The economy group: the civs' stores, the levy that fills them, the camps and the guards, read
+/// after each turn over the civs that are alive. The means are over civ-turns.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct EconomyScores {
+    /// The food in a civ's store, mean over civ-turns.
+    pub store_mean: f64,
+    /// The most food any civ's store held after a turn.
+    pub store_max: f64,
+    /// The civ-turns on which a store held at least a pack's worth, `units::pack_cap(UNIT.start)`.
+    pub turns_at_pack: u32,
+    /// The food the market levy paid a civ in its turn, mean over civ-turns (0 on a turn with none).
+    pub levy_per_turn: f64,
+    /// The most people in one camp after any turn.
+    pub largest_army: f64,
+    /// The people of the civ's guard, mean over civ-turns.
+    pub guard_mean: f64,
+}
+
+impl Economy {
+    fn scores(&self) -> EconomyScores {
+        let n = f64::from(self.civ_turns);
+        let mean = |sum: f64| if self.civ_turns == 0 { 0.0 } else { sum / n };
+        EconomyScores {
+            store_mean: mean(self.store_sum),
+            store_max: self.store_max,
+            turns_at_pack: self.turns_at_pack,
+            levy_per_turn: mean(self.levy_sum),
+            largest_army: self.largest_army,
+            guard_mean: mean(self.guard_sum),
+        }
+    }
 }
 
 /// The fight group: per civ and in total, the people fallen in fights (armies, guards and militia),

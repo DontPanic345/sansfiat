@@ -155,6 +155,9 @@ pub fn go(w: &mut World) {
 /// basket scaled evenly down to at most `MARKET.carry × people` of food; the rest stays in its
 /// basket, and the cleared goods come back on top.
 pub fn trade(w: &mut World) {
+    for c in w.civs.values_mut() {
+        c.levied = 0.0;
+    }
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {
         civs::levy(w, mid);

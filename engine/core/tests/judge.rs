@@ -1,10 +1,11 @@
 mod common;
 
 use common::*;
-use engine::data::JUDGE;
+use engine::data::{JUDGE, N, UNIT};
 use engine::judge::Watch;
+use engine::stage::Stage;
 use engine::stats::{self, standing};
-use engine::units::UnitKind;
+use engine::units::{self, UnitKind};
 use engine::{Action, Config, Order, Phase, World};
 
 /// Three civs' clans from `three`, with no units; the first two clans are the civs' with the given
@@ -196,4 +197,48 @@ fn a_played_game_scores_the_same_twice() {
     assert_eq!(a, b);
     assert_eq!(a.standing.civs.len(), 3);
     assert!(a.standing.civs.iter().all(|c| c.at_100.is_none()), "30 turns: no +100 yet");
+}
+
+/// The economy group reads a staged world: a store at a pack's worth is a civ-turn at pack, the largest
+/// army is the most people in one camp, and the levy pays in the first turns after the pick.
+#[test]
+fn a_staged_store_at_a_pack_is_a_turn_at_pack() {
+    let mut s = Stage::retro("small", 2).unwrap();
+    let civs: Vec<u32> = s.world().civs.keys().copied().collect();
+    let pack = units::pack_cap(UNIT.start as f64);
+    for &c in &civs {
+        s.world_mut().civs.get_mut(&c).unwrap().store = [0.0; N];
+    }
+    s.world_mut().civs.get_mut(&civs[0]).unwrap().store[0] = pack;
+    let mut watch = Watch::new(s.world());
+    watch.turn(s.world());
+    let e = watch.scores(s.world(), &civs).economy;
+    assert_eq!(e.turns_at_pack, 1, "one civ-turn at pack: {e:?}");
+    assert!((e.store_max - pack).abs() < 1e-9, "{e:?}");
+}
+
+#[test]
+fn a_staged_army_sets_the_largest_army() {
+    let mut s = Stage::retro("small", 2).unwrap();
+    let civs: Vec<u32> = s.world().civs.keys().copied().collect();
+    let civ = civs[0];
+    let cap = s.world().civs[&civ].capital;
+    s.army(civ, cap, 40.0);
+    let mut watch = Watch::new(s.world());
+    watch.turn(s.world());
+    assert_eq!(watch.scores(s.world(), &civs).economy.largest_army, 40.0);
+}
+
+#[test]
+fn the_levy_pays_in_the_first_turns_after_the_pick() {
+    let mut s = Stage::retro("small", 2).unwrap();
+    let civs: Vec<u32> = s.world().civs.keys().copied().collect();
+    s.lead(civs[0]).unwrap();
+    let mut watch = Watch::new(s.world());
+    for _ in 0..3 {
+        s.turn(1).unwrap();
+        watch.turn(s.world());
+    }
+    let e = watch.scores(s.world(), &civs).economy;
+    assert!(e.levy_per_turn > 0.0, "{e:?}");
 }

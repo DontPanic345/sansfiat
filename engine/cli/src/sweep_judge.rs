@@ -83,10 +83,23 @@ struct Total {
     decisions: TotalDecisions,
     motion: TotalMotion,
     land: TotalLand,
+    economy: TotalEconomy,
     solo: Option<TotalSolo>,
     armies: TotalArmies,
     fight: TotalFight,
     health: TotalHealth,
+}
+
+/// The economy group over the maps: means over the maps of each map's means, and the largest over the
+/// maps of the two maxima.
+#[derive(Clone, Debug, Serialize)]
+struct TotalEconomy {
+    store_mean: f64,
+    store_max: f64,
+    turns_at_pack: f64,
+    levy_per_turn: f64,
+    largest_army: f64,
+    guard_mean: f64,
 }
 
 /// The fight group over the maps, beside the no-fight control's (which has none by construction).
@@ -151,6 +164,22 @@ struct TotalMotion {
     clans_left: u32,
     clans_joined: u32,
     claim_taken: u32,
+}
+
+fn total_economy(maps: &[MapJudged]) -> TotalEconomy {
+    let of = |f: fn(&engine::judge::EconomyScores) -> f64| {
+        mean(&maps.iter().map(|m| f(&m.scores.economy)).collect::<Vec<_>>())
+    };
+    let largest =
+        |f: fn(&engine::judge::EconomyScores) -> f64| maps.iter().map(|m| f(&m.scores.economy)).fold(0.0, f64::max);
+    TotalEconomy {
+        store_mean: of(|e| e.store_mean),
+        store_max: largest(|e| e.store_max),
+        turns_at_pack: of(|e| f64::from(e.turns_at_pack)),
+        levy_per_turn: of(|e| e.levy_per_turn),
+        largest_army: largest(|e| e.largest_army),
+        guard_mean: of(|e| e.guard_mean),
+    }
 }
 
 /// The solo gains over every civ of every map: the mean gain and its two parts, and the civs whose
@@ -390,6 +419,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             claim_taken: maps.iter().map(|m| m.scores.motion.claim_taken).sum(),
         },
         land: total_land(maps),
+        economy: total_economy(maps),
         solo: total_solo(maps),
         armies: TotalArmies {
             camps_kept: sum(|m| m.armies.camps_kept),
@@ -564,6 +594,11 @@ fn print_text(r: &Report) {
         f(l.claimed_200),
         f(l.held_200),
         f(l.guard_200)
+    );
+    let e = &t.economy;
+    println!(
+        "total economy: store mean {:.2}, store max {:.2}, at pack {:.1} civ-turns a map, levy per turn {:.2}, largest army {:.1}, guard mean {:.2}",
+        e.store_mean, e.store_max, e.turns_at_pack, e.levy_per_turn, e.largest_army, e.guard_mean
     );
     if let Some(s) = &t.solo {
         println!(
