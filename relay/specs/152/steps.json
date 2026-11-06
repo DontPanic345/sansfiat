@@ -1,0 +1,54 @@
+[
+ {
+  "id": "build-1",
+  "title": "Easel: the start (no army, no guard at founding; UNIT.first; the AI raises no army; the fixtures, Stage::army, the stories, Lead and the page scripts raise their own)",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 4,
+  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high. Open 0: every change is named in spec items 1-7 and the brief, with the rule that no rule assertion changes. New 1: the fixtures adapt to a helper that raises what founding raised. Miss 1: the suite catches a broken fixture, but not an assertion weakened to pass, so the brief makes it list every changed assertion in start.md. Reach 2: founding runs in every game. The spec step measured the fallout: 94 tests in 15 files, 42 of them at three fixture lines, plus the page scripts that select a camp at the start. I expect Haiku high to land it with one retry on the page scripts. About 25 files, 600 lines (mostly tests and play scripts). Part and score agree."
+ },
+ {
+  "id": "build-2",
+  "title": "Easel: the end (core/src/over.rs, Phase::Over, the limit and Config.limit, Standing over time, refusals, the CLI's text and story's stop, StageSpec.limit, vision.md Winning)",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 4,
+  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high. Open 0: the phase, the three ends in their order, the winner, ties, the limit's lookup, the history's indexing and the refusal text are all in spec items 8-15. New 1: a TURN step and a derived field rebuilt by replay have patterns (pregame::check_end, World.orders); a phase with data is new but small. Miss 1: the brief lists the tests it writes on the stage, including the replay of a save past its end. Reach 2: a step every turn, and every Phase::Main check becomes playing(). I expect Haiku high to land it, with the conquest stage needing a retry to find a capital clan small enough to fall. About 14 files, 600 lines. Part and score agree."
+ },
+ {
+  "id": "build-3",
+  "title": "Easel: the judge reads the end (sweep_text.rs split, EndScores, the sweep plays to the end, the end lines and totals, judge FILE's end beside its controls)",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "medium",
+  "points": 3,
+  "why": "Open 0, New 1, Miss 1, Reach 1 = 3: haiku medium. Open 0: every field, line and the loop's floor and backstop are in spec items 16-19. New 1: Watch's other groups and the totals are the pattern. Miss 1: the byte-for-byte split, and the tests it writes on staged ends. Reach 1: the sweep and the file's judge. I expect Haiku medium to land it. About 8 files, 500 lines (the move counted). Part and score agree."
+ },
+ {
+  "id": "build-4",
+  "title": "Easel: the page shows the end (Sim.view's over, limit and standing; the cards' limit; the bar; the end screen won, lost or watched; the end shown once; check-stage and end.mjs on staged ends)",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 5,
+  "why": "Open 2, New 1, Miss 1, Reach 1 = 5: haiku high. Open 2: the wording and the flow are settled in spec items 20-25, but how the screen reads is judged on its screenshots. New 1: the end screen, the chips and staged page scripts exist and are adapted. Miss 1: check-stage.mjs and end.mjs check every end through the page's buttons. Reach 1: the play screen's turn loop and the model. I expect Haiku high to land it with retries on staging a conquest the page can end in a few turns. About 10 files, 500 lines. Part and score agree."
+ },
+ {
+  "id": "build-5",
+  "title": "Canvas: the turn limit per size, and a conquest story played on every retro map and civ (stories.md, limit.md)",
+  "part": "canvas",
+  "model": "sonnet",
+  "effort": "high",
+  "points": 9,
+  "why": "Open 4, New 1, Miss 3, Reach 1 = 9: opus low on the ladder, run a rung below as Sonnet high, as each piece runs its canvas. Open 4: the limit is searched against two measured constraints, and the story is a search for a plan that takes capitals. New 1: the stories and the sweep exist. Miss 3: only runs on the retro maps show either. Reach 1: END.limit is read every turn, and the stories. I expect Sonnet high to set the limits with a clear settle measure, and to find that no story ends a game early on this economy (the spec probe: armies reach a capital starving with one to three warriors), recording how near it gets and why; a capital taken would be the surprise worth the step. About 4 files, 400 lines plus two records. Part and score agree."
+ },
+ {
+  "id": "review",
+  "title": "Review the piece",
+  "model": "opus",
+  "effort": "medium",
+  "why": "The goal is judged by play and by runs against controls (every game ends, the stories' early ends against --no-fight, the limit's settle measure), the start moves every digest and the AI's orders, and four Haiku easels feed one canvas: the review's work is reading what each left half-done and checking the answer the canvas gives. It writes the answer and the evidence into the PR and adds the decisions to vision.md's, war.md's, founding.md's and page.md's ledgers."
+ }
+]
