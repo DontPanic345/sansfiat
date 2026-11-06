@@ -41,6 +41,8 @@ end.init();
 window.game = {
   screen: () => app.screen,
   view: () => play.state().v,
+  /** The bottom panel's shape for the selection (panels.js), as the page draws it. */
+  shape: () => play.shape(),
   model: () => play.state().model,
   layout: () => play.state().layout,
   get map() {
@@ -58,6 +60,8 @@ window.game = {
   border: (civ) => play.map().border(civ),
   notes: (id) => play.state().sim.notes(id),
   terrain: () => app.data.TERRAIN,
+  /** Shows a staged game: the world `spec` (a StageSpec, as an object) describes. Not a save. */
+  stage: (spec) => app.show('play', { sim: app.data.Sim.stage(JSON.stringify(spec)) }),
 };
 
 const params = new URLSearchParams(location.search);

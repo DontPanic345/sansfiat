@@ -1,0 +1,72 @@
+[
+ {
+  "id": "build-1",
+  "title": "Ford: map::parse, the Stage and StageSpec, the retro cache, RETRO moved to core, the stage's own tests",
+  "part": "ford",
+  "model": "haiku",
+  "effort": "medium",
+  "points": 4,
+  "why": "Open 2, New 1, Miss 1, Reach 0 = 4, which is haiku high. This is the piece's largest ford, so it runs a rung below, at haiku medium. Open 2: the API and every rule are settled in spec items 1-9, but how the builders read is the build's. New 1: script.rs and tests/common are the patterns, and map::ascii is the parser's inverse. Miss 1: the round trip on the seven retro maps and the stage tests it writes catch it, and build-2 swaps every old fixture onto it. Reach 0: new modules, one re-export line in map.rs. The radius comes from the first row, not the row count, since the map command prints a legend after the rows (spec-review). I expect Haiku medium to land the parser and the stage, and to leave a difference between the stage's base and common::flat that build-2's suite finds. About 6 files, 900 lines (maptext ~120, stage ~350, tests ~350, retro move ~30). Part and score agree."
+ },
+ {
+  "id": "build-2",
+  "title": "Ford: tests/common and scout.rs's painters rewritten on the stage, every existing assertion untouched",
+  "part": "ford",
+  "model": "haiku",
+  "effort": "medium",
+  "points": 2,
+  "why": "Open 0, New 1, Miss 0, Reach 1 = 2: haiku medium. Open 0: the brief names each helper and the rule that no assertion changes. New 1: the stage exists; this adapts callers to it. Miss 0: the whole test suite catches a difference in the base. Reach 1: 21 test files use common. I expect Haiku to land it with one or two fixture differences it fixes in the stage. About 4 files, 350 lines changed. Part and score agree."
+ },
+ {
+  "id": "build-3",
+  "title": "Ford: the cases in core/tests/cases.rs: the owner's settle invariant (green guard), the search by best case (red), the river bridge (red, not T's), Disband all's engine control; cases.md",
+  "part": "ford",
+  "model": "haiku",
+  "effort": "high",
+  "points": 5,
+  "why": "Open 0, New 2, Miss 3, Reach 0 = 5: haiku high. Re-scored in spec-review: the scout's red case moved from a settle invariant (spec-review's probe showed it holds on main for unrevealed tiles; the small 2 and small 3 gaps are river bridges on revealed tiles) to the search order in T's decided words, a per-turn best-case check with nothing like it in the tests, so New 2. Open 0: the brief defines each check, its maps and its message; the probe measured each red on main. Miss 3: only the run on the retro maps shows each red for its reason, hence the exact messages, the controls and the pending rule. Reach 0: a new test file. I expect Haiku high to land the three scout tests and the Disband control, with a retry on the best case's walk term. About 2 files, 400 lines. Part and score agree."
+ },
+ {
+  "id": "build-4",
+  "title": "Ford: Sim.stage in wasm, window.game.stage, check.mjs's arm over panel shapes, and Disband all's page arm as an expected bug",
+  "part": "ford",
+  "model": "haiku",
+  "effort": "medium",
+  "points": 3,
+  "why": "Open 0, New 1, Miss 1, Reach 1 = 3: haiku medium. Open 0: the constructor, the hook, the case and the helper are written out. New 1: Sim.load and check.mjs's last section are the patterns. Miss 1: check.mjs and cross-build.sh catch it. Reach 1: play.js and save.js each get one condition. The Disband arm presses as the player does (Go at the count the stepper opens at, 1) and at the cap, each kind on a fresh Sim. I expect Haiku to land it, perhaps with the staged map text needing a retry to put food where a panel shows it. About 5 files, 250 lines. Part and score agree."
+ },
+ {
+  "id": "build-5",
+  "title": "Ford: cli/src/judge.rs split into sweep_judge.rs and game_judge.rs (byte for byte), the idle led civ control, the economy group",
+  "part": "ford",
+  "model": "haiku",
+  "effort": "high",
+  "points": 5,
+  "why": "Open 2, New 1, Miss 1, Reach 1 = 5: haiku high. Open 2: each metric is defined in spec item 17, but how the levy is counted lives in the code. New 1: Watch's other groups are the pattern, and the split is a move. Miss 1: the byte-for-byte diff of the split, the digest pins and cross-build catch a slip, plus the tests it writes. Reach 1: Watch is on every sweep, and one derived counter on Civ. I expect Haiku high to land the split and the idle control, and to need the digest pins to catch a levy counter that was not `#[serde(skip)]`. About 8 files, 700 lines moved or changed (mostly the move). Part and score agree."
+ },
+ {
+  "id": "build-6",
+  "title": "Ford: judge --compare, the noise floor, bench --after, and the floor's measurement in floor.md",
+  "part": "ford",
+  "model": "haiku",
+  "effort": "high",
+  "points": 4,
+  "why": "Open 2, New 1, Miss 1, Reach 0 = 4: haiku high. Open 2: the method is settled in spec items 18-20, but whether one null gives usable floors is measured by the build, with a recorded fallback to three. New 1: flattening a serde_json Value is plain, and nothing in the CLI compares reports. Miss 1: its tests on small JSON and the two real runs catch it. Reach 0: new flags on cold paths, and a sweep without --floor stays byte for byte. I expect Haiku high to land the compare and the bench and to make a judgement call on the default N that the review reads. About 6 files, 600 lines. Part and score agree."
+ },
+ {
+  "id": "build-7",
+  "title": "Ford: www/play/buttons.mjs (every button of every panel pressed once on a staged game), engine/CLAUDE.md and architecture.md",
+  "part": "ford",
+  "model": "haiku",
+  "effort": "high",
+  "points": 4,
+  "why": "Open 2, New 1, Miss 1, Reach 0 = 4: haiku high. Open 2: the table of cases and checks is in spec item 21, but the view fields and the staged game's numbers are found by reading. New 1: camp.mjs and scout.mjs press buttons today. Miss 1: the script fails loudly, its coverage assert names any button with no case, and the --break control is run. Reach 0: a script and two docs. I expect Haiku high to land most cases and to need retries on the paint and arm cases, which the review reads in buttons.md. About 4 files, 500 lines. Part and score agree."
+ },
+ {
+  "id": "review",
+  "title": "Review the piece",
+  "model": "opus",
+  "effort": "medium",
+  "why": "Nothing that judges runs at low effort, and this piece's proof is runs against controls: the two red messages, the compare of main against the branch, the floor, the idle control and a deliberate break to the buttons script. Seven haiku builds make the read for what they left half-done the review's real work, so Opus medium. It writes the answer and the evidence into the PR and adds the decisions to the design's ledgers."
+ }
+]

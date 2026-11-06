@@ -68,6 +68,11 @@ pub struct Civ {
     /// The turn its capital fell, and the civ that took it. A fallen civ has no land, no Standing,
     /// no turn and no orders (`fall`).
     pub fallen: Option<(u32, u32)>,
+    /// The food the market levy has paid into its store this turn: `trade` zeroes it at the turn's
+    /// start and `levy` adds to it. Derived, not saved: `CivFlat` leaves it out and a loaded civ
+    /// has 0. A replay recomputes it, so a live world equals its replay, but a live world does not
+    /// equal a loaded snapshot of it. Read by the judge's economy group.
+    pub levied: f64,
 }
 
 impl Civ {
@@ -192,6 +197,7 @@ impl From<CivFlat> for Civ {
             pressed: f.pressed,
             besieged: f.besieged,
             fallen: f.fallen,
+            levied: 0.0,
         }
     }
 }
@@ -260,6 +266,7 @@ pub fn found(w: &mut World) {
             pressed: false,
             besieged: false,
             fallen: None,
+            levied: 0.0,
         };
         w.civs.insert(id, civ);
         w.emit(Event::new(EventKind::CivFounded, capital).civ(id).market(mid));
@@ -502,11 +509,12 @@ pub fn levy(w: &mut World, mid: u32) {
         let share = CIV.levy.min(room / total);
         room -= share * total;
         let paid = c.basket.map(|v| v * share);
-        let store = &mut w.civs.get_mut(&civ).unwrap().store;
+        let civ_state = w.civs.get_mut(&civ).unwrap();
         for (f, &p) in paid.iter().enumerate() {
             c.harvest[f] *= 1.0 - share;
             c.basket[f] -= p;
-            store[f] += p;
+            civ_state.store[f] += p;
+            civ_state.levied += p;
         }
         paid_by.push((id, share < CIV.levy));
     }

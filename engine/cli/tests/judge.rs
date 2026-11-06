@@ -29,5 +29,34 @@ fn sweep_judge_json_has_the_claim_groups_and_keys() {
     assert!(t["motion"]["clans_joined"].is_u64(), "{t}");
     assert!(t["land"]["claimed_200"].is_f64() && t["land"]["guard_200"].is_f64(), "{t}");
     assert!(t["standing"]["on_land_200"].is_f64(), "{t}");
+    assert!(t["economy"]["store_mean"].is_f64() && t["economy"]["levy_per_turn"].is_f64(), "{t}");
+    assert!(t["economy"]["turns_at_pack"].is_f64() && t["economy"]["largest_army"].is_f64(), "{t}");
     assert_eq!(t["health"]["panics"], 0, "{t}");
+}
+
+/// `judge --json` and the text carry the idle led civ: the same map, the led civ given no orders, and
+/// the same Standing on every run.
+#[test]
+fn judge_has_an_idle_led_civ_the_same_on_every_run() {
+    let dir = std::env::temp_dir().join("sansfiat-judge-idle");
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("skirmish.json");
+    let file = file.to_str().unwrap();
+    let story = Command::new(env!("CARGO_BIN_EXE_sansfiat"))
+        .args(["story", "skirmish", "--seed", "2", "--size", "small", "--civ", "1", "--turns", "12", "--save", file])
+        .output()
+        .expect("the sansfiat binary runs");
+    assert!(story.status.success(), "{}", String::from_utf8_lossy(&story.stderr));
+    let json = || {
+        let out = Command::new(env!("CARGO_BIN_EXE_sansfiat")).args(["judge", file, "--json"]).output().unwrap();
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        serde_json::from_slice::<serde_json::Value>(&out.stdout).expect("the judgement is JSON")
+    };
+    let (a, b) = (json(), json());
+    assert!(a["standing"]["idle"].is_f64() && a["standing"]["idle_rank"].is_u64(), "{}", a["standing"]);
+    assert_eq!(a["standing"]["idle"], b["standing"]["idle"], "the idle Standing is the same on every run");
+    assert_eq!(a["idle"], b["idle"], "the idle scores are the same on every run");
+    let text = Command::new(env!("CARGO_BIN_EXE_sansfiat")).args(["judge", file]).output().unwrap();
+    let text = String::from_utf8_lossy(&text.stdout);
+    assert!(text.lines().any(|l| l.starts_with("led civ ") && l.contains("idle led civ")), "{text}");
 }

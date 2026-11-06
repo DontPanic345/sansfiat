@@ -4,8 +4,8 @@ use engine::map::{self, Country};
 use engine::{stats, Config, World};
 use std::time::Instant;
 
-use crate::judge::judge;
 use crate::retro::{retro_maps, sweep_after};
+use crate::sweep_judge::{judge, NULLS};
 use crate::{size, USAGE};
 
 /// One run of the sweep.
@@ -147,12 +147,17 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
     let mut zone = true;
     let mut claims = true;
     let (mut judging, mut json, mut solo) = (false, false, false);
+    let (mut floor, mut nulls): (bool, Option<u32>) = (false, None);
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--judge" => judging = true,
             "--solo" => solo = true,
             "--json" => json = true,
+            "--floor" => floor = true,
+            "--nulls" => {
+                nulls = Some(it.next().and_then(|v| v.parse().ok()).filter(|&n| n > 0).ok_or("--nulls needs a number")?)
+            }
             "--after" => after = Some(it.next().and_then(|v| v.parse().ok()).ok_or("--after needs a number")?),
             "--no-army" => army = false,
             "--no-gifts" => gifts = false,
@@ -188,10 +193,19 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
     if judging {
         if after.is_some() || lever.is_some() || !army || !gifts || !zone || !claims || !seeds.is_empty() {
             return Err(format!(
-                "--judge runs the retro maps, all on the AI: it takes only --json and --solo\n{USAGE}"
+                "--judge runs the retro maps, all on the AI: it takes only --json, --solo, --floor and --nulls\n{USAGE}"
             ));
         }
-        return judge(json, solo);
+        if floor && !json {
+            return Err(format!("--floor needs --json\n{USAGE}"));
+        }
+        if nulls.is_some() && !floor {
+            return Err(format!("--nulls needs --floor\n{USAGE}"));
+        }
+        return judge(json, solo, floor.then(|| nulls.unwrap_or(NULLS)));
+    }
+    if floor || nulls.is_some() {
+        return Err(format!("--floor and --nulls need --judge --json\n{USAGE}"));
     }
     if json {
         return Err(format!("--json needs --judge\n{USAGE}"));

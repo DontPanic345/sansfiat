@@ -4,24 +4,25 @@
 
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::fs;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::path::Path;
 use std::time::Instant;
 
 use engine::data::{Claims, JUDGE};
-use engine::judge::{civ_lands, CivLand, Scores, Watch};
+use engine::judge::{CivLand, Scores, Watch};
+use engine::rng;
 use engine::stats::Trails;
-use engine::world::SAVE_VERSION;
-use engine::{stats, Action, Config, Save, World};
+use engine::{stats, Action, Config, World};
 use serde::Serialize;
 
-use crate::play::{read_entries, Entry};
+use crate::compare::flatten;
 use crate::retro::{kept_camp, retro_maps, to_pick};
-use crate::USAGE;
 
 /// The turns past the pick each map is run for.
 const AFTER: u32 = 200;
+
+/// The nulls `--floor` runs when `--nulls` is not given: the sweep once more with one harmless
+/// difference at the pick.
+pub(crate) const NULLS: u32 = 1;
 
 /// One map's health: its pre-game and the digests of its two army runs. These are bugs whatever
 /// the design says.
@@ -88,10 +89,23 @@ struct Total {
     decisions: TotalDecisions,
     motion: TotalMotion,
     land: TotalLand,
+    economy: TotalEconomy,
     solo: Option<TotalSolo>,
     armies: TotalArmies,
     fight: TotalFight,
     health: TotalHealth,
+}
+
+/// The economy group over the maps: means over the maps of each map's means, and the largest over the
+/// maps of the two maxima.
+#[derive(Clone, Debug, Serialize)]
+struct TotalEconomy {
+    store_mean: f64,
+    store_max: f64,
+    turns_at_pack: f64,
+    levy_per_turn: f64,
+    largest_army: f64,
+    guard_mean: f64,
 }
 
 /// The fight group over the maps, beside the no-fight control's (which has none by construction).
@@ -158,6 +172,22 @@ struct TotalMotion {
     claim_taken: u32,
 }
 
+fn total_economy(maps: &[MapJudged]) -> TotalEconomy {
+    let of = |f: fn(&engine::judge::EconomyScores) -> f64| {
+        mean(&maps.iter().map(|m| f(&m.scores.economy)).collect::<Vec<_>>())
+    };
+    let largest =
+        |f: fn(&engine::judge::EconomyScores) -> f64| maps.iter().map(|m| f(&m.scores.economy)).fold(0.0, f64::max);
+    TotalEconomy {
+        store_mean: of(|e| e.store_mean),
+        store_max: largest(|e| e.store_max),
+        turns_at_pack: of(|e| f64::from(e.turns_at_pack)),
+        levy_per_turn: of(|e| e.levy_per_turn),
+        largest_army: largest(|e| e.largest_army),
+        guard_mean: of(|e| e.guard_mean),
+    }
+}
+
 /// The solo gains over every civ of every map: the mean gain and its two parts, and the civs whose
 /// gain is above `JUDGE.solo_above`.
 #[derive(Clone, Debug, Serialize)]
@@ -185,19 +215,26 @@ struct TotalHealth {
     digest_mismatches: u32,
 }
 
-/// The whole report, as `--json` prints it.
+/// The whole report, as `--json` prints it. `floor` is `--floor`'s: per flattened path, the largest
+/// change any null made to it.
 #[derive(Serialize)]
 struct Report {
     maps: Vec<MapJudged>,
     panics: Vec<Panicked>,
     total: Total,
     seconds: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    floor: Option<BTreeMap<String, f64>>,
 }
 
-/// One run to the end: the world, and its watch.
-fn played(config: Config) -> (World, Watch) {
+/// One run to the end: the world, and its watch. `draws` extra rolls of the world's rng are taken
+/// after the pick (the null perturbation; 0 is the base run).
+fn played(config: Config, draws: u32) -> (World, Watch) {
     let mut w = to_pick(config);
     w.act(Action::ChooseCiv { civ: None }).expect("watching is always allowed at the pick");
+    for _ in 0..draws {
+        rng::rand(&mut w.rng);
+    }
     let mut watch = Watch::new(&w);
     for _ in 0..AFTER {
         w.run(1);
@@ -206,10 +243,10 @@ fn played(config: Config) -> (World, Watch) {
     (w, watch)
 }
 
-/// The runs of `configs`, all at once, in order.
-fn played_all(configs: &[Config]) -> Vec<(World, Watch)> {
+/// The runs of `configs`, all at once, in order, each with `draws` extra rolls.
+fn played_all(configs: &[Config], draws: u32) -> Vec<(World, Watch)> {
     std::thread::scope(|scope| {
-        let handles: Vec<_> = configs.iter().map(|&c| scope.spawn(move || played(c))).collect();
+        let handles: Vec<_> = configs.iter().map(|&c| scope.spawn(move || played(c, draws))).collect();
         handles.into_iter().map(|h| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e))).collect()
     })
 }
@@ -224,8 +261,9 @@ fn at_200(s: &Scores, civ: u32) -> (f64, f64, f64) {
 }
 
 /// Judges one map: the army run twice (their digests must agree), the `--no-army` control, the
-/// no-claims control, the no-fight control and, with `solo`, each civ claiming alone (civ `k` in id order, `Only(k)`).
-fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
+/// no-claims control, the no-fight control and, with `solo`, each civ claiming alone (civ `k` in id
+/// order, `Only(k)`). Every run takes `draws` extra rolls after the pick.
+fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJudged {
     let base = Config { seed, radius, ..Config::default() };
     let configs = [
         base,
@@ -234,7 +272,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
         Config { claims: Claims::None, ..base },
         Config { fight: false, ..base },
     ];
-    let mut runs = played_all(&configs).into_iter();
+    let mut runs = played_all(&configs, draws).into_iter();
     let (w, watch) = runs.next().expect("the army run");
     let (again, _) = runs.next().expect("the army run again");
     let (control, _) = runs.next().expect("the control with no armies");
@@ -259,7 +297,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
     let solo = solo.then(|| {
         let configs: Vec<Config> = (0..civs.len() as u32).map(|k| Config { claims: Claims::Only(k), ..base }).collect();
         civs.iter()
-            .zip(played_all(&configs))
+            .zip(played_all(&configs, draws))
             .map(|(&civ, (sw, swatch))| {
                 let (g, cl, la) = at_200(&swatch.scores(&sw, &civs), civ);
                 let (n, ncl, nla) = at_200(&no_claims, civ);
@@ -395,6 +433,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             claim_taken: maps.iter().map(|m| m.scores.motion.claim_taken).sum(),
         },
         land: total_land(maps),
+        economy: total_economy(maps),
         solo: total_solo(maps),
         armies: TotalArmies {
             camps_kept: sum(|m| m.armies.camps_kept),
@@ -419,23 +458,20 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
     }
 }
 
-/// The retro maps judged and the report printed.
-pub(crate) fn judge(json: bool, solo: bool) -> Result<(), String> {
-    let start = Instant::now();
-    let maps = retro_maps()?;
-    let results: Vec<Result<MapJudged, Panicked>> =
-        std::thread::scope(|scope| {
-            let handles: Vec<_> =
-                maps.iter()
-                    .map(|(name, radius, seed)| {
-                        scope.spawn(move || {
-                            catch_unwind(AssertUnwindSafe(|| judge_map(name, *radius, *seed, solo)))
-                                .map_err(|e| Panicked { size: name.clone(), seed: *seed, message: message(e) })
-                        })
-                    })
-                    .collect();
-            handles.into_iter().map(|h| h.join().expect("a map's thread joins")).collect()
-        });
+/// Every retro map judged at `draws` (see `played`), its panics apart.
+fn judged(maps: &[(String, i32, u32)], solo: bool, draws: u32) -> (Vec<MapJudged>, Vec<Panicked>) {
+    let results: Vec<Result<MapJudged, Panicked>> = std::thread::scope(|scope| {
+        let handles: Vec<_> = maps
+            .iter()
+            .map(|(name, radius, seed)| {
+                scope.spawn(move || {
+                    catch_unwind(AssertUnwindSafe(|| judge_map(name, *radius, *seed, solo, draws)))
+                        .map_err(|e| Panicked { size: name.clone(), seed: *seed, message: message(e) })
+                })
+            })
+            .collect();
+        handles.into_iter().map(|h| h.join().expect("a map's thread joins")).collect()
+    });
     let mut judged = Vec::new();
     let mut panics = Vec::new();
     for r in results {
@@ -444,8 +480,33 @@ pub(crate) fn judge(json: bool, solo: bool) -> Result<(), String> {
             Err(p) => panics.push(p),
         }
     }
-    let total = total(&judged, panics.len());
-    let report = Report { maps: judged, panics, total, seconds: start.elapsed().as_secs_f64() };
+    (judged, panics)
+}
+
+/// The retro maps judged and the report printed. With `floor`, the sweep runs that many more times,
+/// each null one extra roll further on, and the report carries each path's largest change.
+pub(crate) fn judge(json: bool, solo: bool, floor: Option<u32>) -> Result<(), String> {
+    let start = Instant::now();
+    let maps = retro_maps()?;
+    let (judged_maps, panics) = judged(&maps, solo, 0);
+    let totals = total(&judged_maps, panics.len());
+    let mut report =
+        Report { maps: judged_maps, panics, total: totals, seconds: start.elapsed().as_secs_f64(), floor: None };
+    if let Some(nulls) = floor {
+        let base = flatten(&serde_json::to_value(&report).expect("the report serialises"));
+        let mut floors: BTreeMap<String, f64> = base.keys().map(|p| (p.clone(), 0.0)).collect();
+        for k in 1..=nulls {
+            let (m, p) = judged(&maps, solo, k);
+            let t = total(&m, p.len());
+            let null = Report { maps: m, panics: p, total: t, seconds: 0.0, floor: None };
+            for (path, v) in flatten(&serde_json::to_value(&null).expect("the report serialises")) {
+                if let (Some(f), Some(b)) = (floors.get_mut(&path), base.get(&path)) {
+                    *f = f.max((v - b).abs());
+                }
+            }
+        }
+        report.floor = Some(floors);
+    }
     if json {
         println!("{}", serde_json::to_string_pretty(&report).expect("the report serialises"));
     } else {
@@ -570,6 +631,11 @@ fn print_text(r: &Report) {
         f(l.held_200),
         f(l.guard_200)
     );
+    let e = &t.economy;
+    println!(
+        "total economy: store mean {:.2}, store max {:.2}, at pack {:.1} civ-turns a map, levy per turn {:.2}, largest army {:.1}, guard mean {:.2}",
+        e.store_mean, e.store_max, e.turns_at_pack, e.levy_per_turn, e.largest_army, e.guard_mean
+    );
     if let Some(s) = &t.solo {
         println!(
             "total solo: gain {:+.4} (clans {:+.4}, land {:+.4}) per civ over {} civs; above {} of {} civs by more than {}",
@@ -595,239 +661,4 @@ fn print_text(r: &Report) {
         h.digest_mismatches
     );
     println!("seconds {:.1}", r.seconds);
-}
-
-/// A played game read back: the led civ's Standing beside the control's, the scores of both, the
-/// led civ's land beside the control's, and the player's own decisions from the log and the lines file.
-#[derive(Serialize)]
-struct GameJudged {
-    pick: u32,
-    turns: u32,
-    led: u32,
-    game: Scores,
-    control: Scores,
-    standing: Ending,
-    land: Lands,
-    player: Player,
-}
-
-/// The led civ's Standing and rank at the end, in the game and in the control.
-#[derive(Serialize)]
-struct Ending {
-    game: f64,
-    game_rank: usize,
-    control: f64,
-    control_rank: usize,
-}
-
-/// The led civ's land at the end, in the game and in the control.
-#[derive(Serialize)]
-struct Lands {
-    game: CivLand,
-    control: CivLand,
-}
-
-/// What the player did: accepted orders and actions by kind (from the log), how often a turn had
-/// none, and the refusals and notes of the lines file.
-#[derive(Serialize)]
-struct Player {
-    orders_by_kind: BTreeMap<String, u32>,
-    orders_per_100: f64,
-    idle_turns: u32,
-    longest_idle: u32,
-    refused: Vec<Entry>,
-    noted: usize,
-}
-
-/// The place of civ `led` in Standing `s`: 1 for the largest share.
-fn rank_of(s: &BTreeMap<u32, f64>, led: u32) -> usize {
-    let mine = s.get(&led).copied().unwrap_or(0.0);
-    1 + s.values().filter(|&&v| v > mine).count()
-}
-
-/// `judge FILE [--json]`: replays a played game a turn at a time under a `Watch`, plays the same map
-/// with every civ on the AI to the same turn, and reads both in the judge's scores.
-pub(crate) fn judge_game(args: &[String]) -> Result<(), String> {
-    let mut file = None;
-    let mut json = false;
-    for a in args {
-        match a.as_str() {
-            "--json" => json = true,
-            f if file.is_none() && !f.starts_with("--") => file = Some(f.to_string()),
-            _ => return Err(format!("judge takes a game file and --json\n{USAGE}")),
-        }
-    }
-    let file = file.ok_or(format!("judge needs a game file\n{USAGE}"))?;
-    let path = Path::new(&file);
-    let text = fs::read_to_string(path).map_err(|e| format!("{file}: {e}"))?;
-    let save: Save = serde_json::from_str(&text).map_err(|e| format!("{file}: {e}"))?;
-    if save.version != SAVE_VERSION {
-        return Err(format!("{file}: save version {} is not {SAVE_VERSION}", save.version));
-    }
-
-    // The game, action by action: its watch starts at the pick and is turned after each end.
-    let mut w = World::new(save.config);
-    let mut watch: Option<Watch> = None;
-    let (mut idle, mut longest, mut run, mut acted) = (0u32, 0u32, 0u32, false);
-    let mut by_kind: BTreeMap<String, u32> = BTreeMap::new();
-    for a in &save.log {
-        w.act(a.clone()).map_err(|e| format!("{file}: {e}"))?;
-        match a {
-            Action::ChooseCiv { .. } => watch = Some(Watch::new(&w)),
-            Action::EndTurn => {
-                let Some(wt) = watch.as_mut() else { continue };
-                wt.turn(&w);
-                if acted {
-                    run = 0;
-                } else {
-                    idle += 1;
-                    run += 1;
-                    longest = longest.max(run);
-                }
-                acted = false;
-            }
-            Action::Order { order, .. } => {
-                acted = true;
-                *by_kind.entry(order.kind().to_string()).or_insert(0) += 1;
-            }
-            Action::SetKeep { .. } | Action::SetGift { .. } => {
-                acted = true;
-                let kind = if matches!(a, Action::SetKeep { .. }) { "setKeep" } else { "setGift" };
-                *by_kind.entry(kind.to_string()).or_insert(0) += 1;
-            }
-        }
-    }
-    let wt = watch.ok_or(format!("{file}: the game has no pick"))?;
-    let led = w.player.ok_or(format!("{file}: the game leads no civ"))?;
-    let n = wt.turns();
-
-    // The control: the same config to the same pick, every civ on the AI, the same number of turns.
-    let mut control = to_pick(save.config);
-    control.act(Action::ChooseCiv { civ: None })?;
-    let mut cwatch = Watch::new(&control);
-    if cwatch.pick() != wt.pick() {
-        return Err(format!("{file}: the control's pick is {}, the game's {}", cwatch.pick(), wt.pick()));
-    }
-    for _ in 0..n {
-        control.act(Action::EndTurn)?;
-        cwatch.turn(&control);
-    }
-
-    let game_scores = wt.scores(&w, &[led]);
-    let control_scores = cwatch.scores(&control, &[led]);
-    let g_end = wt.standing_at(n).expect("scored to the end");
-    let c_end = cwatch.standing_at(n).expect("scored to the end");
-    let land_of = |w: &World| civ_lands(w).into_iter().find(|c| c.id == led).expect("the led civ is in the world");
-    let entries = read_entries(path)?;
-    let refused: Vec<Entry> = entries.iter().filter(|e| e.result.starts_with("refused")).cloned().collect();
-    let noted = entries.iter().filter(|e| e.result == "noted").count();
-    let player_orders: u32 = by_kind.values().sum();
-    let judged = GameJudged {
-        pick: wt.pick(),
-        turns: n,
-        led,
-        game: game_scores,
-        control: control_scores,
-        standing: Ending {
-            game: g_end.get(&led).copied().unwrap_or(0.0),
-            game_rank: rank_of(g_end, led),
-            control: c_end.get(&led).copied().unwrap_or(0.0),
-            control_rank: rank_of(c_end, led),
-        },
-        land: Lands { game: land_of(&w), control: land_of(&control) },
-        player: Player {
-            orders_per_100: if n > 0 { f64::from(player_orders) * 100.0 / f64::from(n) } else { 0.0 },
-            orders_by_kind: by_kind,
-            idle_turns: idle,
-            longest_idle: longest,
-            refused,
-            noted,
-        },
-    };
-    if json {
-        println!("{}", serde_json::to_string_pretty(&judged).expect("the judgement serialises"));
-    } else {
-        print_game(&judged, &wt, &cwatch);
-    }
-    Ok(())
-}
-
-/// The judgement as text: the score line every `JUDGE.sample` turns, the led civ at the end beside
-/// the control, its claim and land beside the control's, the doubt and motion of both, the player's
-/// decisions and refusals.
-fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
-    let shares = |s: &BTreeMap<u32, f64>| -> String {
-        s.iter().map(|(id, v)| format!("civ {id} {:.1}%", v * 100.0)).collect::<Vec<_>>().join(", ")
-    };
-    for k in (0..=j.turns).step_by(JUDGE.sample as usize) {
-        let s = game.standing_at(k).expect("scored to the end");
-        let leader = game.leader_at(k).map_or("none".to_string(), |l| format!("civ {l}"));
-        println!("turn {} (+{k}): {}; leader {leader}", j.pick + k, shares(s));
-    }
-    let s = &j.standing;
-    println!(
-        "led civ {}: Standing at +{} {:.1}% (rank {}) in the game, {:.1}% (rank {}) with every civ on the AI",
-        j.led,
-        j.turns,
-        s.game * 100.0,
-        s.game_rank,
-        s.control * 100.0,
-        s.control_rank
-    );
-    let (l, c) = (&j.land.game, &j.land.control);
-    println!(
-        "claim (game / control): {} / {} tiles claimed, {} / {} held, guard {:.1} / {:.1} people",
-        l.claimed, c.claimed, l.held, c.held, l.guard, c.guard
-    );
-    let (g, c) = (&j.game.doubt, &j.control.doubt);
-    println!(
-        "doubt (game / control): lead changes {} / {}, spread +{} {:.3} / {:.3}, swings {} / {}",
-        g.lead_changes,
-        c.lead_changes,
-        j.turns,
-        game.spread_at(j.turns).unwrap_or(0.0),
-        control.spread_at(j.turns).unwrap_or(0.0),
-        g.swings,
-        c.swings
-    );
-    let (gm, cm) = (&j.game.motion, &j.control.motion);
-    println!(
-        "motion (game / control): clans changed {} / {}, people {:.1} / {:.1}, land tiles {} / {}, clans left {} / {}, claimed tiles taken {} / {}",
-        gm.clans_changed,
-        cm.clans_changed,
-        gm.people_changed,
-        cm.people_changed,
-        gm.land_changed,
-        cm.land_changed,
-        gm.clans_left,
-        cm.clans_left,
-        gm.claim_taken,
-        cm.claim_taken
-    );
-    let (gf, cf) = (&j.game.fight, &j.control.fight);
-    let civs: Vec<String> = gf
-        .civs
-        .iter()
-        .map(|(id, c)| format!("{id}: fallen {:.2} taken {} surrendered {}", c.fallen, c.taken, c.surrendered))
-        .collect();
-    println!(
-        "fight (game / control): people fallen {:.2} / {:.2}, tiles taken {} / {}, armies surrendered {} / {}",
-        gf.fallen, cf.fallen, gf.taken, cf.taken, gf.surrendered, cf.surrendered
-    );
-    println!("fight by civ (game): {}", civs.join("; "));
-    let p = &j.player;
-    let kinds: Vec<String> = p.orders_by_kind.iter().map(|(k, v)| format!("{k} {v}")).collect();
-    println!(
-        "player orders: {} ({}), {:.2} per 100 turns; turns with none {} of {}, longest run {}",
-        p.orders_by_kind.values().sum::<u32>(),
-        if kinds.is_empty() { "none".to_string() } else { kinds.join(", ") },
-        p.orders_per_100,
-        p.idle_turns,
-        j.turns,
-        p.longest_idle
-    );
-    println!("player lines: {} refused, {} noted", p.refused.len(), p.noted);
-    for r in &p.refused {
-        println!("  refused at turn {}: {} ({})", r.turn, r.line, r.result);
-    }
 }

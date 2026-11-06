@@ -1159,6 +1159,8 @@ fn roll_trails(tiles: &mut [Tile], sub: &mut u32) {
     }
 }
 
+pub use crate::maptext::{grid, parse, Parsed};
+
 /// The map's character for a tile. Closed country shows as its zone (walls as their terrain).
 pub fn glyph(t: &Tile) -> char {
     match t.terrain {

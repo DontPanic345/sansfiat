@@ -27,20 +27,20 @@ runs the same in native and wasm. That holds, and it stays the first rule.
 | Routes | A route staged through rests: campsites, caches, caravanserai; a line reaches as far as its rests | A line is one path from a unit to the capital | M7 |
 | Events and reasons | One constructor in `events.rs`; a reason beside the rule that acts | Holds | Done in M3 H |
 | Save | Config plus the order log, versioned; an old save fails with its version | Holds (`SAVE_VERSION` 7) | Keep |
-| Stage | A known map, units placed, orders given, outcomes asserted, with the real engine | Fixtures paint tiles by hand; the stories assert nothing | M4 S |
-| Scale | Per-clan work flat in the number of clans; a large map under 10 ms a turn past the pick, measured by `bench --after` | 50 ms a turn past the pick on large 8, 61% of it the festival choice; `bench` stops before the pick | M4 S (the bench), W (the search per tile, before towns) |
+| Stage | A known map, units placed, orders given, outcomes asserted, with the real engine | Holds: `Stage` and `StageSpec`, `map::parse`, the retro cache; `tests/common` is built on it | Done in M4 S |
+| Scale | Per-clan work flat in the number of clans; a large map under 10 ms a turn past the pick, measured by `bench --after` | 23 ms a turn past the pick on large 8 (`bench --size large --after 50 8`, release build: 22.8 ms a turn in each of two runs); the 61% festival share was measured on the old 50 ms and is not re-measured | W (the search per tile, before towns) |
 
 ## The front ends
 
 | System | Target | On main | Built by |
 |---|---|---|---|
-| The CLI | `run`, `sweep`, `judge`, `play`, `story`, `digest`, `replay`, `bench`, a module each | Holds; `cli/src/judge.rs` at 833 lines holds two commands | Done in M3 G; the split with M4 S |
-| The judge | `sweep --judge`: the scores against controls on the retro maps, `--json`; `judge --compare` with a measured noise floor; `judge FILE` beside the AI and an idle led civ. A report the review reads with a rubric; CI runs no bands | `sweep --judge` and `judge FILE` with the AI control | M4 S (the compare, the floor, the idle control, the economy group) |
+| The CLI | `run`, `sweep`, `judge`, `play`, `story`, `digest`, `replay`, `bench`, a module each | Holds; `judge` is `sweep_judge.rs` and `game_judge.rs` | Done in M4 S |
+| The judge | `sweep --judge`: the scores against controls on the retro maps, `--json`; `judge --compare` with a measured noise floor; `judge FILE` beside the AI and an idle led civ. A report the review reads with a rubric; CI runs no bands | `sweep --judge` (`--json`, `--floor`); `judge --compare` against the noise floor; `judge FILE` beside the AI and an idle led civ; the economy group (stores, levy, largest army, guard) | Done in M4 S |
 | The player | `sansfiat play`: a led civ as text, orders as JSON lines; an LLM player and judge on every piece | `play` and the text view; the player and judge prompts in PR 124 | M4 (the Relay change and the play step) |
 | The page | An app: screens, a view model from `Sim.view()`, a draw layer per mechanic, one panel shape, keys, autosave, a Debug menu | Holds | Done in M3 P; grown by each piece |
 | Art | Placeholder tiles and icons on one atlas that paid art fills; `www/assets/atlas.json` names every cell | Holds | Done in M3 P; paid art after M5 and M7 (`roadmap.md`) |
 | Sound | A sound bus fed by feed events; `www/assets/sounds.json` maps event kinds to files | Holds, silent | Done in M3 P; paid sound after M7 |
-| Play scripts | One driver, `play.mjs`, a script per touch point, and one that presses every button and checks the world | The driver and the touch points; no button script | M4 S |
+| Play scripts | One driver, `play.mjs`, a script per touch point, and one that presses every button and checks the world | The driver, the touch points and `buttons.mjs` | Done in M4 S |
 
 ## Rules that hold
 

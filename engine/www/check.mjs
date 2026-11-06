@@ -505,21 +505,8 @@ assert.throws(() => Sim.load(JSON.stringify({ ...save, version: 1 })), /version 
 
 // The panels (build-4): a fallen civ reads its fall with no buttons, and an army's shape names its fighters.
 const { describe } = await import(pathToFileURL(`${here}panels.js`).href);
-const panelCtx = (view, extra = {}) => ({
-  v: view,
-  model: { claims: new Map(), standing: new Map(Object.values(view.civs).map((c) => [c.id, { total: 0, clans: 0, land: 0, rank: 1 }])), holders: () => [], clanAt: () => null },
-  layout: JSON.parse(sim.layout()),
-  terrain: TERRAIN,
-  goods: GOODS,
-  rules: RULES,
-  sim: { notes: () => '[]', route: () => 'null', tile: (i) => sim.tile(i), tile_civ: (i) => sim.tile_civ(i) },
-  view: null,
-  routing: { arm: null, start: null, unit: null },
-  outcome: null,
-  painting: null,
-  country: false,
-  ...extra,
-});
+const { panelCtxFor } = await import(pathToFileURL(`${here}check-ctx.mjs`).href);
+const panelCtx = panelCtxFor(sim, { rules: RULES, terrain: TERRAIN, goods: GOODS });
 const fallenView = { ...v, civs: { ...v.civs } };
 const victim = Object.values(v.civs).find((c) => c.id !== v.player);
 const other = Object.values(v.civs).find((c) => c.id !== victim.id);
@@ -538,5 +525,7 @@ assert.deepEqual(raise.stepper.options.map((o) => o.label), ['warriors', 'archer
 const civShp = describe(panelCtx(ledView), { kind: 'civ', civ: ledId });
 const civRaise = civShp.buttons.find((b) => b.stepper && b.label === 'Raise…');
 assert.deepEqual(civRaise.stepper.options.map((o) => o.label), ['warriors', 'archers', 'a guard', 'a scout'], 'a civ raises warriors, archers, a guard or a scout');
+
+await import('./check-stage.mjs');
 
 console.log(`ok: medium seed ${seed}, ${n} tiles, ended turn ${v.end.turn}${v.end.by_limit ? ' by the limit' : ''}, ${all.length} events, ${Object.keys(v.clans).length} clans`);

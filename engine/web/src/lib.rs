@@ -1,6 +1,7 @@
 use engine::data::{CIV, CLAIM, FIGHT, FIGHTERS, GUARD, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::script::Lead;
+use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
 use engine::{civs, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
 use std::collections::BTreeMap;
@@ -11,19 +12,33 @@ use wasm_bindgen::prelude::*;
 pub struct Sim {
     world: World,
     lead: Lead,
+    staged: bool,
 }
 
 #[wasm_bindgen]
 impl Sim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, radius: i32) -> Sim {
-        Sim { world: World::new(Config { seed, radius, ..Config::default() }), lead: Lead::default() }
+        Sim { world: World::new(Config { seed, radius, ..Config::default() }), lead: Lead::default(), staged: false }
     }
 
     /// Rebuilds the world from a save's JSON.
     pub fn load(save: &str) -> Result<Sim, String> {
         let save: Save = serde_json::from_str(save).map_err(|e| e.to_string())?;
-        Ok(Sim { world: World::replay(&save)?, lead: Lead::default() })
+        Ok(Sim { world: World::replay(&save)?, lead: Lead::default(), staged: false })
+    }
+
+    /// The stage `spec` (JSON, as `engine::stage::StageSpec` reads it) describes: a world placed on a
+    /// known map, led by its lead. A staged game is not a save, so the page does not autosave it.
+    pub fn stage(spec: &str) -> Result<Sim, String> {
+        let spec: StageSpec = serde_json::from_str(spec).map_err(|e| e.to_string())?;
+        let world = Stage::from_spec(&spec)?.into_world();
+        Ok(Sim { world, lead: Lead::default(), staged: true })
+    }
+
+    /// Whether this game was built by `stage`, not played from a seed or loaded from a save.
+    pub fn staged(&self) -> bool {
+        self.staged
     }
 
     /// Applies an action given as JSON, such as `{"type":"endTurn"}`, or a unit's order, such as
