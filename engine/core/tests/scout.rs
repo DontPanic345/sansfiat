@@ -7,22 +7,17 @@ use common::{led_order, led_scout};
 use engine::data::*;
 use engine::hex::{Hex, DIRS};
 use engine::map::index;
+use engine::stage::Stage;
 use engine::stats::digest;
 use engine::units::{self, UnitKind};
-use engine::{Action, EventKind, Order, Phase};
-use engine::{Config, World};
+use engine::{Action, EventKind, Order, World};
 
-const RADIUS: i32 = 16;
-
-/// The real map of `seed`, run to the pick, led by its first civ.
-fn lead(seed: u32) -> World {
-    let mut w = World::new(Config { seed, radius: RADIUS, army: true, gifts: true, zone: true, ..Config::default() });
-    while w.phase != Phase::Choose {
-        w.act(Action::EndTurn).unwrap();
-    }
-    let first = w.civs.keys().next().copied();
-    w.act(Action::ChooseCiv { civ: first }).unwrap();
-    w
+/// The real map of `seed` (the small retro map, from its cached pick), led by its first civ.
+fn lead(seed: u32) -> Stage {
+    let mut s = Stage::retro("small", seed).unwrap();
+    let first = s.world().civs.keys().next().copied().expect("a civ");
+    s.lead(first).unwrap();
+    s
 }
 
 /// Ends a turn with the led civ's store full: its capital's market may or may not feed it, and these
@@ -34,24 +29,6 @@ fn end_fed(w: &mut World) {
     let id = led_scout(w);
     w.units.get_mut(&id).unwrap().store = [1.0; N];
     w.act(Action::EndTurn).unwrap();
-}
-
-/// Every land tile plains and bare: no rivers, trails or hidden costs, and the player's civ has
-/// revealed nothing. The capital and its camp and scout are left as they are.
-fn plain(w: &mut World) {
-    for t in &mut w.tiles {
-        if t.terrain != SEA {
-            t.terrain = PLAINS;
-        }
-        t.river = 0;
-        t.flow = None;
-        t.trail = false;
-        t.trail_work = 0.0;
-        t.trail_cost = None;
-        t.span = None;
-    }
-    let me = w.player.unwrap();
-    w.civs.get_mut(&me).unwrap().revealed.clear();
 }
 
 /// The `n` tiles from `from` straight out in the first direction that stays on land (none of them
@@ -73,14 +50,6 @@ fn open_ray(w: &World, from: usize, n: i32) -> Vec<usize> {
 fn capital(w: &World) -> (usize, Hex) {
     let c = w.civs[&w.player.unwrap()].capital;
     (c, w.tiles[c].hex())
-}
-
-/// Sets tile `i` to `terrain` with its hidden trail cost and span.
-fn paint(w: &mut World, i: usize, terrain: usize, trail_cost: Option<f64>, span: Option<u8>) {
-    let t = &mut w.tiles[i];
-    t.terrain = terrain;
-    t.trail_cost = trail_cost;
-    t.span = span;
 }
 
 fn scout(w: &World) -> &units::Unit {
@@ -106,7 +75,7 @@ fn until_route_done(w: &mut World, max: u32) -> u32 {
 
 #[test]
 fn the_scout_is_made_at_the_capital_with_its_packs_from_the_store() {
-    let w = lead(2);
+    let w = lead(2).into_world();
     let me = w.player.unwrap();
     let (cap, _) = capital(&w);
     let scouts: Vec<_> = w.units.values().filter(|u| u.kind() == UnitKind::Scout).collect();
@@ -118,13 +87,14 @@ fn the_scout_is_made_at_the_capital_with_its_packs_from_the_store() {
 
 #[test]
 fn a_hidden_route_is_priced_by_what_the_civ_knows() {
-    let mut w = lead(2);
-    plain(&mut w);
-    let me = w.player.unwrap();
-    let (cap, _) = capital(&w);
+    let mut s = lead(2);
+    s.plain();
+    let (cap, _) = capital(s.world());
     // Six steps out; the third is an unrevealed forest with a trail costing 1, the rest plains.
-    let line = open_ray(&w, cap, 6);
-    paint(&mut w, line[2], FOREST, Some(1.0), None);
+    let line = open_ray(s.world(), cap, 6);
+    s.paint(line[2], FOREST, Some(1.0), None);
+    let mut w = s.into_world();
+    let me = w.player.unwrap();
     let to = line[5];
     let bare = TERRAIN[PLAINS].move_cost.unwrap();
     let forest = TERRAIN[FOREST].move_cost.unwrap();
@@ -142,15 +112,16 @@ fn a_hidden_route_is_priced_by_what_the_civ_knows() {
 
 #[test]
 fn a_route_across_rough_country_is_searched_and_its_trails_built() {
-    let mut w = lead(2);
-    plain(&mut w);
-    let (cap, _) = capital(&w);
+    let mut s = lead(2);
+    s.plain();
+    let (cap, _) = capital(s.world());
     // Six tiles of forest and hills, each with a hidden trail.
-    let line = open_ray(&w, cap, 6);
+    let line = open_ray(s.world(), cap, 6);
     for (k, &i) in line.iter().enumerate() {
         let terrain = if k % 2 == 0 { FOREST } else { HILLS };
-        paint(&mut w, i, terrain, Some(1.0), None);
+        s.paint(i, terrain, Some(1.0), None);
     }
+    let mut w = s.into_world();
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: line[5] })).unwrap();
     let turns = until_route_done(&mut w, 20);
     assert!(turns <= 20, "a 6-tile route within 20 turns, took {turns}");
@@ -166,24 +137,25 @@ fn a_route_across_rough_country_is_searched_and_its_trails_built() {
 
 /// A ring of mountains at distance 3 around the capital, every one of span 2 but `pass`, which
 /// spans 1: the capital is in a valley sealed by mountains, bridgeable at one place.
-fn sealed_valley(w: &mut World, pass: Option<usize>) -> Vec<usize> {
-    let (_, ch) = capital(w);
-    let ring: Vec<usize> = (0..w.tiles.len()).filter(|&i| w.tiles[i].hex().distance(ch) == 3).collect();
+fn sealed_valley(s: &mut Stage, pass: Option<usize>) -> Vec<usize> {
+    let (_, ch) = capital(s.world());
+    let ring: Vec<usize> = (0..s.world().tiles.len()).filter(|&i| s.world().tiles[i].hex().distance(ch) == 3).collect();
     for &i in &ring {
         let span = if Some(i) == pass { 1 } else { 2 };
-        paint(w, i, MOUNTAIN, Some(MAP.mountain_cost as f64), Some(span));
+        s.paint(i, MOUNTAIN, Some(MAP.mountain_cost as f64), Some(span));
     }
     ring
 }
 
 #[test]
 fn a_sealed_scout_searches_the_range_from_inside_the_valley() {
-    let mut w = lead(2);
-    plain(&mut w);
-    let (cap, ch) = capital(&w);
-    let line = open_ray(&w, cap, 6);
+    let mut s = lead(2);
+    s.plain();
+    let (cap, ch) = capital(s.world());
+    let line = open_ray(s.world(), cap, 6);
     let (pass, target) = (line[2], line[5]);
-    sealed_valley(&mut w, Some(pass));
+    sealed_valley(&mut s, Some(pass));
+    let mut w = s.into_world();
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     // The scout reveals the range from where it stands, inside the ring, and only leaves it once the
     // pass is built and the walk out is open.
@@ -202,12 +174,13 @@ fn a_sealed_scout_searches_the_range_from_inside_the_valley() {
 
 #[test]
 fn a_sealed_valley_gets_its_pass_built_and_its_route_found() {
-    let mut w = lead(2);
-    plain(&mut w);
-    let (cap, _) = capital(&w);
-    let line = open_ray(&w, cap, 6);
+    let mut s = lead(2);
+    s.plain();
+    let (cap, _) = capital(s.world());
+    let line = open_ray(s.world(), cap, 6);
     let (pass, target) = (line[2], line[5]);
-    sealed_valley(&mut w, Some(pass));
+    sealed_valley(&mut s, Some(pass));
+    let mut w = s.into_world();
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     let turns = until_route_done(&mut w, 40);
     assert!(turns <= 40, "a mountain pass within 40 turns, took {turns}");
@@ -220,11 +193,12 @@ fn a_sealed_valley_gets_its_pass_built_and_its_route_found() {
 
 #[test]
 fn no_route_can_exist_through_a_wall_no_mountain_of_which_can_be_bridged() {
-    let mut w = lead(2);
-    plain(&mut w);
-    let (cap, _) = capital(&w);
-    let target = open_ray(&w, cap, 6)[5];
-    sealed_valley(&mut w, None);
+    let mut s = lead(2);
+    s.plain();
+    let (cap, _) = capital(s.world());
+    let target = open_ray(s.world(), cap, 6)[5];
+    sealed_valley(&mut s, None);
+    let mut w = s.into_world();
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     until_route_done(&mut w, 60);
     assert!(has_event(&w, EventKind::ScoutNoRoute), "the scout says no route can exist");
@@ -233,13 +207,14 @@ fn no_route_can_exist_through_a_wall_no_mountain_of_which_can_be_bridged() {
 
 #[test]
 fn a_built_trail_cuts_the_camps_and_the_clans_walks() {
-    let mut w = lead(2);
-    plain(&mut w);
-    let (cap, _) = capital(&w);
-    let line = open_ray(&w, cap, 4);
+    let mut s = lead(2);
+    s.plain();
+    let (cap, _) = capital(s.world());
+    let line = open_ray(s.world(), cap, 4);
     for &i in &line {
-        paint(&mut w, i, FOREST, Some(1.0), None);
+        s.paint(i, FOREST, Some(1.0), None);
     }
+    let mut w = s.into_world();
     let to = line[3];
     let before = units::path_between(&w, cap, to).unwrap().1;
     for &i in &line {
@@ -252,12 +227,13 @@ fn a_built_trail_cuts_the_camps_and_the_clans_walks() {
 
 #[test]
 fn a_mountain_pass_is_crossed_by_the_camp_only_once_built() {
-    let mut w = lead(2);
-    plain(&mut w);
-    let (cap, _) = capital(&w);
-    let line = open_ray(&w, cap, 6);
+    let mut s = lead(2);
+    s.plain();
+    let (cap, _) = capital(s.world());
+    let line = open_ray(s.world(), cap, 6);
     let (pass, target) = (line[2], line[5]);
-    let ring = sealed_valley(&mut w, Some(pass));
+    let ring = sealed_valley(&mut s, Some(pass));
+    let mut w = s.into_world();
     assert!(units::path_between(&w, cap, target).is_none(), "sealed");
     w.tiles[pass].trail = true;
     assert!(units::path_between(&w, cap, target).is_some(), "a built pass is walked");
@@ -266,7 +242,7 @@ fn a_mountain_pass_is_crossed_by_the_camp_only_once_built() {
 
 #[test]
 fn an_idle_scout_at_the_capital_neither_forages_nor_starves() {
-    let mut w = lead(2);
+    let mut w = lead(2).into_world();
     let (cap, _) = capital(&w);
     for _ in 0..50 {
         end_fed(&mut w);
@@ -281,7 +257,7 @@ fn an_idle_scout_at_the_capital_neither_forages_nor_starves() {
 
 #[test]
 fn a_route_order_replays_to_the_same_world() {
-    let mut w = lead(2);
+    let mut w = lead(2).into_world();
     let (cap, _) = capital(&w);
     let target = open_ray(&w, cap, 6)[5];
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();

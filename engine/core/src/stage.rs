@@ -13,7 +13,7 @@ use crate::data::{size_radius, Config, Fighter, N, PLAINS, SEA};
 use crate::hex::Hex;
 use crate::map::{self, Tile};
 use crate::pregame::End;
-use crate::units::{self, Plan, Unit, UnitKind};
+use crate::units::{self, Plan, Unit};
 use crate::world::Phase;
 use crate::{civs, claim, maptext, Action, EventKind, Market, Order, World};
 
@@ -233,31 +233,49 @@ impl Stage {
     /// and the civs are founded as `civs::found` founds them. Returns the new civs' ids, in order.
     pub fn civs(&mut self, tiles: &[usize], people: f64) -> Vec<u32> {
         let before: Vec<u32> = self.world.civs.keys().copied().collect();
-        let markets: Vec<u32> = tiles.iter().map(|&t| self.open(t)).collect();
+        let markets: Vec<u32> = tiles.iter().map(|&t| open_market(&mut self.world, t)).collect();
         for &t in tiles {
             self.clan(t, people);
         }
-        self.world.end = Some(End {
-            turn: self.world.turn,
-            centres: markets,
-            clans: Vec::new(),
-            cover: 1.0,
-            by_limit: false,
-            topped_up: Vec::new(),
-        });
-        civs::found(&mut self.world);
+        found_civs(&mut self.world, &markets);
         self.world.civs.keys().copied().filter(|id| !before.contains(id)).collect()
     }
 
-    /// Makes `civ` the civ the player leads, as `ChooseCiv` does, and fills its scouts' packs from
-    /// full, as a scout refills its pack from the store.
+    /// Makes `civ` the civ the player leads, as `ChooseCiv` does (logged, so a replay has it).
     pub fn lead(&mut self, civ: u32) -> Result<(), String> {
         self.act(Action::ChooseCiv { civ: Some(civ) })?;
         self.world.events.clear();
-        for u in self.world.units.values_mut().filter(|u| u.kind() == UnitKind::Scout) {
-            u.actor.store = [units::pack_cap(u.actor.people) / N as f64; N];
-        }
         Ok(())
+    }
+
+    /// Makes every land tile plains and bare: no rivers, trails, lakes or hidden costs, and no food
+    /// set on it. The led civ's revealed set is cleared, so it has seen nothing. The capital, its
+    /// camp and its scout are left as they are. Not logged: a plain stage is not a save.
+    pub fn plain(&mut self) {
+        for t in &mut self.world.tiles {
+            if t.terrain != SEA {
+                t.terrain = PLAINS;
+            }
+            t.river = 0;
+            t.flow = None;
+            t.trail = false;
+            t.trail_work = 0.0;
+            t.trail_cost = None;
+            t.span = None;
+        }
+        if let Some(me) = self.world.player {
+            if let Some(c) = self.world.civs.get_mut(&me) {
+                c.revealed.clear();
+            }
+        }
+    }
+
+    /// Sets tile `i` to `terrain` with its hidden trail cost and span. Not logged, as `plain` is not.
+    pub fn paint(&mut self, i: usize, terrain: usize, trail_cost: Option<f64>, span: Option<u8>) {
+        let t = &mut self.world.tiles[i];
+        t.terrain = terrain;
+        t.trail_cost = trail_cost;
+        t.span = span;
     }
 
     /// Moves `civ`'s camp onto tile `i` with `people` warriors, in one stack and a full pack. Returns
@@ -376,24 +394,6 @@ impl Stage {
         self.world.next_id += 1;
         id
     }
-
-    /// Opens a market on tile `i`, founded on turn 0, as a centre's market is.
-    fn open(&mut self, i: usize) -> u32 {
-        let id = self.fresh_id();
-        let m = Market {
-            id,
-            tile: i,
-            founded: 0,
-            prices: [1.0; N],
-            goods: Vec::new(),
-            activity: 2.0 * crate::data::MARKET.min_attendance,
-            volume: 0.0,
-            traders: 0,
-            moved: 0.0,
-        };
-        self.world.markets.insert(id, m);
-        id
-    }
 }
 
 /// A tile by its mark or its index.
@@ -464,4 +464,37 @@ pub struct StageSpec {
     pub lead: Option<usize>,
     #[serde(default)]
     pub armies: Vec<ArmySpec>,
+}
+
+/// Opens a market on tile `tile` of `w`, founded on turn 0, as a centre's market is. Returns its id.
+pub fn open_market(w: &mut World, tile: usize) -> u32 {
+    let id = w.next_id;
+    w.next_id += 1;
+    let m = Market {
+        id,
+        tile,
+        founded: 0,
+        prices: [1.0; N],
+        goods: Vec::new(),
+        activity: 2.0 * crate::data::MARKET.min_attendance,
+        volume: 0.0,
+        traders: 0,
+        moved: 0.0,
+    };
+    w.markets.insert(id, m);
+    id
+}
+
+/// Ends the pre-game on `centres` (the markets of the civs' tiles) and founds the civs, as the
+/// pre-game's end does.
+pub fn found_civs(w: &mut World, centres: &[u32]) {
+    w.end = Some(End {
+        turn: w.turn,
+        centres: centres.to_vec(),
+        clans: Vec::new(),
+        cover: 1.0,
+        by_limit: false,
+        topped_up: Vec::new(),
+    });
+    civs::found(w);
 }

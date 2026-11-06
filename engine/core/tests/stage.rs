@@ -176,3 +176,24 @@ fn a_spec_round_trips_and_builds_the_builders_world() {
     built.army(ids[0], at(12, -4, 0), 4.0);
     assert_eq!(stats::digest(from.world()), stats::digest(built.world()));
 }
+
+#[test]
+fn plain_makes_the_land_bare_and_clears_what_the_led_civ_has_seen() {
+    let mut s = Stage::retro("small", 2).unwrap();
+    let first = *s.world().civs.keys().next().unwrap();
+    s.lead(first).unwrap();
+    s.plain();
+    let w = s.world();
+    assert!(w.tiles.iter().all(|t| t.terrain == engine::data::SEA || t.terrain == engine::data::PLAINS));
+    assert!(w.tiles.iter().all(|t| !t.trail && t.river == 0 && t.trail_cost.is_none() && t.span.is_none()));
+    assert!(w.civs[&first].revealed.is_empty());
+}
+
+#[test]
+fn paint_sets_a_tiles_terrain_and_hidden_cost() {
+    let mut s = Stage::flat(3);
+    let i = at(3, 1, 0);
+    s.paint(i, engine::data::FOREST, Some(2.0), Some(3));
+    let t = &s.world().tiles[i];
+    assert_eq!((t.terrain, t.trail_cost, t.span), (engine::data::FOREST, Some(2.0), Some(3)));
+}

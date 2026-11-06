@@ -5,9 +5,10 @@ use engine::actors::connected;
 use engine::clans::new_clan;
 use engine::data::*;
 use engine::hex::{Hex, DIRS};
-use engine::map::{generate, index, Country, Tile};
+use engine::map::{generate, index, Tile};
+use engine::stage::{found_civs, open_market, Stage};
 use engine::units::{self, Unit};
-use engine::{civs, Action, Config, End, EventKind, Market, Order, World};
+use engine::{Action, EventKind, Order, World};
 
 pub const R: i32 = 6;
 
@@ -47,38 +48,7 @@ pub fn at_big(q: i32, r: i32) -> usize {
 }
 
 fn flat_radius(radius: i32) -> World {
-    let mut w = World::new(Config { seed: 1, radius, army: true, gifts: true, zone: true, ..Config::default() });
-    w.clans.clear();
-    w.rng = 4151932303;
-    w.next_id = 4;
-    for t in &mut w.tiles {
-        if t.hex().distance(Hex::ORIGIN) < radius {
-            t.terrain = PLAINS;
-        }
-        t.cap = [0.0; N];
-        t.stock = [0.0; N];
-        t.unworn = [0.0; N];
-        t.wear = [0.0; N];
-        t.take = [0.0; N];
-        t.wild_grain = 0.0;
-        t.tame = 0;
-        t.claim = None;
-        t.traffic = 0.0;
-        t.used = false;
-        t.claim_run = 0;
-        t.free_run = 0;
-        t.trail = false;
-        t.river = 0;
-        t.flow = None;
-        t.lake = false;
-        t.flood = false;
-        t.country = Country::Open;
-        t.pass = false;
-        t.trail_cost = None;
-        t.span = None;
-    }
-    w.markets.clear();
-    w
+    Stage::flat(radius).into_world()
 }
 
 /// As `flat`, but only `land` is land.
@@ -142,21 +112,7 @@ pub fn check_territories(w: &World) {
 
 /// Opens a market on `tile` as `form` would, founded on turn 0.
 pub fn open(w: &mut World, tile: usize) -> u32 {
-    let id = w.next_id;
-    w.next_id += 1;
-    let m = Market {
-        id,
-        tile,
-        founded: 0,
-        prices: [1.0; N],
-        goods: Vec::new(),
-        activity: 2.0 * MARKET.min_attendance,
-        volume: 0.0,
-        traders: 0,
-        moved: 0.0,
-    };
-    w.markets.insert(id, m);
-    id
+    open_market(w, tile)
 }
 
 /// Makes `tile` a hearth with `wild` grain.
@@ -182,27 +138,17 @@ pub fn fill_stores(w: &mut World) {
 
 /// Ends the pre-game on `centres` by hand and founds the civs.
 pub fn found(w: &mut World, centres: &[u32]) {
-    w.end = Some(End {
-        turn: w.turn,
-        centres: centres.to_vec(),
-        clans: Vec::new(),
-        cover: 1.0,
-        by_limit: false,
-        topped_up: Vec::new(),
-    });
-    civs::found(w);
+    found_civs(w, centres);
 }
 
 /// A big world of three civs, each with a clan of 14 on its market's tile (founding's camp, scout and
 /// guard take 8 of them). Returns the world, the
 /// civs and their clans.
 pub fn three() -> (World, [u32; 3], [u32; 3]) {
-    let mut w = big();
-    let ms = markets3(&mut w);
-    let clans =
-        [put(&mut w, &[at_big(-5, 0)], 14.0), put(&mut w, &[at_big(5, 0)], 14.0), put(&mut w, &[at_big(0, -10)], 14.0)];
-    found(&mut w, &ms);
-    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    let mut stage = Stage::flat(BIG);
+    let ids = stage.civs(&[at_big(-5, 0), at_big(5, 0), at_big(0, -10)], 14.0);
+    let w = stage.into_world();
+    let clans = [at_big(-5, 0), at_big(5, 0), at_big(0, -10)].map(|t| w.tiles[t].claim.expect("a clan"));
     (w, [ids[0], ids[1], ids[2]], clans)
 }
 
