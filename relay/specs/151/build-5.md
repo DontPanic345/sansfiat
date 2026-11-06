@@ -36,12 +36,16 @@ add a test: the idle run is deterministic (two runs of the same file give the sa
 In `core/src/judge.rs`: `EconomyScores { store_mean, store_max, turns_at_pack, levy_per_turn,
 largest_army, guard_mean }` as defined in `spec.md` item 17, added to `Scores` as `economy`,
 read by `Watch::turn` each turn over the alive civs, finished in `Watch::scores`.
-- `levy_per_turn` needs `Civ.levied: f64`, `#[serde(skip)]`, set in `civs::levy` where the
+- `levy_per_turn` needs `Civ.levied: f64`, unsaved, set in `civs::levy` where the
   civ's store is credited (the total of what it paid in; zero it at the start of the `civs`
   turn step, or set it unconditionally where `levy` is called so a turn with no levy reads 0,
   whichever keeps one place that writes it). **No digest may move:** run
   `cargo test` (the pins in `cli/tests/save.rs` stay) and `./cross-build.sh`. Say in the doc
-  comment that it is derived and not saved.
+  comment that it is derived and not saved. `Civ` serialises through `CivFlat`
+  (`#[serde(from, into)]`), so a field attribute on `Civ` does nothing: leave `levied` out of
+  `CivFlat` and set it to 0 in the `From<CivFlat>` impl. `World` is `PartialEq` and
+  `leaning.rs` compares a live world's civs to a replay's: a replay recomputes `levied`, so it
+  holds, but a test comparing a live world to a loaded snapshot would not; say so in the doc.
 - `turns_at_pack` uses `units::pack_cap(UNIT.start as f64)`.
 - `sweep_judge.rs`'s `Total` gets `economy` (means over maps; `store_max` and `largest_army`
   are the largest over maps) and `print_text` prints one line for it under the groups it

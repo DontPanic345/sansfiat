@@ -16,9 +16,11 @@ a move from noise.
    `map`).
 3. **The fixtures on it.** `tests/common` and `core/tests/scout.rs`'s painters are rewritten on
    the stage, with every existing assertion untouched.
-4. **Two cases that are red on main**: the scout that settles with an unrevealed tile that
-   could beat its route, and Disband all that leaves people behind. Each is a test that
-   expects its failure, so CI holds the failure and T flips it (decision 6).
+4. **The owner's two bugs, red on main**: the scout that searches a range nearest-first, not
+   by best case (with the owner's settle invariant as a green guard), and Disband all that
+   sends one person. Each is a test that expects its failure, so CI holds the failure and T
+   flips it (decisions 3 and 6). A third red case, the scout that never builds the river
+   bridge that would cut its settled route, is spec-review's find and not T's.
 5. **`Sim.stage`** in wasm, a `check.mjs` arm that builds the page's panel shapes from a staged
    game as data, and the Disband all page arm, since that bug is in the page's order form.
 6. **The judge**: `judge --compare A.json B.json` with a noise floor per metric; the idle led
@@ -38,7 +40,7 @@ a rule on the maps and the page, and can a review tell a move from noise?
 
 | Score | Measure | Control |
 |---|---|---|
-| Health | The two cases are red on main for the stated reason: each `should_panic`/`expectBug` carries the failing message, and `relay/specs/151/cases.md` records what each says. `check.sh` is green; every digest is unchanged. | The same two cases on a world where the bug can't act: the Rust Disband case on a whole-number army passes; the scout invariant on small 6 (settled at its known route) passes. |
+| Health | The owner's two bugs are red on main for the stated reason: the scout's search order (`should_panic`) and the page's Disband all (`expectBug`), each carrying its failing message, and `relay/specs/151/cases.md` records what each says. The river-bridge case is red too, recorded as not T's. `check.sh` is green; every digest is unchanged. | The same checks where the bug can't act: the Rust Disband with no count passes on fractional units; the search-order check passes on small 9 to the forest; the owner's settle invariant passes on all 14 errands. |
 | Health | `sweep --judge --json` on the branch against main's: `judge --compare main.json branch.json` flags no existing metric (the new economy group is listed as only in B). | main against itself: nothing differs and nothing is flagged. |
 | Health | The noise floor is sane: `sweep --judge --json --floor` on main gives a floor per metric; a compare of main against a perturbed run flags fewer metrics than it lists as changed. | Floors are 0 only where a metric is exactly stable; the build says which. |
 | Decisions | `buttons.mjs` presses every button label `describe` yields on the staged game, each checked against the world; it fails on a label with no case. | The review changes one order in `panels.js` (for example Forage sends `pillage`) and the script goes red. |
@@ -53,25 +55,34 @@ Run on main at the start of this step:
   is worth having: the large map's alone is about 3 s.
 - `World`, `Tile` and `Civ` are `Clone`. `stats::digest` hashes the world's JSON, so a
   `#[serde(skip)]` field moves no digest.
-- **The scout bug reproduces on the real maps.** The first civ led, its scout routed from its
-  capital to the nearest rival capital (small 2) or to `Lead`'s forest-or-hills tile seven
-  steps out (small 3), the store refilled each turn as `scout_errand.rs` does:
-  - small 2 to the rival: turn 0 the plan has one candidate (tile 144, a mountain), the scout
-    reveals it, and on turn 1 `ScoutRouteFound` says "has its route, cost 15" with `built`
-    true while `route_plan` says possible 14 and `candidates` empty.
-  - small 3 to the forest: the scout is still searching on turn 18 (known 42, possible
-    14..15, four to seven candidates, mostly mountains at the range's far end) and `built` is
-    first true at turn 50 with known 19 against possible 18.
-  - Every other of the 14 errands settles with known equal to possible.
-  So the invariant is **at settle, `route_plan.possible.cost >= known.cost − EPS`**, and it
-  fails on small 2 and small 3. The two also hint that `Plan.candidates` can be empty while a
-  cheaper possible path exists; the case names the tile of the possible path that is not
-  revealed and is cheaper than its known cost, if there is one, and says so in `cases.md`.
-- **Disband all.** `www/panels.js`'s `disband()` makes its `all` option's order with `n` set to
-  `floor(people)` (cap `max(1, floor(people))`), not with no count. An army of 4.6 people
-  keeps 0.6 and stays on the map. The engine's `Order::Disband { n: None }` sends all: the
-  Rust case (through the stage) checks that and is expected to pass on main; the page arm is
-  the red one.
+- **The scout, measured again in spec-review** (a throwaway probe on main, the scout's store
+  and pack refilled each turn: the pack matters, since with the store alone small 3's scout
+  starves on turn 16). The owner's note (`relay/retro/m3/owner.md` §1.3) is that the scout
+  checked one mountain and ignored two that might have carried a trail; the M3 retro traced it
+  (`docs/proposals/m3-retro.md`, note 3): every skip was right, but the search goes
+  nearest-first along a range, slowly and silently. T's fix is the order: a range's mountains
+  by their best case (the cost through them plus the walk there). So:
+  - **Nothing unrevealed beats a settled route, on main.** On small 2 to the rival (settles
+    turn 2, known 15, possible 14) and small 3 to the forest (settles turn 51, known 19,
+    possible 18), every tile where the possible path's step differs from the known one is
+    *revealed*: hills 144 (river 5) on small 2 and hills 436 (river 1) on small 3. The gap is
+    the river crossing a trail on a revealed tile would bridge, which `route_plan`'s possible
+    path drops and the known path pays, and the scout builds trails only on the known path. It
+    is a real bug, but not the owner's and not T's: build-3 keeps it as its own red case and
+    the spec-review files it as a fix. The other errands settle with known equal to possible.
+  - **The search is out of best-case order on main.** Counting each turn a mountain is
+    revealed against the unrevealed mountains whose cost through them beats the known route,
+    with the walk as the scout's known cost to beside each (the definition build-3's case
+    uses): small 9 to the rival reveals 29 mountains over 110 turns, 12 of them with a better
+    best case left open; medium 9 to the rival 11 of 34;
+    medium 8 to the rival 4 of 11; small 9 to the forest 0 of 2. That is the red case for the
+    owner's note.
+- **Disband all.** `www/panels.js`'s `disband()` makes its `all` option a stepper option, so
+  the order carries a count `n`; the stepper opens at 1 (`www/panel.js`, `stepping.n = 1`),
+  and its cap is `max(1, floor(people))`. Pressing Disband… → all → Go disbands one person
+  (the owner's note §1.2); even at the cap an army of 4.6 keeps 0.6. The engine's
+  `Order::Disband { n: None }` sends all: the Rust case checks that and passes on main; the
+  page arm is the red one.
 
 ## Shape: Henry Ford
 
@@ -97,10 +108,14 @@ The largest ford is build-1; it runs a rung below its score.
 1. **Text.** `map::parse(text) -> Result<Parsed, String>`, with `Parsed { radius, tiles }`
    (tiles as `World::new`'s tile layout, bare). The text is `ascii`'s: one row per `r` from
    `−radius` to `radius`, each row indented as `ascii` does, one glyph a tile, a space
-   between glyphs. The radius is `(rows − 1) / 2`; a row count that is not odd, a row of the
+   between glyphs. A row count short of `2·radius + 1`, a row of the
    wrong width or an unknown glyph is an error naming the row and column. Blank lines at the
    foot and the `map` command's legend and count lines (anything after the last full row) are
-   ignored: the text that `sansfiat map` prints parses as printed.
+   ignored: the text that `sansfiat map` prints parses as printed. So the radius comes from
+   the first non-blank row (its glyph count less one), not from the row count, and the parser
+   reads `2·radius + 1` rows; leading blank lines are skipped and an indent common to every
+   row (a raw string in a test) is removed, so the rows' own indents are `ascii`'s
+   (spec-review: the legend and count lines follow the rows, so a row count can't give it).
 2. **Glyphs to tiles.** `~` sea; `=` sea with `lake`; `,` coast; `.` plains; `f` forest; `h`
    hills; `^` mountain; `:` desert; `%` marsh; `r` plains with `river` 1; `z` plains with
    `flood`; `V`, `S`, `N` plains with `country` Valley, Sealed, Neck; `P` plains with `pass`.
@@ -147,22 +162,38 @@ The largest ford is build-1; it runs a rung below its score.
 ## Settled: the cases (build-3)
 
 10. **Where.** `core/tests/cases.rs`.
-11. **Scout.** One test per errand of small 2 (to the nearest rival capital) and small 3
-    (to the forest 7 steps out), each staged by `Stage::retro` and led by the first civ, with
-    the store refilled each turn as `scout_errand.rs` does. Each ends in the invariant at
-    settle ("settle" is the scout's `built` true, or its route cleared with the scout alive,
-    ending the turn it happens): every tile on `route(civ, from, to).possible`'s path that is
-    not revealed has a possible cost equal to its known cost, and `possible.cost >=
-    known.cost − EPS`. A third test on small 6 (its errand to the rival settles with known
-    equal to possible) passes: the control. Each red test is `#[should_panic(expected = "…")]`
-    with the invariant's own message, and the message names the map, the turn, both costs and
-    the tile if there is one.
+11. **Scout.** Each errand is staged by `Stage::retro`, led by the first civ, routed from its
+    capital to the nearest rival capital or to `Lead`'s forest-or-hills tile 7 steps out, with
+    the civ's store and the scout's pack refilled each turn. "Settle" is the scout's `built`
+    true, or its route cleared with the scout alive, at the end of the turn it happens. Three
+    tests:
+    - **The owner's invariant, green on main** (`settled_scouts_leave_nothing_unrevealed_that_could_beat_them`):
+      on all 14 errands of the seven retro maps, at settle no tile on `route(civ, from,
+      to).possible`'s path that is unrevealed and untrailed has a possible step cheaper than
+      its known one. It guards T.
+    - **The search order, red on main** (`a_scout_searches_a_range_by_best_case`): on small 9
+      and medium 8 to the rival, each turn the scout reveals a mountain, that mountain's best
+      case is within `EPS` of the lowest best case among the mountains open at the turn's
+      start. A mountain is open when it is unrevealed and its cost through it (possible cost
+      capital → it, plus it → target) beats the known route; its best case is that cost plus
+      the scout's walk to it (the scout's known cost to the cheapest tile beside it, 0 when it
+      stands beside it). The message names the map, the turn, the mountain and its best case,
+      and the better one left open with its own. This is the decided order in T's own words,
+      so T makes it pass; small 9 to the forest (2 reveals, in order) is its control.
+    - **The river bridge, red on main** (`a_settled_route_has_no_cheaper_trail`): on small 2
+      to the rival and small 3 to the forest, at settle `possible.cost >= known.cost − EPS`.
+      It fails because a trail on a revealed river tile (hills 144, hills 436) would cut the
+      route by one and the scout builds trails only on its known path. Not T's: it stays red
+      until a fix piece takes it.
+    Each red test is `#[should_panic(expected = "…")]` with a stable fragment of its own
+    message.
 12. **Disband all.** Through the stage, on a camp, a scout and a guard each with fractional
     people (a camp of 4.6, a scout of 1.5, a guard of 2.5; their civ's clan gets them back):
     `Order::Disband { n: None, .. }` sends every person home at once, the unit is gone, and
-    the clan's people rise by exactly the unit's. This is expected to pass on main. A second
-    test does the same through the order the page's `all` option makes and is the red one:
-    see item 14.
+    the clan's people rise by exactly the unit's. This passes on main: it is the control for
+    the page arm (item 14), which is the red one. No Rust test sends the page's count: the bug
+    is the page's form, and a Rust test that `n: Some(4)` removes 4.6 people would pin an
+    engine change T doesn't make.
 
 ## Settled: the page (build-4)
 
@@ -170,14 +201,17 @@ The largest ford is build-1; it runs a rung below its score.
     `Stage::from_spec` and keeps the world. `window.game.stage(spec)` in `main.js` shows the
     play screen on a `Sim.stage(spec)` at the phase the stage is in (a led stage is at
     `main`), so `play.mjs` and the scripts can eval it.
-14. **The page arm.** In `check.mjs`, a staged game with an army of 4.6 people: take the
-    camp panel's `Disband…` button, its `all` option, make the order at its cap, apply it
-    with `Sim.act`, and assert the army is gone and the clan is up by 4.6. Today the order is
-    `n: 4` and the army stays with 0.6. It is wrapped in `expectBug(name, message, fn)`: a
-    helper that fails if `fn` does not throw `message`, so T deletes the wrapper and keeps the
-    assert. `check.mjs` also builds the camp, scout, guard, civ, clan and tile shapes from
-    the staged game and checks every button has a label and an action, an arm, a paint or a
-    stepper.
+14. **The page arm.** In `www/check-stage.mjs` (run by `check.mjs`, which is near 600
+    lines), a staged game with an army of 4.6 people: take the
+    camp panel's `Disband…` button, its `all` option, and make the order the page sends when
+    the player presses Go as the stepper opens (the count 1, `www/panel.js`), apply it with
+    `Sim.act`, and assert the army is gone and the clan is up by 4.6. Today one person goes
+    home. The same at the option's cap (`n: 4`, 0.6 stays) is a second assert in the same
+    case. It is wrapped in `expectBug(name, message, fn)`: a helper that fails if `fn` does not
+    throw `message`, so T, which makes `all` a button that sends no count, finds the button
+    its new way, keeps the asserts and deletes the wrapper. `check.mjs` also builds the camp,
+    scout, guard, civ, clan and tile shapes from the staged game and checks every button has
+    a label and an action, an arm, a paint or a stepper.
 
 ## Settled: the judge and the bench (build-5, build-6)
 
@@ -196,7 +230,7 @@ The largest ford is build-1; it runs a rung below its score.
     - `turns_at_pack`: the civ-turns on which a store held at least a pack's worth,
       `units::pack_cap(UNIT.start)`.
     - `levy_per_turn`: the mean over civ-turns of the food the civ's market levy brought.
-      This needs a number the rules don't keep: `Civ.levied`, a `#[serde(skip)]` per-turn
+      This needs a number the rules don't keep: `Civ.levied`, an unsaved (out of `CivFlat`) per-turn
       counter set in `civs::levy` (and zeroed where the turn's levy begins), so no digest moves.
     - `largest_army`: the most people in one camp at any turn.
     - `guard_mean`: the guard's people, mean over civ-turns.
@@ -247,8 +281,9 @@ The largest ford is build-1; it runs a rung below its score.
     | Civ | Gift −1, +1; Keep −1, +1, default | press | the civ's gift or keep moved by one, or is the default |
     | Civ | Claim (P), Unclaim (U) | arm, click | the civ's claim gains or loses the tile |
 
-    Disband all is the case that is red today (item 14); in `buttons.mjs` it is wrapped like
-    the page arm, so T flips it. The staged game's exact numbers and the DOM driving
+    Disband all is the case that is red today (item 14); in `buttons.mjs` it is pressed as a
+    player presses it (the option chosen, Go at the count the stepper opens at, no count set),
+    wrapped like the page arm, so T flips it. The staged game's exact numbers and the DOM driving
     (`page.button`, `page.click`, the stepper's `stepper()`) are the build's.
 
 ## Unsettled, and which step holds it
@@ -258,15 +293,16 @@ Nothing in the rules. Two measurements are the build's, each in its step, with i
 - build-6: whether `--nulls 1` gives usable floors. It records main's floors, and a compare
   of main against a perturbed run, in `relay/specs/151/floor.md`. If most metrics' floors are
   0 (a single null is too lucky), it says so and sets the default to 3, as a decision.
-- build-3: if the invariant is not red on small 2 or small 3 as the probe above says (main may
-  have moved), it records the run in `cases.md` and finishes `pending` rather than weakening
-  the invariant.
+- build-3: if the search-order case is not red on small 9 or medium 8 to the rival, or the
+  river-bridge case on small 2 or small 3, as spec-review's probe says (main may move), it
+  records the run in `cases.md` and finishes
+  `pending` rather than weakening the check.
 
 ## What the review runs
 
 - `engine/check.sh`.
-- `cargo test -p engine --test cases` and `node www/check.mjs`: the two cases are red for the
-  stated message (read `cases.md`).
+- `cargo test -p engine --test cases` and `node www/check.mjs`: the search order and the page's
+  Disband all are red for the stated message, the river bridge too (read `cases.md`).
 - `sansfiat sweep --judge --json > A.json` on main (a worktree) and on the branch, then
   `sansfiat judge --compare A.json B.json`: no existing metric flagged, the economy group "only
   in B". Then `sweep --judge --json --floor` on the branch and the compare again.
@@ -287,8 +323,11 @@ Nothing in the rules. Two measurements are the build's, each in its step, with i
    same way. The wasm retro stage runs the pre-game; the cache is native only.
 5. **The retro list moves to core** (`stage::RETRO`) because the stage's `retro` needs it and
    the CLI already reads it.
-6. **The invariant is stronger than `candidates`:** it reads the possible path's unrevealed
-   tiles, because the probe shows `candidates` empty at a settle that is wrong.
+6. **The scout's red case is the search order, in T's decided words** (spec-review): the
+   owner's settle invariant holds on main on every retro errand, so it is a green guard, and
+   what is wrong on main is the nearest-first order the owner saw. The best case is the cost
+   through the mountain plus the scout's known walk to beside it. The river-bridge gap the
+   spec step found is a third, separate red case and a fix idea, not T's.
 7. **`Civ.levied`**, a derived counter, for "levy a turn": no rule, no digest.
 8. **The floor** is `max |null − base|` over `--nulls N` (1 by default) runs, with one extra
    `rng` draw at the pick as the harmless difference.
@@ -296,4 +335,28 @@ Nothing in the rules. Two measurements are the build's, each in its step, with i
 10. **`judge.rs` splits into `sweep_judge.rs` and `game_judge.rs`.**
 11. **The idle control is the led civ with no orders**, not the all-AI run (which the file's
     judge already has).
-12. **Disband all's Rust half is expected to pass on main;** only the page's form is red.
+12. **Disband all's Rust half passes on main and is the control;** only the page's form is
+    red, pressed as the player presses it (Go at the count the stepper opens at, 1), and at
+    its cap. No Rust test sends the page's count (spec-review).
+
+## Spec-review
+
+Checked against the code and the maps on main (a throwaway probe, not committed):
+
+- **The scout's red case was the wrong bug.** At settle on small 2 and small 3, every step
+  where the possible path beats the known one is a revealed river tile (hills 144, hills
+  436), so "nothing unrevealed could beat the route" holds on main. The owner's bug, as the M3
+  retro traced it, is the nearest-first order, and T's decided fix is the order by best case:
+  the red case is now that order (12 of 29 reveals out of order on small 9, 4 of 11 on
+  medium 8, 0 of 2 on the control), the owner's invariant is a green guard on all 14 errands,
+  and the river bridge is a third red case, not T's (decision 6, items 4 and 11).
+- **The errand needs the scout's pack refilled**, not only the store: small 3's scout starves
+  on turn 16 otherwise.
+- **Disband all on the page sends 1, not the cap**: the stepper opens at 1. The page arm and
+  `buttons.mjs` press Go as it opens, and at the cap; the Rust shadow of the page's count is
+  dropped, since it would pin an engine change T doesn't make (items 12 and 14).
+- **`map::parse` takes the radius from the first row**: `sansfiat map` prints a legend and
+  counts after the rows, so the row count can't give it (item 1).
+- **`Civ` serialises through `CivFlat`**, so `levied` stays out of `CivFlat` rather than
+  carrying `#[serde(skip)]` (build-5).
+- **`check.mjs` is 542 lines**, so the staged arm goes in `www/check-stage.mjs` (build-4).

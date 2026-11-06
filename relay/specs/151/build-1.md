@@ -12,9 +12,11 @@ then `core/tests/common/mod.rs` (the hand-built worlds this replaces, in build-2
    re-export line, `pub use crate::maptext::{grid, parse, Parsed};`).
    - `grid(text) -> Result<(i32 /*radius*/, Vec<char> /*by tile index*/), String>`: the shared
      grid parser for the map and the layers. Rows are `ascii`'s: row `r` from `−radius` to
-     `radius`, each indented, one char a tile with single spaces between. Radius is
-     `(rows − 1) / 2`. Blank lines and anything after the last full row (the `map` command's
-     legend and count lines) are ignored; a bad row count, a row of the wrong width or a
+     `radius`, each indented, one char a tile with single spaces between. The radius is the
+     first non-blank row's glyph count less one (not the row count: the `map` command prints
+     a legend and counts after the rows), and `2·radius + 1` rows are read; leading blank
+     lines are skipped and an indent common to every row (a test's raw string) is removed.
+     Anything after the last row is ignored; too few rows, a row of the wrong width or a
      missing glyph is an `Err` naming the row and column. Use `map::index(radius, Hex)` to
      place each char; do not invent a second indexing.
    - `parse(text) -> Result<Parsed, String>` with `Parsed { radius, tiles: Vec<Tile> }`: the
@@ -44,8 +46,8 @@ then `core/tests/common/mod.rs` (the hand-built worlds this replaces, in build-2
 - Round trip: `ascii(parse(t)) == t` for a hand-written text with every glyph; and on all
   seven retro maps at the pick (through `Stage::retro`), `ascii(parse(ascii(w.tiles)).tiles)
   == ascii(w.tiles)`.
-- A bad text is refused with the row and column named: an unknown glyph, a short row, an even
-  row count.
+- A bad text is refused with the row and column named: an unknown glyph, a short row, too few
+  rows.
 - The `map` command's output parses as printed: build it with `map::ascii` and append the
   legend line the CLI prints.
 - A parsed `~ . .` style 3-ring map (or `Stage::flat(4)`) has the base's `rng` and `next_id`,

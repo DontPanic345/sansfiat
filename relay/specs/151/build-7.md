@@ -35,11 +35,13 @@ camp and scout buttons: reuse their helpers' shape, `selectKey`, `need`, `fail`)
    and, where a turn must pass, press End turn and read it again). The exact view fields are
    the build's to find by reading `Sim.view()` in `web/src/lib.rs` and the model; write each
    check as an assertion on the world, never on the button's own state.
-5. **Disband all** is the one red case: press `Disband…` → `all` on the camp of 4.6 people and
-   assert the army is gone and the clan is up by 4.6. It fails today. Wrap that one case in
-   `expectBug` (copy build-4's helper into the script, same doc comment) so the script stays
-   green and T drops the wrapper. The scout's and the guard's `all` cases the same way, if
-   their people are fractional in the stage.
+5. **Disband all** is the one red case: press `Disband…`, choose `all`, and press Go at the
+   count the stepper opens at (do not set the count: the bug is that it opens at 1 and sends
+   it), on the camp of 4.6 people; assert the army is gone and the clan is up by 4.6. It fails
+   today (one person goes home). Wrap that case in `expectBug` (copy build-4's helper into the
+   script, same doc comment) so the script stays green and T drops the wrapper. The scout's
+   and the guard's `all` cases the same way, each in its own wrapper. T makes `all` a button,
+   so its case's press changes then; its check does not.
 6. **The control:** a self-test flag `--break forage` that makes the script press `Pillage`
    in place of `Forage`'s case; run it once and put "script goes red (exit 1) with: …" and the
    message in `relay/specs/151/buttons.md`. The review runs a different change to `panels.js`.
