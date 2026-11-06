@@ -1,12 +1,10 @@
 use engine::data::{Claims, LEANING, UNIT};
 
+use engine::stage::RETRO;
 use engine::units;
 use engine::{Action, Config, Order, Phase, World};
 
 use crate::size;
-
-/// The seven maps of the retro: each size with its seeds.
-pub(crate) const RETRO: [(&str, &[u32]); 3] = [("small", &[2, 3, 6, 9]), ("medium", &[8, 9]), ("large", &[8])];
 
 /// The retro's maps as `(size name, radius, seed)`.
 pub(crate) fn retro_maps() -> Result<Vec<(String, i32, u32)>, String> {

@@ -34,6 +34,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/units/` | `line.rs` (paths, the line home, cuts), `camp.rs` (an army's turn and zone), `guard.rs`, `scout.rs` (the route search), `ai.rs` (the AI's orders), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game: the engine's second player. |
+| `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map (the `map` text, or a retro pick, cached), layers, placements, orders and reads; `StageSpec` is its data form. `maptext.rs` reads the map's text (`map::parse`). A staged world is not a save. |
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
 | `core/src/judge.rs` | `Watch`: a game scored from its pick in the score groups. Reads the world only. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
