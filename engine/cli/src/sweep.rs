@@ -4,8 +4,8 @@ use engine::map::{self, Country};
 use engine::{stats, Config, World};
 use std::time::Instant;
 
-use crate::judge::judge;
 use crate::retro::{retro_maps, sweep_after};
+use crate::sweep_judge::judge;
 use crate::{size, USAGE};
 
 /// One run of the sweep.

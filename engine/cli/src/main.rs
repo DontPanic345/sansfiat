@@ -1,7 +1,7 @@
 mod bench;
 mod clear;
 mod digest;
-mod judge;
+mod game_judge;
 mod map;
 mod play;
 mod replay;
@@ -10,6 +10,7 @@ mod retro;
 mod run;
 mod story;
 mod sweep;
+mod sweep_judge;
 mod view;
 
 use std::{env, process::exit};
@@ -20,7 +21,7 @@ use engine::GOODS;
 use bench::bench;
 use clear::clear_file;
 use digest::digest;
-use judge::judge_game;
+use game_judge::judge_game;
 use map::map;
 use play::play;
 use replay::replay;
