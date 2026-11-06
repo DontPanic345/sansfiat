@@ -8,15 +8,16 @@ use std::path::Path;
 use engine::data::JUDGE;
 use engine::judge::{civ_lands, CivLand, Scores, Watch};
 use engine::world::SAVE_VERSION;
-use engine::{Action, Save, World};
+use engine::{Action, Config, Save, World};
 use serde::Serialize;
 
 use crate::play::{read_entries, Entry};
 use crate::retro::to_pick;
 use crate::USAGE;
 
-/// A played game read back: the led civ's Standing beside the control's, the scores of both, the
-/// led civ's land beside the control's, and the player's own decisions from the log and the lines file.
+/// A played game read back: the led civ's Standing beside the control's and the idle control's, the
+/// scores of all three, the led civ's land beside the control's, and the player's own decisions from
+/// the log and the lines file.
 #[derive(Serialize)]
 struct GameJudged {
     pick: u32,
@@ -24,18 +25,22 @@ struct GameJudged {
     led: u32,
     game: Scores,
     control: Scores,
+    /// The led civ given no orders: the same map, the led civ chosen and only `EndTurn`.
+    idle: Scores,
     standing: Ending,
     land: Lands,
     player: Player,
 }
 
-/// The led civ's Standing and rank at the end, in the game and in the control.
+/// The led civ's Standing and rank at the end, in the game, in the control and in the idle control.
 #[derive(Serialize)]
 struct Ending {
     game: f64,
     game_rank: usize,
     control: f64,
     control_rank: usize,
+    idle: f64,
+    idle_rank: usize,
 }
 
 /// The led civ's land at the end, in the game and in the control.
@@ -61,6 +66,19 @@ struct Player {
 fn rank_of(s: &BTreeMap<u32, f64>, led: u32) -> usize {
     let mine = s.get(&led).copied().unwrap_or(0.0);
     1 + s.values().filter(|&&v| v > mine).count()
+}
+
+/// The idle control: the same config to the same pick, the led civ `led` chosen there, and `EndTurn`
+/// for `turns` turns with no order, every other civ on the AI. Its watch is its own.
+fn idle_run(config: Config, led: u32, turns: u32) -> Result<(World, Watch), String> {
+    let mut w = to_pick(config);
+    w.act(Action::ChooseCiv { civ: Some(led) })?;
+    let mut watch = Watch::new(&w);
+    for _ in 0..turns {
+        w.act(Action::EndTurn)?;
+        watch.turn(&w);
+    }
+    Ok((w, watch))
 }
 
 /// `judge FILE [--json]`: replays a played game a turn at a time under a `Watch`, plays the same map
@@ -131,10 +149,18 @@ pub(crate) fn judge_game(args: &[String]) -> Result<(), String> {
         cwatch.turn(&control);
     }
 
+    // The idle control: the led civ at the same pick, given no orders.
+    let (idle_w, idle_watch) = idle_run(save.config, led, n)?;
+    if idle_watch.pick() != wt.pick() {
+        return Err(format!("{file}: the idle control's pick is {}, the game's {}", idle_watch.pick(), wt.pick()));
+    }
+
     let game_scores = wt.scores(&w, &[led]);
     let control_scores = cwatch.scores(&control, &[led]);
+    let idle_scores = idle_watch.scores(&idle_w, &[led]);
     let g_end = wt.standing_at(n).expect("scored to the end");
     let c_end = cwatch.standing_at(n).expect("scored to the end");
+    let i_end = idle_watch.standing_at(n).expect("scored to the end");
     let land_of = |w: &World| civ_lands(w).into_iter().find(|c| c.id == led).expect("the led civ is in the world");
     let entries = read_entries(path)?;
     let refused: Vec<Entry> = entries.iter().filter(|e| e.result.starts_with("refused")).cloned().collect();
@@ -146,11 +172,14 @@ pub(crate) fn judge_game(args: &[String]) -> Result<(), String> {
         led,
         game: game_scores,
         control: control_scores,
+        idle: idle_scores,
         standing: Ending {
             game: g_end.get(&led).copied().unwrap_or(0.0),
             game_rank: rank_of(g_end, led),
             control: c_end.get(&led).copied().unwrap_or(0.0),
             control_rank: rank_of(c_end, led),
+            idle: i_end.get(&led).copied().unwrap_or(0.0),
+            idle_rank: rank_of(i_end, led),
         },
         land: Lands { game: land_of(&w), control: land_of(&control) },
         player: Player {
@@ -184,13 +213,15 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
     }
     let s = &j.standing;
     println!(
-        "led civ {}: Standing at +{} {:.1}% (rank {}) in the game, {:.1}% (rank {}) with every civ on the AI",
+        "led civ {}: Standing at +{} {:.1}% (rank {}) in the game, {:.1}% (rank {}) with every civ on the AI, {:.1}% (rank {}) idle led civ",
         j.led,
         j.turns,
         s.game * 100.0,
         s.game_rank,
         s.control * 100.0,
-        s.control_rank
+        s.control_rank,
+        s.idle * 100.0,
+        s.idle_rank
     );
     let (l, c) = (&j.land.game, &j.land.control);
     println!(
@@ -247,5 +278,26 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
     println!("player lines: {} refused, {} noted", p.refused.len(), p.noted);
     for r in &p.refused {
         println!("  refused at turn {}: {} ({})", r.turn, r.line, r.result);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use engine::data::size_radius;
+
+    #[test]
+    fn the_idle_led_civ_is_given_no_order_and_is_the_same_on_every_run() {
+        let config = Config { seed: 2, radius: size_radius("small").unwrap(), ..Config::default() };
+        let led = *to_pick(config).civs.keys().next().unwrap();
+        let (w, watch) = idle_run(config, led, 12).unwrap();
+        assert_eq!((watch.pick(), watch.turns()), (w.turn - 12, 12));
+        assert_eq!(w.player, Some(led), "the idle run leads the civ");
+        let kinds: Vec<&Action> = w.log.iter().filter(|a| !matches!(a, Action::ChooseCiv { .. })).collect();
+        assert!(kinds.iter().all(|a| matches!(a, Action::EndTurn)), "no order in the idle run: {kinds:?}");
+        let after_pick = w.log.iter().rev().take_while(|a| matches!(a, Action::EndTurn)).count();
+        assert_eq!(after_pick, 12, "one EndTurn a turn past the pick, and nothing else");
+        let (_, again) = idle_run(config, led, 12).unwrap();
+        assert_eq!(watch.standing_at(12), again.standing_at(12), "the same Standing on every run");
     }
 }
