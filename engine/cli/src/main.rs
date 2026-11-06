@@ -1,5 +1,6 @@
 mod bench;
 mod clear;
+mod compare;
 mod digest;
 mod game_judge;
 mod map;
@@ -20,6 +21,7 @@ use engine::GOODS;
 
 use bench::bench;
 use clear::clear_file;
+use compare::compare_files;
 use digest::digest;
 use game_judge::judge_game;
 use map::map;
@@ -35,11 +37,12 @@ sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as t
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
 sansfiat play --game FILE [--seed N --size NAME [--civ K] [--no-fight]]   (a game a line at a time: the file is a save, resumed by each call; without --civ a new game prints the civs' cards; lines on stdin, the view after each accepted one; FILE.lines.jsonl records every line; --no-fight starts a new game with fighting off)
 sansfiat judge FILE [--json]   (a played game judged turn by turn, beside the same map with every civ on the AI: Standing, doubt, motion and the player's decisions)
+sansfiat judge --compare A.json B.json [--all]   (two sweep --judge --json reports side by side: each metric's A, B, change and noise floor, flagged with * when the change is past the floor; the totals, or with --all every map's too)
 sansfiat story skirmish|stack|surrender [--seed N --size NAME --civ K] [--no-fight] [--turns N] --save FILE   (a scripted story of war on a retro map: the led civ K (1-based, id order) gives its orders through the engine's door and the AI plays the rest; the save is a normal save that `judge FILE` scores and `play --game FILE` resumes; --no-fight is the control; --trace prints a line a turn)
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
-sansfiat sweep --judge [--json] [--solo]   (the retro maps, every civ on the AI: the army run twice, the --no-army control and the no-claims control, scored by the judge over 200 turns past the pick; --solo adds each civ claiming alone; a report, with no verdict)
+sansfiat sweep --judge [--json [--floor [--nulls N]]] [--solo]   (the retro maps, every civ on the AI: the army run twice, the --no-army control and the no-claims control, scored by the judge over 200 turns past the pick; --solo adds each civ claiming alone; --floor (with --json) adds each metric's noise floor: the sweep N more times (default 1), each with one harmless extra roll at the pick, the largest change a metric took; a report, with no verdict)
 sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--no-zone] [--no-claims] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army, --no-gifts, --no-zone (AI camps paint no zone) and --no-claims (no civ claims land) are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
-sansfiat bench [seed ...] [--turns N] [--radius N | --size NAME]
+sansfiat bench [seed ...] [--turns N | --after N] [--radius N | --size NAME]   (--after N runs each seed to the pick, picks no civ and times N turns past it)
 sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead] [--state] | --game FILE   (prints turn and digest, from turn 0; --game replays a save and prints its turn and digest; --lead plays the scripted game: picks the first civ and gives orders; --state hashes the world without its log)
 sansfiat clear <file.json | ->   {\"baskets\": [{\"grain\": 4}, {\"fish\": 2}], \"prices\"?: {\"grain\": 1}}
 sansfiat goods";
@@ -64,6 +67,7 @@ fn main() {
         Some("digest") => digest(&args[1..]),
         Some("map") => map(&args[1..]),
         Some("play") => play(&args[1..]),
+        Some("judge") if args.get(1).map(String::as_str) == Some("--compare") => compare_files(&args[2..]),
         Some("judge") => judge_game(&args[1..]),
         Some("story") => story(&args[1..]),
         Some("clear") => clear_file(args.get(1).map(String::as_str).unwrap_or("-")),

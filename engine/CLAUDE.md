@@ -6,9 +6,11 @@ actions, with a CLI and a wasm page as its two front ends. Build what `docs/desi
 ```
 ./check.sh                                   # every check CI runs, in order
 cargo run -p sansfiat -- map | run | sweep | play | story | judge | replay | bench | digest   # USAGE in cli/src/main.rs
-cargo run -p sansfiat -- sweep --judge [--json] [--solo]   # the retro maps scored beside their controls: a report
+cargo run -p sansfiat -- sweep --judge [--json [--floor]] [--solo]   # the retro maps scored beside their controls: a report
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a line at a time; g.lines.jsonl records it
 cargo run -p sansfiat -- judge g.json [--json]   # a played game beside the same map on the AI
+cargo run -p sansfiat -- judge --compare a.json b.json [--all]   # two sweep reports: each metric's change against its noise floor
+cargo run -p sansfiat -- bench --size large 8 --after 50   # ms a turn past the pick
 node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in headless Chrome
 node www/play/all.mjs                        # every touch-point script; check.sh runs it
 ```

@@ -28,7 +28,7 @@ runs the same in native and wasm. That holds, and it stays the first rule.
 | Events and reasons | One constructor in `events.rs`; a reason beside the rule that acts | Holds | Done in M3 H |
 | Save | Config plus the order log, versioned; an old save fails with its version | Holds (`SAVE_VERSION` 7) | Keep |
 | Stage | A known map, units placed, orders given, outcomes asserted, with the real engine | Fixtures paint tiles by hand; the stories assert nothing | M4 S |
-| Scale | Per-clan work flat in the number of clans; a large map under 10 ms a turn past the pick, measured by `bench --after` | 50 ms a turn past the pick on large 8, 61% of it the festival choice; `bench` stops before the pick | M4 S (the bench), W (the search per tile, before towns) |
+| Scale | Per-clan work flat in the number of clans; a large map under 10 ms a turn past the pick, measured by `bench --after` | 23 ms a turn past the pick on large 8 (`bench --size large --after 50 8`, release build: 22.8 ms a turn in each of two runs); the 61% festival share was measured on the old 50 ms and is not re-measured | M4 S (the bench), W (the search per tile, before towns) |
 
 ## The front ends
 

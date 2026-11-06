@@ -9,14 +9,20 @@ use std::time::Instant;
 
 use engine::data::{Claims, JUDGE};
 use engine::judge::{CivLand, Scores, Watch};
+use engine::rng;
 use engine::stats::Trails;
 use engine::{stats, Action, Config, World};
 use serde::Serialize;
 
+use crate::compare::flatten;
 use crate::retro::{kept_camp, retro_maps, to_pick};
 
 /// The turns past the pick each map is run for.
 const AFTER: u32 = 200;
+
+/// The nulls `--floor` runs when `--nulls` is not given: the sweep once more with one harmless
+/// difference at the pick.
+pub(crate) const NULLS: u32 = 1;
 
 /// One map's health: its pre-game and the digests of its two army runs. These are bugs whatever
 /// the design says.
@@ -209,19 +215,26 @@ struct TotalHealth {
     digest_mismatches: u32,
 }
 
-/// The whole report, as `--json` prints it.
+/// The whole report, as `--json` prints it. `floor` is `--floor`'s: per flattened path, the largest
+/// change any null made to it.
 #[derive(Serialize)]
 struct Report {
     maps: Vec<MapJudged>,
     panics: Vec<Panicked>,
     total: Total,
     seconds: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    floor: Option<BTreeMap<String, f64>>,
 }
 
-/// One run to the end: the world, and its watch.
-fn played(config: Config) -> (World, Watch) {
+/// One run to the end: the world, and its watch. `draws` extra rolls of the world's rng are taken
+/// after the pick (the null perturbation; 0 is the base run).
+fn played(config: Config, draws: u32) -> (World, Watch) {
     let mut w = to_pick(config);
     w.act(Action::ChooseCiv { civ: None }).expect("watching is always allowed at the pick");
+    for _ in 0..draws {
+        rng::rand(&mut w.rng);
+    }
     let mut watch = Watch::new(&w);
     for _ in 0..AFTER {
         w.run(1);
@@ -230,10 +243,10 @@ fn played(config: Config) -> (World, Watch) {
     (w, watch)
 }
 
-/// The runs of `configs`, all at once, in order.
-fn played_all(configs: &[Config]) -> Vec<(World, Watch)> {
+/// The runs of `configs`, all at once, in order, each with `draws` extra rolls.
+fn played_all(configs: &[Config], draws: u32) -> Vec<(World, Watch)> {
     std::thread::scope(|scope| {
-        let handles: Vec<_> = configs.iter().map(|&c| scope.spawn(move || played(c))).collect();
+        let handles: Vec<_> = configs.iter().map(|&c| scope.spawn(move || played(c, draws))).collect();
         handles.into_iter().map(|h| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e))).collect()
     })
 }
@@ -248,8 +261,9 @@ fn at_200(s: &Scores, civ: u32) -> (f64, f64, f64) {
 }
 
 /// Judges one map: the army run twice (their digests must agree), the `--no-army` control, the
-/// no-claims control, the no-fight control and, with `solo`, each civ claiming alone (civ `k` in id order, `Only(k)`).
-fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
+/// no-claims control, the no-fight control and, with `solo`, each civ claiming alone (civ `k` in id
+/// order, `Only(k)`). Every run takes `draws` extra rolls after the pick.
+fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJudged {
     let base = Config { seed, radius, ..Config::default() };
     let configs = [
         base,
@@ -258,7 +272,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
         Config { claims: Claims::None, ..base },
         Config { fight: false, ..base },
     ];
-    let mut runs = played_all(&configs).into_iter();
+    let mut runs = played_all(&configs, draws).into_iter();
     let (w, watch) = runs.next().expect("the army run");
     let (again, _) = runs.next().expect("the army run again");
     let (control, _) = runs.next().expect("the control with no armies");
@@ -283,7 +297,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool) -> MapJudged {
     let solo = solo.then(|| {
         let configs: Vec<Config> = (0..civs.len() as u32).map(|k| Config { claims: Claims::Only(k), ..base }).collect();
         civs.iter()
-            .zip(played_all(&configs))
+            .zip(played_all(&configs, draws))
             .map(|(&civ, (sw, swatch))| {
                 let (g, cl, la) = at_200(&swatch.scores(&sw, &civs), civ);
                 let (n, ncl, nla) = at_200(&no_claims, civ);
@@ -444,23 +458,20 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
     }
 }
 
-/// The retro maps judged and the report printed.
-pub(crate) fn judge(json: bool, solo: bool) -> Result<(), String> {
-    let start = Instant::now();
-    let maps = retro_maps()?;
-    let results: Vec<Result<MapJudged, Panicked>> =
-        std::thread::scope(|scope| {
-            let handles: Vec<_> =
-                maps.iter()
-                    .map(|(name, radius, seed)| {
-                        scope.spawn(move || {
-                            catch_unwind(AssertUnwindSafe(|| judge_map(name, *radius, *seed, solo)))
-                                .map_err(|e| Panicked { size: name.clone(), seed: *seed, message: message(e) })
-                        })
-                    })
-                    .collect();
-            handles.into_iter().map(|h| h.join().expect("a map's thread joins")).collect()
-        });
+/// Every retro map judged at `draws` (see `played`), its panics apart.
+fn judged(maps: &[(String, i32, u32)], solo: bool, draws: u32) -> (Vec<MapJudged>, Vec<Panicked>) {
+    let results: Vec<Result<MapJudged, Panicked>> = std::thread::scope(|scope| {
+        let handles: Vec<_> = maps
+            .iter()
+            .map(|(name, radius, seed)| {
+                scope.spawn(move || {
+                    catch_unwind(AssertUnwindSafe(|| judge_map(name, *radius, *seed, solo, draws)))
+                        .map_err(|e| Panicked { size: name.clone(), seed: *seed, message: message(e) })
+                })
+            })
+            .collect();
+        handles.into_iter().map(|h| h.join().expect("a map's thread joins")).collect()
+    });
     let mut judged = Vec::new();
     let mut panics = Vec::new();
     for r in results {
@@ -469,8 +480,33 @@ pub(crate) fn judge(json: bool, solo: bool) -> Result<(), String> {
             Err(p) => panics.push(p),
         }
     }
-    let total = total(&judged, panics.len());
-    let report = Report { maps: judged, panics, total, seconds: start.elapsed().as_secs_f64() };
+    (judged, panics)
+}
+
+/// The retro maps judged and the report printed. With `floor`, the sweep runs that many more times,
+/// each null one extra roll further on, and the report carries each path's largest change.
+pub(crate) fn judge(json: bool, solo: bool, floor: Option<u32>) -> Result<(), String> {
+    let start = Instant::now();
+    let maps = retro_maps()?;
+    let (judged_maps, panics) = judged(&maps, solo, 0);
+    let totals = total(&judged_maps, panics.len());
+    let mut report =
+        Report { maps: judged_maps, panics, total: totals, seconds: start.elapsed().as_secs_f64(), floor: None };
+    if let Some(nulls) = floor {
+        let base = flatten(&serde_json::to_value(&report).expect("the report serialises"));
+        let mut floors: BTreeMap<String, f64> = base.keys().map(|p| (p.clone(), 0.0)).collect();
+        for k in 1..=nulls {
+            let (m, p) = judged(&maps, solo, k);
+            let t = total(&m, p.len());
+            let null = Report { maps: m, panics: p, total: t, seconds: 0.0, floor: None };
+            for (path, v) in flatten(&serde_json::to_value(&null).expect("the report serialises")) {
+                if let (Some(f), Some(b)) = (floors.get_mut(&path), base.get(&path)) {
+                    *f = f.max((v - b).abs());
+                }
+            }
+        }
+        report.floor = Some(floors);
+    }
     if json {
         println!("{}", serde_json::to_string_pretty(&report).expect("the report serialises"));
     } else {

@@ -18,7 +18,11 @@ pub(crate) fn retro_maps() -> Result<Vec<(String, i32, u32)>, String> {
 
 /// A world run through its pre-game to the pick, where the player is asked for a civ.
 pub(crate) fn to_pick(config: Config) -> World {
-    let mut w = World::new(config);
+    pregame(World::new(config))
+}
+
+/// `w` run through its pre-game to the pick.
+pub(crate) fn pregame(mut w: World) -> World {
     while w.phase == Phase::Pregame {
         w.run(1);
     }
