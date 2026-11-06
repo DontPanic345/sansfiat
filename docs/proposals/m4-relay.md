@@ -88,7 +88,7 @@ fixes piece merged. The crew tags main `m<n>` then and opens a `kind:retro` issu
 piece stays open and the retro says where it goes. M3 is built at ec1e47b: the change tags it
 `m3`.
 
-**The retro run**, as a try in M4, on four angles. A `kind:retro` issue runs from a fixed
+**The retro run**, as a try in M4, on five angles in four sessions. A `kind:retro` issue runs from a fixed
 `steps.json` under the same crew and pacing as a piece: `check` (the milestone play check,
 Sonnet medium); `ladder`, `architecture` and `relay` on Opus medium, which don't need the
 owner's play; a wait of up to 72 hours for the owner's notes as a comment on the retro issue, or

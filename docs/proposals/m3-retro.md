@@ -97,7 +97,7 @@ These change the pieces in `m4.md`; its opening states the answers it assumes.
    exist to carry it (M5), and say so in `supply.md`.
 6. **How far does Relay go without you in M4?** `relay.md` §4 designs the whole loop. My
    recommendation: the play step, the fix-or-ask rule with a fixes piece per milestone, and the
-   milestone-built rule now; the retro run as a try, on four angles.
+   milestone-built rule now; the retro run as a try, on five angles in four sessions.
 
 ## Process
 
