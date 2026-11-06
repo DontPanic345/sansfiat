@@ -123,6 +123,8 @@ export function state() {
 
 export const map = () => view;
 export const feedList = () => feed;
+/** The shape the bottom panel draws for the selection now (panels.js's `describe`), or null. */
+export const shape = () => (selected ? describe(ctx(), selected) : null);
 
 /** Starts a game: `sim` replaces the one in progress. */
 function begin(next, { history = null, speed = null, run = false, play: go = false } = {}) {

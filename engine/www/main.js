@@ -41,6 +41,8 @@ end.init();
 window.game = {
   screen: () => app.screen,
   view: () => play.state().v,
+  /** The bottom panel's shape for the selection (panels.js), as the page draws it. */
+  shape: () => play.shape(),
   model: () => play.state().model,
   layout: () => play.state().layout,
   get map() {

@@ -41,12 +41,12 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/judge.rs` | `Watch`: a game scored from its pick in the score groups. Reads the world only. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
 | `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge) and `game_judge.rs` (the file's judge), `view.rs` (the text view, under 80 lines), `story.rs` (the scripted stories of war). |
-| `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the order form. |
+| `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the order form; `Sim.stage` builds a staged game (`staged()` says so). |
 | `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js` and `panels.js` (a selection's shape and its buttons), `model.js` (the view model), `map/` (`MapView` and one file per layer), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim` (`Sim.stage`): the panel shapes as data, and Disband all as the page presses it; the panel context both share. |
 | `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`. |
-| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout, civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `all.mjs` runs them. |
+| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout, civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `all.mjs` runs them. |
 
 ## Adding a mechanic
 
@@ -64,6 +64,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 - Reasons and alerts are derived (`#[serde(skip)]`): a rule writes one `w.note` where it acts.
 - A change that moves `stats::digest` bumps `SAVE_VERSION` and the pins in `cli/tests/save.rs`.
 - The world changes only through `act` and the AI's orders; a save replays to an identical world.
+- A rule's proof is a stage (`core/src/stage.rs`), and a button's is `www/play/buttons.mjs`.
 - All randomness goes through `rng::rand`; `exp`, `ln`, `powf` go through `libm`, so native and wasm
   give the same digest every turn (`./cross-build.sh`).
 - `clear` conserves every good exactly.
