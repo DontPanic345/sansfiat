@@ -73,3 +73,8 @@ same rule: nothing is free, and every abstraction has to justify itself. It need
   from the game itself.
 - It isn't a game of building everything at once. It grows slowly, one mechanic at a time,
   each kept only if it earns its place.
+
+## Decided
+
+- A civ's Standing is its share of the world's people: the people of its clans and of its units, over everyone's. Raising an army neither wins nor loses Standing. (#101)
+- The lead changes only when another civ is ahead by more than half a point of Standing, so two civs neck and neck don't trade the lead on noise. (#101)

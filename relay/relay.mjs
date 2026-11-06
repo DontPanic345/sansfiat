@@ -6,8 +6,8 @@
 //   node relay/relay.mjs event     # act on the owner's comment (relay-events.yml)
 //   node relay/relay.mjs report <message>   # comment on the Relay log issue
 //
-// GitHub holds the state. A piece is an open `kind:piece` issue labelled `relay:ready`; its
-// steps are `kind:step` sub-issues whose bodies carry a `<!-- relay {...} -->` block with the
+// GitHub holds the state. A piece is an open `kind:piece` issue labelled `relay:ready`, and a
+// retro an open `kind:retro` one; its steps are `kind:step` sub-issues whose bodies carry a `<!-- relay {...} -->` block with the
 // step's model, effort and attempts. The spec and briefs live on the piece's branch,
 // `relay/<number>`. A session reports how its step ended in relay/runs/result.json, and the
 // crew is the only one that closes a step. relay/README.md explains the whole loop.
@@ -30,6 +30,8 @@ const REPO = path.dirname(HERE);
 const RUNS = path.join(HERE, "runs");
 const RESULT = path.join(RUNS, "result.json");
 export const OWNER = "DontPanic345";
+// The crew's own login: it opens the fixes piece, proposed pieces and the retro.
+export const BOT = "sansfiat-relay[bot]";
 const GH_REPO = `${OWNER}/sansfiat`;
 const BOARD = "Sans Fiat Work";
 const LOG_TITLE = "Relay log";
@@ -50,34 +52,29 @@ export const PARTS = ["ford", "easel", "canvas", "clay", "kiln", "glaze", "magnu
 // The steps that judge, which never run at low effort.
 const JUDGES = ["spec-review", "review"];
 
-// The 5-hour points a step is expected to take, by model and effort: M2's medians, rounded up.
-export const EXPECTED_POINTS = {
-    opus: { low: 13, medium: 25, high: 35 },
-    sonnet: { low: 5, medium: 8, high: 10 },
-    haiku: { low: 4, medium: 5, high: 6 },
-};
-export const expectedPoints = (meta) => EXPECTED_POINTS[meta.model]?.[meta.effort] ?? 25;
-const SESSION_STOP = 80;
+const SESSION_STOP = 75;
+// How long a retro waits for the owner's notes.
+export const RETRO_WAIT_MS = 72 * 3600_000;
 
 // ---- Pure logic (covered by relay.test.mjs) ----
 
-// Start a step only while the 5-hour window plus its expected points stays under 80%, and
-// the weekly window is under day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`,
-// where that's known.
-export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now, expected = 0) => {
+// Start a step only while the 5-hour window is under 75%, and the weekly window is under
+// day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`, where that's known.
+export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now) => {
     const cycleStart = weeklyResetsAt.getTime() - 7 * 86400_000;
     const day = Math.min(7, Math.max(1, Math.floor((now.getTime() - cycleStart) / 86400_000) + 1));
     const weeklyLimit = (day / 7) * 95;
-    if (session + expected >= SESSION_STOP) {
+    const [s, w] = [Math.round(session), Math.round(weekly)];
+    if (session >= SESSION_STOP) {
         const resets = sessionResetsAt ? `, resets ${sessionResetsAt.toISOString()}` : "";
-        return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${session}% + ${expected} expected ≥ ${SESSION_STOP}%${resets}` };
+        return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${s}% ≥ ${SESSION_STOP}%${resets}` };
     }
     if (weekly >= weeklyLimit) {
         const lifts = Math.floor((weekly * 7) / 95) + 1;
         const until = lifts > 7 ? weeklyResetsAt : new Date(cycleStart + (lifts - 1) * 86400_000);
-        return { ok: false, window: "weekly", until, reason: `weekly usage ${weekly}% ≥ ${weeklyLimit.toFixed(1)}% (day ${day})` };
+        return { ok: false, window: "weekly", until, reason: `weekly usage ${w}% ≥ ${weeklyLimit.toFixed(1)}% (day ${day})` };
     }
-    return { ok: true, reason: `5-hour ${session}%, weekly ${weekly}% < ${weeklyLimit.toFixed(1)}% (day ${day})` };
+    return { ok: true, reason: `5-hour ${s}%, weekly ${w}% < ${weeklyLimit.toFixed(1)}% (day ${day})` };
 };
 
 // The board's "Waiting on" for a budget stop, in the owner's time: "5-hour usage, until
@@ -127,6 +124,19 @@ export const readChoice = (line) => {
 export const specChoice = (body) => readChoice(pieceField(body, "Spec"));
 export const specReviewChoice = (body) => readChoice(pieceField(body, "Spec-review"));
 
+// `**Play:** sonnet, three seeds`: the play step's model, at medium unless the line names an
+// effort, and how many seeds it plays; null for `none` or no line.
+const COUNTS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+export const playChoice = (body) => {
+    const line = pieceField(body, "Play");
+    const words = (line ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    const model = words.find((w) => MODELS.includes(w));
+    if (!model || words[0] === "none") return null;
+    const i = words.findIndex((w) => /^seeds?$/.test(w));
+    const seeds = i > 0 ? Number(words[i - 1]) || COUNTS[words[i - 1]] || 1 : 1;
+    return { model, effort: words.find((w) => EFFORTS.includes(w)) ?? "medium", seeds, why: line };
+};
+
 // `**After:** #31, #32`: the pieces this one waits to see merged.
 export const afterOf = (body) => [...(pieceField(body, "After") ?? "").matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
 
@@ -137,19 +147,48 @@ export const checksGreen = (runs) =>
 // The `docs/design/` files a piece's body names.
 export const designPaths = (body) => [...new Set((body ?? "").match(/docs\/design\/[\w./-]+\.md/g) ?? [])];
 
-// Steps run spec, spec-review, build-1 … build-N, review.
+// A retro's steps, in order: the play check, the three angles that don't need the owner's
+// play, the wait for the owner's notes (the crew's, no session), the game and players angles,
+// the retro and the proposal.
+export const RETRO_STEPS = [
+    { id: "check", title: "The milestone play check", model: "sonnet", effort: "medium", why: "Plays main across the retro maps, as a play step does." },
+    { id: "ladder", title: "The ladder angle", model: "opus", effort: "medium", why: "Reads every step's cost against the ladder." },
+    { id: "architecture", title: "The architecture angle", model: "opus", effort: "medium", why: "Reads the code's shape against docs/architecture.md." },
+    { id: "relay", title: "The relay angle", model: "opus", effort: "medium", why: "Reads the crew, the prompts and the transcripts." },
+    { id: "wait", title: "The owner's notes", model: "none", effort: "none", why: "Up to 72 hours for the owner's notes, or `/relay retro go`." },
+    { id: "game", title: "The game and players angles", model: "opus", effort: "medium", why: "Reads the owner's notes; one session, two files." },
+    { id: "retro", title: "The retro", model: "opus", effort: "medium", why: "Reads the angles and writes the retro." },
+    { id: "proposal", title: "The next proposal", model: "opus", effort: "medium", why: "Writes the next milestone's proposals from the retro." },
+];
+const RETRO_IDS = RETRO_STEPS.map((s) => s.id);
+
+// Steps run spec, spec-review, build-1 … build-N, play, review; a retro's run in RETRO_STEPS.
 export const stepRank = (id) => {
+    if (RETRO_IDS.includes(id)) return 2000 + RETRO_IDS.indexOf(id);
     if (id === "spec") return 0;
     if (id === "spec-review") return 1;
+    if (id === "play") return 999;
     if (id === "review") return 1000;
     const m = /^build-(\d+)$/.exec(id);
     return m ? 1 + Number(m[1]) : 500;
 };
-export const stepKind = (id) => (["spec", "spec-review", "review"].includes(id) ? id : "build");
+export const stepKind = (id) => {
+    if (id === "wait") return "wait";
+    if (RETRO_IDS.includes(id)) return "retro";
+    return ["spec", "spec-review", "play", "review"].includes(id) ? id : "build";
+};
 const sortSteps = (steps) => [...steps].sort((a, b) => stepRank(a.meta.id) - stepRank(b.meta.id));
 
 export const branchOf = (piece) => `relay/${piece.number}`;
 export const specDir = (piece) => `relay/specs/${piece.number}`;
+// `M4` → `m4`, from the milestone's title; null without one.
+export const milestoneTag = (milestone) => {
+    const m = /^M(\d+)\b/i.exec(milestone?.title ?? "");
+    return m ? `m${m[1]}` : null;
+};
+export const retroDir = (piece) => `relay/retro/${milestoneTag(piece.milestone) ?? piece.number}`;
+export const isRetro = (piece) => (piece.labels ?? []).includes("kind:retro");
+export const isFixes = (piece) => (piece.labels ?? []).includes("relay:fixes");
 
 // The steps the spec wrote to `relay/specs/<n>/steps.json`, as spec-review left them,
 // checked. Returns { steps } or { error }.
@@ -179,38 +218,67 @@ export const checkSteps = (text) => {
     return { steps };
 };
 
+// The open pieces a fixes piece waits for: its milestone's others that aren't paused.
+export const fixesWaitsFor = (pieces, fixes) =>
+    pieces
+        .filter((p) => p !== fixes && !isFixes(p) && !isRetro(p) && p.milestone?.number === fixes.milestone?.number && !p.labels.includes("relay:paused"))
+        .map((p) => p.number);
+
+// A retro issue's body.
+export const retroBody = (milestone) => {
+    const m = milestoneTag(milestone);
+    const next = `m${Number(m.slice(1)) + 1}`;
+    return [
+        `**Goal:** ${milestone.title} read back from five angles in four sessions, the retro written from them, and ${next.toUpperCase()} proposed, for the owner to correct in the proposal PR.`,
+        "",
+        `The angles write \`relay/retro/${m}/\`: \`play.md\` (the check), \`ladder.md\`, \`architecture.md\`, \`relay.md\`, \`owner.md\`, \`game.md\` and \`players.md\`. ` +
+            `The retro is \`docs/proposals/${m}-retro.md\`, and the proposal \`docs/proposals/${next}.md\` and \`${next}-relay.md\`.`,
+    ].join("\n");
+};
+
 // Why a piece can't run now, or null when it can.
 export const holdReason = (piece) => {
     if (!piece.labels.includes("relay:ready")) return "not ready";
-    // Anyone can open an issue, but only the owner's words reach a session.
-    if (piece.author !== OWNER) return "not opened by the owner";
+    // Anyone can open an issue, but only the owner's and the crew's words reach a session.
+    if (piece.author !== OWNER && piece.author !== BOT) return "not opened by the owner";
     if (piece.labels.includes("relay:paused")) return "paused";
     if (piece.labels.includes("waiting")) return "waiting on the owner";
     const unmerged = (piece.after ?? []).filter((a) => !a.merged).map((a) => `#${a.number}`);
     if (unmerged.length) return `after ${unmerged.join(", ")}, not merged yet`;
-    if (piece.steps.length === 0) {
+    if (piece.before?.length) return `after the milestone's other pieces (${piece.before.map((n) => `#${n}`).join(", ")})`;
+    if (piece.steps.length === 0 && !isRetro(piece)) {
         if (!specChoice(piece.body)) return "the body has no `Spec:` model and effort";
         if (!specReviewChoice(piece.body)) return "the body has no `Spec-review:` model and effort";
     }
     return null;
 };
 
+// Whether a retro's wait is over: the owner's notes or `/relay retro go` came, or 72 hours
+// passed since the step before it closed.
+export const waitOver = (steps, wait, now) => {
+    if (wait.meta.notes || wait.meta.go) return true;
+    const before = sortSteps(steps).filter((s) => stepRank(s.meta.id) < stepRank("wait")).at(-1);
+    return Boolean(before?.closedAt) && now - new Date(before.closedAt) >= RETRO_WAIT_MS;
+};
+
 // What the crew does next for one piece: "start" (it has no steps yet), "step" (run
-// `step`), "plan" (the spec or spec-review is done and the next steps aren't made), or null.
-export const pieceAction = (piece) => {
+// `step`), "plan" (the spec or spec-review is done and the next steps aren't made), "waited"
+// (a retro's wait is over), or null.
+export const pieceAction = (piece, now = new Date()) => {
     if (piece.steps.length === 0) return { action: "start" };
     const steps = sortSteps(piece.steps);
     const open = steps.find((s) => s.state === "open");
+    if (open?.meta.id === "wait") return waitOver(steps, open, now) ? { action: "waited", step: open } : null;
     if (open) return open.meta.status === "blocked" ? null : { action: "step", step: open };
     if (steps.every((s) => s.meta.id === "spec" || s.meta.id === "spec-review")) return { action: "plan" };
     return null;
 };
 
 // The next piece and what to do with it, oldest first.
-export const nextWork = (pieces) => {
+export const nextWork = (pieces, now = new Date()) => {
     for (const piece of [...pieces].sort((a, b) => a.number - b.number)) {
         if (holdReason(piece)) continue;
-        const next = pieceAction(piece);
+        const next = pieceAction(piece, now);
         if (next) return { piece, ...next };
     }
     return null;
@@ -240,36 +308,59 @@ export const soFar = (s) => {
     return `- **${s.meta.id}**: ${s.meta.summary}${decided}`;
 };
 
-// The `relay/prompts/` files each kind of step follows, besides `session.md`.
+// The `relay/prompts/` files each kind of step follows, besides `session.md`; a name with a
+// slash is under `relay/`.
 export const PROMPTS_FOR = {
     spec: ["spec"],
     "spec-review": ["spec-review", "spec"],
     build: ["build"],
-    review: ["review"],
+    play: ["play", "players/player", "players/judge"],
+    review: ["review", "players/judge"],
+    retro: ["retro"],
 };
+// A step's prompt files: the retro's play check plays as a play step does.
+export const promptsFor = (id) => (id === "check" ? [...PROMPTS_FOR.retro, ...PROMPTS_FOR.play] : PROMPTS_FOR[stepKind(id)]);
+export const promptPath = (name) => (name.includes("/") ? `relay/${name}.md` : `relay/prompts/${name}.md`);
 
 // A session's whole prompt: its step first, then only the material that serves it, then
 // the rules for its kind of step. Throws when a build step has no brief; the crew blocks
 // the step on that.
 // `files` holds `prompts` (name → text), `brief` and `spec` (null when missing), `design`
 // (path → text, null for a named file that doesn't exist), `designFiles` (every path in
-// docs/design/), `diffStat` (review only) and `lastSpec` (spec only: the folder of the latest
-// other piece's spec, or null).
+// docs/design/), `diffStat` (review only), `lastSpec` (spec only: the folder of the latest
+// other piece's spec, or null), `notes` (the retro's game step: the owner's notes, or null),
+// and `started` and `cap` (when the session started, and the minutes it may run).
 export const sessionPrompt = (piece, step, files) => {
     const kind = stepKind(step.meta.id);
+    const retro = kind === "retro";
+    const where = retro ? `the milestone's retro files live in \`${retroDir(piece)}/\`` : `its spec lives in \`${specDir(piece)}/\``;
+    const clock = files.started
+        ? ` The session started at ${files.started}, and the crew stops it after ${files.cap} minutes: check the clock (\`date -u\`) before giving up on time.`
+        : "";
     const parts = [
         `You are a Relay session for Sans Fiat, in GitHub Actions with no other context: one cold session ` +
-            `doing one step of piece #${piece.number}, "${piece.title}". You are on its branch, ` +
-            `\`${branchOf(piece)}\`, and its spec lives in \`${specDir(piece)}/\`. This prompt holds how Relay ` +
-            `works; the design and the code hold the rest.`,
+            `doing one step of ${retro ? "retro" : "piece"} #${piece.number}, "${piece.title}". You are on its branch, ` +
+            `\`${branchOf(piece)}\`, and ${where}. This prompt holds how Relay works; the design and the code hold the rest.${clock}`,
     ];
     if (kind === "build") {
         if (!files.brief) throw new Error(`${specDir(piece)}/${step.meta.id}.md is missing`);
         parts.push(atLevel(files.brief.trim(), 1));
+    } else if (retro) {
+        const s = RETRO_STEPS.find((r) => r.id === step.meta.id);
+        parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${s.title}, as \`retro.md\` says for the \`${s.id}\` step. The retro:`);
+        parts.push(atLevel(`# The retro\n\n${piece.body.trim()}`));
+        if (step.meta.id === "game") {
+            parts.push(
+                files.notes
+                    ? `# The owner's notes\n\nWrite them to \`${retroDir(piece)}/owner.md\` as they are, then read them as the angles' evidence.\n\n"""${files.notes}"""`
+                    : `# The owner's notes\n\nNone came in 72 hours: the angles go without them, and say so.`,
+            );
+        }
     } else {
         const what = {
             spec: "Write the spec, the briefs and steps.json for this piece",
             "spec-review": "Review the spec, the briefs and steps.json for this piece",
+            play: `Play this piece's branch and write its play note, on ${playChoice(piece.body)?.seeds ?? 1} seed${(playChoice(piece.body)?.seeds ?? 1) > 1 ? "s" : ""}`,
             review: "Review this piece as built",
         }[kind];
         const like = kind === "spec" && files.lastSpec ? ` Write \`spec.md\` and the briefs as \`${files.lastSpec}/\` did.` : "";
@@ -283,7 +374,7 @@ export const sessionPrompt = (piece, step, files) => {
                 `\`${step.meta.id}\`, only: a later step is another session's, even if the reply says to carry on.\n\n"""${step.meta.reply}"""`,
         );
     }
-    if (kind !== "build") {
+    if (!["build", "play", "retro"].includes(kind)) {
         const named = Object.entries(files.design ?? {});
         const builds = named.length
             ? named.map(([f, text]) => `## \`${f}\`\n\n${text ? atLevel(text.trim(), 3) : "That file doesn't exist yet."}`).join("\n\n")
@@ -295,11 +386,11 @@ export const sessionPrompt = (piece, step, files) => {
     if (kind === "review") {
         parts.push(`# The diff to review\n\nThe piece's changes against \`main\`:\n\n\`\`\`\n${(files.diffStat ?? "").trim()}\n\`\`\``);
         if (files.spec) parts.push(`# The whole spec\n\n${atLevel(files.spec.trim())}`);
-        parts.push(`# The steps\n\nPut this table at the top of the PR description, under "Closes #${piece.number}", with your own row added:\n\n${stepsTable(piece.steps)}`);
+        parts.push(`# The steps\n\nPut this table at the top of the PR description, under "Closes #${piece.number}". The crew rewrites it with your own row after you finish:\n\n${stepsTable(piece.steps)}`);
     }
     const done = sortSteps(piece.steps).filter((s) => s.state === "closed" && s.meta.summary);
     if (done.length) parts.push(`# This piece so far\n\n${done.map(soFar).join("\n")}`);
-    for (const name of [...PROMPTS_FOR[kind], "session"]) {
+    for (const name of [...promptsFor(step.meta.id), "session"]) {
         if (files.prompts[name]) parts.push(atLevel(files.prompts[name].trim(), 1));
     }
     return parts.join("\n\n") + "\n";
@@ -372,6 +463,75 @@ export const stepBody = (piece, s, { brief, pr } = {}) => {
     }
     return parts.join("\n\n");
 };
+
+// A finished step's findings and ideas, sorted. A `fix` needs a repro and a milestone with a
+// fixes piece to go to, and never comes from a retro; everything else is `ask`.
+export const sortFindings = (result, { retro = false, milestone = null } = {}) => {
+    const items = [...(Array.isArray(result?.findings) ? result.findings : []), ...(Array.isArray(result?.ideas) ? result.ideas : [])].filter((i) => i?.title);
+    const fix = (i) => i.class === "fix" && i.repro && !retro && milestone;
+    return { fix: items.filter(fix), ask: items.filter((i) => !fix(i)) };
+};
+
+// A finding as a line of the fixes piece, or the body of a proposed issue.
+export const findingText = (i, from) => `**${i.title}**${i.body ? `: ${i.body}` : ""}${i.repro ? ` Repro: ${i.repro}` : ""} (${from})`;
+
+// The fixes piece a milestone's `fix` findings go to.
+export const fixesBody = (milestone) =>
+    [
+        `**Goal:** Every \`fix\` finding of ${milestone} below works as the line it names says, and its repro is a test on the stage that fails on main and passes here.`,
+        "",
+        "**Spec:** sonnet medium: each fix restores a line the design already fixes",
+        "",
+        "**Spec-review:** sonnet medium",
+        "",
+        "**Play:** none",
+        "",
+        "**Shape:** Henry Ford: every finding is settled by the line it names.",
+        "",
+        "**In scope:** the findings below, and a test for each.",
+        "",
+        "**Out of scope:** a new or changed rule, design prose, a new lever, a band, or a `data.rs` number a design line doesn't already fix.",
+        "",
+        "## Findings",
+        "",
+    ].join("\n");
+
+// The steps table in a PR description replaced with `table`, or put under its "Closes" line.
+export const withTable = (body, table) => {
+    const lines = (body ?? "").split("\n");
+    const start = lines.findIndex((l) => l.startsWith("| Step | State"));
+    const end = lines.findIndex((l, i) => i > start && /at list price so far\.$/.test(l));
+    if (start >= 0 && end >= 0) return [...lines.slice(0, start), table, ...lines.slice(end + 1)].join("\n");
+    const closes = lines.findIndex((l) => /Closes #\d+/.test(l));
+    return [...lines.slice(0, closes + 1), "", table, "", ...lines.slice(closes + 1)].join("\n");
+};
+
+// A milestone is built when none of its pieces can run: every open one is paused.
+export const isBuilt = (open) => open.every((p) => p.labels.includes("relay:paused"));
+
+// The pieces in a proposal: each `### X. Title` section with a `**Goal:**` line, as
+// { key, title, body }, in order. `#X` in an After line names another piece by its key.
+export const parseProposal = (md) => {
+    const pieces = [];
+    let cur = null;
+    for (const line of (md ?? "").split(/\r?\n/)) {
+        const h = /^###\s+([A-Z][A-Za-z0-9]*)\.\s+(.+)$/.exec(line);
+        if (h || /^##?\s/.test(line)) {
+            if (cur) pieces.push(cur);
+            cur = h ? { key: h[1], title: h[2].trim(), lines: [] } : null;
+            continue;
+        }
+        if (cur) cur.lines.push(line);
+    }
+    if (cur) pieces.push(cur);
+    return pieces
+        .map(({ key, title, lines }) => ({ key, title, body: lines.join("\n").trim() }))
+        .filter((p) => pieceField(p.body, "Goal"));
+};
+
+// A proposal piece's body with `#X` keys in its After line made issue numbers.
+export const withNumbers = (body, numbers) =>
+    body.replace(/^(\*\*After:\*\*.*)$/m, (line) => line.replace(/#([A-Z][A-Za-z0-9]*)\b/g, (m, k) => (numbers[k] ? `#${numbers[k]}` : m)));
 
 // How a session ended: what it wrote to result.json, or null when it wrote nothing usable.
 export const readResult = (text) => {
@@ -527,6 +687,7 @@ const toStep = (issue) => ({
     title: issue.title,
     state: issue.state,
     stateReason: issue.state_reason,
+    closedAt: issue.closed_at,
     body: issue.body ?? "",
     meta: readMeta(issue.body) ?? { id: "?" },
 });
@@ -551,8 +712,10 @@ const toPiece = async (issue) => ({
 });
 
 const loadPieces = async () => {
-    const issues = await allPages("/issues?state=open&labels=kind:piece");
-    return Promise.all(issues.filter((i) => !i.pull_request).map(toPiece));
+    const issues = [...(await allPages("/issues?state=open&labels=kind:piece")), ...(await allPages("/issues?state=open&labels=kind:retro"))];
+    const pieces = await Promise.all(issues.filter((i) => !i.pull_request).map(toPiece));
+    for (const p of pieces.filter(isFixes)) p.before = fixesWaitsFor(pieces, p);
+    return pieces;
 };
 
 const loadPiece = async (number) => toPiece(await github("GET", `/issues/${number}`));
@@ -825,7 +988,7 @@ const lastSpec = (piece) => {
 // The files a step's prompt draws on, read from the piece's branch.
 const stepPrompt = (piece, step) => {
     const kind = stepKind(step.meta.id);
-    const prompts = Object.fromEntries([...PROMPTS_FOR[kind], "session"].map((n) => [n, readRepo(`relay/prompts/${n}.md`)]));
+    const prompts = Object.fromEntries([...promptsFor(step.meta.id), "session"].map((n) => [n, readRepo(promptPath(n))]));
     const designDir = path.join(REPO, "docs/design");
     const files = {
         prompts,
@@ -835,6 +998,9 @@ const stepPrompt = (piece, step) => {
         designFiles: fs.existsSync(designDir) ? fs.readdirSync(designDir).map((f) => `docs/design/${f}`) : [],
         diffStat: kind === "review" ? git("diff", "--stat=120", "origin/main...HEAD") : "",
         lastSpec: kind === "spec" ? lastSpec(piece) : null,
+        notes: piece.steps.find((s) => s.meta.id === "wait")?.meta.notes ?? null,
+        started: new Date().toISOString(),
+        cap: SESSION_TIMEOUT_MS / 60_000,
     };
     return sessionPrompt(piece, step, files);
 };
@@ -862,8 +1028,14 @@ const createStep = async (piece, s) => {
     log(`#${piece.number}: made step ${s.id} (#${issue.number})`);
 };
 
-// A new piece gets its spec step, on the model and effort the piece's body chose.
+// A new piece gets its spec step, on the model and effort the piece's body chose. A retro gets
+// all its steps at once.
 const startPiece = async (piece) => {
+    if (isRetro(piece)) {
+        for (const s of RETRO_STEPS) await createStep(piece, s);
+        await setStatus(piece, "Building");
+        return;
+    }
     const { model, effort, why } = specChoice(piece.body);
     await createStep(piece, { id: "spec", title: "Spec and briefs", model, effort, why });
     await setStatus(piece, "Spec");
@@ -890,7 +1062,11 @@ const plan = async (piece) => {
         log(`#${piece.number}: ${error}; spec-review runs again`);
         return;
     }
-    for (const s of steps) await createStep(piece, s);
+    const play = playChoice(piece.body);
+    const all = play
+        ? [...steps.slice(0, -1), { id: "play", title: "Play the branch", model: play.model, effort: play.effort, why: `The piece's Play line: ${play.why}` }, steps.at(-1)]
+        : steps;
+    for (const s of all) await createStep(piece, s);
     await setStatus(piece, "Building");
 };
 
@@ -937,7 +1113,9 @@ export const stepComment = (step, result) => {
     const decided = m.decisions?.length ? `\n\n🧭 Decided:\n${m.decisions.map((d) => `- ${d.decision}${d.why ? `: ${d.why}` : ""}`).join("\n")}` : "";
     const list = ideaList(result.ideas);
     const ideas = list ? `\n\n💡 Ideas, not built:\n${list}` : "";
-    return `**${m.id}** (${took.join(", ")}): ${result.summary}${decided}${ideas}`;
+    const found = ideaList(result.findings);
+    const findings = found ? `\n\n🔎 Findings:\n${found}` : "";
+    return `**${m.id}** (${took.join(", ")}): ${result.summary}${decided}${findings}${ideas}`;
 };
 
 // What follows a finished step: the PR once the branch has commits, the next steps after the
@@ -952,9 +1130,18 @@ const afterStep = async (piece, step, result) => {
         await comment(piece.number, `📎 The PR is #${pr.number}, and the spec is in [\`${specDir(piece)}/\`](${tree}).`);
     }
     if (pr && result.summary) await comment(pr.number, stepComment(step, result));
+    await fileFindings(piece, step, result);
     if (kind === "spec" || kind === "spec-review") await plan(await loadPiece(piece.number));
-    else if (kind === "build") await setStatus(piece, "Building");
-    else if (kind === "review") {
+    else if (step.meta.id === "proposal") {
+        await comment(piece.number, `📝 The proposal is on ${pr?.html_url ?? "the branch"}. Correct it there and merge it: the crew then opens its pieces.`);
+        await setStatus(piece, "Review", "your merge");
+    } else if (kind !== "review") await setStatus(piece, "Building");
+    else {
+        if (pr) {
+            const fresh = await loadPiece(piece.number);
+            const { body } = await github("GET", `/pulls/${pr.number}`);
+            await github("PATCH", `/pulls/${pr.number}`, { body: withTable(body ?? `Closes #${piece.number}.`, stepsTable(fresh.steps)) });
+        }
         const why = await autoMerge(piece, pr, result);
         if (why) {
             await comment(
@@ -964,6 +1151,110 @@ const afterStep = async (piece, step, result) => {
             await setStatus(piece, "Review", "your merge");
         }
     }
+};
+
+// The milestone's fixes piece, opened if it isn't yet.
+const fixesPiece = async (milestone) => {
+    const open = await allPages(`/issues?state=open&labels=relay:fixes&milestone=${milestone.number}`);
+    if (open.length) return open[0];
+    const issue = await github("POST", "/issues", {
+        title: `Fixes for ${milestone.title}`,
+        body: fixesBody(milestone.title),
+        labels: ["kind:piece", "relay:ready", "relay:fixes"],
+        milestone: milestone.number,
+    });
+    log(`opened the fixes piece for ${milestone.title}: #${issue.number}`);
+    return issue;
+};
+
+// A step's `fix` findings go on its milestone's fixes piece while that hasn't started; the rest
+// become `relay:proposed` issues. A title already open is skipped.
+const fileFindings = async (piece, step, result) => {
+    const { fix, ask } = sortFindings(result, { retro: isRetro(piece), milestone: piece.milestone });
+    if (!fix.length && !ask.length) return;
+    const from = `#${piece.number} ${step.meta.id}`;
+    if (fix.length) {
+        const fixes = await fixesPiece(piece.milestone);
+        const started = (await allPages(`/issues/${fixes.number}/sub_issues`)).length > 0;
+        if (started) ask.push(...fix);
+        else {
+            const body = fixes.body ?? "";
+            const lines = fix.filter((i) => !body.includes(`**${i.title}**`)).map((i) => `- ${findingText(i, from)}`);
+            if (lines.length) await github("PATCH", `/issues/${fixes.number}`, { body: `${body.trimEnd()}\n${lines.join("\n")}\n` });
+        }
+    }
+    const titles = new Set((await allPages("/issues?state=open&labels=kind:piece")).map((i) => i.title));
+    for (const i of ask) {
+        if (titles.has(i.title)) continue;
+        titles.add(i.title);
+        await github("POST", "/issues", {
+            title: i.title,
+            body: `${findingText(i, from)}\n\n\`/relay ready\` makes this a piece once its body has \`Spec:\` and \`Spec-review:\` lines.`,
+            labels: ["kind:piece", "relay:proposed"],
+        });
+    }
+    log(`#${piece.number} ${step.meta.id}: ${fix.length} fix and ${ask.length} ask findings filed`);
+};
+
+// When none of a milestone's pieces can run, main is tagged `m<n>` and its retro opens.
+const milestoneCheck = async (milestone, { early = false } = {}) => {
+    const tag = milestoneTag(milestone);
+    if (!tag) return null;
+    if (!early) {
+        const open = (await allPages(`/issues?state=open&labels=kind:piece&milestone=${milestone.number}`)).filter((i) => !i.pull_request);
+        if (!isBuilt(open.map((i) => ({ labels: i.labels.map((l) => l.name) })))) return null;
+        try {
+            const main = await github("GET", "/git/ref/heads/main");
+            await github("POST", "/git/refs", { ref: `refs/tags/${tag}`, sha: main.object.sha });
+            log(`${milestone.title} is built: tagged main ${tag}`);
+        } catch (e) {
+            log(`couldn't tag ${tag}: ${e.message}`);
+        }
+    }
+    if ((await allPages(`/issues?state=all&labels=kind:retro&milestone=${milestone.number}`)).length) return null;
+    const issue = await github("POST", "/issues", { title: `${milestone.title} retro`, body: retroBody(milestone), labels: ["kind:retro", "relay:ready"], milestone: milestone.number });
+    await comment(
+        issue.number,
+        `🔁 The retro starts with the play check and three angles. Play main and comment your notes here within 72 hours, or \`/relay retro go\` to go on without them.`,
+    );
+    log(`opened the ${milestone.title} retro: #${issue.number}`);
+    return issue;
+};
+
+// A file on main, read through the API, or null.
+const mainFile = async (f) => {
+    try {
+        const { content } = await github("GET", `/contents/${f}?ref=main`);
+        return Buffer.from(content, "base64").toString("utf8");
+    } catch {
+        return null;
+    }
+};
+
+// A merged retro opens the next milestone's pieces from its proposal, `relay:ready`.
+const openProposal = async (retro) => {
+    const m = milestoneTag(retro.milestone);
+    if (!m) return;
+    const next = `M${Number(m.slice(1)) + 1}`;
+    const pieces = parseProposal(await mainFile(`docs/proposals/${next.toLowerCase()}.md`));
+    if (!pieces.length) return comment(retro.number, `No pieces in \`docs/proposals/${next.toLowerCase()}.md\` on main, so none were opened.`);
+    const milestones = await allPages("/milestones?state=all");
+    const milestone = milestones.find((x) => milestoneTag(x) === next.toLowerCase()) ?? (await github("POST", "/milestones", { title: next }));
+    const numbers = {};
+    for (const p of pieces) {
+        const issue = await github("POST", "/issues", { title: p.title, body: withNumbers(p.body, numbers), labels: ["kind:piece", "relay:ready"], milestone: milestone.number });
+        numbers[p.key] = issue.number;
+    }
+    await comment(retro.number, `🚀 Opened ${next}'s pieces: ${pieces.map((p) => `${p.key} #${numbers[p.key]}`).join(", ")}.`);
+};
+
+// Ends a retro's wait, with or without the owner's notes.
+const endWait = async (piece, step) => {
+    const line = step.meta.notes ? "done: the owner's notes came" : step.meta.go ? "done: the owner said go" : "done: no notes in 72 hours";
+    step.body = withStatus(step.body, line);
+    await saveMeta(step, { ...step.meta, status: "done" });
+    await closeStep(step);
+    await setBoard(step.nodeId, { Status: "Done" });
 };
 
 // Runs one step and records how it went. Returns a line for the run report, or throws
@@ -976,7 +1267,7 @@ const runStep = async (piece, step, before) => {
         throw Object.assign(new Error(`#${piece.number}'s branch tracks ${tracked.split("\n").join(", ")}; \`git rm --cached\` it before a session runs`), { refused: true });
     }
     const kind = stepKind(step.meta.id);
-    await setStatus(piece, { review: "Review", build: "Building" }[kind] ?? "Spec");
+    await setStatus(piece, { review: "Review", build: "Building", play: "Building", retro: "Building" }[kind] ?? "Spec");
     let prompt;
     try {
         prompt = stepPrompt(piece, step);
@@ -1002,6 +1293,9 @@ const runStep = async (piece, step, before) => {
     if (step.meta.id === "spec-review" && result?.status === "done") {
         const { error } = readSteps(piece);
         if (error) result = { status: "pending", note: `You reported done, but steps.json can't be read: ${error}` };
+    }
+    if (kind === "review" && result?.status === "done" && typeof result.merge !== "boolean") {
+        result = { status: "pending", note: "You reported done without `merge`: result.json needs `\"merge\": true` or `false`." };
     }
     let after = null;
     try {
@@ -1096,9 +1390,14 @@ const runSteps = async (ran) => {
             ran.push(`#${next.piece.number}: steps made`);
             continue;
         }
+        if (next.action === "waited") {
+            await endWait(next.piece, next.step);
+            ran.push(`#${next.piece.number}: the wait is over`);
+            continue;
+        }
         const before = reading ?? (await usage());
         reading = null;
-        const verdict = pace(before, new Date(), expectedPoints(next.step.meta));
+        const verdict = pace(before, new Date());
         if (!verdict.ok) {
             await setBoard(next.piece.nodeId, { "Waiting on": waitingOn(verdict) });
             if (verdict.window === "5-hour" && verdict.until) {
@@ -1141,7 +1440,7 @@ const status = async () => {
     for (const p of pieces) console.log(`#${p.number} ${p.title}: ${holdReason(p) ?? JSON.stringify(pieceAction(p)?.action ?? "finished")}`);
     const next = nextWork(pieces);
     console.log(next ? `next: #${next.piece.number} ${next.action}${next.step ? ` ${next.step.meta.id}` : ""}` : "next: nothing");
-    console.log(`pacing: ${JSON.stringify(pace(await usage(), new Date(), next?.step ? expectedPoints(next.step.meta) : 0))}`);
+    console.log(`pacing: ${JSON.stringify(pace(await usage(), new Date()))}`);
 };
 
 // For the workflow to report a failure the crew couldn't, e.g. the job timing out.
@@ -1191,7 +1490,29 @@ const COMMANDS = {
     },
     pause: async (piece) => {
         await addLabel(piece.number, "relay:paused");
+        if (piece.milestone) await milestoneCheck(piece.milestone);
         return "Paused. A step that's running finishes first.";
+    },
+    ready: async (piece) => {
+        if (piece.labels.includes("relay:proposed")) await removeLabel(piece.number, "relay:proposed");
+        if (!piece.labels.includes("relay:ready")) await addLabel(piece.number, "relay:ready");
+        const hold = holdReason({ ...piece, labels: ["relay:ready"] });
+        return `Labelled \`relay:ready\`.${hold ? ` It's held: ${hold}.` : " The next run picks it up."}`;
+    },
+    retro: async (piece, [word]) => {
+        if (isRetro(piece)) {
+            const wait = findStep(piece, "wait");
+            if (word !== "go") return "On a retro, `/relay retro go` ends the wait for your notes.";
+            if (!wait) return "This retro isn't waiting.";
+            await saveMeta(wait, { ...wait.meta, go: true });
+            await dispatchRun();
+            return "Going on without notes, starting now.";
+        }
+        if (!piece.milestone) return "This piece has no milestone, so there's no retro to start.";
+        const issue = await milestoneCheck(piece.milestone, { early: true });
+        if (!issue) return `${piece.milestone.title}'s retro is already open.`;
+        await dispatchRun();
+        return `Opened #${issue.number}, starting now.`;
     },
     resume: async (piece) => {
         await removeLabel(piece.number, "relay:paused");
@@ -1208,7 +1529,8 @@ const COMMANDS = {
     },
 };
 
-export const HELP = "Commands: `run`, `retry [step]`, `skip <step>`, `model <step> <model> [effort]`, `pause`, `resume`, `status`.";
+export const HELP =
+    "Commands: `run`, `retry [step]`, `skip <step>`, `model <step> <model> [effort]`, `pause`, `resume`, `status`, `ready`, `retro` (on a piece: start its milestone's retro now; on a retro: `retro go` ends the wait).";
 
 // A closed piece closes its open steps. Closed without merging, its branch head is tagged
 // `proof/<n>` and its PR closed.
@@ -1229,38 +1551,35 @@ const closePiece = async (number) => {
         }
     }
     await setStatus(piece, "Done");
-    await tagMilestone(piece);
-};
-
-// When a piece closes the last open issue of a milestone titled `M<n>`, main is tagged `m<n>`.
-const tagMilestone = async (piece) => {
-    const m = /^M(\d+)\b/i.exec(piece.milestone?.title ?? "");
-    if (!m) return;
-    const milestone = await github("GET", `/milestones/${piece.milestone.number}`);
-    if (milestone.open_issues > 0) return;
-    try {
-        const main = await github("GET", "/git/ref/heads/main");
-        await github("POST", "/git/refs", { ref: `refs/tags/m${m[1]}`, sha: main.object.sha });
-        log(`${milestone.title} closed: tagged main m${m[1]}`);
-    } catch (e) {
-        log(`couldn't tag m${m[1]}: ${e.message}`);
-    }
+    if (isRetro(piece)) {
+        if (await isMerged(number)) await openProposal(piece);
+    } else if (piece.milestone) await milestoneCheck(piece.milestone);
+    // A close frees the pieces waiting on it, so the next run needn't wait for the schedule.
+    await dispatchRun().catch((e) => log(`couldn't start a run: ${e.message}`));
 };
 
 const event = async () => {
     const e = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
     if (e.action === "closed" && !e.comment) {
-        if (e.issue.labels.some((l) => l.name === "kind:piece")) await closePiece(e.issue.number);
+        if (e.issue.labels.some((l) => ["kind:piece", "kind:retro"].includes(l.name))) await closePiece(e.issue.number);
         return;
     }
     if (e.comment?.user?.login !== OWNER || e.issue?.pull_request) return log("not the owner's comment on an issue; ignoring");
     const labels = e.issue.labels.map((l) => l.name);
     const cmd = parseCommand(e.comment.body);
-    if (!labels.includes("kind:piece")) {
+    if (!labels.includes("kind:piece") && !labels.includes("kind:retro")) {
         if (cmd) await comment(e.issue.number, "`/relay` commands go on the piece's issue.");
         return;
     }
     const piece = await loadPiece(e.issue.number);
+    const wait = isRetro(piece) ? findStep(piece, "wait") : null;
+    if (!cmd && wait) {
+        const notes = [wait.meta.notes, e.comment.body].filter(Boolean).join("\n\n");
+        await saveMeta(wait, { ...wait.meta, notes });
+        await dispatchRun();
+        await comment(piece.number, "Got your notes. The game and players angles read them, starting now.");
+        return;
+    }
     if (!cmd) {
         const blocked = piece.steps.find((s) => s.state === "open" && s.meta.status === "blocked");
         if (!blocked) return log("a comment, not a command, and nothing is blocked");

@@ -20,7 +20,8 @@ The piece's question is asked in the scores (`docs/process.md`, Scores), with a 
 `spec.md` says how each is measured and what the control is. A proof is a run on the retro
 maps against that control, read in the scores; a test on a built map shows a rule works, not
 that the piece did. Every unsettled item's proof has a real-map run, and so does any step
-whose rule the player meets.
+whose rule the player meets. Every new button or order the player meets is pressed once in a
+script that checks its effect on the world, and the review runs it.
 
 What the review must play or measure goes here too: the review reads the spec, not
 `steps.json`.
@@ -39,7 +40,8 @@ cut any steps. It comes in two kinds:
   on from it, and leaves the method and the starting numbers to the build.
 
 Running settles some of it now. A sweep or play script that takes minutes is cheaper here
-than in a build: run it, and settle the number or drop the fallback.
+than in a build: run it, and settle the number or drop the fallback. Measure on `main` with the
+piece's earlier settled steps applied where a later step relies on the number.
 
 What you leave unsettled is what a step's **Open** score measures.
 
@@ -60,7 +62,7 @@ Each build step plays a **part** in its shape.
   piece splits along seams you can name. A port is settled in its rules, not its numbers: the
   prototype's ran in another economy. Prove them on real maps, or give them a canvas.
 - **Parts:** `ford` steps by area, in order, each with an exact done.
-- **Expect:** Haiku and Sonnet.
+- **Expect:** Haiku. A refactor proved byte for byte is the cheapest work there is.
 
 ### Easel and Canvas
 
@@ -69,7 +71,7 @@ Each build step plays a **part** in its shape.
 - **Parts:** `easel` steps first, all settled, built for what the painter needs. Then one
   `canvas` step holding all the important unsettled work. Its brief says what the easel
   provides, what proves the painting, and that it may change the easel.
-- **Expect:** a cheap easel and an Opus painter.
+- **Expect:** Haiku easels, Sonnet medium for an easel at 6–8, and an Opus low canvas.
 
 ### Clay and Kiln
 
@@ -86,7 +88,8 @@ Each build step plays a **part** in its shape.
 - **When:** Clay and Kiln, but the kiln's rules are settled while their numbers only work
   together.
 - **Parts:** as Clay and Kiln, ending with one `glaze` step that tunes the kiln's numbers on
-  real maps and may change the kiln. Give the kiln starting numbers that run.
+  real maps and may change the kiln. Give the kiln starting numbers that run. A kiln that has
+  to run stories on real maps to see its own rule work is part of the glaze.
 - **Expect:** Opus clay and glaze, and a cheap kiln.
 
 Where does the unsettled work sit? On top, judged at the end on what the others built:
@@ -112,9 +115,11 @@ Score each build step on four things:
 
 The points add up, and the sum climbs the ladder:
 
-| Points | 0–1 | 2–3 | 4–5 | 6–7 | 8–10 | 11–12 |
+| Points | 0–1 | 2–3 | 4–5 | 6–8 | 9–10 | 11–12 |
 |---|---|---|---|---|---|---|
-| Step | haiku low | haiku medium | haiku high | sonnet medium | sonnet high; opus low for `canvas`, `glaze` and `clay` | opus medium |
+| Step | haiku low | haiku medium | haiku high | sonnet medium | sonnet high | opus medium |
+
+`canvas`, `glaze` and `clay` run Opus low from 8 to 10.
 
 - Haiku takes the lower half, judgement work included: it's more capable than its training
   data shows.
@@ -128,21 +133,28 @@ disagree, the cut is usually wrong:
 
 - A `canvas`, `glaze` or `clay` step under 8 isn't holding the hard part. Either the piece is
   Henry Ford, or the hard part is in another step.
-- A `ford`, `easel` or `kiln` step at 11 or more holds unsettled work to settle or move.
+- A `ford`, `easel` or `kiln` step with Open 2 and Miss 3, or at 9 or more, holds unsettled
+  work: move it to the canvas or glaze, or settle it here by running.
 
 Re-cut or re-score, and write which in the step's `why`.
 
-Each piece runs one build step a rung below the ladder, and its `why` says what it expects to
-see.
+Each piece runs its `canvas`, `glaze` or `clay` a rung below, Sonnet high in place of Opus
+low, and its `why` says what it expects to see. A Henry Ford piece runs its largest ford a rung
+below.
 
-The review isn't scored. It runs Sonnet high, or Opus low when `main` has moved under the
+A brief that adds to a file over 600 lines names the file to split it into.
+
+The review isn't scored. It runs Sonnet high, or Opus medium when `main` has moved under the
 piece or the goal is judged by play. Nothing that judges runs at low effort.
+
+The crew adds a `play` step before the review when the piece's `Play:` line names a model; it
+isn't in `steps.json`.
 
 ## steps.json
 
 Each build step carries its `part`. Its `why` gives its scores, what you expect of the model,
-any mismatch with the part and what you did about it, and its size (files, rough lines), so
-the retro can read cost against size.
+any mismatch with the part and what you did about it, and its size (files, rough lines,
+counting tests, pins and `engine/CLAUDE.md`), so the retro can read cost against size.
 
 ```json
 [

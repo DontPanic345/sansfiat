@@ -5,10 +5,13 @@
 - { name: "kind:step", color: "c5def5", description: "One session's job inside a piece" }
 - { name: "kind:idea", color: "fbca04", description: "Something new that is out of scope today" }
 - { name: "kind:chore", color: "bfdadc", description: "Repo or Relay upkeep" }
+- { name: "kind:retro", color: "5319e7", description: "A milestone's retro, run by Relay" }
 
-# Relay control (owner only)
+# Relay control
 - { name: "relay:ready", color: "0e8a16", description: "Owner: Relay may start this piece" }
 - { name: "relay:paused", color: "b60205", description: "Owner: Relay leaves this piece alone" }
+- { name: "relay:proposed", color: "d4c5f9", description: "An ask finding: runs only after the owner's /relay ready" }
+- { name: "relay:fixes", color: "0052cc", description: "The milestone's fixes piece, which the crew keeps" }
 
 # Waiting
 - { name: "waiting", color: "e99695", description: "Relay needs the owner: a blocked step" }

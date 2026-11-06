@@ -9,7 +9,17 @@ play or measure what the spec says proves the piece.
 Merge `origin/main` first if it has moved, so the PR is what would land.
 
 Fix what is small and substantive yourself, and leave nits. A change to a rule, or a step's
-work missing, goes in your verdict for the owner, not in a quiet fix.
+work missing, goes in your verdict for the owner, not in a quiet fix. So does a band, a test floor
+or a fail check that encodes a rule: name it in the verdict as a rule.
+
+## The judge
+
+Judge the change as the judge's verdict below says. Run `sansfiat sweep --judge --json` on the
+branch and on `main`, and `sansfiat judge --compare` on the two, and read the play note
+(`relay/specs/<piece>/play.md`) when there is one. Where `judge --compare` or the buttons script
+doesn't exist yet, compare the two runs' totals by hand. Re-run the earlier pieces' questions of this
+milestone from their PRs, and report any that fell. Every new button or order is pressed once by a
+script that checks the world changed as it says (`www/play/buttons.mjs`); run it.
 
 ## The design ledger
 
@@ -22,9 +32,10 @@ ledger.
 ## The PR description
 
 The owner reads it once, on a phone. Rewrite it (`gh pr edit --body`) so it's enough on its
-own: the steps table, then the answer to the piece's question in the scores with its
-control, the ledger lines you added, the play note's findings if there is one, the
-screenshots a page piece took, the play link
+own: the judge's block (the verdict and a line per score), the steps table, then the answer to
+the piece's question in the scores with its control, the ledger lines you added, the play
+note's findings if there is one, the screenshots a page piece took, linked at the commit and not
+the branch, the play link
 `https://dontpanic345.github.io/sansfiat/b/<branch>/`, and last your verdict: merge, or don't
 and why.
 
@@ -34,4 +45,4 @@ CI runs on every push to the PR. After your last push, wait for the CI run of th
 (`gh run list --commit "$(git rev-parse HEAD)"`, then `gh run watch` on it), not the checks
 of an earlier one. Finish `done` when it's green, with `"merge": true` in `result.json` if
 your verdict is merge: the crew then merges the PR, and pieces waiting on this one start from
-it. Without it, the owner decides.
+it. With `"merge": false`, the owner decides. The crew rewrites the steps table with your row.
