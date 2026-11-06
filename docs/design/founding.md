@@ -38,12 +38,12 @@ actors (`actors.md`), and a unit carries a pack, eats from it, and fills it as `
 says.
 
 - **The army** is a camp of warriors. The player moves the camp, not the warriors, and the
-  army divides its guarding over its zone. A civ has
-  one camp, and starts with a small one, its pack stocked from the boon year.
+  army divides its guarding over its zone.
+- **The start.** A civ starts with one scout and nothing else: no army and no guard. It raises
+  both itself, from its clans and its store.
 - **Raising** warriors takes people from the civ's clans, whose people drop by one each.
 - **Disbanding** sends warriors back to the civ's own clan.
-- **The scout** is a small party that walks the country (`scouting.md`). Each civ starts with
-  one.
+- **The scout** is a small party that walks the country (`scouting.md`).
 - **Moving.** Select a unit, right-click a tile, and it paths there over the cheapest route
   it knows, a turn's labour at a time.
 

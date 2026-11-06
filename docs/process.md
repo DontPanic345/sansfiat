@@ -52,7 +52,8 @@ numbers are.
 | Technology | `technology.md` | Drafted from the owner's story |
 | The page | `page.md` | Drafted |
 | Winning | `vision.md`, Winning | The first way to win is chosen in M3 |
-| Settling and farming: fields, the home choice, towns | `farming.md` | Needed before M4; `actors.md` Later has the seed |
+| Time, distance and labour: the day as the yardstick | `labour.md` | Drafted from the owner's M3 notes |
+| Settling and farming: fields, the home choice, towns | `farming.md` | Drafted from the owner's M3 notes and `roadmap.md` M4 |
 | Animals: herds, pack animals, horsemen, the camel | `animals.md` | Needed before M5 |
 | Goods: beer first, then salt, obsidian, shells, beads | `goods.md` | Needed before M5; `relay/retro/m2/history.md` has the material |
 | The wide world: biomes, deserts, ranges, steppe | `map.md`, grown | Needed before M7 |

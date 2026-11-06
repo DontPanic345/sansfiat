@@ -9,11 +9,12 @@ motion comes from people, land and what they learn, not from the weather.
 
 | It needs                                                                          | Milestone                      |
 | --------------------------------------------------------------------------------- | ------------------------------ |
-| A way to win and a way to lose                                                    | M3                             |
-| A rival that plays for the same goal                                              | M3                             |
+| A way to win and a way to lose                                                    | M4                             |
+| A rival that plays for the same goal                                              | M4                             |
 | Land that is yours, and armies that take and hold it                              | M3                             |
 | A page that is the game: start, play, end, save                                   | M3, then grown every milestone |
-| A judge on every change, and a player that plays every piece                      | M3                             |
+| A judge on every change, and a player that plays every piece                      | M3, then M4: the stage, the compare and the play step |
+| The day as the yardstick everything is priced in                                  | M4; the clock war runs on, decided before M5 |
 | New ways to feed a civ: fields, herds, beer                                       | M4, M5                         |
 | Knowledge that spreads                                                            | M6                             |
 | A world worth crossing: biomes, deserts, ranges, steppe, the routes across them   | M7                             |
@@ -26,20 +27,22 @@ motion comes from people, land and what they learn, not from the weather.
 
 ### M3: A game
 
-The engine shaped for many units and many players; a judge and a player on every PR; land
-you claim and guard; armies of kinds that skirmish, march, besiege and surrender; a rival
-that plays for Standing; a way to win and to lose; a page that is the game.
-`proposals/m3.md` has the pieces. You play: a whole game against two rivals.
+The engine shaped for many units and many players; a judge that reports and a player that
+plays; land you claim and guard; armies of kinds that skirmish, march, besiege and surrender;
+a page that is the game. `proposals/m3.md` has the pieces, and `proposals/m3-retro.md` what
+they answered. The rival that plays and the game that ends (R) didn't run: without an economy
+that feeds an army there was nothing for it to plan, so it moves to M4.
 
 ### M4: Settling
 
-The Neolithic revolution begins: the farmer. A clan splits its labour between gathering and
-fields as its grain tames; fields are small, worked hard, and don't wear; the home choice,
-by the field or by the market; towns where many clans
-choose to live. A settled civ feeds more people on less land and has a store worth taking.
-You play: a civ that settles against one that doesn't. Needs first: labour across jobs on
-the actor (`architecture.md`), the owner's design call. Vision: `design/farming.md`, to
-write.
+A game that ends; the game proving itself, with a stage that places units on a known map
+and a judge that compares against main with the drift measured; scouts that work; the day
+as the yardstick, with labour split across jobs and the supply ring drawn; the farmer, whose
+clan puts its days to fields as its grain tames and fills a store worth taking;
+towns where many clans live on one tile; and then the rival that plays for Standing on that
+economy. `proposals/m4.md` has the pieces. You play: a game that ends, against a rival that
+settles and comes for your store. Visions: `design/labour.md` and `design/farming.md`,
+drafted.
 
 ### M5: Herds and beer
 
@@ -48,7 +51,9 @@ that cut a route's cost and carry a line further; horsemen. Beer from grain: a g
 isn't eaten, which draws clans to a feast and feeds people put to a work. The engine learns
 that a good can be something other than food. You play: a pastoral civ against a farming
 one, and a feast that draws a rival's clans. Needs: a carrier on the shared actor; goods
-that aren't eaten. Visions: `design/animals.md` and `design/goods.md`, to write.
+that aren't eaten; the owner's call on which clock war runs on under the day
+(`proposals/m3-retro.md`, question 1), since animals change what a person carries and how
+far. Visions: `design/animals.md` and `design/goods.md`, to write.
 
 ### M6: Knowing things
 
@@ -97,7 +102,8 @@ save that survives versions; a release on Pages and itch.io.
 - The judge grows by one check per piece, and the play step plays every piece.
 - The page grows with every mechanic it shows, to `design/page.md`, and each mechanic's
   page step brings its motion: a march, a skirmish, a feast, drawn so the eye catches it.
-- A milestone ends with a tag, `m<n>`, the owner's play, and the retro.
+- A milestone is built when none of its pieces can run; the crew tags it `m<n>`, the owner
+  plays, and the retro runs, from M4 as a Relay run.
 
 ## The look and the sound
 
