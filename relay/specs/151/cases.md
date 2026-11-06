@@ -76,6 +76,31 @@ cleared with the scout alive; 120 turns without that fail with their own message
   No Rust test sends the page's count: that would pin an engine change T does not make.
 - T must do: nothing in the engine. For the page, make the `all` option send no count.
 
+## Disband all, the page arm
+
+The page's `all` option (`www/panels.js`'s `disband`) sends `n` = floor(people). The stepper opens at
+1, so pressing Go as it opens sends `n` = 1. Run by `node www/check.mjs` (after `./build-web.sh`, from
+`engine/`), in `www/check-stage.mjs`. Each press is wrapped in `expectBug`, so the file passes on main;
+the messages below are the failures the cases raise on main once the wrapper is dropped.
+
+- Camp of 4.6, pressed as the stepper opens (`n` = 1):
+
+      Disband all sends the whole army home: the army is still on the map
+
+- Camp of 4.6, pressed at its cap (`n` = 4): the same message, the army keeps 0.6.
+- Scout (2 people, the founding size) pressed as the stepper opens (`n` = 1):
+
+      Disband all sends the whole scout home: the scout is still on the map
+
+- Guard (3 people, its founding size) pressed as the stepper opens (`n` = 1):
+
+      Disband all sends the whole guard home: the guard is still on the map
+
+- The scout's and the guard's caps (2 and 3) are whole, so they send all of it on main: their cap presses
+  are plain assertions that pass, not `expectBug`s.
+- T must do: make `all` send no count, so the engine disbands the whole unit (as the Rust control does).
+  Then drop the four `expectBug` wrappers in `check-stage.mjs`; the messages stay as the case's own.
+
 ## Summary
 
 | Case | Test | Main | T |
@@ -85,3 +110,4 @@ cleared with the scout alive; 120 turns without that fail with their own message
 | Search control | `a_scouts_search_on_small_9_to_the_forest_is_in_order` | green | keep green |
 | River bridge | `a_settled_route_has_no_cheaper_trail` | red, `should_panic`, not T's | nothing (a fix piece) |
 | Disband control | `disband_all_sends_every_person_home` | green | keep green |
+| Disband all, the page arm | `expectBug` in `www/check-stage.mjs` | red (four presses) | make `all` send no count |

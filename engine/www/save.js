@@ -1,6 +1,7 @@
 // Autosave: the page's one browser entry, `localStorage['sansfiat.autosave']`, written after each turn
 // the player ends and each action, and at most once a second while a run goes (and once when it stops).
 // A write that throws (storage refused or full) turns autosave off for the session; the Game menu says so.
+// A staged game (`Sim.stage`) is not a save: it is never written.
 // The entry holds {version, saved, seed, size, turn, civ} (civ is the led civ's name, or null), the save
 // (`Sim.save()`) and the Standing history. Continue loads it through `Sim.load`.
 
@@ -30,7 +31,7 @@ export class Autosave {
 
   /** Writes the game as it stands now. A refusal turns autosave off for the session. */
   write(sim, model) {
-    if (!this.on || !sim || !model) return;
+    if (!this.on || !sim || !model || sim.staged()) return;
     try {
       const save = JSON.parse(sim.save());
       const v = model.v;

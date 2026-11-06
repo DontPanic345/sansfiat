@@ -128,6 +128,7 @@ export const feedList = () => feed;
 function begin(next, { history = null, speed = null, run = false, play: go = false } = {}) {
   stop();
   sim = next;
+  $('save').disabled = sim.staged();
   layout = JSON.parse(sim.layout());
   model = history ? { history } : null;
   selected = null;

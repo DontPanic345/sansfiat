@@ -58,6 +58,8 @@ window.game = {
   border: (civ) => play.map().border(civ),
   notes: (id) => play.state().sim.notes(id),
   terrain: () => app.data.TERRAIN,
+  /** Shows a staged game: the world `spec` (a StageSpec, as an object) describes. Not a save. */
+  stage: (spec) => app.show('play', { sim: app.data.Sim.stage(JSON.stringify(spec)) }),
 };
 
 const params = new URLSearchParams(location.search);
