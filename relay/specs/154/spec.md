@@ -81,13 +81,14 @@ is chaos, not a score.
 |---|---|---|
 | Health | **No digest moves under the split, the ladder, the guard's meal and the muster split**: after build-1, `cli/tests/save.rs`'s pins and `SAVE_VERSION` are unchanged, and `sansfiat digest --seed N --size small --turns 600 --lead` for seeds 1, 2 and 9 matches main's. | Main's pins. |
 | Health | **No reach changes under the day**: `core/tests/day.rs` (build-2) records, on staged maps (`Stage::plain`, a hills and forest stage, a river crossing, a trailed path), the camp's `turns` to every tile within 6 steps, `line_from`'s carry over the people's eating, the clan's territory after 20 turns, a scout's march steps, a festival's reach and `MARKET.reach`'s tiles, run before the scale with the numbers pinned; after it they match: counts exactly, labour over `DAY` within 10⁻⁹. On the retro maps `judge --compare` against main is reported beside the two nulls, not bound. | The pinned numbers from before the scale; the nulls. |
-| Health, motion | **The ring is where armies and scouts live**: on `sweep --judge`'s runs (seven retro maps, every civ on the AI), the judge counts per civ the tiles in the ring and the held tiles in it at the pick and +200, and army-turns and scout-turns inside and outside the ring with the hungry turns in each. Hungry turns per unit-turn outside the ring are at least four times those inside; inside, under 0.05. Measured after build-3 and again after build-4; the table goes in `ring.md`. | Inside the ring against outside it, on the same runs. |
-| Health, motion | **The ring on a staged walk-out**: `core/tests/ring.rs` (build-3) marches a 3-person army out from the capital on a straight plains stage, one tile a run, auto-supply on: it is fed for 20 turns on every tile with share under one and goes hungry within `UNIT.pack + 2` turns on the first tile past it. `ring` agrees with `line_from` on every tile. | The rule's own edge. |
+| Health, motion | **The ring is where armies live, on the retro maps**: the AI raises no army before R (`units/ai.rs`), so `sweep --judge`'s runs have no army-turns to count (`probe-ring.md`). The proof stages them: `core/tests/ring.rs`'s report test (`#[ignore]`, run with `--ignored --nocapture`), on each of the seven retro picks, leads each civ in turn and stages a 3-person army (`Stage::army`, auto-supply and auto-forage on) on one tile in each band of the ring's share (under 0.5, 0.5–0.75, 0.75–0.9, 0.9–1, 1–1.1, 1.1–1.25, 1.25–1.5, 1.5–2, 2 and up) within 8 steps of the capital, and runs 20 turns. A turn counts as starving when the army is hungry, or after it is gone with its civ's store holding; a turn whose civ's store ends under the army's turn of food is set apart as dry, since an empty store feeds no line (on main four civs' stores run dry under a 3-person army, and their armies die inside the ring). Under share 1 the starving rate is under 0.05; at 1.25 and up it is at least four times that and at least 0.2. Main: 0.000 under 1, 0.24–0.38 from 1.25 (hungry turns alone; the gone add more). Measured after build-3 and again after build-4; the table goes in `ring.md`. | Inside the ring against outside it, on the same maps and civs. |
+| Health | **Scouts inside the ring**: the judge's `supply` group counts scout-turns and army-turns inside and outside the ring with the hungry turns in each, a report (army-turns are zero under the AI; a played game has them). Scouts inside the ring hungry under 0.05 of their turns (main: 3 of 12,355). Scouts forage past the line by design, so outside is reported, not bound. | Main. |
+| Health, motion | **The ring on a staged walk-out**: `core/tests/ring.rs` (build-3) stands a 3-person army on each tile of a straight plains stage from the capital, no food on the tiles, auto-supply on, and runs 40 turns: on every tile with share under one it is never hungry; on the first tile past it is hungry before turn 40 (at share 1.14 its line brings seven eighths of what it eats, and a full pack spoiling a tenth a turn runs out near turn 29). `ring` agrees with `line_from` on every tile. | The rule's own edge. |
 | Motion | **A walk costs more for a clan that carries more**: after build-4 the canvas tables, on the retro maps at +100, each clan's festival walk in days against what it brought, in bins of brought a person; the days rise with what a clan brings, and a clan of twenty bringing its fill pays more than one of two (also a stage test). | The same clans' walks at one walker (main). |
 | Health, motion | **Festivals and territories don't collapse** (build-4): against main and the two nulls, with the per-person walk on: pre-games by centres 7 of 7 (or 6 when a last-bit nudge of the same setting ends 7, since the day's scale alone lost one to chaos); markets at the pick and trading share at the pick and +200 no lower than the lowest of main and the nulls by more than the nulls' span (the largest of main and the nulls less the smallest); mean territory tiles a clan (build-3 adds the count) and clans joined, people changed and land changed above three quarters of the lowest of main and the nulls; AI orders a hundred turns above half of main's. | Main and the two nulls. |
 | Health | `engine/check.sh` green at every step; `scout_errand` keeps all 28 scouts alive after build-4. | |
 
-**Before the piece** (`probe.md`, run by this step on main): a 4/3 scale of the costs and the
+**Before the piece** (`probe.md`, run by the spec step on main; `probe-ring.md`, run by the spec-review on main: the ring as the formula draws it is where staged armies live on the retro maps, and inside it they starve only when the civ's store runs dry): a 4/3 scale of the costs and the
 labour, with or without the twelfth-of-a-day grid, moves the retro maps about as much as the
 nulls do (clans joined 99 and 105 against the nulls' 106 and 141 and main's 131), and in one of the two
 runs a pre-game ends by its backstop. A per-person walk with every route walker paying (a load
@@ -116,7 +117,10 @@ walkers and a load of 2 hold the pre-game, markets and trading.
   step is paid by each person. Two numbers carry the weighting and the canvas tunes them:
   `CARRY.load` (food one person carries on a route) and the inside weights (`CLAN.inside`,
   `GUARD.inside`, `UNIT.inside`). The probe's starting point: the load at 2 food (before the
-  day's scale; it is food, so the scale leaves it), and `CLAN.inside` halved.
+  day's scale; it is food, so the scale leaves it), and `CLAN.inside` halved. A person eats one food a turn,
+  a turn of `CLAN.work` days (4.67 after the scale), so a load of 2 food is about nine days'
+  eating: `labour.md`'s "a full load is some days' food". A load the canvas settles on outside
+  1 to 3 food is read against that line and recorded.
 - **The pack is the train**, its size in turns (`supply.md`).
 
 ## Unsettled, and which step holds it
@@ -139,9 +143,10 @@ All in build-4, the canvas:
   build-1's commit and on main: identical.
 - `cargo test --release -p engine --test day --test ring -- --nocapture`.
 - `cargo test --release -p engine --test scout_errand -- --nocapture`: 28 alive.
+- `cargo test --release -p engine --test ring -- --ignored --nocapture`: the retro maps' ring table, under 1 against 1.25 and up.
 - `sansfiat sweep --judge --json --floor` on the branch, on main (a worktree), and on the two
   last-bit nulls; `judge --compare` main against each. The ring table, the walk table and the
-  festival and territory bounds go in the PR.
+  festival and territory bounds go in the PR. The `supply` group's scout-turns are a report.
 - `node www/play/ring.mjs` (build-3): selecting the camp and then the civ draws the ring, and
   selecting a clan clears it; a look at its screenshot.
 - A played game (`sansfiat play --game g.json`, small seed 2): raise an army, march it out past
@@ -176,3 +181,9 @@ All in build-4, the canvas:
     lines, and the sweep's report gains a `supply` group.
 11. **`strip` and `supply` stay in `units/forage.rs`**: they already sit beside `line.rs`, and
     the split is raising and disbanding into `muster.rs`.
+12. **Design says the ring is where armies live on the retro maps; the AI raises no army there** (none before R), so the
+    judge counts army-turns only for a played game, and the retro maps' proof stages a 3-person army in each band of
+    the ring's share for each civ (spec-review, `probe-ring.md`). Turns whose civ's store has run dry are set apart:
+    the ring is the line's reach, and a line from an empty store carries nothing.
+13. **`MARKET.reach_walk` limits one walker's walk**, not the carriers': a festival is in reach
+    by its path, and the carriers multiply what going costs (spec-review; `probe.md` ran it so).

@@ -24,7 +24,7 @@
     "model": "haiku",
     "effort": "high",
     "points": 5,
-    "why": "Open 2, New 1, Miss 1, Reach 1. The formula, the layer's look and the judge's counts are settled in the brief; how the layer reads at a glance is judged by eye from its screenshot (Open 2). A reversed Dijkstra is adapted from cost_map_by, the layer from lines.js, the judge module from judge.rs. Tests it writes catch the formula. About 10 files, 550 lines: line.rs (+60), judge_ring.rs (~150 new), judge.rs, sweep_judge.rs, sweep_text.rs, lib.rs, ring.js (~70), view.js, play.js, ring.mjs (~60), core/tests/ring.rs (~120), supply.md, engine/CLAUDE.md, ring.md."
+    "why": "Open 2, New 1, Miss 1, Reach 1. The formula, the layer's look, the judge's counts and the retro maps' ring test with its bounds are settled in the brief; how the layer reads at a glance is judged by eye from its screenshot (Open 2). A reversed Dijkstra is adapted from cost_map_by, the layer from lines.js, the judge module from judge.rs, the retro maps' test from the spec-review's ring-probe.rs (which passes on main, probe-ring.md). Tests it writes catch the formula. Spec-review: the AI raises no army before R, so the judge's army-turns are zero on the retro maps; the ring's real-map proof is now staged armies by band of share, an ignored report test, and the walk-out runs 40 turns, since a pack spoiling a tenth a turn lasts ~29 at the first tile past. About 10 files, 650 lines: line.rs (+60), judge_ring.rs (~150 new), judge.rs, sweep_judge.rs, sweep_text.rs, lib.rs, ring.js (~70), view.js, play.js, ring.mjs (~60), core/tests/ring.rs (~220), supply.md, engine/CLAUDE.md, ring.md."
   },
   {
     "id": "build-4",
@@ -33,7 +33,7 @@
     "model": "sonnet",
     "effort": "high",
     "points": 10,
-    "why": "Open 4, New 1, Miss 3, Reach 2: Opus low on the ladder; the canvas runs a rung below, Sonnet high. The rule is settled; its weighting is searched for on the retro maps against main and two last-bit nulls, and the scouts may need retuning at one person's pace. I expect Sonnet to run four to six settings from the probe's start and either pass every bound or send the ask with the nearest. About 9 files, 350 lines: actors.rs, clans.rs, markets.rs, civs.rs, claim.rs, camp.rs, scout.rs, search.rs, data.rs, tests in actors.rs or clans.rs and scout_errand.rs, the pins, walk.md; each sweep is about 2 minutes, so 8 to 10 sweeps fit."
+    "why": "Open 4, New 1, Miss 3, Reach 2: Opus low on the ladder; the canvas runs a rung below, Sonnet high. The rule is settled; its weighting is searched for on the retro maps against main and two last-bit nulls, and the scouts may need retuning at one person's pace. The ring bound is build-3's staged retro-map test rerun, plus scouts inside the ring (spec-review). I expect Sonnet to run four to six settings from the probe's start and either pass every bound or send the ask with the nearest. About 9 files, 350 lines: actors.rs, clans.rs, markets.rs, civs.rs, claim.rs, camp.rs, scout.rs, search.rs, data.rs, tests in actors.rs or clans.rs and scout_errand.rs, the pins, walk.md; each sweep is about 2 minutes, so 8 to 10 sweeps fit."
   },
   {
     "id": "review",

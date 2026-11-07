@@ -28,12 +28,30 @@ The code: `core/src/units/line.rs` (`line_at`, `line_from`, `past_reach`, `walka
    tile `line_from` can't reach is absent.
 2. **The staged walk-out** (`core/tests/ring.rs`): a straight plains stage, the capital at one
    end; for each tile along it, a 3-person army staged there with a full pack, auto-supply and
-   auto-forage on (forage off the tile: give the tiles no food), run 20 turns. Where the share is
-   under one it never goes hungry; on the first tile past the ring it is hungry within
-   `UNIT.pack + 2` turns.
-3. **`Sim.ring(civ)`** in `web/src/lib.rs`: the ring as JSON `[[tile, share], …]`, empty for no
+   auto-forage on (forage off the tile: give the tiles no food), run 40 turns. Where the share is
+   under one it never goes hungry; on the first tile past the ring it is hungry before turn 40.
+   (Bare plains at 1.33 days a step after build-2 and 2 × that there and back put the first tile
+   past at six steps, share 1.14: the line brings seven eighths of what the army eats, and a full
+   pack spoiling a tenth a turn runs out near turn 29, not within `UNIT.pack` turns.)
+3. **The ring on the retro maps** (`core/tests/ring.rs`, `#[ignore = "a report: run it with
+   --ignored --nocapture"]`, as `scout_errand.rs` does). The AI raises no army before R, so the
+   judge's runs have none; this stages them. `relay/specs/154/ring-probe.rs` is the spec-review's
+   throwaway version, run on main (`probe-ring.md`): adapt it. On each of the seven retro picks
+   (`Stage::retro`), lead each civ in turn, and for each band of the ring's share (under 0.5,
+   0.5–0.75, 0.75–0.9, 0.9–1, 1–1.1, 1.1–1.25, 1.25–1.5, 1.5–2, 2 and up) stage a 3-person army
+   (`Stage::army`) on the first land tile within 8 steps of the capital in that band, and run 20
+   turns. Count a turn starving when the army is hungry; set apart as dry a turn whose civ's
+   store ends under the army's turn of food. When the army is gone the run stops: if its civ's
+   store had run dry that turn it counts no more turns (an army that dies of an empty store
+   inside the ring is the store's failing, and on main four civs' do), else the turns left count
+   as starving.
+   Print the table by band (armies, counted turns, starving turns, rate, dry turns) and assert:
+   under share 1 the rate is under 0.05; at 1.25 and up it is at least 0.2 and at least four
+   times the rate under 1. Main gives 0.000 under 1 and 0.24–0.38 from 1.25 (`probe-ring.md`).
+   About 100 seconds; it is not in `check.sh`.
+4. **`Sim.ring(civ)`** in `web/src/lib.rs`: the ring as JSON `[[tile, share], …]`, empty for no
    civ or a fallen one.
-4. **`www/map/layers/ring.js`**, registered in `view.js` under the unit layers. Drawn when an
+5. **`www/map/layers/ring.js`**, registered in `view.js` under the unit layers. Drawn when an
    army or a civ is selected (the civ of the selection): each tile in the ring with share under
    one filled in the civ's colour at alpha `0.08 + 0.32 × (1 − share)`, and a solid line in the
    civ's colour, edged dark as the line home is, along every hex edge between a tile inside
@@ -41,33 +59,38 @@ The code: `core/src/units/line.rs` (`line_at`, `line_from`, `past_reach`, `walka
    clan, a festival, a scout alone or nothing selected. The tile tooltip, with an army or civ
    selected, adds "Ring: its line takes 40% of an army's days here" inside, or "Past the ring:
    its line can't feed an army here" past it.
-5. **`www/play/ring.mjs`**, in `all.mjs`: on small seed 2, raise an army (or stage one), select
+6. **`www/play/ring.mjs`**, in `all.mjs`: on small seed 2, raise an army (or stage one), select
    it: the ring layer is drawn and covers the capital's tile; select the civ: still drawn;
    select a clan: gone. Check the tooltip's ring line on the capital and on a tile past the ring.
    Screenshot `relay/specs/154/ring.png`.
-6. **The judge's counts**, in `core/src/judge_ring.rs`, read by `Watch` each turn and reported as
+7. **The judge's counts**, in `core/src/judge_ring.rs`, read by `Watch` each turn and reported as
    a `supply` group in `Scores` (and the sweep's report and text): per civ and in total, the
    tiles in the ring and the held tiles in it at the pick and +200; army-turns and scout-turns
    with the unit inside the ring and outside it (share at its tile under one, else outside), and
-   the hungry turns among each; and the mean territory tiles a clan at the pick and +200. A unit's
+   the hungry turns among each; and the mean territory tiles a clan at the pick and +200. On
+   `sweep --judge` the army-turns are zero (no AI army before R); the counts serve a played game
+   (`sansfiat judge FILE`) and the scouts. Main's scouts: 3 hungry of 12,355 turns inside, 15 of
+   11,457 outside, over all five runs a map. A unit's
    share is read from its civ's ring (compute the ring once a civ a turn, or only on turns a civ
    has a unit away from its capital).
-7. **`docs/design/supply.md`**, The pack: after "A full pack holds several turns of food." add
+8. **`docs/design/supply.md`**, The pack: after "A full pack holds several turns of food." add
    "The pack is the army's train: what it carries with it, measured in turns of its eating."
    Change nothing else.
 
 ## Proof and record
 
 - `engine/check.sh` green (it runs `ring.mjs` through `all.mjs`).
+- `cargo test --release -p engine --test ring -- --ignored --nocapture`: the retro maps' table by
+  band in `relay/specs/154/ring.md`, beside `probe-ring.md`'s main. It must pass now; if it
+  doesn't, say which civs' armies starve under share 1 and why.
 - `sansfiat sweep --judge --json` on the branch: the `supply` group's totals and per map in
-  `relay/specs/154/ring.md`: tiles in the ring and held in it, army- and scout-turns inside and
-  outside, and the hungry rate in each (hungry turns over unit-turns). The spec's bound (outside
-  at least four times inside; inside under 0.05) is judged by build-4 on the finished rules;
-  report where it stands now, and if it fails, which units starve inside the ring and why.
+  `ring.md`: tiles in the ring and held in it, scout-turns inside and outside and the hungry rate
+  in each, and the mean territory tiles a clan. Scouts inside under 0.05 is a bound; the rest is
+  a report.
 
 ## What later steps rely on
 
-`ring` and its agreement with `line_from`; the `supply` group in the sweep's JSON (build-4 reads
+`ring` and its agreement with `line_from`; the retro maps' ring test (build-4 reruns it); the `supply` group in the sweep's JSON (build-4 reads
 the hungry rates and the territory tiles from it); `ring.mjs`.
 
 ## Done

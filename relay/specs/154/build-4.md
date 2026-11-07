@@ -31,6 +31,9 @@ zone's guard walk), `core/src/units/scout.rs` (`march`, `round_plan`, `forage_ro
   `MARKET.carry × people` as `trade` caps it), in `worths` (so the clan weighs the cost) and in
   `go`; the civ clan's route to the capital likewise. Add `CarryRules` / `CARRY` to `data.rs`
   with `load` (food a person carries on a route) and a note.
+  `MARKET.reach_walk` stays a limit on one walker's walk (`worths`, `civs.rs`'s capital switch,
+  the clans in reach of a forming market all read it from the path): the carriers multiply
+  what a route costs, not whether a festival is in reach. The probe ran it this way.
 - **A unit walks together.** The camp's march already pays one warrior's labour a step, each.
   The scout's march, and the walks of its foraging round, are paid by each of its people:
   a step costs `step_cost × people` from its `Ladder`, so a scout walks at one person's pace. Its
@@ -63,8 +66,10 @@ worktree), once each for the controls; then one sweep per setting you try.
 3. Mean territory tiles a clan (the `supply` group), clans joined, people changed and land
    changed stay above three quarters of the lowest of base and the nulls; AI orders a hundred
    turns above half the base's.
-4. The ring holds: hungry turns per unit-turn outside the ring at least four times those inside,
-   and inside under 0.05 (the `supply` group).
+4. The ring holds: `cargo test --release -p engine --test ring -- --ignored --nocapture` (build-3's
+   staged armies on the retro maps) passes, and scouts inside the ring are hungry under 0.05 of
+   their turns (the `supply` group). The camp's line doesn't change, so a failure here is the
+   store or the territory, not the ring: say which.
 5. `scout_errand`: all 28 alive at 50 turns.
 6. **A walk costs more for a clan that carries more**: a table, on the seven maps at +100, of
    each clan's festival walk in days against what it brought, in bins of brought a person, rising
