@@ -27,14 +27,14 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/data.rs` | Every rule's number and `Config`; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs and the flat trail cost. |
 | `core/src/land.rs` | Neighbours, move costs, `path`, `steps`, and the `regrow`, `wear` and `tend` steps. |
-| `core/src/actors.rs` | What every actor does: spoil, eat, `stride`, `walk_cost`, traffic, `divide`, `change`. |
+| `core/src/actors.rs` | What every actor does: spoil, eat, `meal` (from kin's stores), `stride`, `walk_cost`, traffic, `divide` and `split` (over jobs), `change`. |
 | `core/src/clans.rs` | Clans: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
 | `core/src/market.rs`, `markets.rs` | Barter clearing; festivals: reach, the `go` step, trading, forming, fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
 | `core/src/claim.rs` | A civ's claim, its guard's division, `held`, `tile_civ` and the `claim` step. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
-| `core/src/units/` | `line.rs` (paths, the line home, cuts), `camp.rs` (an army's turn and zone), `guard.rs`, `search.rs` (the route search), `scout.rs` (the scout's turn and feeding), `ai.rs` (the AI's orders), `fight.rs`. |
+| `core/src/units/` | `line.rs` (paths, the line home, cuts), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats, and `Ladder`, its labour spent), `muster.rs` (raising, disbanding, giving up), `guard.rs`, `search.rs` (the route search), `scout.rs` (the scout's turn and feeding), `ai.rs` (the AI's orders), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game: the engine's second player. |
 | `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map (the `map` text, or a retro pick, cached), layers, placements, orders and reads; `StageSpec` is its data form. `maptext.rs` reads the map's text (`map::parse`). A staged world is not a save. |

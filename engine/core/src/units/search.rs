@@ -4,6 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use super::forage::Ladder;
 use super::line::{path_between, walkable};
 use super::scout::{blocked, clear_route, march, sc, sc_mut, scout_event};
 use super::EPS;
@@ -225,15 +226,15 @@ pub(super) fn ordered(
     keyed.into_iter().map(|k| k.3).collect()
 }
 
-/// Spends the scout's labour `left` on its route, as `scout/`'s `scoutWork`: it walks to the first
+/// Spends the scout's labour (`ladder`) on its route, as `scout/`'s `scoutWork`: it walks to the first
 /// reveal it can reach, reveals it, and builds the trails its route needs; a mountain takes a whole
 /// turn's search labour, begun beside it (`start` is what the search had this turn). Returns the
 /// labour a part-paid step carries to next turn.
-pub(super) fn search(w: &mut World, id: u32, left: &mut f64, start: f64) -> f64 {
+pub(super) fn search(w: &mut World, id: u32, ladder: &mut Ladder, start: f64) -> f64 {
     let civ = w.units[&id].civ;
     let mut banked = 0.0;
     let mut guard = 0;
-    while *left > EPS && guard < 100_000 {
+    while ladder.left > EPS && guard < 100_000 {
         guard += 1;
         let Some((from, to)) = sc(w, id).route else { break };
         let home = w.units[&id].home;
@@ -249,22 +250,22 @@ pub(super) fn search(w: &mut World, id: u32, left: &mut f64, start: f64) -> f64 
         let reach = order.iter().find_map(|&j| approach(w, &costs, home, j).map(|p| (j, p)));
         if let Some((j, path)) = reach {
             if !path.is_empty() {
-                march(w, id, &path, left, &mut banked);
+                march(w, id, &path, ladder, &mut banked);
                 sc_mut(w, id).blocked = false;
                 continue;
             }
             if w.tiles[j].terrain == MOUNTAIN {
                 // A mountain needs the whole turn's search labour, begun beside it.
-                if *left + EPS < start {
+                if ladder.left + EPS < start {
                     break;
                 }
                 reveal(w, id, civ, j);
-                *left = 0.0;
+                ladder.left = 0.0;
             } else {
-                if *left + EPS < SCOUT.reveal {
+                if ladder.left + EPS < SCOUT.reveal {
                     break;
                 }
-                *left -= SCOUT.reveal;
+                ladder.spend(SCOUT.reveal);
                 reveal(w, id, civ, j);
             }
             continue;
@@ -307,16 +308,16 @@ pub(super) fn search(w: &mut World, id: u32, left: &mut f64, start: f64) -> f64 
             break;
         };
         if !path.is_empty() {
-            march(w, id, &path, left, &mut banked);
+            march(w, id, &path, ladder, &mut banked);
             sc_mut(w, id).blocked = false;
             continue;
         }
         let Some(need) = trail_left(w, j) else { break };
-        let used = need.min(*left);
+        let used = need.min(ladder.left);
         if used <= EPS {
             break;
         }
-        *left -= used;
+        ladder.spend(used);
         if build_trail(w, j, used) {
             scout_event(w, EventKind::ScoutTrailBuilt, j, civ, id, None);
         }

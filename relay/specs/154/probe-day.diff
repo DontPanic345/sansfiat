@@ -1,0 +1,297 @@
+diff --git a/engine/core/src/actors.rs b/engine/core/src/actors.rs
+index 57949e7..ddf9dce 100644
+--- a/engine/core/src/actors.rs
++++ b/engine/core/src/actors.rs
+@@ -80,7 +80,7 @@ pub fn stride(w: &World, from: usize, path: &[usize], labour: f64, slack: f64) -
+     let mut taken = 0;
+     for &next in path {
+         let Some(cost) = step_cost(w, at, next) else { break };
+-        if cost > left + slack {
++        if cost > left + slack + 1e-9 {
+             break;
+         }
+         left -= cost;
+@@ -124,7 +124,7 @@ impl Walks {
+             // Territories are small: a scan beats a heap.
+             let mut next: Option<usize> = None;
+             for k in 0..n {
+-                if !done[k] && cost[k].is_finite() && next.is_none_or(|b| cost[k] < cost[b]) {
++                if !done[k] && cost[k].is_finite() && next.is_none_or(|b| crate::land::thirds(cost[k]) < crate::land::thirds(cost[b])) {
+                     next = Some(k);
+                 }
+             }
+@@ -136,7 +136,7 @@ impl Walks {
+                     continue;
+                 }
+                 let Some(step) = step_cost(w, territory[k], j) else { continue };
+-                if cost[k] + step < cost[m] {
++                if crate::land::thirds(cost[k] + step) < crate::land::thirds(cost[m]) {
+                     cost[m] = cost[k] + step;
+                     before[m] = Some(k);
+                 }
+diff --git a/engine/core/src/data.rs b/engine/core/src/data.rs
+index 08227b4..67ea6a9 100644
+--- a/engine/core/src/data.rs
++++ b/engine/core/src/data.rs
+@@ -11,6 +11,9 @@ pub const FRUIT: usize = 2;
+ pub const FISH: usize = 3;
+ pub const SHELLFISH: usize = 4;
+ 
++/// Probe: the day.
++pub const DAY: f64 = 4.0 / 3.0;
++
+ pub struct Terrain {
+     pub name: &'static str,
+     pub color: &'static str,
+@@ -35,13 +38,13 @@ pub const MARSH: usize = 7;
+ /// is barren and costs 2 to enter: clans route round it, not through it (owner note 1).
+ pub const TERRAIN: [Terrain; 8] = [
+     Terrain { name: "sea", color: "#2b5d8a", land: false, move_cost: None, food: [0.0; N] },
+-    Terrain { name: "coast", color: "#c9b77a", land: true, move_cost: Some(1.0), food: [1.0, 0.0, 0.0, 4.0, 3.0] },
+-    Terrain { name: "plains", color: "#9cbf5a", land: true, move_cost: Some(1.0), food: [3.0, 4.0, 0.0, 0.0, 0.0] },
+-    Terrain { name: "forest", color: "#3f7a3a", land: true, move_cost: Some(2.0), food: [3.0, 0.0, 4.0, 0.0, 0.0] },
+-    Terrain { name: "hills", color: "#8a7a5c", land: true, move_cost: Some(2.0), food: [2.0, 0.0, 1.0, 0.0, 0.0] },
++    Terrain { name: "coast", color: "#c9b77a", land: true, move_cost: Some(1.0 * DAY), food: [1.0, 0.0, 0.0, 4.0, 3.0] },
++    Terrain { name: "plains", color: "#9cbf5a", land: true, move_cost: Some(1.0 * DAY), food: [3.0, 4.0, 0.0, 0.0, 0.0] },
++    Terrain { name: "forest", color: "#3f7a3a", land: true, move_cost: Some(2.0 * DAY), food: [3.0, 0.0, 4.0, 0.0, 0.0] },
++    Terrain { name: "hills", color: "#8a7a5c", land: true, move_cost: Some(2.0 * DAY), food: [2.0, 0.0, 1.0, 0.0, 0.0] },
+     Terrain { name: "mountain", color: "#6e6a73", land: false, move_cost: None, food: [0.0; N] },
+-    Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(2.0), food: [0.0; N] },
+-    Terrain { name: "marsh", color: "#5b8c78", land: true, move_cost: Some(3.0), food: [2.0, 2.0, 0.0, 4.0, 3.0] },
++    Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(2.0 * DAY), food: [0.0; N] },
++    Terrain { name: "marsh", color: "#5b8c78", land: true, move_cost: Some(3.0 * DAY), food: [2.0, 2.0, 0.0, 4.0, 3.0] },
+ ];
+ 
+ /// The map sizes, by name: the radius of the hex.
+@@ -75,9 +78,9 @@ pub struct MapRules {
+     pub shadow_reach: i32,
+     pub shadow_weight: f64,
+     /// Hidden trail costs, as `(value, weight)`: forest, hills, the mountain's cost, and its bridge span.
+-    pub forest_cost: [(u8, u32); 2],
+-    pub hills_cost: [(u8, u32); 2],
+-    pub mountain_cost: u8,
++    pub forest_cost: [(f64, u32); 2],
++    pub hills_cost: [(f64, u32); 2],
++    pub mountain_cost: f64,
+     pub mountain_span: [(Option<u8>, u32); 3],
+     /// River sources tried (per small map, never below `rivers_floor`), the steps of land a
+     /// source must be from water (fewer where the map's land isn't that deep: one less than its
+@@ -135,9 +138,9 @@ pub const MAP: MapRules = MapRules {
+     desert_share: 0.2,
+     shadow_reach: 5,
+     shadow_weight: 0.25,
+-    forest_cost: [(1, 1), (2, 1)],
+-    hills_cost: [(1, 1), (2, 2)],
+-    mountain_cost: 3,
++    forest_cost: [(DAY, 1), (2.0 * DAY, 1)],
++    hills_cost: [(DAY, 1), (2.0 * DAY, 2)],
++    mountain_cost: 3.0 * DAY,
+     mountain_span: [(Some(1), 1), (Some(2), 1), (None, 8)],
+     rivers: 16,
+     rivers_floor: 3,
+@@ -178,7 +181,7 @@ pub struct RiverRules {
+     pub cross: f64,
+ }
+ 
+-pub const RIVER: RiverRules = RiverRules { cross: 2.0 };
++pub const RIVER: RiverRules = RiverRules { cross: 2.0 * DAY };
+ 
+ /// `per_small` features per `SMALL_TILES` tiles, for a map of `tiles`, rounded.
+ pub fn scaled(per_small: usize, tiles: usize) -> usize {
+@@ -225,7 +228,7 @@ pub struct TrailRules {
+ /// and shared routes and under a third of the worked tiles; `off` 90 lets a trail ride out a dip
+ /// without keeping the ones once worn.
+ pub const TRAIL: TrailRules =
+-    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)], flat: 0.75 };
++    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0 * DAY), (HILLS, 3.0 * DAY), (MOUNTAIN, 6.0 * DAY)], flat: 0.75 };
+ 
+ pub struct DepletionRules {
+     /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
+@@ -294,19 +297,19 @@ pub struct MarketRules {
+ pub const MARKET: MarketRules = MarketRules {
+     form_after: 20,
+     spacing: 6,
+-    reach: 3.0,
+-    reach_walk: 14.0,
++    reach: 3.0 * DAY,
++    reach_walk: 14.0 * DAY,
+     fade: 0.9,
+     min_attendance: 0.5,
+     carry: 0.2,
+     shed: 1.0,
+-    gather_bonus: 8.0,
+-    desire: 3.0,
+-    company: 1.0,
++    gather_bonus: 8.0 * DAY,
++    desire: 3.0 * DAY,
++    company: 1.0 * DAY,
+     company_cap: 6,
+-    switch_margin: 1.0,
++    switch_margin: 1.0 * DAY,
+     keep_turns: 5,
+-    stay_margin: 3.0,
++    stay_margin: 3.0 * DAY,
+     surplus_at: 0.1,
+ };
+ 
+@@ -404,8 +407,8 @@ pub const CLAN: ClanRules = ClanRules {
+     seeds: 3,
+     start_pop: 6.0,
+     min_landmass: 30,
+-    work: 3.5,
+-    harvest_labour: 1.0,
++    work: 3.5 * DAY,
++    harvest_labour: DAY,
+     take_rate: 0.5,
+     surplus_target: 2.0,
+     diet_share: 0.4,
+@@ -449,7 +452,7 @@ pub struct CivRules {
+ }
+ 
+ pub const CIV: CivRules =
+-    CivRules { endowment: [0.0, 20.0, 0.0, 0.0, 0.0], bridge_span: 1, levy: 0.2, store_cap: 60.0, pull: 3.0 };
++    CivRules { endowment: [0.0, 20.0, 0.0, 0.0, 0.0], bridge_span: 1, levy: 0.2, store_cap: 60.0, pull: 3.0 * DAY };
+ 
+ pub struct ScoutRules {
+     /// People a scout is made with, from the civ's clans, one each.
+@@ -479,7 +482,7 @@ pub struct ScoutRules {
+ // AI's idle scouts loses a person on medium 9). Rich 1.5 passed over ground that only just fed a scout, and it
+ // starved beside it; 1.2 takes it. Low 1.5 and fed 2.5 leave the errand later and come back sooner than 2 and 4:
+ // the same lives for a third fewer turns off the errand. Two people: one lost 2 to 8 of 28 at every setting.
+-pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 1.2 };
++pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: DAY, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 1.2 };
+ 
+ pub struct LeaningRules {
+     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's
+@@ -539,7 +542,7 @@ pub struct ClaimRules {
+ // The floor 0.05 lets three guards hold the ring around the clans' homes near the capital; 0.1 held 13 tiles a
+ // civ, 0.05 holds 16 and wins 14 of 21 solo gains (canvas.md). Ring 1 and reach 4 keep the
+ // stand-in near; ring 2 or reach 6 claimed more than the guard holds and the solo gain fell.
+-pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05, ai_ring: 1, ai_reach: 4 };
++pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05 * DAY, ai_ring: 1, ai_reach: 4 };
+ 
+ /// The guard: the people a civ keeps on its claim at its capital (`units/guard.rs`, `claim.rs`).
+ pub struct GuardRules {
+@@ -560,7 +563,7 @@ pub struct GuardRules {
+ }
+ 
+ // Inside 0.02 (a tenth of a camp's) and keep_turns 1, so the store still gives (canvas.md).
+-pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5, inside: 0.02, keep_turns: 1.0 };
++pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5 * DAY, inside: 0.02, keep_turns: 1.0 };
+ 
+ pub struct UnitRules {
+     /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
+@@ -601,7 +604,7 @@ pub struct UnitRules {
+ }
+ 
+ pub const UNIT: UnitRules = UnitRules {
+-    labour: 3.5,
++    labour: 3.5 * DAY,
+     food: 1.0,
+     hungry_turns: 3,
+     min_clan: 2.0,
+@@ -609,12 +612,12 @@ pub const UNIT: UnitRules = UnitRules {
+     first: 3,
+     pack: 5.0,
+     carry: 3.0,
+-    forage: 0.5,
+-    pillage: 1.0,
++    forage: 0.5 / DAY,
++    pillage: 1.0 / DAY,
+     fallow: 5,
+     post: 3,
+-    guarding: 1.0,
+-    guard: 0.1,
++    guarding: 1.0 * DAY,
++    guard: 0.1 * DAY,
+     inside: 0.2,
+     zone: 2,
+ };
+diff --git a/engine/core/src/land.rs b/engine/core/src/land.rs
+index 7e64dc9..307d4de 100644
+--- a/engine/core/src/land.rs
++++ b/engine/core/src/land.rs
+@@ -84,6 +84,11 @@ pub fn build_trail(w: &mut World, i: usize, labour: f64) -> bool {
+     true
+ }
+ 
++/// Probe: a cost in twelfths of a day, so sums of thirds compare exactly.
++pub fn thirds(c: f64) -> i64 {
++    (c * 12.0).round() as i64
++}
++
+ struct Entry(f64, usize);
+ 
+ impl PartialEq for Entry {
+@@ -100,7 +105,7 @@ impl PartialOrd for Entry {
+ impl Ord for Entry {
+     /// Reversed, so the heap pops the cheapest, then the lowest tile.
+     fn cmp(&self, o: &Self) -> Ordering {
+-        o.0.total_cmp(&self.0).then(o.1.cmp(&self.1))
++        thirds(o.0).cmp(&thirds(self.0)).then(o.1.cmp(&self.1))
+     }
+ }
+ 
+@@ -125,13 +130,13 @@ pub fn cost_map_by(
+         heap.push(Entry(0.0, s));
+     }
+     while let Some(Entry(c, i)) = heap.pop() {
+-        if best.get(&i).is_some_and(|&b| c > b) {
++        if best.get(&i).is_some_and(|&b| thirds(c) > thirds(b)) {
+             continue;
+         }
+         for j in neighbours(w, i) {
+             let Some(step) = cost(i, j) else { continue };
+             let nc = c + step;
+-            if nc > max || !allowed(j) || best.get(&j).is_some_and(|&b| b <= nc) {
++            if thirds(nc) > thirds(max) || !allowed(j) || best.get(&j).is_some_and(|&b| thirds(b) <= thirds(nc)) {
+                 continue;
+             }
+             best.insert(j, nc);
+@@ -166,7 +171,7 @@ pub fn path_by(
+     best.insert(from, 0.0);
+     heap.push(Entry(0.0, from));
+     while let Some(Entry(c, i)) = heap.pop() {
+-        if best.get(&i).is_some_and(|&b| c > b) {
++        if best.get(&i).is_some_and(|&b| thirds(c) > thirds(b)) {
+             continue;
+         }
+         if i == to {
+@@ -175,7 +180,7 @@ pub fn path_by(
+         for j in neighbours(w, i) {
+             let Some(step) = cost(i, j) else { continue };
+             let nc = c + step;
+-            if best.get(&j).is_some_and(|&b| b <= nc) {
++            if best.get(&j).is_some_and(|&b| thirds(b) <= thirds(nc)) {
+                 continue;
+             }
+             best.insert(j, nc);
+diff --git a/engine/core/src/map.rs b/engine/core/src/map.rs
+index b34126f..b99665d 100644
+--- a/engine/core/src/map.rs
++++ b/engine/core/src/map.rs
+@@ -167,7 +167,7 @@ pub fn generate_with(radius: i32, rng: &mut u32, salt: u32) -> Generated {
+         if !walls.is_empty() && walls.iter().all(|&i| tiles[i].span != Some(1)) {
+             let i = walls[rand_index(&mut hidden, walls.len())];
+             tiles[i].span = Some(1);
+-            tiles[i].trail_cost = Some(MAP.mountain_cost as f64);
++            tiles[i].trail_cost = Some(MAP.mountain_cost);
+         }
+     }
+     Generated { tiles, wind, tries }
+@@ -1146,12 +1146,12 @@ fn weighted<T: Copy>(rng: &mut u32, pairs: &[(T, u32)]) -> T {
+ fn roll_trails(tiles: &mut [Tile], sub: &mut u32) {
+     for t in tiles {
+         match t.terrain {
+-            FOREST => t.trail_cost = Some(weighted(sub, &MAP.forest_cost) as f64),
+-            HILLS => t.trail_cost = Some(weighted(sub, &MAP.hills_cost) as f64),
++            FOREST => t.trail_cost = Some(weighted(sub, &MAP.forest_cost)),
++            HILLS => t.trail_cost = Some(weighted(sub, &MAP.hills_cost)),
+             MOUNTAIN => {
+                 if let Some(span) = weighted(sub, &MAP.mountain_span) {
+                     t.span = Some(span);
+-                    t.trail_cost = Some(MAP.mountain_cost as f64);
++                    t.trail_cost = Some(MAP.mountain_cost);
+                 }
+             }
+             PLAINS | COAST => t.trail_cost = crate::land::flat_cost(t.terrain),
