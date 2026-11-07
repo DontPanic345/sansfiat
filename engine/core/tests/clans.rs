@@ -155,16 +155,19 @@ fn a_far_tile_costs_its_walk_and_its_tiles_are_walked() {
     let id = put(&mut w, &[o, a, b], 1.0);
     harvest(&mut w);
     let c = &w.clans[&id];
-    // b is 5 away, through forest into marsh: its walk eats its third of one person's labour.
+    // b is 5 away, through forest into marsh: the clan's yearly walk to a and b.
     assert!((c.walk - 2.0 * CLAN.inside * (2.0 + 5.0) * DAY).abs() < EPS);
-    const { assert!(CLAN.work / 3.0 < 2.0 * CLAN.inside * 5.0 * DAY) };
     // Its people walk to a and b: a is on both walks, b on one, and home starts both.
     assert_eq!((w.tiles[o].traffic, w.tiles[a].traffic, w.tiles[b].traffic), (2.0, 2.0, 1.0));
-    let got = total(&c.harvest);
+    // One person over three tiles: a third of a person walks each, so each tile's work is its share
+    // less a third of its walk. The harvest's budget scales the three takes by one factor.
     let share = CLAN.work / 3.0;
-    // One person over three tiles: a third of a person walks each.
-    let want = (share + (share - 2.0 * CLAN.inside * 2.0 * DAY / 3.0)) / CLAN.harvest_labour;
-    assert!((got - want).abs() < EPS, "{got} vs {want}");
+    let took = |t: usize| 40.0 - w.tiles[t].stock[GRAIN];
+    let left = |walk: f64| (share - 2.0 * CLAN.inside * walk * DAY / 3.0) / share;
+    assert!(took(o) > 0.0);
+    assert!((took(a) / took(o) - left(2.0)).abs() < EPS, "{} vs {}", took(a) / took(o), left(2.0));
+    assert!((took(b) / took(o) - left(5.0)).abs() < EPS, "{} vs {}", took(b) / took(o), left(5.0));
+    assert!(left(5.0) > 0.0 && left(5.0) < left(2.0), "the farther tile is worked less");
 }
 
 fn eater(pop: f64, basket: Basket, since: u32) -> World {

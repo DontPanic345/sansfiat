@@ -33,19 +33,24 @@ fn end_fed(w: &mut World) {
     w.act(engine::Action::EndTurn).unwrap();
 }
 
-/// The `n` tiles from `from` straight out in the first direction that stays on land and the civ's
-/// own, in order; `from` is not among them.
-fn open_ray(w: &World, from: usize, n: i32) -> Vec<usize> {
+/// The `n` tiles from `from` straight out in each direction that stays on land and the civ's own, in
+/// order; `from` is not among them.
+fn open_rays(w: &World, from: usize, n: i32) -> Vec<Vec<usize>> {
     let h = w.tiles[from].hex();
-    for d in DIRS {
-        let tiles: Vec<usize> =
-            (1..=n).filter_map(|k| index(w.config.radius, Hex { q: h.q + d.0 * k, r: h.r + d.1 * k })).collect();
-        let mine = |i: usize| engine::civs::tile_civ(w, i).is_none_or(|c| Some(c) == w.player);
-        if tiles.len() == n as usize && tiles.iter().all(|&i| w.tiles[i].terrain != SEA && mine(i)) {
-            return tiles;
-        }
-    }
-    panic!("no open ray from {from}");
+    DIRS.into_iter()
+        .map(|d| -> Vec<usize> {
+            (1..=n).filter_map(|k| index(w.config.radius, Hex { q: h.q + d.0 * k, r: h.r + d.1 * k })).collect()
+        })
+        .filter(|tiles| {
+            let mine = |i: usize| engine::civs::tile_civ(w, i).is_none_or(|c| Some(c) == w.player);
+            tiles.len() == n as usize && tiles.iter().all(|&i| w.tiles[i].terrain != SEA && mine(i))
+        })
+        .collect()
+}
+
+/// The first open ray of `open_rays`.
+fn open_ray(w: &World, from: usize, n: i32) -> Vec<usize> {
+    open_rays(w, from, n).into_iter().next().unwrap_or_else(|| panic!("no open ray from {from}"))
 }
 
 /// The capital's tile.
@@ -114,49 +119,60 @@ fn a_scout_move_to_the_sea_is_refused_with_its_own_message() {
 
 #[test]
 fn search_view_names_the_mountain_a_range_leaves_and_what_it_costs_through() {
-    let mut s = lead();
-    s.plain();
-    let me = s.world().player.unwrap();
-    let cap = capital(s.world());
-    let line = open_ray(s.world(), cap, 4);
-    let target = line[3];
+    let probe = lead();
+    let me = probe.world().player.unwrap();
+    let cap = capital(probe.world());
     // The known route goes round the mountain on the way (`b`, span one) over two hills (`p`, `q`),
     // and a mountain beside the detour (`off`, span one) is left: its cost through is longer than the
-    // known route's.
-    let (a, b, c) = (line[0], line[1], line[2]);
-    let w0 = s.world();
+    // known route's. The pick moves the capital, and the plain land round it gives the known route
+    // other ways round, so the first ray and detour whose search leaves `off` is the case.
+    let mut plain = lead();
+    plain.plain();
+    let w0 = plain.world();
     let nb = |t: usize| neighbours(w0, t).collect::<Vec<usize>>();
-    let p = nb(a).into_iter().find(|&p| p != cap && p != b && p != c && !line.contains(&p)).expect("a detour tile");
-    let q = nb(c)
-        .into_iter()
-        .find(|&q| nb(p).contains(&q) && q != a && q != b && q != target && !line.contains(&q))
-        .expect("a detour tile beside the far end");
-    let off = nb(q)
-        .into_iter()
-        .find(|&y| y != p && y != a && y != b && y != c && y != target && y != cap && y != q)
-        .expect("a tile beside the detour");
-    s.paint(b, MOUNTAIN, Some(MAP.mountain_cost), Some(1));
-    s.paint(off, MOUNTAIN, Some(MAP.mountain_cost), Some(1));
-    for t in [p, q] {
-        s.paint(t, HILLS, None, None);
+    let mut cases = Vec::new();
+    for line in open_rays(w0, cap, 4) {
+        let (a, b, c, target) = (line[0], line[1], line[2], line[3]);
+        for p in nb(a).into_iter().filter(|&p| p != cap && p != b && p != c && !line.contains(&p)) {
+            for q in nb(c).into_iter().filter(|&q| nb(p).contains(&q) && q != a && q != b && q != target) {
+                for off in nb(q).into_iter().filter(|y| ![p, a, b, c, target, cap, q].contains(y)) {
+                    if !line.contains(&q) {
+                        cases.push((line.clone(), p, q, off));
+                    }
+                }
+            }
+        }
     }
-    let mut w = s.into_world();
-    let id = led_scout(&w);
-    w.act(led_order(&w, Order::Route { unit: id, from: cap, to: target })).unwrap();
-    let view = search_view(&w, id).expect("a scout with a route has a search");
-    let known = view.known.expect("the known route is finite");
-    let through = |m: usize| {
-        let a = engine::units::route_plan(&w, me, cap, m).possible?.1;
-        let b = engine::units::route_plan(&w, me, m, target).possible?.1;
-        Some(a + b)
-    };
-    let &(left_tile, left_cost) =
-        view.left.iter().find(|&&(m, _)| m == off).expect("the mountain beside the detour is left");
-    assert_eq!(left_tile, off);
-    let expect = through(off).unwrap();
-    assert!((left_cost - expect).abs() < 1e-9, "left costs {left_cost}, its cost through is {expect}");
-    assert!(left_cost > known, "a mountain left costs more through than the known route ({known})");
-    assert!(view.left.len() <= 10);
+    let mut tried = 0;
+    for (line, p, q, off) in cases {
+        let (b, target) = (line[1], line[3]);
+        let mut s = lead();
+        s.plain();
+        s.paint(b, MOUNTAIN, Some(MAP.mountain_cost), Some(1));
+        s.paint(off, MOUNTAIN, Some(MAP.mountain_cost), Some(1));
+        for t in [p, q] {
+            s.paint(t, HILLS, None, None);
+        }
+        let mut w = s.into_world();
+        let id = led_scout(&w);
+        w.act(led_order(&w, Order::Route { unit: id, from: cap, to: target })).unwrap();
+        let view = search_view(&w, id).expect("a scout with a route has a search");
+        let known = view.known.expect("the known route is finite");
+        let Some(&(left_tile, left_cost)) = view.left.iter().find(|&&(m, _)| m == off) else { continue };
+        tried += 1;
+        let through = |m: usize| {
+            let a = engine::units::route_plan(&w, me, cap, m).possible?.1;
+            let b = engine::units::route_plan(&w, me, m, target).possible?.1;
+            Some(a + b)
+        };
+        assert_eq!(left_tile, off);
+        let expect = through(off).unwrap();
+        assert!((left_cost - expect).abs() < 1e-9, "left costs {left_cost}, its cost through is {expect}");
+        assert!(left_cost > known, "a mountain left costs more through than the known route ({known})");
+        assert!(view.left.len() <= 10);
+        break;
+    }
+    assert_eq!(tried, 1, "a mountain beside a detour that the search leaves");
 }
 
 /// On each retro map to the rival, the errand the search order is judged on (the maps whose search

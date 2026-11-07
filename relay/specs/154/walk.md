@@ -304,3 +304,35 @@ The ignored report `the_ais_scouts_live_to_200` and the page's scout panels were
 ## `day.rs`
 
 `a_scouts_march_over_one_turn`: 7 steps to 3 (both stages), the scout's pace. No other reach changes.
+
+## What `check.sh` needed after the settings
+
+The per-person walk and the new pick moved nothing the checks pin except these, each a stale premise of the test
+or script (the scout's search was one real bug):
+
+- **A trail a rounding short never finished.** A scout's labour of 7.999999999999999 against a trail of 8 days left
+  a remainder of 9e-16, under the search's `EPS`, so `search` broke out each turn and the trail never completed
+  (small 9 to Lead's target: the scout stood at 137 for 120 turns). `land::build_trail` finishes a trail within a
+  billionth of its work.
+- **Built trails wore away behind a slower scout.** A built trail starts at `TRAIL.on` and falls under `TRAIL.off`
+  in two turns unless it is walked on. A scout walking at one person's pace builds a long route's trails in more
+  turns than they last, and rebuilt the near ones for ever (large 8 to the rival: no settle in 2,000 turns).
+  `search` now counts the built trails on the route it is working as walked, as `keep_route` does once it is
+  settled and `bring` does for a camp's line. Every errand in `cases.rs` settles (slowest: large 8 to the rival, 133
+  turns; `TURNS` is 200, was 120).
+- `cases.rs` takes the forest or hills tile nearest seven steps out where the pick has none at seven (medium 8),
+  as `scout_errand` does.
+- `clans.rs`'s far-tile pin reads the takes' ratios: a clan of one over three tiles has a third of a person walk each
+  tile, so the far tile (a walk of 5 days) keeps part of its share, and the harvest's budget scales the three takes
+  by one factor.
+- `notes.rs` feeds the civ stores for the ten turns it runs the armies: a civ's store at the pick feeds a 3-person
+  army four turns or so on every map (main's seed 1 had 18 to 40; the branch's has 5 to 11).
+- `scout.rs`: the rough-country route clears worn trails on the plains first (a worn plains trail beside the ray made
+  a way round it cheaper than the ray's six trails). `scout_feed.rs`: the wild grain regrows in the 50 turns, so an
+  idle scout waits where some food is within its reach. `scout_orders.rs`: the detour is found over every open ray
+  and every detour round it, until the search leaves `off`.
+- Page scripts: `check.mjs` pins version 14; `scout.mjs` picks its target (the first forest or hills tile seven steps
+  out) from the page and allows 40 turns; `camp.mjs`'s drag paints as many tiles as the camp has warriors (2);
+  `game.mjs` runs on seed 2 (on seed 5 the led civ's army starves before turn 5 on a store of about 8).
+
+`scout_errand` after these fixes: still 4 of 28 lost, all on medium 9. The bound "all 28 alive" is not met.

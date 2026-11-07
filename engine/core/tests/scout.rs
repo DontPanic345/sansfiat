@@ -122,6 +122,12 @@ fn a_route_across_rough_country_is_searched_and_its_trails_built() {
         s.paint(i, terrain, Some(1.0 * DAY), None);
     }
     let mut w = s.into_world();
+    // No worn trail on the plains round the ray: the pick's clans have walked some, and a trail on
+    // plains would make a way round the ray cheaper than its six trails.
+    for t in w.tiles.iter_mut().filter(|t| t.terrain == PLAINS) {
+        t.trail = false;
+        t.traffic = 0.0;
+    }
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: line[5] })).unwrap();
     let turns = until_route_done(&mut w, 20);
     assert!(turns <= 20, "a 6-tile route within 20 turns, took {turns}");

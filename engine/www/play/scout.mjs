@@ -15,7 +15,7 @@ const at = args.indexOf('--out');
 const out = resolve(at >= 0 ? args[at + 1] : mkdtempSync(join(tmpdir(), 'play-scout-')));
 mkdirSync(out, { recursive: true });
 
-const TARGET = 58; // seed 2, small: the first forest or hills tile seven steps from the capital
+let TARGET; // seed 2, small: the first forest or hills tile seven steps from the capital (the pick moves it)
 let failed = false;
 const fail = (msg) => {
   console.error(`scout: ${msg}`);
@@ -66,6 +66,10 @@ const page = await open('?size=small&seed=2&run=1');
 try {
   const { cap, scout } = await leadAndSelectScout(page);
   need((await page.data()).selected === `unit:${scout}`, `clicking the capital selects the scout ${scout}`);
+  const ring7 = await ringAt(page, cap, 7);
+  const wild = await page.eval(`(() => { const L = game.layout(), T = game.terrain();
+    return ${JSON.stringify(ring7)}.filter((i) => ['forest', 'hills'].includes(T[L.terrain[i]].name)); })()`);
+  TARGET = (wild.length ? wild : ring7)[0];
   let p = await page.panel();
   need(/'s scout \d+$/.test(p.name) && !!p.doing, `the scout's panel is named "${p.name}" with a doing line`);
   const labels = p.buttons.map((b) => b.label);
@@ -86,7 +90,7 @@ try {
 
   // The scout stands at TARGET after a few turns, and its line says "At".
   let turns = 0;
-  for (; turns < 15 && (await scoutOf(page, scout)).tile !== TARGET; turns++) await page.button('End turn');
+  for (; turns < 40 && (await scoutOf(page, scout)).tile !== TARGET; turns++) await page.button('End turn');
   s = await scoutOf(page, scout);
   need(s.tile === TARGET, `the scout stands at ${TARGET} after ${turns} turns`);
   p = await page.panel();

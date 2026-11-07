@@ -12,8 +12,9 @@ use engine::{Action, Order, Unit, World};
 /// The slack a cost comparison allows: the engine's own.
 const EPS: f64 = 1e-9;
 
-/// The turns an errand may take before it counts as unsettled.
-const TURNS: u32 = 120;
+/// The turns an errand may take before it counts as unsettled: a scout walks at one person's pace, and
+/// the slowest errand (large 8 to the rival) settles in 133.
+const TURNS: u32 = 200;
 
 /// The seven retro maps: `(size, seed)`.
 const MAPS: [(&str, u32); 7] =
@@ -46,7 +47,11 @@ fn errand(size: &str, seed: u32, rival: bool) -> Errand {
             .map(|c| c.capital)
             .unwrap()
     } else {
-        (0..w.tiles.len()).find(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && steps(w, i, cap) == 7).unwrap()
+        // A forest or hills tile seven steps out, or the nearest to seven where the pick has none there.
+        (0..w.tiles.len())
+            .filter(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && steps(w, i, cap) > 0)
+            .min_by_key(|&i| (steps(w, i, cap).abs_diff(7), i))
+            .unwrap()
     };
     let scout = units::scout(w, me).unwrap().id;
     stage.act(Action::Order { civ: me, order: Order::Route { unit: scout, from: cap, to } }).unwrap();

@@ -64,7 +64,8 @@ pub fn flat_cost(terrain: usize) -> Option<f64> {
 }
 
 /// Puts `labour` into a trail on tile `i`, which must be `trailable`. It is finished when its work
-/// reaches `TRAIL.work` for its terrain: then it has its trail, its work starts again from nothing
+/// reaches `TRAIL.work` for its terrain (to a billionth, so a labour a rounding short of it finishes
+/// the trail): then it has its trail, its work starts again from nothing
 /// and its traffic is `TRAIL.on`, so `tend` doesn't wear it away on the turn it is built. Returns
 /// whether it is finished.
 pub fn build_trail(w: &mut World, i: usize, labour: f64) -> bool {
@@ -75,7 +76,7 @@ pub fn build_trail(w: &mut World, i: usize, labour: f64) -> bool {
     }
     let t = &mut w.tiles[i];
     t.trail_work += labour;
-    if t.trail_work < need {
+    if t.trail_work + 1e-9 < need {
         return false;
     }
     t.trail = true;

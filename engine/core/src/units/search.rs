@@ -280,6 +280,13 @@ pub(super) fn search(w: &mut World, id: u32, ladder: &mut Ladder, start: f64) ->
             (_, Some((p, _))) if no_reveal => p,
             _ => &[],
         };
+        // The route's built trails count as walked while the scout works it, as a camp's line does, so a
+        // trail does not wear away behind a scout that is still building the ones ahead.
+        for &j in trail_on {
+            if w.tiles[j].trail {
+                w.tiles[j].used = true;
+            }
+        }
         let needs: Vec<usize> = {
             let mut v: Vec<usize> = trail_on.iter().copied().filter(|&j| needs_trail(w, civ, j)).collect();
             v.sort_by_key(|&j| (steps(w, home, j), j));
