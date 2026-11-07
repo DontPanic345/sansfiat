@@ -12,6 +12,7 @@ mod run;
 mod story;
 mod sweep;
 mod sweep_judge;
+mod sweep_text;
 mod view;
 
 use std::{env, process::exit};
