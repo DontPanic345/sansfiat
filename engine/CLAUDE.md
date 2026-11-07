@@ -47,7 +47,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim` (`Sim.stage`): the panel shapes as data, and Disband all as the page presses it; the panel context both share. |
 | `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`. |
-| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout, civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
+| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout (which presses Move to…, Route from… and Route to…), civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
 
 ## Adding a mechanic
 

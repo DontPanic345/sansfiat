@@ -210,7 +210,7 @@ function campShape(ctx, u) {
   }
   const buttons = [];
   if (mine) {
-    buttons.push({ label: 'Move to…', arm: 'to' });
+    buttons.push({ label: 'Move to…', arm: 'move' });
     if (marching) buttons.push({ label: 'Stop', action: unitOrder(u, { type: 'move', to: u.tile }) });
     if (u.kind === 'camp') {
       buttons.push({ label: 'Paint (P)', paint: 'paint' }, { label: 'Unpaint (U)', paint: 'unpaint' });
@@ -221,10 +221,10 @@ function campShape(ctx, u) {
     buttons.push(...switchButtons(u));
     if (deployed) buttons.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
     if (u.kind === 'camp') buttons.push(raiseInto(u, rules));
-    buttons.push(disband(u, rules));
+    buttons.push(...disband(u, rules));
   }
   let hint = null;
-  if (routing.arm === 'to') hint = 'Click the map to move the army there; Esc cancels';
+  if (routing.arm === 'move') hint = 'Click the map to move the army there; Esc cancels';
   else if (painting === 'paint' || painting === 'unpaint') hint = 'Click or drag on the map; Esc stops';
   else if (mine && !marching) hint = 'Right-click a tile to move the army there';
   return {
@@ -256,8 +256,8 @@ function raiseInto(u) {
   };
 }
 
-/** Disband…: a count of one kind the army has (an option per kind present), or of all of it (`all`). A unit with
- *  no kinds (a scout, a guard) has only the count of all. */
+/** Disband…: a count of one kind the army has (an option per kind present), or of the people of a scout or a guard
+ *  (`people`, shown from two people). Disband all is its own button and sends the whole unit, with no count. */
 function disband(u, rules = null) {
   const options = [];
   if (rules) {
@@ -265,45 +265,82 @@ function disband(u, rules = null) {
       const people = u.stack?.[k] ?? 0;
       if (people >= 1) options.push({ label: f.name, cap: Math.floor(people), make: (n) => unitOrder(u, { type: 'disband', n, fighter: f.name }) });
     });
+  } else if (Math.floor(u.people) >= 2) {
+    options.push({ label: 'people', cap: Math.floor(u.people), make: (n) => unitOrder(u, { type: 'disband', n }) });
   }
-  options.push({ label: 'all', cap: Math.max(1, Math.floor(u.people)), make: (n) => unitOrder(u, { type: 'disband', n }) });
-  return { label: 'Disband…', stepper: { options } };
+  const all = { label: 'Disband all', action: unitOrder(u, { type: 'disband' }) };
+  return options.length ? [{ label: 'Disband…', stepper: { options } }, all] : [all];
 }
 
-/** A scout's panel (spec item 16, Scout): its route, its known and possible costs, its switches, and the buttons. */
+/** A scout's panel (spec items 23-26): what it does (its errand, its hunger), its route's known and possible costs,
+ *  the search's mountains to check and left, its hunger, its switches, and the buttons. */
 function scoutShape(ctx, u) {
-  const { v, routing, outcome } = ctx;
+  const { v, routing, outcome, rules, sim } = ctx;
   const mine = u.civ === v.player;
   const plan = u.plan;
-  const doing = u.route && plan
-    ? `Searching ${hex(ctx, u.route[0])} → ${hex(ctx, u.route[1])}: known cost ${plan.known ? f2(plan.known.cost) : 'none'}, possible ${plan.possible ? f2(plan.possible.cost) : 'none'}`
-    : `Idle at ${hex(ctx, u.tile)}`;
+  const search = u.search;
+  const left = search?.left ?? [];
+  const errand = u.route != null || u.dest != null;
+  let base;
+  if (u.wander != null && errand) base = `Foraging at ${hex(ctx, u.wander)} until fed, then ${u.route ? 'back to its route' : `on to ${hex(ctx, u.dest)}`}`;
+  else if (u.route) base = `Searching ${hex(ctx, u.route[0])} → ${hex(ctx, u.route[1])}: known cost ${plan?.known ? f2(plan.known.cost) : 'none'}, possible ${plan?.possible ? f2(plan.possible.cost) : 'none'}`;
+  else if (u.dest != null) {
+    const r = JSON.parse(sim.route(u.id));
+    base = `Going to ${hex(ctx, u.dest)}${r ? `: ${plural(r.turns, 'turn')}` : ': no route'}`;
+  } else if (u.wander != null) base = `Waiting on rich ground at ${hex(ctx, u.wander)}`;
+  else base = `At ${hex(ctx, u.tile)}, foraging`;
+  const doing = [...(u.hungry > 0 ? [`Hungry ${plural(u.hungry, 'turn')}: loses a person at ${rules.hungry_turns}`] : []), base].join(' · ');
+  const hunger = u.hunger;
   const numbers = [
     { label: 'People', value: f2(u.people), tip: 'The people in the scout' },
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
     { label: 'Known cost', value: plan?.known ? f2(plan.known.cost) : 'none', tip: 'The cost of the route over the tiles the player has seen' },
     { label: 'Possible cost', value: plan?.possible ? f2(plan.possible.cost) : 'none', tip: 'The cost of the cheapest route if the unrevealed tiles are as they could be' },
-    { label: 'Unrevealed', value: plan ? plan.candidates.length : 0, tip: 'Unrevealed tiles on the possible route' },
+    {
+      label: 'Unrevealed',
+      value: search ? `${search.next.length} to check${left.length ? `; ${left.length} left` : ''}` : 'none',
+      tip: "Mountains the search won't reveal: the cheapest route through each costs at least the route it knows",
+    },
+    {
+      label: 'Hunger',
+      value: hunger ? `foraging ${f2(hunger.forage)}, line ${f2(hunger.line)} of ${f2(hunger.eats)} it eats` : 'fed',
+      tip: 'What foraging and the line brought on its last hungry turn, against what it eats',
+    },
   ];
   const buttons = [];
   if (mine) {
-    buttons.push({ label: 'Move to…', arm: 'to' }, { label: 'Route from…', arm: 'start' }, { label: 'Clear route', action: unitOrder(u, { type: 'clearRoute' }) });
+    buttons.push({ label: 'Move to…', arm: 'move' }, { label: 'Route from…', arm: 'start' }, { label: 'Route to…', arm: 'to' });
+    if (u.route) buttons.push({ label: 'Clear route', action: unitOrder(u, { type: 'clearRoute' }) });
+    if (u.dest != null) buttons.push({ label: 'Stop', action: unitOrder(u, { type: 'move', to: u.tile }) });
     buttons.push({ label: 'Forage', action: unitOrder(u, { type: 'forage' }) }, { label: 'Resupply', action: unitOrder(u, { type: 'resupply' }) });
-    buttons.push(...switchButtons(u), disband(u));
+    buttons.push(...switchButtons(u), ...disband(u));
   }
   let hint = null;
-  if (routing.arm === 'start') hint = "Click the map for the route's start; Esc cancels";
-  else if (routing.arm === 'to') hint = `Click the map for the route's end${routing.start != null ? ` (from ${hex(ctx, routing.start)})` : ''}; Esc cancels`;
+  if (routing.arm === 'move') hint = 'Click the map for where the scout goes; Esc cancels';
+  else if (routing.arm === 'start') hint = "Click the map for the route's start; Esc cancels";
+  else if (routing.arm === 'to') hint = `Click the map for the route's end (from (${hex(ctx, routing.start ?? u.tile)})); Esc cancels`;
+  else if (routing.start != null) hint = `Route from (${hex(ctx, routing.start)}): now Route to…`;
   else if (outcome === 'found') hint = 'Last route: found.';
   else if (outcome === 'nopath') hint = 'Last route: no route can exist.';
-  if (routing.start != null && routing.arm !== 'start' && !hint) hint = `Start: ${hex(ctx, routing.start)}`;
+  const list = [];
   const unitRows = unitsHere(u, ctx);
+  if (unitRows.length) list.push({ label: 'Units here', rows: unitRows });
+  if (left.length) {
+    list.push({
+      label: 'Left unrevealed',
+      rows: left.map((m) => ({
+        centre: m.tile,
+        label: `(${hex(ctx, m.tile)}):`,
+        text: `${f2(m.through)} through it${search.known != null ? `, can't beat the known ${f2(search.known)}` : ''}`,
+      })),
+    });
+  }
   return {
     name: `${civName(ctx, u.civ)}'s scout ${u.id}`,
     swatch: v.civs[u.civ]?.color,
     doing,
     numbers,
-    list: unitRows.length ? [{ label: 'Units here', rows: unitRows }] : [],
+    list,
     reasons: reasonsOf(ctx, u.id),
     buttons,
     hint,
@@ -327,7 +364,7 @@ function guardShape(ctx, u) {
     doing,
     numbers,
     reasons: reasonsOf(ctx, u.id),
-    buttons: mine ? [disband(u)] : [],
+    buttons: mine ? disband(u) : [],
   };
 }
 

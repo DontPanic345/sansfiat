@@ -62,6 +62,7 @@ export class MapView {
     this.focus = null; // the selected clan's id: its territory and route are drawn bright, the others' dim
     this.homeLine = null; // the led civ's camp's line home as tile lists, drawn faint at all times
     this.plan = null; // {known, possible}: the selected scout's route as tile lists from its start, or null
+    this.routeStart = null; // {tile, colour}: the ring where a scout's route begins, while it is being set, or null
     this.revealed = new Uint8Array(0); // 1 where the led civ has revealed the tile
     this.work = []; // [tile, labour, need]: trails under way
     this.focusMarket = null; // the selected festival's id: its walkers' routes are drawn bright
@@ -253,6 +254,11 @@ export class MapView {
   /** The selected scout's route: `{known, possible}`, each the tiles from its start, or null for none. */
   setPlan(plan) {
     this.plan = plan;
+    this.requestDraw();
+  }
+
+  setRouteStart(mark) {
+    this.routeStart = mark;
     this.requestDraw();
   }
 

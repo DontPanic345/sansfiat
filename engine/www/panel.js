@@ -1,14 +1,15 @@
 // The bottom panel: one component that draws a selection's shape (spec item 15) into the slot under the
 // map. The shape comes from panels.js; this file only lays it out and wires its buttons. Shape:
 //
-//   { key, name, swatch?, doing, numbers: [{label, value, tip?}], list?: [{label, rows: [{select, label, text?}], empty?}],
+//   { key, name, swatch?, doing, numbers: [{label, value, tip?}], list?: [{label, rows: [{select | centre, label, text?}], empty?}],
 //     reasons: [{turn, text}], buttons: [...], hint? }
 //
 // A button is one of: {label, action} (sent through `order`, greyed with the engine's reason when refused),
 // {label, arm} (arms a map click), {label, paint} (P or U's mode), {label, stepper: {options: [{label, make(n),
 // cap}]}} (opens a count in the row, with Go and Cancel). A button the kind can't take is left out of the shape.
 //
-// `hooks`: {check(action) -> reason or '', run(action), arm(kind), armed, paint(mode), painting, select(sel)}.
+// A list row selects its `select`, or centres the map on its tile `centre`. `hooks`: {check(action) -> reason or '',
+// run(action), arm(kind), armed, paint(mode), painting, select(sel), centre(tile)}.
 
 const TAG = (tag, props = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -72,7 +73,7 @@ export function render(slot, shape, hooks) {
     if (!list.rows.length && !list.empty) continue;
     const rows = list.rows.length
       ? list.rows.map((r) =>
-          TAG('div', { class: 'listrow' }, TAG('button', { type: 'button', class: 'link', text: r.label, onclick: () => hooks.select(r.select) }), r.text ? TAG('span', { class: 'dim', text: ` ${r.text}` }) : null),
+          TAG('div', { class: 'listrow' }, TAG('button', { type: 'button', class: 'link', text: r.label, onclick: () => (r.centre != null ? hooks.centre(r.centre) : hooks.select(r.select)) }), r.text ? TAG('span', { class: 'dim', text: ` ${r.text}` }) : null),
         )
       : [TAG('p', { class: 'dim', text: list.empty })];
     info.append(TAG('div', { class: 'list' }, TAG('span', { class: 'dim', text: list.label }), rows));

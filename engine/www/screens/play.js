@@ -12,7 +12,7 @@ import { autosave } from '../save.js';
 import { legendHtml } from '../legend.js';
 import * as bar from '../bar.js';
 import { Pick } from './pick.js';
-import { routing, resetRouting, routeDone, arm, disarm, armedPick, onCommand, orderTip } from './orders.js';
+import { routing, resetRouting, routeDone, arm, disarm, clearStart, armedPick, onCommand, orderTip, markStart } from './orders.js';
 
 const $ = (id) => document.getElementById(id);
 const RATES = { slow: 1, normal: 4, fast: 20 };
@@ -200,11 +200,12 @@ function markChips() {
 function routes() {
   const out = [];
   for (const u of Object.values(v.units)) {
-    if (u.civ !== v.player || u.kind !== 'camp' || u.dest == null) continue;
+    if (u.civ !== v.player || (u.kind !== 'camp' && u.kind !== 'scout') || u.dest == null) continue;
     const r = JSON.parse(sim.route(u.id));
     if (r) out.push({ unit: u.id, civ: u.civ, tiles: [u.tile, ...r.path], selected: selected?.kind === 'unit' && selected.id === u.id });
   }
   view.setRoutes(out);
+  markStart(host());
   // The player's camp's line home, always faint; the selected clan's territory and route bright.
   const mineCamp = v.player != null ? Object.values(v.units).find((u) => u.civ === v.player && u.kind === 'camp') : null;
   view.setHomeLine(mineCamp?.line?.path.length ? [mineCamp.tile, ...mineCamp.line.path] : null);
@@ -502,6 +503,7 @@ function panelDraw() {
     paint: (mode) => setPainting(painting === mode ? null : mode),
     painting,
     select,
+    centre: (i) => view.centreOn(i, { minK: 12, smooth: true }),
     redraw: panelDraw,
   });
 }
@@ -601,6 +603,7 @@ function keys(e) {
     if (bar.closeMenus()) return;
     if (routing.arm) disarm(host());
     else if (painting) setPainting(null);
+    else if (routing.start != null) clearStart(host());
     else select(null);
     return;
   }

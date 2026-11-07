@@ -1,5 +1,5 @@
 // The page's panel arm, over staged games (`Sim.stage`): the camp, scout, guard, civ, clan and tile
-// shapes are checked as data, and the Disband… stepper's `all` is pressed as the page presses it. Imported at
+// shapes are checked as data, and Disband all is pressed as the page presses it. Imported at
 // the end of check.mjs, which has already initialised the wasm.
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
@@ -89,48 +89,21 @@ function checkButtons(shape, name) {
   assert.ok(shapes.guard.buttons.some((b) => b.stepper && b.label === 'Disband…'), 'a guard has Disband…');
 }
 
-/** Red on main: T makes `all` a button that sends no count, finds it its new way, keeps the asserts and drops the
- *  wrapper. It passes while `fn` throws an AssertionError whose message includes `message` (the bug as it is on
- *  main), and fails, naming the case, when `fn` passes or throws anything else. */
-function expectBug(name, message, fn) {
-  let error = null;
-  try {
-    fn();
-  } catch (e) {
-    error = e;
-  }
-  if (error === null) throw new Error(`${name}: passed, but it is a known bug on main: drop its expectBug`);
-  if (!(error instanceof assert.AssertionError) || !error.message.includes(message)) {
-    throw new Error(`${name}: expected "${message}", got: ${error.message}`);
-  }
-}
-
-/** Disband…'s `all` pressed as the page presses it: the stepper opens at 1 (`count` 'open'), or is pressed at
- *  its cap (`count` 'cap'). Applies the order the page sends and asserts the whole unit went home. */
-function pressAll(kind, count) {
+/** Disband all as the page presses it: the button sends its order with no count, and the whole unit goes home. */
+function pressAll(kind) {
   const sim = staged();
   const view = JSON.parse(sim.view());
   const u = Object.values(view.units).find((x) => x.kind === kind && x.civ === view.player);
-  const all = shapeOf(sim, { kind: 'unit', id: u.id }).buttons
-    .find((b) => b.stepper && b.label === 'Disband…')
-    .stepper.options.find((o) => o.label === 'all');
-  const n = count === 'open' ? 1 : all.cap;
+  const all = shapeOf(sim, { kind: 'unit', id: u.id }).buttons.find((b) => b.label === 'Disband all');
   const what = kind === 'camp' ? 'army' : kind;
-  sim.act(JSON.stringify(all.make(n)));
+  sim.act(JSON.stringify(all.action));
   const after = JSON.parse(sim.view());
   assert.equal(after.units[u.id], undefined, `Disband all sends the whole ${what} home: the ${what} is still on the map`);
   assert.ok(Math.abs(after.civs[u.civ].people - view.civs[u.civ].people - u.people) < 1e-9, `Disband all sends the ${what}'s ${u.people} people to its clan`);
 }
 
-// Disband all: the page's `all` option sends the count the stepper shows. A camp of 4.6 keeps 0.6 at its cap, and
-// one person goes home at the stepper's opening count (1), on each kind. The scout (2) and the guard (3) have whole
-// founding people, so their cap sends all of them and that press is a plain case.
-expectBug('Disband all, the camp as the stepper opens', 'Disband all sends the whole army home: the army is still on the map', () => pressAll('camp', 'open'));
-expectBug('Disband all, the camp at its cap', 'Disband all sends the whole army home: the army is still on the map', () => pressAll('camp', 'cap'));
-expectBug('Disband all, the scout as the stepper opens', 'Disband all sends the whole scout home: the scout is still on the map', () => pressAll('scout', 'open'));
-expectBug('Disband all, the guard as the stepper opens', 'Disband all sends the whole guard home: the guard is still on the map', () => pressAll('guard', 'open'));
-pressAll('scout', 'cap');
-pressAll('guard', 'cap');
+// Disband all: the camp of 4.6, the scout (2) and the guard (3) each go home whole, and their people go to their clan.
+for (const kind of ['camp', 'scout', 'guard']) pressAll(kind);
 
 // The end: a staged game with a limit of two turns is over after the second EndTurn. Its orders are refused with
 // "the game is over"; the world runs on, so an EndTurn still goes through.

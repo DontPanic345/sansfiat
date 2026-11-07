@@ -91,7 +91,7 @@ try {
   const camp = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp').id`);
   await selectKey(page, `unit:${camp}`, cap);
   await page.button('Move to…');
-  need((await page.eval("document.body.dataset.armed")) === 'to', 'Move to… is armed');
+  need((await page.eval("document.body.dataset.armed")) === 'move', 'Move to… is armed');
   await page.key('Escape');
   need((await page.eval("document.body.dataset.armed")) === '' && (await page.data()).selected === `unit:${camp}`, 'Escape disarms the armed click and keeps the selection');
   await page.key('p');

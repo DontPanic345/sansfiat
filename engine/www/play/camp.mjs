@@ -67,7 +67,7 @@ async function panelChecks(page) {
   await page.eval(frames);
   const armed = await page.panel();
   need(armed.buttons.find((b) => b.label === 'Move to…').pressed === 'true', 'Move to… shows as armed');
-  need((await page.eval("document.body.dataset.armed")) === 'to', 'the click is armed to move');
+  need((await page.eval("document.body.dataset.armed")) === 'move', 'the click is armed to move');
   need((await page.eval("document.getElementById('map').style.cursor")) === 'crosshair', 'an armed click has a crosshair cursor');
   const tip = await page.tip(target);
   need(tip && tip.includes('Move here:'), `the armed tile's tooltip says "Move here: …" (${tip})`);

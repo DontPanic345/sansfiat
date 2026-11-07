@@ -110,7 +110,8 @@ try {
   need(p.numbers.some((n) => n.label === 'Archers') && p.numbers.some((n) => n.label === 'Attack') && p.numbers.some((n) => n.label === 'Defence'), 'the army’s panel gives its archers, attack and defence');
   need((await buttonOf(page, 'Disband…')) != null, 'the army’s panel has Disband…');
   const disbandOpts = (await page.stepper('Disband…', { n: 1 })).options;
-  need(disbandOpts.includes('archers') && disbandOpts.includes('warriors') && disbandOpts.includes('all'), `Disband… offers ${disbandOpts.join(', ')}`);
+  need(disbandOpts.includes('archers') && disbandOpts.includes('warriors') && !disbandOpts.includes('all'), `Disband… offers ${disbandOpts.join(', ')}`);
+  need((await buttonOf(page, 'Disband all')) != null, 'the army’s panel has Disband all');
 
   // The stack's number on the map: the army's label as the units layer drew it.
   await page.eval(frames);
