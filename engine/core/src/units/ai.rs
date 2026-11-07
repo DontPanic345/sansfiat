@@ -11,7 +11,7 @@ use crate::data::*;
 use crate::land::steps;
 use crate::market::total;
 use crate::orders::Order;
-use crate::world::{Phase, World};
+use crate::world::World;
 
 /// Where the AI posts `civ`'s camp: up to `UNIT.post` steps along the way from the capital to the
 /// nearest rival capital reachable by land, or with none, to its farthest clan, keeping to its
@@ -42,11 +42,11 @@ pub fn post(w: &World, civ: u32) -> usize {
     at
 }
 
-/// The `ai` step, before `units`: each civ the player doesn't lead keeps its land (`land`), raises its
-/// camp if it has none and can, and sends it to its post if it is idle somewhere else. Draws no random
-/// numbers.
+/// The `ai` step, before `units`: each civ the player doesn't lead keeps its land (`land`), and sends
+/// its camp to its post if it is idle somewhere else. The AI raises no army until R: a civ with no
+/// camp has none to send. Draws no random numbers.
 pub fn ai(w: &mut World) {
-    if w.phase != Phase::Main {
+    if !w.phase.playing() {
         return;
     }
     let ids: Vec<u32> = civs::alive(w).map(|c| c.id).filter(|&c| Some(c) != w.player).collect();
@@ -54,12 +54,6 @@ pub fn ai(w: &mut World) {
         land(w, civ);
         if !w.config.army {
             continue;
-        }
-        if camp(w, civ).is_none() {
-            let _ = w.order(
-                civ,
-                Order::Raise { n: UNIT.start, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None },
-            );
         }
         let Some(u) = camp(w, civ) else { continue };
         if u.camp().is_some_and(|c| c.dest.is_some()) {

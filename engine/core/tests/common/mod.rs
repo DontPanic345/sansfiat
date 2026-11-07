@@ -141,13 +141,43 @@ pub fn found(w: &mut World, centres: &[u32]) {
     found_civs(w, centres);
 }
 
-/// A big world of three civs, each with a clan of 14 on its market's tile (founding's camp, scout and
-/// guard take 8 of them). Returns the world, the
-/// civs and their clans.
+/// The guards a civ raised at founding in the tests' fixtures (`armed`, `hold_land`): three, as the
+/// start had them before a civ started with none.
+pub const GUARDS: u32 = 3;
+
+/// Raises the army and guard a civ starts without (`founding.md`, The start), as its own `Raise`s
+/// would: `UNIT.first` warriors at the capital with their pack from the store, then `GUARDS` guards on
+/// its claim. The store first banks the warriors' packs (what a player banks before it raises: the
+/// endowment's grain less the scout's pack can't fill them). For tests whose subject is not the start.
+pub fn armed(w: &mut World, civ: u32) {
+    let pack = units::pack_cap(f64::from(UNIT.first));
+    w.civs.get_mut(&civ).unwrap().store[1] += pack;
+    // One warrior at a time: `raise` takes at most one person from each clan, and a civ may have one.
+    for _ in 0..UNIT.first {
+        let into = units::camp(w, civ).map(|u| u.id);
+        units::raise(w, civ, 1, Fighter::Warriors, into).expect("an army from the clans");
+    }
+    units::guard::raise(w, civ, GUARDS);
+}
+
+/// Raises the army and guard of every civ in the world (`armed`), as each civ's own Raises would.
+pub fn armed_all(w: &mut World) {
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    for id in ids {
+        armed(w, id);
+    }
+}
+
+/// A big world of three civs, each with a clan of 14 on its market's tile (its scout takes its people from it,
+/// and its army and guard the rest), each with its army and guard as `armed` raises them. Returns the
+/// world, the civs and their clans.
 pub fn three() -> (World, [u32; 3], [u32; 3]) {
     let mut stage = Stage::flat(BIG);
     let ids = stage.civs(&[at_big(-5, 0), at_big(5, 0), at_big(0, -10)], 14.0);
-    let w = stage.into_world();
+    let mut w = stage.into_world();
+    for &id in &ids {
+        armed(&mut w, id);
+    }
     let clans = [at_big(-5, 0), at_big(5, 0), at_big(0, -10)].map(|t| w.tiles[t].claim.expect("a clan"));
     (w, [ids[0], ids[1], ids[2]], clans)
 }
@@ -253,11 +283,11 @@ pub fn keys_in_order(json: &str) -> Vec<String> {
 }
 
 /// Gives `civ` the land `tiles` (its capital is added): the claim, held by its guard, which is raised
-/// to `GUARD.start` people if it has none. Up to about two steps from the capital its guard holds
+/// to `GUARDS` people if it has none. Up to about two steps from the capital its guard holds
 /// every tile.
 pub fn hold_land(w: &mut World, civ: u32, tiles: &[usize]) {
     if engine::units::guard_of(w, civ).is_none() {
-        engine::units::guard::raise(w, civ, GUARD.start);
+        engine::units::guard::raise(w, civ, GUARDS);
     }
     let claim = engine::claim::check(w, civ, tiles).expect("a claim the civ may hold");
     engine::claim::set(w, civ, claim);

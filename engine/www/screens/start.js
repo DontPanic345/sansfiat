@@ -40,7 +40,7 @@ function startNew() {
 function continueGame() {
   const e = autosave.read();
   if (!e) return;
-  open(() => app.data.Sim.load(JSON.stringify(e.save)), { history: e.history ?? null });
+  open(() => app.data.Sim.load(JSON.stringify(e.save)));
 }
 
 async function loadFile(e) {
@@ -52,7 +52,7 @@ async function loadFile(e) {
 }
 
 /** Loads a game (`load` gives the Sim, or throws why) and shows the play screen with it, or the error here. */
-async function open(load, { history = null } = {}) {
+async function open(load) {
   let sim;
   try {
     sim = await load();
@@ -60,5 +60,5 @@ async function open(load, { history = null } = {}) {
     $('start-error').textContent = String(err);
     return;
   }
-  app.show('play', { sim, history });
+  app.show('play', { sim });
 }

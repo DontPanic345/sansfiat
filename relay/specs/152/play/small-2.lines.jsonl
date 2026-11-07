@@ -1,0 +1,41 @@
+{"turn":237,"line":"note meant: lift standing via gift did: gift 6 to draw unaligned clans surprised: no unaligned clans in reach","result":"noted"}
+{"turn":237,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":237,"line":"note meant: hold land did: raise one guard surprised: nothing","result":"noted"}
+{"turn":237,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":237,"line":"note meant: see effect did: end 5 surprised: nothing","result":"noted"}
+{"turn":242,"line":"end 5","result":"ok"}
+{"turn":242,"line":"note meant: build an army did: raise 1 warrior surprised: nothing","result":"noted"}
+{"turn":242,"line":"{\"type\":\"raise\",\"n\":1}","result":"ok"}
+{"turn":242,"line":"note meant: grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":252,"line":"end 10","result":"ok"}
+{"turn":252,"line":"view","result":"ok"}
+{"turn":252,"line":"view","result":"ok"}
+{"turn":252,"line":"note meant: pick up food did: forage with army 490 surprised: nothing","result":"noted"}
+{"turn":252,"line":"{\"type\":\"forage\",\"unit\":490}","result":"ok"}
+{"turn":252,"line":"note meant: scout the land did: route scout to 244 area (331) surprised: nothing","result":"noted"}
+{"turn":252,"line":"{\"type\":\"route\",\"unit\":475,\"from\":301,\"to\":331}","result":"ok"}
+{"turn":252,"line":"note meant: grow did: end 20 surprised: nothing","result":"noted"}
+{"turn":272,"line":"end 20","result":"ok"}
+{"turn":272,"line":"note meant: more guard did: raise guard surprised: nothing","result":"noted"}
+{"turn":272,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":272,"line":"note meant: grow did: end 20 surprised: nothing","result":"noted"}
+{"turn":292,"line":"end 20","result":"ok"}
+{"turn":292,"line":"note meant: raise army did: raise into 490 surprised: nothing","result":"noted"}
+{"turn":292,"line":"{\"type\":\"raise\",\"n\":1,\"into\":490}","result":"refused: the store can't fill their packs"}
+{"turn":292,"line":"note meant: grow did: end 20 surprised: nothing","result":"noted"}
+{"turn":312,"line":"end 20","result":"ok"}
+{"turn":312,"line":"note meant: test move did: send army 490 to 300 then disband surprised: nothing","result":"noted"}
+{"turn":312,"line":"{\"type\":\"move\",\"unit\":490,\"to\":300}","result":"ok"}
+{"turn":317,"line":"end 5","result":"ok"}
+{"turn":317,"line":"note meant: pillage unavailable no rival near did: disband army to send people home surprised: nothing","result":"noted"}
+{"turn":317,"line":"{\"type\":\"disband\",\"unit\":490}","result":"ok"}
+{"turn":317,"line":"note meant: finish did: end 15 surprised: nothing","result":"noted"}
+{"turn":332,"line":"end 15","result":"ok"}
+{"turn":332,"line":"view","result":"ok"}
+{"turn":332,"line":"note meant: reach 100 did: end 5 surprised: nothing","result":"noted"}
+{"turn":337,"line":"end 5","result":"ok"}
+{"turn":337,"line":"note could not tell: gift: whether it reached any clan, none unaligned were in reach","result":"noted"}
+{"turn":337,"line":"note could not tell: guard: what a guard defends against with no rival near","result":"noted"}
+{"turn":337,"line":"note could not tell: army: why raise was refused at store fill and how long to bank","result":"noted"}
+{"turn":337,"line":"note could not tell: scout: what route found","result":"noted"}
+{"turn":337,"line":"note could not tell: game end: how far I was from the turn limit mattering, standing 5.9% rank 2","result":"noted"}

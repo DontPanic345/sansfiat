@@ -9,9 +9,10 @@ use std::sync::{Arc, Mutex, OnceLock};
 use serde::{Deserialize, Serialize};
 
 use crate::clans::new_clan;
-use crate::data::{size_radius, Config, Fighter, N, PLAINS, SEA};
+use crate::data::{size_radius, Config, Fighter, GUARD, N, PLAINS, SEA};
 use crate::hex::Hex;
 use crate::map::{self, Tile};
+use crate::over::Over;
 use crate::pregame::End;
 use crate::units::{self, Plan, Unit};
 use crate::world::Phase;
@@ -106,6 +107,7 @@ impl Stage {
             (None, Some(r)) => Stage::retro(&r.size, r.seed)?,
             _ => return Err("a stage needs one of map or retro".to_string()),
         };
+        stage.world.config.limit = spec.limit;
         if let Some(text) = &spec.marks {
             stage.marks(text)?;
         }
@@ -125,6 +127,10 @@ impl Stage {
             let people = spec.people.ok_or("civs need people")?;
             let tiles = spec.civs.iter().map(|r| stage.tile(r)).collect::<Result<Vec<_>, _>>()?;
             ids = stage.civs(&tiles, people);
+        }
+        // A staged civ has the guard it had at founding before the start moved (`GUARD.first`).
+        for &civ in &ids {
+            units::guard::raise(&mut stage.world, civ, GUARD.first);
         }
         if let Some(k) = spec.lead {
             let civ = *ids.get(k).ok_or(format!("lead: there is no civ {k}"))?;
@@ -147,6 +153,14 @@ impl Stage {
         world.next_id = BASE_NEXT_ID;
         world.markets.clear();
         Stage { world, marks: BTreeMap::new() }
+    }
+
+    /// The end of the game, once it has ended (`Phase::Over`).
+    pub fn over(&self) -> Option<Over> {
+        match self.world.phase {
+            Phase::Over(o) => Some(o),
+            _ => None,
+        }
     }
 
     /// The world, for a read the stage has no method for.
@@ -278,10 +292,15 @@ impl Stage {
         t.span = span;
     }
 
-    /// Moves `civ`'s camp onto tile `i` with `people` warriors, in one stack and a full pack. Returns
-    /// the camp's unit id.
+    /// Moves `civ`'s camp onto tile `i` with `people` warriors, in one stack and a full pack, and holds it
+    /// there: its march is to `i` (a camp posts itself elsewhere, and a rival's capital is no zone). A civ
+    /// with no camp (a civ starts with none) gets an empty one at its capital first, which takes no
+    /// people from its clans. Returns the camp's unit id.
     pub fn army(&mut self, civ: u32, i: usize, people: f64) -> u32 {
-        let id = units::camp(&self.world, civ).expect("a camp").id;
+        let id = match units::camp(&self.world, civ) {
+            Some(u) => u.id,
+            None => units::make_camp(&mut self.world, civ),
+        };
         let u: &mut Unit = self.world.units.get_mut(&id).expect("the camp");
         u.actor.home = i;
         u.actor.territory = vec![i];
@@ -291,6 +310,7 @@ impl Stage {
         c.held = vec![i];
         c.stack = [0.0; 2];
         c.stack[Fighter::Warriors.index()] = people;
+        c.dest = Some(i);
         id
     }
 
@@ -464,6 +484,9 @@ pub struct StageSpec {
     pub lead: Option<usize>,
     #[serde(default)]
     pub armies: Vec<ArmySpec>,
+    /// The turn limit after the pick, which replaces the size's (`Config.limit`); `None` is the size's.
+    #[serde(default)]
+    pub limit: Option<u32>,
 }
 
 /// Opens a market on tile `tile` of `w`, founded on turn 0, as a centre's market is. Returns its id.

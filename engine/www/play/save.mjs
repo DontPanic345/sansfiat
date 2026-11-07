@@ -34,8 +34,8 @@ try {
   const entry = JSON.parse(await page.eval("localStorage.getItem('sansfiat.autosave')"));
   need(entry && entry.turn === n, `the autosave holds turn ${entry?.turn}, not ${n}`);
   need(entry?.civ != null, 'the autosave does not name the led civ');
-  need(Array.isArray(entry?.history) && entry.history.length > 0, 'the autosave has no Standing history');
   const digest = await page.eval('game.digest()');
+  const lines = await page.eval('game.view().standing.length');
 
   // Continue, after a reload of start, gives turn N with the same digest.
   await page.goto('');
@@ -44,6 +44,7 @@ try {
   await page.until("document.body.dataset.screen === 'play'");
   need((await turn(page)) === n, `Continue gives turn ${await turn(page)}, not ${n}`);
   need((await page.eval('game.digest()')) === digest, 'Continue gives another digest');
+  need((await page.eval('game.view().standing.length')) === lines, 'Continue loses the Standing history');
 
   // Save to file, end a turn, then Load a file: back to turn N, with the same digest.
   await page.download(out);

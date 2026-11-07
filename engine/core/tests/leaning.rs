@@ -45,14 +45,14 @@ fn goods(w: &World, civ: u32) -> Basket {
 fn the_default_keep_is_the_camps_full_pack() {
     let (mut w, civ, _) = scene();
     // No camp: a new camp's pack.
-    assert_eq!(civs::keep(&w, civ), units::pack_cap(f64::from(UNIT.start)));
+    assert_eq!(civs::keep(&w, civ), units::pack_cap(f64::from(UNIT.first)));
     // A camp: its pack to fill.
     for k in 0..4 {
         let t = at_big(-5 + k, 1);
         let id = put(&mut w, &[t], 6.0);
         w.clans.get_mut(&id).unwrap().civ = Some(civ);
     }
-    units::raise_at_founding(&mut w, civ);
+    units::raise(&mut w, civ, UNIT.first, Fighter::Warriors, None).unwrap();
     let warriors = units::camp(&w, civ).unwrap().people;
     assert!(warriors > 0.0);
     assert_eq!(civs::keep(&w, civ), units::pack_cap(warriors));

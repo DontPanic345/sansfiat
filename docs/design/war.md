@@ -91,3 +91,4 @@ panel (`page.md`).
 - A capital is besieged while rival armies hold every way into it: its own clans harvest nothing, and no levy reaches the store. (#104)
 - An army that has gone hungry three turns in a row with its line cut, isn't marching and isn't fighting that turn surrenders whole, with its pack, to the nearest clan of the rival whose land cuts it off. (#104)
 - A capital falls when a rival army stands on it and the civ has no guard, no army and less than one person of militia there. The fallen civ's units go home to the nearest clan, its store fills the packs of the armies that took the capital and the rest is lost, and its market becomes an ordinary festival. (#104)
+- A game ends by conquest only once two or more civs were founded and at most one capital stands, so a watched game of three goes on after one capital falls. (#152)

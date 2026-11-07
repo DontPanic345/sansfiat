@@ -13,7 +13,7 @@ use crate::events::{Event, EventKind};
 use crate::land::passable;
 use crate::market::total;
 use crate::units::{self, Unit, UnitKind};
-use crate::world::{Phase, World};
+use crate::world::World;
 
 /// An order to a civ's units. On the wire it is the `order` of `Action::Order`, with `type` in
 /// camelCase; each variant's example is that wire form.
@@ -95,7 +95,7 @@ impl World {
     /// Checks `order` for `civ`: `Err` says why it can't happen. Whether `civ` is the one the player
     /// leads is `validate`'s check, not this one: the AI gives orders to every civ it doesn't lead.
     pub fn check_order(&self, civ: u32, order: &Order) -> Result<(), String> {
-        if self.phase != Phase::Main {
+        if !self.phase.playing() {
             return Err("the game has not begun".to_string());
         }
         if self.civs.get(&civ).is_some_and(|c| c.is_out()) {

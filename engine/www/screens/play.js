@@ -29,6 +29,7 @@ let routing = { arm: null, start: null, unit: null }; // the selected scout's ro
 let outcome = null; // how the player's last scout route ended: 'found' | 'nopath' | null
 let playing = false;
 let running = false;
+let endSeen = false; // whether this game's end has been shown, or was there when it loaded (`checkEnd`)
 let loopTimer = null;
 let last = 0;
 let acc = 0;
@@ -98,8 +99,8 @@ export function init() {
   document.addEventListener('click', (e) => e.target.closest?.('button, summary')?.blur());
 }
 
-/** Shows the game: `args.sim` starts it (`history` for a loaded autosave, `speed`, `run` to skip the
- *  pre-game, `play` to run it); no args returns to the game in progress. */
+/** Shows the game: `args.sim` starts it (`speed`, `run` to skip the pre-game, `play` to run it); no args
+ *  returns to the game in progress. */
 export function show(args = null) {
   if (args?.sim) {
     begin(args.sim, args);
@@ -127,12 +128,13 @@ export const feedList = () => feed;
 export const shape = () => (selected ? describe(ctx(), selected) : null);
 
 /** Starts a game: `sim` replaces the one in progress. */
-function begin(next, { history = null, speed = null, run = false, play: go = false } = {}) {
+function begin(next, { speed = null, run = false, play: go = false } = {}) {
   stop();
   sim = next;
+  endSeen = sim.phase() === 'over';
   $('save').disabled = sim.staged();
   layout = JSON.parse(sim.layout());
-  model = history ? { history } : null;
+  model = null;
   selected = null;
   routing = { arm: null, start: null, unit: null };
   outcome = null;
@@ -159,7 +161,7 @@ function begin(next, { history = null, speed = null, run = false, play: go = fal
 /** Re-reads the world after turns: the bar, the pick, the feed, the panel, the map. */
 function refresh() {
   const { RULES } = app.data;
-  model = build(sim, layout, RULES, model);
+  model = build(sim, layout, RULES);
   v = model.v;
   view.setModel(model);
   const centres = v.end ? v.end.centres.length : v.summary.centres.length;
@@ -172,7 +174,7 @@ function refresh() {
   document.body.dataset.units = mine.length;
   document.body.dataset.warriors = Math.round(warriors);
   routes();
-  pick.update(sim, v.phase);
+  pick.update(sim, v.phase, v.turn);
   if (selected && !alive(ctx(), selected)) {
     selected = null;
     syncSelection();
@@ -283,10 +285,25 @@ function pullEvents() {
   }
 }
 
-/** Ends `n` turns; shows why if refused. Returns whether it all went through. */
+/** Whether a run stops here: at the pick, or at the game's first end (the end screen comes up, `checkEnd`). */
+function halt() {
+  return sim.phase() === 'choose' || (sim.phase() === 'over' && !endSeen);
+}
+
+/** The first view in `over` stops the run and shows the end screen, once a game. Play on goes back to the
+ *  map, where the world runs on. True when the end screen came up. */
+function checkEnd() {
+  if (!v.over || endSeen) return false;
+  endSeen = true;
+  stop();
+  app.show('end', { view: v });
+  return true;
+}
+
+/** Ends `n` turns, stopping at the pick or the game's end; shows why if refused. Returns whether it all went through. */
 function turns(n) {
   try {
-    for (let i = 0; i < n && sim.phase() !== 'choose'; i++) sim.act('{"type":"endTurn"}');
+    for (let i = 0; i < n && !halt(); i++) sim.act('{"type":"endTurn"}');
     $('error').textContent = '';
     return true;
   } catch (e) {
@@ -300,6 +317,7 @@ function endTurn() {
   turns(1);
   refresh();
   autosave.write(sim, model);
+  checkEnd();
 }
 
 function togglePlay() {
@@ -340,7 +358,7 @@ function loop() {
   if (running || speed === 'max') {
     // As many turns as fit in a frame's worth of time.
     const until = now + 18;
-    do ok = turns(1); while (ok && performance.now() < until && sim.phase() !== 'choose');
+    do ok = turns(1); while (ok && performance.now() < until && !halt());
   } else {
     acc = Math.min(acc + ((now - last) / 1000) * RATES[speed], 4);
     last = now;
@@ -350,6 +368,7 @@ function loop() {
   }
   if (sim !== mine) return;
   refresh();
+  if (checkEnd()) return;
   autosave.tick(sim, model);
   if (!ok || v.phase === 'choose') {
     stop();
@@ -373,7 +392,7 @@ function runToEnd() {
 
 /** Standing so far: the end screen over the game as it has run. */
 function standing() {
-  app.show('end', { over: null, history: model.history, civs: v.civs, player: v.player });
+  app.show('end', { view: v });
 }
 
 function saveFile() {

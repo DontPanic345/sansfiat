@@ -96,28 +96,40 @@ export function feedOpen(on) {
 /** The bar as the world stands: `v` (Sim.view), `model` (model.js), `selectedCiv` the civ whose capital is selected. */
 export function update({ v, model, selectedCiv }) {
   const { RULES } = app.data;
-  const pre = v.phase !== 'main';
+  // The game is `main` once picked, and stays so when it is over: only the orders differ.
+  const pre = v.phase === 'pregame' || v.phase === 'choose';
   const sum = v.summary;
   const centres = v.end ? v.end.centres.length : sum.centres.length;
   const over = `turn ${v.end?.turn}, by ${v.end?.by_limit ? 'the limit' : 'centres'}${v.end?.topped_up.length ? `, +${v.end.topped_up.length} topped up` : ''}`;
+  // In the main game the turn is read against the limit: "312 of 437", the limit's turn after the pick.
+  const limit = v.limit && !pre ? v.limit.at : null;
   $('turn').textContent = v.turn;
+  $('turnlabel').textContent = limit != null ? `of ${limit}` : 'Turn';
   $('people').textContent = Math.round(sum.people);
   $('clans').textContent = sum.clans;
   $('festivals').textContent = sum.markets;
   $('hearths').textContent = sum.hearths;
   $('centres').textContent = `${centres} / ${RULES.players}`;
-  $('turnstat').title = `Turn ${v.turn}: ${Math.round(sum.people)} people, ${sum.clans} clans, ${sum.markets} festivals, ${sum.hearths} hearths, ${centres} of ${RULES.players} centres`;
+  const turnTip = limit != null ? `Turn ${v.turn} of ${limit}, the turn limit after the pick` : `Turn ${v.turn}`;
+  $('turnstat').title = `${turnTip}: ${Math.round(sum.people)} people, ${sum.clans} clans, ${sum.markets} festivals, ${sum.hearths} hearths, ${centres} of ${RULES.players} centres`;
   if (v.phase === 'pregame') {
     $('phasetext').textContent = 'Pre-game';
     $('phasenote').textContent = 'Phase';
   } else if (v.phase === 'choose') {
     $('phasetext').textContent = 'Pre-game over';
     $('phasenote').textContent = over;
+  } else if (v.over) {
+    $('phasetext').textContent = 'Game over';
+    $('phasenote').textContent = `${v.civs[v.over.winner]?.name ?? 'No one'} won`;
   } else {
     $('phasetext').textContent = 'Main game';
     $('phasenote').textContent = `pre-game ${over}`;
   }
-  $('phase').title = pre ? 'The pre-game runs to the pick, when each civ is chosen' : 'The main game: the pre-game is over';
+  $('phase').title = pre
+    ? 'The pre-game runs to the pick, when each civ is chosen'
+    : v.over
+      ? 'The game is over: the winner is named here, and Game → Standing so far shows how it went'
+      : 'The main game: the pre-game is over';
   $('counts').hidden = !pre;
   $('chips').hidden = pre;
   if (!pre) chips(v, model, selectedCiv);

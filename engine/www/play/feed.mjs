@@ -5,7 +5,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open } from '../play.mjs';
+import { open, raiseArmy } from '../play.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -29,6 +29,7 @@ try {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');
   await page.until("document.body.dataset.phase === 'main'");
+  await raiseArmy(page);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   for (let turn = 0; turn < 6; turn++) await page.button('End turn');
@@ -90,7 +91,9 @@ try {
   await page.eval("document.querySelector('#alerts li button').click()");
   await page.eval(frames);
   const after = await alertTexts();
-  need(after.length === later.length - 1, `a click on an alert takes it out of the box (${later.length} → ${after.length})`);
+  // A click sees the alert and, by selecting its subject, every alert about that subject (feed.js `see`): so the
+  // alert clicked is gone, and the others about its subject with it.
+  need(!after.includes(later[0]) && after.length < later.length, `a click on an alert takes it out of the box (${later.length} → ${after.length})`);
   await page.shot(join(out, 'alerts.png'), 1);
 
   // The panel's reasons: a clan with the most, and the camp.

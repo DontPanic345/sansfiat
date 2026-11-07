@@ -10,9 +10,10 @@ use crate::civs::{alive, tile_civ};
 use crate::claim;
 use crate::data::{JUDGE, TERRAIN, UNIT};
 use crate::events::EventKind;
+use crate::over::Why;
 use crate::stats;
 use crate::units::{self, UnitKind};
-use crate::world::World;
+use crate::world::{Phase, World};
 
 /// The civ with the most Standing, the lowest id on a tie.
 fn leader_of(standing: &BTreeMap<u32, f64>) -> Option<u32> {
@@ -23,6 +24,13 @@ fn leader_of(standing: &BTreeMap<u32, f64>) -> Option<u32> {
         }
     }
     best.map(|(id, _)| id)
+}
+
+/// The place of civ `led` in Standing `s`: 1 for the largest share; civs with equal shares share the
+/// better place.
+pub fn rank_of(s: &BTreeMap<u32, f64>, led: u32) -> usize {
+    let mine = s.get(&led).copied().unwrap_or(0.0);
+    1 + s.values().filter(|&&v| v > mine).count()
 }
 
 /// The spread: the most Standing minus the least; 0 with no civs.
@@ -113,6 +121,8 @@ pub struct Watch {
     clans_joined: u32,
     /// Tiles of claims lost to a rival's unit (`ClaimTaken`).
     claim_taken: u32,
+    /// Capitals taken after the pick (`CapitalFell`).
+    capitals_fallen: u32,
     /// Each civ's Standing in its parts at +200.
     parts_200: Option<BTreeMap<u32, stats::Parts>>,
     /// Each civ's land at +200.
@@ -145,6 +155,7 @@ impl Watch {
             clans_left: 0,
             clans_joined: 0,
             claim_taken: 0,
+            capitals_fallen: 0,
             parts_200: None,
             civs_200: Vec::new(),
             economy: Economy::default(),
@@ -188,12 +199,13 @@ impl Watch {
                 EventKind::ClanLeft => self.clans_left += 1,
                 EventKind::ClanJoined => self.clans_joined += 1,
                 EventKind::ClaimTaken => self.claim_taken += e.amount.unwrap_or(0.0) as u32,
+                EventKind::CapitalFell => self.capitals_fallen += 1,
                 _ => {}
             }
         }
         self.event_mark = w.events.len();
 
-        let pack = units::pack_cap(UNIT.start as f64);
+        let pack = units::pack_cap(UNIT.first as f64);
         for c in alive(w) {
             let store: f64 = c.store.iter().sum();
             let e = &mut self.economy;
@@ -361,6 +373,36 @@ impl Watch {
             },
             fight: FightScores::of(w),
             economy: self.economy.scores(),
+            end: self.end_scores(w),
+        }
+    }
+
+    /// The end as the world reads it now: the game's `Over` if it has ended, and each civ's rank at
+    /// the end (at `Over`'s turn), or at the watch's last turn while the game goes on.
+    fn end_scores(&self, w: &World) -> EndScores {
+        let over = match w.phase {
+            Phase::Over(o) => Some(EndOver {
+                why: match o.why {
+                    Why::Conquest => "conquest",
+                    Why::Limit => "limit",
+                    Why::Fell { .. } => "fell",
+                }
+                .to_string(),
+                winner: o.winner,
+                turn: o.turn,
+            }),
+            _ => None,
+        };
+        let early = matches!(w.phase, Phase::Over(o) if o.why != Why::Limit);
+        let at = over.as_ref().map_or(self.turns(), |o| o.turn) as usize;
+        let ranks: BTreeMap<u32, usize> =
+            w.standing.get(at).map(|s| s.keys().map(|&id| (id, rank_of(s, id))).collect()).unwrap_or_default();
+        EndScores {
+            led_rank: w.player.and_then(|p| ranks.get(&p).copied()),
+            over,
+            early,
+            capitals_fallen: self.capitals_fallen,
+            ranks,
         }
     }
 }
@@ -376,6 +418,31 @@ pub struct Scores {
     /// What fighting cost and moved, read from the civs' counters at the end of the watch.
     pub fight: FightScores,
     pub economy: EconomyScores,
+    pub end: EndScores,
+}
+
+/// How the game ended, if it has: the end's `why` (`conquest`, `limit` or `fell`), its winner and the
+/// turns since the pick it came at.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct EndOver {
+    pub why: String,
+    pub winner: u32,
+    pub turn: u32,
+}
+
+/// The end group: how a game ended and where each civ stood in Standing at the end.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct EndScores {
+    /// The end, `None` while the game goes on.
+    pub over: Option<EndOver>,
+    /// Over before the limit: by conquest or by the led civ's fall.
+    pub early: bool,
+    /// Capitals taken after the pick.
+    pub capitals_fallen: u32,
+    /// Each civ's rank in Standing (1 the largest) at the end, or at the watch's last turn.
+    pub ranks: BTreeMap<u32, usize>,
+    /// The led civ's rank, `None` when no civ is led (watching).
+    pub led_rank: Option<usize>,
 }
 
 /// The economy group: the civs' stores, the levy that fills them, the camps and the guards, read
@@ -386,7 +453,7 @@ pub struct EconomyScores {
     pub store_mean: f64,
     /// The most food any civ's store held after a turn.
     pub store_max: f64,
-    /// The civ-turns on which a store held at least a pack's worth, `units::pack_cap(UNIT.start)`.
+    /// The civ-turns on which a store held at least a pack's worth, `units::pack_cap(UNIT.first)`.
     pub turns_at_pack: u32,
     /// The food the market levy paid a civ in its turn, mean over civ-turns (0 on a turn with none).
     pub levy_per_turn: f64,

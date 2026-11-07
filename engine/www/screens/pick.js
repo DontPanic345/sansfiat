@@ -17,8 +17,8 @@ export class Pick {
     });
   }
 
-  /** Shows the cards while the phase is `choose`; hides them otherwise. */
-  update(sim, phase) {
+  /** Shows the cards while the phase is `choose`, at the world's `turn`; hides them otherwise. */
+  update(sim, phase, turn) {
     const el = $('pick');
     el.hidden = phase !== 'choose';
     if (el.hidden) {
@@ -36,6 +36,7 @@ export class Pick {
 <div>${c.clans} clan${c.clans === 1 ? '' : 's'} · ${Math.round(c.people * 10) / 10} people · ${c.hearths} hearth${c.hearths === 1 ? '' : 's'}</div>
 <div class="dim">${terrain || 'no land'}</div>
 <div class="dim">${rival}${c.rival_by_land ? '' : ' · no land route to a rival'}</div>
+<div class="dim">The game ends after ${c.limit} turn${c.limit === 1 ? '' : 's'}, at turn ${turn + c.limit}</div>
 <div class="buttons"><button type="button" data-lead="${c.civ}">Lead ${c.name}</button><button type="button" data-show="${c.civ}">Show</button></div></div>`;
     });
     el.innerHTML = `<h2>Choose your civ</h2>${rows.join('')}<div class="buttons"><button type="button" data-watch="1">Watch all three</button></div>`;

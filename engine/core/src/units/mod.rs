@@ -28,7 +28,7 @@ use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::steps;
 use crate::market::{add, take, total, Basket};
-use crate::world::{Phase, World};
+use crate::world::World;
 
 pub use ai::{ai, guard_order, post};
 pub use camp::{zone_cap, CampState};
@@ -473,15 +473,23 @@ fn join(w: &mut World, civ: u32, k: f64, pack: Basket, fighter: Fighter, into: O
     id
 }
 
-/// Founding's camp: `UNIT.start` warriors from the civ's biggest clans, one each (round again when
-/// there are fewer clans), at the capital, their packs from the store. No clan to give, no camp.
-pub fn raise_at_founding(w: &mut World, civ: u32) {
-    let k = take_people(w, civ, UNIT.start);
-    if k == 0.0 {
-        return;
-    }
-    let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
-    join(w, civ, k, pack, Fighter::Warriors, None);
+/// Makes an empty camp at `civ`'s capital, with no people and no pack, for a staged army to be
+/// placed in (`Stage::army`): as `join` makes one, but takes nobody from the clans and emits nothing.
+pub(crate) fn make_camp(w: &mut World, civ: u32) -> u32 {
+    let capital = w.civs[&civ].capital;
+    let id = w.next_id;
+    w.next_id += 1;
+    let unit = Unit {
+        id,
+        civ,
+        actor: Actor::new(capital, 0.0),
+        banked: 0.0,
+        hungry: 0,
+        state: UnitState::Camp(CampState::new(capital, [0.0; 2])),
+    };
+    w.units.insert(id, unit);
+    w.civs.get_mut(&civ).unwrap().army.raised += 1;
+    id
 }
 
 /// Takes `n` people from the civ's clans, one from each in turn, biggest first; round again when
@@ -770,7 +778,7 @@ pub fn step(w: &mut World) {
 
 /// The civ the player leads, or why there is none.
 pub fn leader(w: &World) -> Result<u32, String> {
-    if w.phase != Phase::Main {
+    if !w.phase.playing() {
         return Err("the game has not begun".to_string());
     }
     let civ = w.player.ok_or_else(|| "you're watching: you lead no civ".to_string())?;

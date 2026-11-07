@@ -48,10 +48,9 @@ not one the design solves for them.
 
 ## Winning
 
-Not decided yet. These are the usual options, held equally open:
+A civ loses when its capital falls. The game is won by the last capital standing, or, when the
+turn limit comes, by the civ with the most Standing. The ways that may come later:
 
-- **Conquest:** the last civ standing wins.
-- **Time limit:** after a set number of turns, the civ with the most people, land or goods wins.
 - **Influence:** most of the world's people choose to join your civ.
 - **Great work:** you are the first to finish a project that takes the world's labour, such as a
   temple, a city wall or a monument.
@@ -78,3 +77,6 @@ same rule: nothing is free, and every abstraction has to justify itself. It need
 
 - A civ's Standing is its share of the world's people: the people of its clans and of its units, over everyone's. Raising an army neither wins nor loses Standing. (#101)
 - The lead changes only when another civ is ahead by more than half a point of Standing, so two civs neck and neck don't trade the lead on noise. (#101)
+- The turn limit counts turns after the pick: 200 on a small map, 250 on a medium one and 300 on a large one. (#152)
+- A game ends when the led civ's capital falls, when one capital is left standing, or at the turn limit. When the led civ falls, or at the limit, the winner is the standing civ with the most Standing, and a tie goes to the older civ. (#152)
+- After the end the world runs on with every rule and the AI keeps playing; the result never changes, and the player's orders are refused with "the game is over". A player whose capital fell may keep watching. (#152)

@@ -2,8 +2,9 @@
 //! by `play`. Every number is read off the world; nothing here changes it.
 
 use engine::data::{Fighter, CIV, LEANING, UNIT};
+use engine::over::{self, Why};
 use engine::units::{self, Unit, UnitKind};
-use engine::{civs, claim, markets, stats, Action, Clan, Event, Order, World, FOODS};
+use engine::{civs, claim, markets, stats, Action, Clan, Event, Order, Phase, World, FOODS};
 
 /// The largest clans the view names.
 const CLANS_NAMED: usize = 5;
@@ -45,11 +46,23 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     let Some(me) = w.player else { return "you lead no civ\n".to_string() };
     let mut out = String::new();
     let pick = w.picked.unwrap_or(w.turn);
-    out += &format!(
-        "turn {}, {} turns since the pick at {pick}, phase main, leading civ {me}\n",
-        w.turn,
-        w.turn.saturating_sub(pick)
-    );
+    out += &match w.phase {
+        Phase::Over(o) => {
+            let winner = w.civs[&o.winner].name.as_str();
+            let why = match o.why {
+                Why::Conquest => "the last capital standing".to_string(),
+                Why::Limit => "the highest Standing at the turn limit".to_string(),
+                Why::Fell { by } => format!("the highest Standing once your capital fell to {}", w.civs[&by].name),
+            };
+            format!("turn {}, the game is over: {winner} won, {why}, turn +{}, leading civ {me}\n", w.turn, o.turn)
+        }
+        _ => format!(
+            "turn {}, {} of {} turns since the pick at {pick}, phase main, leading civ {me}\n",
+            w.turn,
+            w.turn.saturating_sub(pick),
+            over::limit(w)
+        ),
+    };
 
     out += "standing, share of the people:\n";
     for (rank, (id, share)) in ranked(w).into_iter().enumerate() {
@@ -350,7 +363,9 @@ fn legal(w: &World, me: u32) -> String {
     if w.validate(&keep).is_ok() {
         out += "  {\"type\":\"setKeep\",\"food\":<0 or more, or null for the camp's full pack>}\n";
     }
-    out += &format!("  {{\"type\":\"setGift\",\"food\":<0 to {:.0}>}}\n", CIV.store_cap);
+    if w.validate(&Action::SetGift { food: 0.0 }).is_ok() {
+        out += &format!("  {{\"type\":\"setGift\",\"food\":<0 to {:.0}>}}\n", CIV.store_cap);
+    }
     out += "  end [N]: end N turns (1 by default)\n";
     out
 }

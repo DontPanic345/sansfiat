@@ -1,6 +1,7 @@
-// The end screen: Standing over the game as a line per civ in its colour (the player's thicker), from the
-// page's Standing history (model.js). Until R adds a finished phase, the header says the game goes on;
-// R fills `over` with {winner, why}. Play on returns to the game; New game goes to the start screen.
+// The end screen: the result of the game, or how it stands before its end, in a header and a line under
+// it; then Standing over the game as a line per civ in its colour (the player's thicker), from the engine's
+// `standing` (`Sim.view()`), a fallen civ's line included. Play on returns to the game; New game goes to
+// the start screen.
 
 import { app } from '../app.js';
 
@@ -12,14 +13,40 @@ export function init() {
   $('end-new').onclick = () => app.show('start');
 }
 
-/** @param args {over: null | {winner, why}, history: [turn, {civ: standing}][], civs, player} */
-export function show({ over = null, history = [], civs = {}, player = null } = {}) {
-  const turn = history.length ? history[history.length - 1][0] : 0;
-  $('end-head').textContent = over ? `${over.winner}: ${over.why}` : `The game goes on: turn ${turn}`;
-  $('end-chart').innerHTML = chart(history, civs, player);
+/** @param args {view}: the game's `Sim.view()`, parsed. Shows its result, or how it stands, and its Standing. */
+export function show({ view } = {}) {
+  const { head, line } = verdict(view);
+  $('end-head').textContent = head;
+  $('end-line').textContent = line;
+  $('end-chart').innerHTML = chart(view.standing ?? [], view.civs ?? {}, view.player ?? null);
 }
 
 export function hide() {}
+
+/** The header and the line under it: before the end, the turn against the limit and who leads; at the end,
+ *  won, lost or watched, and how (`over.why`), in the second person for the led civ and the third otherwise. */
+export function verdict(v) {
+  if (!v.limit) return { head: 'Not yet picked', line: 'The game has no turns since the pick yet.' };
+  const name = (id) => v.civs[id]?.name ?? 'No one';
+  if (!v.over) {
+    const ranked = Object.values(v.civs).sort((a, b) => b.standing - a.standing || a.id - b.id);
+    const lead = ranked.length && ranked[0].standing > 0 ? `${ranked[0].name} leads` : 'No civ leads yet';
+    return { head: `Turn ${v.turn} of ${v.limit.at}`, line: lead };
+  }
+  const { winner, why, by, turn } = v.over;
+  const led = v.player != null;
+  const won = led && winner === v.player;
+  const head = won ? 'You won' : led ? 'You lost' : `${name(winner)} won`;
+  const mine = won ? 'Yours' : `${name(winner)}'s`;
+  const line = {
+    fell: `Your capital fell to ${name(by)} on turn ${turn}`,
+    conquest: `${mine} is the last capital standing, on turn ${turn}`,
+    limit: won
+      ? `The highest Standing when the turn limit came, on turn ${turn}`
+      : `${name(winner)} had the highest Standing when the turn limit came, on turn ${turn}`,
+  }[why];
+  return { head, line };
+}
 
 /** The Standing chart: turns across, Standing up (to the next of 10, 25, 50 or 100% over the highest), a line
  *  per civ, each one's last value labelled at the right edge, the labels kept apart. One turn is a dot. */

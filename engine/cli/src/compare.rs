@@ -14,7 +14,8 @@ const NOT_METRICS: [&str; 3] = ["seconds", "floor", "panics"];
 
 /// The groups, in the order the table prints them. A metric in any other group comes after them,
 /// in name order.
-const GROUPS: [&str; 9] = ["standing", "doubt", "decisions", "motion", "land", "economy", "armies", "fight", "health"];
+const GROUPS: [&str; 10] =
+    ["standing", "doubt", "decisions", "motion", "land", "economy", "armies", "fight", "end", "health"];
 
 /// Every numeric leaf of a report, by its path (`a.b.c`). An array's element is keyed by its `id`,
 /// or by `size seed` for a map, else by its index. Booleans and strings are not metrics.

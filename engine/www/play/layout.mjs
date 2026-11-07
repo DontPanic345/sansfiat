@@ -8,7 +8,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open, SIZES } from '../play.mjs';
+import { open, raiseArmy, SIZES } from '../play.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -100,6 +100,7 @@ for (const size of Object.keys(SIZES)) {
     await page.until("document.body.dataset.phase === 'choose'");
     await page.button('Lead ');
     await page.until("document.body.dataset.phase === 'main'");
+    await raiseArmy(page);
     const me = await page.eval('game.view().player');
     const cap = await page.eval(`game.view().civs[${me}].capital`);
     const camp = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp').id`);
@@ -135,6 +136,7 @@ for (const size of Object.keys(SIZES)) {
       await page.until("document.body.dataset.phase === 'choose'", 300_000);
       await page.button('Lead ');
       await page.until("document.body.dataset.phase === 'main'");
+      await raiseArmy(page);
       await page.eval('game.map.fit()');
       await page.eval(frames);
       await page.shot(join(out, 'laptop-large-fit.png'), s);

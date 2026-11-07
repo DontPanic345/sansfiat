@@ -261,8 +261,8 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     // The bigger clan is the civ, its home the capital.
     assert_eq!((red.name.as_str(), red.capital, red.q, red.r), ("Red", at_big(-4, 1), -4, 1));
     assert_eq!(w.civs.values().next().unwrap().clan, a);
-    // 14.5 people, less the three the camp, the two the scout and the three the guard took from the clans.
-    assert_eq!((red.clans, red.people, red.hearths), (2, 6.5, 1));
+    // 14.5 people, less the two the scout took from the clans and the three the guard `hold_land` raised.
+    assert_eq!((red.clans, red.people, red.hearths), (2, 9.5, 1));
     let names: Vec<&str> = red.terrain.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(names, ["plains", "forest", "hills"], "ties by terrain index");
     // Of the 19 land tiles: 15 plains, 2 forest, 2 hills (the clan's tile beyond is not Red's land now).

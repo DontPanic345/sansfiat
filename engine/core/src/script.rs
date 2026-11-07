@@ -1,7 +1,7 @@
 //! The scripted game: the engine's second player, run by `sansfiat digest --lead` and by the wasm
 //! build's `Sim::lead_orders` (`cross-build.mjs` checks the two agree).
 
-use crate::data::{Fighter, FOREST, HILLS, LEANING};
+use crate::data::{Fighter, FOREST, HILLS, LEANING, UNIT};
 use crate::world::{Action, Phase};
 use crate::{land, units, Order, World};
 
@@ -10,7 +10,8 @@ use crate::{land, units, Order, World};
 /// the unit it names.
 ///
 /// 1. At `Choose`: lead the lowest civ id.
-/// 2. In `Main`, when `n > 0 && n.is_multiple_of(20)`: `Order::Raise { n: 1, kind: UnitKind::Camp, into }` into its army, if it has one (a refusal is ignored).
+/// 2. In `Main`, at `n == 0`, if it has no camp: `Order::Raise { n: UNIT.first, kind: UnitKind::Camp }`, its
+///    first army (a refusal is ignored). When `n > 0 && n.is_multiple_of(20)`: `Order::Raise { n: 1, kind: UnitKind::Camp, into }` into its army, if it has one (a refusal is ignored).
 /// 3. When `n == 30`: `Order::Switches` both off; when `n == 40`: both on. When `n > 0 &&
 ///    n.is_multiple_of(25)`: `Order::Resupply` (a refusal is ignored).
 /// 4. If the player's camp has no `dest`: `Order::Move` to the first accepted of the other civs'
@@ -44,6 +45,14 @@ impl Lead {
         let order = |order: Order| Action::Order { civ: me, order };
         let camp = |w: &World| units::camp(w, me).map(|u| u.id);
         let scout = |w: &World| units::scout(w, me).map(|u| u.id);
+        if n == 0 && camp(w).is_none() {
+            let _ = w.act(order(Order::Raise {
+                n: UNIT.first,
+                kind: units::UnitKind::Camp,
+                fighter: Fighter::Warriors,
+                into: None,
+            }));
+        }
         if n > 0 && n.is_multiple_of(20) {
             let into = camp(w);
             let _ = w.act(order(Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Fighter::Warriors, into }));

@@ -71,3 +71,6 @@ says.
 - A civ keeps a turn of its guard's food in its store, out of gifts. (#102)
 - A civ may have any number of armies, of warriors and archers. Raising names a kind and a place: a new army at the capital, or into an army. Disbanding names a kind, or takes all kinds in proportion. (#104)
 - A civ may raise a scout at any time, and have any number, each with its pack filled from the store. (#104)
+- A civ starts with its scout alone: no army and no guard. The scout's pack comes from the store, and the rest of the boon year's food stays there. (#152)
+- Until the AI learns to play for the end, it raises no army; it still claims and raises its guard. (#152)
+- Winning and losing are in: a civ loses when its capital falls (`vision.md`, Winning). (#152)

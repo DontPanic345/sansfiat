@@ -22,6 +22,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | Path | What |
 | --- | --- |
 | `core/src/world.rs` | `World`, `phase`, `Action`, the `TURN` steps, `act`/`run`/`save`/`replay`, reasons, alerts, `SAVE_VERSION`. |
+| `core/src/over.rs` | The end: `Phase::Over` (winner, `Why`, turn), the `over` step, `limit` and `ends_at`. A game ends as a phase; the world runs on after it. |
 | `core/src/events.rs` | `Event`, `EventKind` and their wording. |
 | `core/src/data.rs` | Every rule's number and `Config`; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs. |
@@ -38,15 +39,15 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/script.rs` | `Lead`, the scripted game: the engine's second player. |
 | `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map (the `map` text, or a retro pick, cached), layers, placements, orders and reads; `StageSpec` is its data form. `maptext.rs` reads the map's text (`map::parse`). A staged world is not a save. |
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
-| `core/src/judge.rs` | `Watch`: a game scored from its pick in the score groups. Reads the world only. |
+| `core/src/judge.rs` | `Watch`: a game scored from its pick in the score groups, the end group included. Reads the world only. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
-| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge) and `game_judge.rs` (the file's judge), `view.rs` (the text view, under 80 lines), `story.rs` (the scripted stories of war). |
+| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view, under 80 lines), `story.rs` (the scripted stories of war: skirmish, stack, surrender, conquest). |
 | `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the order form; `Sim.stage` builds a staged game (`staged()` says so). |
 | `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js` and `panels.js` (a selection's shape and its buttons), `model.js` (the view model), `map/` (`MapView` and one file per layer), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim` (`Sim.stage`): the panel shapes as data, and Disband all as the page presses it; the panel context both share. |
 | `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`. |
-| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout, civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `all.mjs` runs them. |
+| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout, civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
 
 ## Adding a mechanic
 
@@ -64,6 +65,8 @@ node www/play/all.mjs                        # every touch-point script; check.s
 - Reasons and alerts are derived (`#[serde(skip)]`): a rule writes one `w.note` where it acts.
 - A change that moves `stats::digest` bumps `SAVE_VERSION` and the pins in `cli/tests/save.rs`.
 - The world changes only through `act` and the AI's orders; a save replays to an identical world.
+- The end is a phase: only the `over` step sets `Phase::Over`, and the world runs on in it (`playing()`);
+  `validate` refuses the player's orders there.
 - A rule's proof is a stage (`core/src/stage.rs`), and a button's is `www/play/buttons.mjs`.
 - All randomness goes through `rng::rand`; `exp`, `ln`, `powf` go through `libm`, so native and wasm
   give the same digest every turn (`./cross-build.sh`).

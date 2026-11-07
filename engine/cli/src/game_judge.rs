@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use engine::data::JUDGE;
-use engine::judge::{civ_lands, CivLand, Scores, Watch};
+use engine::judge::{civ_lands, rank_of, CivLand, EndScores, Scores, Watch};
 use engine::world::SAVE_VERSION;
 use engine::{Action, Config, Save, World};
 use serde::Serialize;
@@ -32,7 +32,8 @@ struct GameJudged {
     player: Player,
 }
 
-/// The led civ's Standing and rank at the end, in the game, in the control and in the idle control.
+/// The led civ's Standing and rank at the end, in the game, in the control and in the idle control,
+/// and how each ended.
 #[derive(Serialize)]
 struct Ending {
     game: f64,
@@ -41,6 +42,27 @@ struct Ending {
     control_rank: usize,
     idle: f64,
     idle_rank: usize,
+    game_end: EndAt,
+    control_end: EndAt,
+    idle_end: EndAt,
+}
+
+/// How a run ended: `why +turn` (`fell +88`, `limit +200`), or `goes on +turn` when it had not ended by
+/// the game's turns; and the led civ's rank at the end (`ranks` in the run's end group).
+#[derive(Serialize)]
+struct EndAt {
+    how: String,
+    rank: Option<usize>,
+}
+
+impl EndAt {
+    fn of(e: &EndScores, led: u32, turns: u32) -> EndAt {
+        let how = match &e.over {
+            Some(o) => format!("{} +{}", o.why, o.turn),
+            None => format!("goes on +{turns}"),
+        };
+        EndAt { how, rank: e.ranks.get(&led).copied() }
+    }
 }
 
 /// The led civ's land at the end, in the game and in the control.
@@ -60,12 +82,6 @@ struct Player {
     longest_idle: u32,
     refused: Vec<Entry>,
     noted: usize,
-}
-
-/// The place of civ `led` in Standing `s`: 1 for the largest share.
-fn rank_of(s: &BTreeMap<u32, f64>, led: u32) -> usize {
-    let mine = s.get(&led).copied().unwrap_or(0.0);
-    1 + s.values().filter(|&&v| v > mine).count()
 }
 
 /// The idle control: the same config to the same pick, the led civ `led` chosen there, and `EndTurn`
@@ -158,6 +174,11 @@ pub(crate) fn judge_game(args: &[String]) -> Result<(), String> {
     let game_scores = wt.scores(&w, &[led]);
     let control_scores = cwatch.scores(&control, &[led]);
     let idle_scores = idle_watch.scores(&idle_w, &[led]);
+    let (game_end, control_end, idle_end) = (
+        EndAt::of(&game_scores.end, led, n),
+        EndAt::of(&control_scores.end, led, n),
+        EndAt::of(&idle_scores.end, led, n),
+    );
     let g_end = wt.standing_at(n).expect("scored to the end");
     let c_end = cwatch.standing_at(n).expect("scored to the end");
     let i_end = idle_watch.standing_at(n).expect("scored to the end");
@@ -180,6 +201,9 @@ pub(crate) fn judge_game(args: &[String]) -> Result<(), String> {
             control_rank: rank_of(c_end, led),
             idle: i_end.get(&led).copied().unwrap_or(0.0),
             idle_rank: rank_of(i_end, led),
+            game_end,
+            control_end,
+            idle_end,
         },
         land: Lands { game: land_of(&w), control: land_of(&control) },
         player: Player {
@@ -222,6 +246,16 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
         s.control_rank,
         s.idle * 100.0,
         s.idle_rank
+    );
+    let rank = |r: Option<usize>| r.map_or("-".to_string(), |r| r.to_string());
+    println!(
+        "end (game / control / idle): {} rank {} / {} rank {} / {} rank {}",
+        s.game_end.how,
+        rank(s.game_end.rank),
+        s.control_end.how,
+        rank(s.control_end.rank),
+        s.idle_end.how,
+        rank(s.idle_end.rank)
     );
     let (l, c) = (&j.land.game, &j.land.control);
     println!(

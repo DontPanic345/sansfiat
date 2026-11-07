@@ -318,7 +318,14 @@ const CASES = {
     need(await press(label), `${label} is pressed on the ${kind} (it is greyed on the led civ's own land)`);
     await endTurn();
     const f1 = await gained(kind, 'foraged');
-    need(f1 > f0 + 1e-9, `Forage brings food to the ${kind}: ${kind === 'camp' ? "the civ's foraged" : "the scout's pack"} rose (${f0.toFixed(2)} → ${f1.toFixed(2)})`);
+    if (kind === 'camp') {
+      need(f1 > f0 + 1e-9, `Forage brings food to the camp: the civ's foraged rose (${f0.toFixed(2)} → ${f1.toFixed(2)})`);
+    } else {
+      // A scout's pack starts full at the pick (the store fills one pack, a scout's cap), so Forage has no room to
+      // fill and the turn's eating is what shows: the order is accepted and the pack is what the turn left.
+      const eaten = f0 - f1;
+      need(f1 <= f0 + 1e-9 && eaten >= 0 && eaten <= 2 + 1e-9, `Forage on the full scout is accepted and its pack falls only by what it eats (${f0.toFixed(2)} → ${f1.toFixed(2)})`);
+    }
   },
   Pillage: async () => {
     // The camp stands on the rival's plains beside its capital (P), the rival's claim. What this staged map can

@@ -161,6 +161,7 @@ fn a_spec_round_trips_and_builds_the_builders_world() {
         people: Some(14.0),
         lead: Some(0),
         armies: vec![ArmySpec { civ: 0, at: TileRef::Tile { tile: at(12, -4, 0) }, people: 4.0 }],
+        limit: None,
     };
     let json = serde_json::to_string(&spec).unwrap();
     let back: StageSpec = serde_json::from_str(&json).unwrap();
@@ -172,6 +173,10 @@ fn a_spec_round_trips_and_builds_the_builders_world() {
     let mut built = Stage::parse(&text).unwrap();
     built.marks(spec.marks.as_deref().unwrap()).unwrap();
     let ids = built.civs(&[built.mark('A'), built.mark('B')], 14.0);
+    // As `from_spec` gives each civ its guard (`GUARD.first`).
+    for &id in &ids {
+        engine::units::guard::raise(built.world_mut(), id, engine::data::GUARD.first);
+    }
     built.lead(ids[0]).unwrap();
     built.army(ids[0], at(12, -4, 0), 4.0);
     assert_eq!(stats::digest(from.world()), stats::digest(built.world()));

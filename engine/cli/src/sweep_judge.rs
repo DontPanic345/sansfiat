@@ -7,18 +7,23 @@ use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::time::Instant;
 
-use engine::data::{Claims, JUDGE};
-use engine::judge::{CivLand, Scores, Watch};
+use engine::data::{Claims, END, JUDGE};
+use engine::judge::{CivLand, EndScores, Scores, Watch};
 use engine::rng;
 use engine::stats::Trails;
-use engine::{stats, Action, Config, World};
+use engine::{stats, Action, Config, Phase, World};
 use serde::Serialize;
 
 use crate::compare::flatten;
 use crate::retro::{kept_camp, retro_maps, to_pick};
+use crate::sweep_text::print_text;
 
-/// The turns past the pick each map is run for.
+/// The turns past the pick each map is run for, at least; a run goes on until it has ended.
 const AFTER: u32 = 200;
+
+/// The turns past the largest limit a run may go before it has ended: a game that does not end is a
+/// failure, so the sweep panics (a `Panicked` map) rather than run on.
+const BACKSTOP: u32 = 100;
 
 /// The nulls `--floor` runs when `--nulls` is not given: the sweep once more with one harmless
 /// difference at the pick.
@@ -27,149 +32,166 @@ pub(crate) const NULLS: u32 = 1;
 /// One map's health: its pre-game and the digests of its two army runs. These are bugs whatever
 /// the design says.
 #[derive(Clone, Debug, Serialize)]
-struct Health {
-    pregame_by_centres: u32,
-    digest_mismatches: u32,
+pub(crate) struct Health {
+    pub(crate) pregame_by_centres: u32,
+    pub(crate) digest_mismatches: u32,
 }
 
 /// One map's armies: its camps, what they cost their side, and the world's people beside the
 /// `--no-army` control. These are measures, not bugs: the design decides what they should be.
 #[derive(Clone, Debug, Serialize)]
-struct Armies {
-    camps_kept: u32,
-    camps_of: u32,
-    warriors_starved: u32,
-    camps_lost: u32,
-    people_at_200: f64,
-    control_people_at_200: f64,
+pub(crate) struct Armies {
+    pub(crate) camps_kept: u32,
+    pub(crate) camps_of: u32,
+    pub(crate) warriors_starved: u32,
+    pub(crate) camps_lost: u32,
+    pub(crate) people_at_200: f64,
+    pub(crate) control_people_at_200: f64,
 }
 
 /// One civ's gain from claiming alone on a map (`--solo`): its Standing at +200 when only it claims,
 /// less its Standing at +200 in the no-claims control. `clans` and `land` are the two parts of that
 /// gain: its clans' and units' people, and the unaligned people on its held land.
 #[derive(Clone, Debug, Serialize)]
-struct SoloGain {
-    civ: u32,
-    gain: f64,
-    clans: f64,
-    land: f64,
+pub(crate) struct SoloGain {
+    pub(crate) civ: u32,
+    pub(crate) gain: f64,
+    pub(crate) clans: f64,
+    pub(crate) land: f64,
 }
 
 /// One map that was judged.
 #[derive(Clone, Debug, Serialize)]
-struct MapJudged {
-    size: String,
-    seed: u32,
-    pick: u32,
+pub(crate) struct MapJudged {
+    pub(crate) size: String,
+    pub(crate) seed: u32,
+    pub(crate) pick: u32,
     #[serde(flatten)]
-    scores: Scores,
+    pub(crate) scores: Scores,
     /// The same map with no civ claiming: the control the claims are read against.
-    no_claims: Scores,
+    pub(crate) no_claims: Scores,
     /// The same map with `Config.fight` off: the control the fight group is read against.
-    no_fight: Scores,
+    pub(crate) no_fight: Scores,
+    /// Each civ's name, for the text (the ids are not the names' places in `CIVS`).
+    #[serde(skip)]
+    pub(crate) names: BTreeMap<u32, String>,
     /// With `--solo`: each civ's gain from claiming alone, in id order.
-    solo: Option<Vec<SoloGain>>,
-    armies: Armies,
-    health: Health,
+    pub(crate) solo: Option<Vec<SoloGain>>,
+    pub(crate) armies: Armies,
+    pub(crate) health: Health,
 }
 
 /// A map whose run panicked: its map and the message.
 #[derive(Clone, Debug, Serialize)]
-struct Panicked {
-    size: String,
-    seed: u32,
-    message: String,
+pub(crate) struct Panicked {
+    pub(crate) size: String,
+    pub(crate) seed: u32,
+    pub(crate) message: String,
 }
 
 /// The sweep's totals, in groups.
 #[derive(Clone, Debug, Serialize)]
-struct Total {
-    standing: TotalStanding,
-    doubt: TotalDoubt,
-    decisions: TotalDecisions,
-    motion: TotalMotion,
-    land: TotalLand,
-    economy: TotalEconomy,
-    solo: Option<TotalSolo>,
-    armies: TotalArmies,
-    fight: TotalFight,
-    health: TotalHealth,
+pub(crate) struct Total {
+    pub(crate) standing: TotalStanding,
+    pub(crate) doubt: TotalDoubt,
+    pub(crate) decisions: TotalDecisions,
+    pub(crate) motion: TotalMotion,
+    pub(crate) land: TotalLand,
+    pub(crate) economy: TotalEconomy,
+    pub(crate) solo: Option<TotalSolo>,
+    pub(crate) armies: TotalArmies,
+    pub(crate) fight: TotalFight,
+    pub(crate) end: TotalEnd,
+    pub(crate) health: TotalHealth,
+}
+
+/// The end group over the maps: how many games ended before the limit, the mean turns to the end and
+/// the capitals taken after the pick, each beside the no-fight control's.
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct TotalEnd {
+    pub(crate) early: u32,
+    pub(crate) of: u32,
+    pub(crate) no_fight_early: u32,
+    pub(crate) turns_mean: f64,
+    pub(crate) no_fight_turns_mean: f64,
+    pub(crate) capitals_fallen: u32,
+    pub(crate) no_fight_capitals_fallen: u32,
 }
 
 /// The economy group over the maps: means over the maps of each map's means, and the largest over the
 /// maps of the two maxima.
 #[derive(Clone, Debug, Serialize)]
-struct TotalEconomy {
-    store_mean: f64,
-    store_max: f64,
-    turns_at_pack: f64,
-    levy_per_turn: f64,
-    largest_army: f64,
-    guard_mean: f64,
+pub(crate) struct TotalEconomy {
+    pub(crate) store_mean: f64,
+    pub(crate) store_max: f64,
+    pub(crate) turns_at_pack: f64,
+    pub(crate) levy_per_turn: f64,
+    pub(crate) largest_army: f64,
+    pub(crate) guard_mean: f64,
 }
 
 /// The fight group over the maps, beside the no-fight control's (which has none by construction).
 #[derive(Clone, Debug, Serialize)]
-struct TotalFight {
-    fallen: f64,
-    taken: u32,
-    surrendered: u32,
-    control_fallen: f64,
-    control_taken: u32,
-    control_surrendered: u32,
+pub(crate) struct TotalFight {
+    pub(crate) fallen: f64,
+    pub(crate) taken: u32,
+    pub(crate) surrendered: u32,
+    pub(crate) control_fallen: f64,
+    pub(crate) control_taken: u32,
+    pub(crate) control_surrendered: u32,
 }
 
 /// The land group over the maps: festivals summed, shares averaged over the maps that have one, and
 /// each civ's land at +200 (mean tiles and guard people per civ, over the maps).
 #[derive(Clone, Debug, Serialize)]
-struct TotalLand {
-    markets_pick: usize,
-    markets_200: usize,
-    trading_pick: f64,
-    trading_200: f64,
-    homes_trailed: (Option<f64>, Option<f64>),
-    worked_trailed: (Option<f64>, Option<f64>),
-    route_trailed: (Option<f64>, Option<f64>),
-    festival_changes_per_100: f64,
-    flips_per_100: f64,
-    claimed_200: Option<f64>,
-    held_200: Option<f64>,
-    guard_200: Option<f64>,
+pub(crate) struct TotalLand {
+    pub(crate) markets_pick: usize,
+    pub(crate) markets_200: usize,
+    pub(crate) trading_pick: f64,
+    pub(crate) trading_200: f64,
+    pub(crate) homes_trailed: (Option<f64>, Option<f64>),
+    pub(crate) worked_trailed: (Option<f64>, Option<f64>),
+    pub(crate) route_trailed: (Option<f64>, Option<f64>),
+    pub(crate) festival_changes_per_100: f64,
+    pub(crate) flips_per_100: f64,
+    pub(crate) claimed_200: Option<f64>,
+    pub(crate) held_200: Option<f64>,
+    pub(crate) guard_200: Option<f64>,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct TotalStanding {
-    top_200: f64,
-    aligned_200: f64,
-    on_land_200: f64,
+pub(crate) struct TotalStanding {
+    pub(crate) top_200: f64,
+    pub(crate) aligned_200: f64,
+    pub(crate) on_land_200: f64,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct TotalDoubt {
-    lead_changes: u32,
-    maps_with_lead_change: u32,
-    spread_100: f64,
-    spread_200: f64,
-    swings: u32,
-    no_claims_lead_changes: u32,
-    no_claims_maps_with_lead_change: u32,
+pub(crate) struct TotalDoubt {
+    pub(crate) lead_changes: u32,
+    pub(crate) maps_with_lead_change: u32,
+    pub(crate) spread_100: f64,
+    pub(crate) spread_200: f64,
+    pub(crate) swings: u32,
+    pub(crate) no_claims_lead_changes: u32,
+    pub(crate) no_claims_maps_with_lead_change: u32,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct TotalDecisions {
-    ai_orders_per_100: f64,
-    by_kind: BTreeMap<String, f64>,
-    levers_repeated: f64,
+pub(crate) struct TotalDecisions {
+    pub(crate) ai_orders_per_100: f64,
+    pub(crate) by_kind: BTreeMap<String, f64>,
+    pub(crate) levers_repeated: f64,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct TotalMotion {
-    clans_changed: u32,
-    people_changed: f64,
-    land_changed: u32,
-    clans_left: u32,
-    clans_joined: u32,
-    claim_taken: u32,
+pub(crate) struct TotalMotion {
+    pub(crate) clans_changed: u32,
+    pub(crate) people_changed: f64,
+    pub(crate) land_changed: u32,
+    pub(crate) clans_left: u32,
+    pub(crate) clans_joined: u32,
+    pub(crate) claim_taken: u32,
 }
 
 fn total_economy(maps: &[MapJudged]) -> TotalEconomy {
@@ -191,44 +213,45 @@ fn total_economy(maps: &[MapJudged]) -> TotalEconomy {
 /// The solo gains over every civ of every map: the mean gain and its two parts, and the civs whose
 /// gain is above `JUDGE.solo_above`.
 #[derive(Clone, Debug, Serialize)]
-struct TotalSolo {
-    civs: usize,
-    gain: f64,
-    clans: f64,
-    land: f64,
-    above: u32,
+pub(crate) struct TotalSolo {
+    pub(crate) civs: usize,
+    pub(crate) gain: f64,
+    pub(crate) clans: f64,
+    pub(crate) land: f64,
+    pub(crate) above: u32,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct TotalArmies {
-    camps_kept: u32,
-    camps_of: u32,
-    warriors_starved: u32,
-    camps_lost: u32,
-    people_vs_control: f64,
+pub(crate) struct TotalArmies {
+    pub(crate) camps_kept: u32,
+    pub(crate) camps_of: u32,
+    pub(crate) warriors_starved: u32,
+    pub(crate) camps_lost: u32,
+    pub(crate) people_vs_control: f64,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct TotalHealth {
-    pregame_by_centres: u32,
-    panics: u32,
-    digest_mismatches: u32,
+pub(crate) struct TotalHealth {
+    pub(crate) pregame_by_centres: u32,
+    pub(crate) panics: u32,
+    pub(crate) digest_mismatches: u32,
 }
 
 /// The whole report, as `--json` prints it. `floor` is `--floor`'s: per flattened path, the largest
 /// change any null made to it.
 #[derive(Serialize)]
-struct Report {
-    maps: Vec<MapJudged>,
-    panics: Vec<Panicked>,
-    total: Total,
-    seconds: f64,
+pub(crate) struct Report {
+    pub(crate) maps: Vec<MapJudged>,
+    pub(crate) panics: Vec<Panicked>,
+    pub(crate) total: Total,
+    pub(crate) seconds: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
-    floor: Option<BTreeMap<String, f64>>,
+    pub(crate) floor: Option<BTreeMap<String, f64>>,
 }
 
-/// One run to the end: the world, and its watch. `draws` extra rolls of the world's rng are taken
-/// after the pick (the null perturbation; 0 is the base run).
+/// One run to the end: the world, and its watch. It plays until the game is `Over` and at least
+/// `AFTER` turns past the pick. `draws` extra rolls of the world's rng are taken after the pick (the
+/// null perturbation; 0 is the base run).
 fn played(config: Config, draws: u32) -> (World, Watch) {
     let mut w = to_pick(config);
     w.act(Action::ChooseCiv { civ: None }).expect("watching is always allowed at the pick");
@@ -236,7 +259,9 @@ fn played(config: Config, draws: u32) -> (World, Watch) {
         rng::rand(&mut w.rng);
     }
     let mut watch = Watch::new(&w);
-    for _ in 0..AFTER {
+    let backstop = END.limit.iter().map(|l| l.1).max().unwrap_or(0) + BACKSTOP;
+    while watch.turns() < AFTER || !matches!(w.phase, Phase::Over(_)) {
+        assert!(watch.turns() < backstop, "a game never ended: not over by {backstop} turns past the pick");
         w.run(1);
         watch.turn(&w);
     }
@@ -312,6 +337,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
         scores: watch.scores(&w, &civs),
         no_claims,
         no_fight: calm_watch.scores(&calm, &civs),
+        names: w.civs.iter().map(|(&id, c)| (id, c.name.clone())).collect(),
         solo,
         armies,
         health,
@@ -343,7 +369,7 @@ fn mean_some(v: &[Option<f64>]) -> Option<f64> {
 }
 
 /// Mean claimed tiles, held tiles and guard people per civ over `civs`.
-fn civ_means(civs: &[CivLand]) -> (f64, f64, f64) {
+pub(crate) fn civ_means(civs: &[CivLand]) -> (f64, f64, f64) {
     let n = civs.len().max(1) as f64;
     let sum = |f: fn(&CivLand) -> f64| civs.iter().map(f).sum::<f64>() / n;
     (sum(|c| c.claimed as f64), sum(|c| c.held as f64), sum(|c| c.guard))
@@ -374,6 +400,27 @@ fn total_land(maps: &[MapJudged]) -> TotalLand {
         claimed_200: mean_civs(|m| m.0),
         held_200: mean_civs(|m| m.1),
         guard_200: mean_civs(|m| m.2),
+    }
+}
+
+/// The end group over the maps: the games that ended before the limit, the mean turns to the end and
+/// the capitals taken, each beside the no-fight control's.
+fn total_end(maps: &[MapJudged]) -> TotalEnd {
+    let run: Vec<&EndScores> = maps.iter().map(|m| &m.scores.end).collect();
+    let calm: Vec<&EndScores> = maps.iter().map(|m| &m.no_fight.end).collect();
+    let turns = |v: &[&EndScores]| {
+        mean(&v.iter().filter_map(|e| e.over.as_ref()).map(|o| f64::from(o.turn)).collect::<Vec<_>>())
+    };
+    let early = |v: &[&EndScores]| v.iter().filter(|e| e.early).count() as u32;
+    let capitals = |v: &[&EndScores]| v.iter().map(|e| e.capitals_fallen).sum();
+    TotalEnd {
+        early: early(&run),
+        of: maps.len() as u32,
+        no_fight_early: early(&calm),
+        turns_mean: turns(&run),
+        no_fight_turns_mean: turns(&calm),
+        capitals_fallen: capitals(&run),
+        no_fight_capitals_fallen: capitals(&calm),
     }
 }
 
@@ -435,6 +482,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
         land: total_land(maps),
         economy: total_economy(maps),
         solo: total_solo(maps),
+        end: total_end(maps),
         armies: TotalArmies {
             camps_kept: sum(|m| m.armies.camps_kept),
             camps_of: sum(|m| m.armies.camps_of),
@@ -513,152 +561,4 @@ pub(crate) fn judge(json: bool, solo: bool, floor: Option<u32>) -> Result<(), St
         print_text(&report);
     }
     Ok(())
-}
-
-fn print_text(r: &Report) {
-    for p in &r.panics {
-        println!("PANIC {} seed {}: {}", p.size, p.seed, p.message);
-    }
-    for m in &r.maps {
-        let s = &m.scores;
-        let (a, h, l) = (&m.armies, &m.health, &s.land);
-        let f = |v: Option<f64>| v.map_or("-".to_string(), |v| format!("{v:.2}"));
-        println!(
-            "{:<6} seed {:>3} pick {:>3}  standing +200 top {:.3} aligned {:.3}  lead changes {}  spread +100 {:.3} +200 {:.3} swings {}  orders/100 {:.2} levers {:.1}  motion: clans changed {} people {:.1} land {}  armies: camps kept {}/{} starved {} lost {} people vs control {:.2}  land: markets {}/{} trading {:.2}/{:.2} homes {}/{} worked {}/{} route {}/{} changes {:.2} flips {:.2}  fight (control): fallen {:.2} ({:.2}) taken {} ({}) surrendered {} ({})  health: centres {} digests differ {}",
-            m.size,
-            m.seed,
-            m.pick,
-            s.standing.top_200.unwrap_or(0.0),
-            s.standing.aligned_200.unwrap_or(0.0),
-            s.doubt.lead_changes,
-            s.doubt.spread_100.unwrap_or(0.0),
-            s.doubt.spread_200.unwrap_or(0.0),
-            s.doubt.swings,
-            s.decisions.orders_per_100,
-            s.decisions.levers_repeated,
-            s.motion.clans_changed,
-            s.motion.people_changed,
-            s.motion.land_changed,
-            a.camps_kept,
-            a.camps_of,
-            a.warriors_starved,
-            a.camps_lost,
-            a.people_at_200 / a.control_people_at_200.max(f64::MIN_POSITIVE),
-            l.at_pick.markets,
-            l.at_200.as_ref().map_or(0, |t| t.markets),
-            l.at_pick.trading,
-            l.at_200.as_ref().map_or(0.0, |t| t.trading),
-            f(l.at_pick.homes_trailed),
-            f(l.at_200.as_ref().and_then(|t| t.homes_trailed)),
-            f(l.at_pick.worked_trailed),
-            f(l.at_200.as_ref().and_then(|t| t.worked_trailed)),
-            f(l.at_pick.route_trailed),
-            f(l.at_200.as_ref().and_then(|t| t.route_trailed)),
-            l.festival_changes_per_100,
-            l.flips_per_100,
-            s.fight.fallen,
-            m.no_fight.fight.fallen,
-            s.fight.taken,
-            m.no_fight.fight.taken,
-            s.fight.surrendered,
-            m.no_fight.fight.surrendered,
-            h.pregame_by_centres,
-            h.digest_mismatches,
-        );
-        let (claimed, held, guard) = civ_means(&l.civs_200);
-        println!(
-            "        claims: on land at +200 {:.3}; per civ at +200 claimed {claimed:.1}, held {held:.1}, guard {guard:.1}; no claims: lead changes {}, spread +200 {:.3}",
-            s.standing.on_land_200.unwrap_or(0.0),
-            m.no_claims.doubt.lead_changes,
-            m.no_claims.doubt.spread_200.unwrap_or(0.0),
-        );
-        if let Some(gains) = &m.solo {
-            let parts: Vec<String> = gains
-                .iter()
-                .map(|g| format!("civ {} {:+.4} (clans {:+.4}, land {:+.4})", g.civ, g.gain, g.clans, g.land))
-                .collect();
-            println!("        solo: {}", parts.join("; "));
-        }
-    }
-    let t = &r.total;
-    println!(
-        "total standing: top at +200 {:.3}, aligned at +200 {:.3}, on land at +200 {:.3}",
-        t.standing.top_200, t.standing.aligned_200, t.standing.on_land_200
-    );
-    println!(
-        "total doubt: lead changes {} on {} maps, spread +100 {:.3} +200 {:.3}, swings {}; no claims: lead changes {} on {} maps",
-        t.doubt.lead_changes,
-        t.doubt.maps_with_lead_change,
-        t.doubt.spread_100,
-        t.doubt.spread_200,
-        t.doubt.swings,
-        t.doubt.no_claims_lead_changes,
-        t.doubt.no_claims_maps_with_lead_change
-    );
-    let kinds: Vec<String> = t.decisions.by_kind.iter().map(|(k, v)| format!("{k} {v:.2}")).collect();
-    println!(
-        "total decisions: AI orders per 100 turns {:.2} ({}), levers repeated {:.2}",
-        t.decisions.ai_orders_per_100,
-        kinds.join(", "),
-        t.decisions.levers_repeated
-    );
-    println!(
-        "total motion: clans changed {}, people {:.1}, land tiles {}; clans left {}, joined {}; claimed tiles taken {}",
-        t.motion.clans_changed,
-        t.motion.people_changed,
-        t.motion.land_changed,
-        t.motion.clans_left,
-        t.motion.clans_joined,
-        t.motion.claim_taken
-    );
-    let l = &t.land;
-    let f = |v: Option<f64>| v.map_or("-".to_string(), |v| format!("{v:.2}"));
-    println!(
-        "total land: markets {} at the pick, {} at +200; trading {:.2}/{:.2}; homes trailed {}/{}; worked trailed {}/{}; route trailed {}/{} (pick/+200); festival changes {:.2} and flips {:.2} per 100 clan-turns; per civ at +200 claimed {}, held {}, guard {}",
-        l.markets_pick,
-        l.markets_200,
-        l.trading_pick,
-        l.trading_200,
-        f(l.homes_trailed.0),
-        f(l.homes_trailed.1),
-        f(l.worked_trailed.0),
-        f(l.worked_trailed.1),
-        f(l.route_trailed.0),
-        f(l.route_trailed.1),
-        l.festival_changes_per_100,
-        l.flips_per_100,
-        f(l.claimed_200),
-        f(l.held_200),
-        f(l.guard_200)
-    );
-    let e = &t.economy;
-    println!(
-        "total economy: store mean {:.2}, store max {:.2}, at pack {:.1} civ-turns a map, levy per turn {:.2}, largest army {:.1}, guard mean {:.2}",
-        e.store_mean, e.store_max, e.turns_at_pack, e.levy_per_turn, e.largest_army, e.guard_mean
-    );
-    if let Some(s) = &t.solo {
-        println!(
-            "total solo: gain {:+.4} (clans {:+.4}, land {:+.4}) per civ over {} civs; above {} of {} civs by more than {}",
-            s.gain, s.clans, s.land, s.civs, s.above, s.civs, JUDGE.solo_above
-        );
-    }
-    let a = &t.armies;
-    println!(
-        "total armies: camps kept {} of {}, warriors starved {}, camps lost {}, people vs control {:.3}",
-        a.camps_kept, a.camps_of, a.warriors_starved, a.camps_lost, a.people_vs_control
-    );
-    let fi = &t.fight;
-    println!(
-        "total fight (control, fighting off): people fallen {:.2} ({:.2}), tiles taken {} ({}), armies surrendered {} ({})",
-        fi.fallen, fi.control_fallen, fi.taken, fi.control_taken, fi.surrendered, fi.control_surrendered
-    );
-    let h = &t.health;
-    println!(
-        "total health: pre-games by centres {} of {}, panics {}, digest mismatches {}",
-        h.pregame_by_centres,
-        r.maps.len() + r.panics.len(),
-        h.panics,
-        h.digest_mismatches
-    );
-    println!("seconds {:.1}", r.seconds);
 }

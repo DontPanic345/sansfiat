@@ -1,5 +1,6 @@
 use engine::data::{CIV, CLAIM, FIGHT, FIGHTERS, GUARD, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
+use engine::over::{self, Why};
 use engine::script::Lead;
 use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
@@ -116,8 +117,12 @@ impl Sim {
     /// civ; else null). A scout also has `plan` when it has a route: `{known, possible, candidates}`,
     /// where `known` and `possible` are `{path, cost}` (path from the route's start, null
     /// when there is none) and `candidates` the unrevealed tiles the search would reveal next.
-    /// `clan_civ` is `[clan, civ]` for every clan with a civ. Events are not in the view: they come
-    /// from `events`, each with `alert` and `amount` as the engine gives them.
+    /// `clan_civ` is `[clan, civ]` for every clan with a civ. `over` is null in a game still going, else
+    /// `{winner, why: "conquest" | "limit" | "fell", by, turn}`: `by` the civ that took the led civ's capital
+    /// (for "fell", else null), `turn` the world's turn the game ended on. `limit` is `{turns, at}`: the turn
+    /// limit after the pick and the world's turn it falls on (null before the pick). `standing` is
+    /// `[[turn, {civ: share}]]`, each civ's Standing at the pick and after each turn since, by the world's turn.
+    /// Events are not in the view: they come from `events`, each with `alert` and `amount` as the engine gives them.
     pub fn view(&self) -> String {
         let w = &self.world;
         let trails: Vec<usize> = (0..w.tiles.len()).filter(|&i| w.tiles[i].trail).collect();
@@ -211,6 +216,21 @@ impl Sim {
                 TRAIL.work.iter().find(|&&(k, _)| k == t.terrain).map(|&(_, need)| (i, t.trail_work, need))
             })
             .collect();
+        let picked = w.picked.unwrap_or(0);
+        let over = match w.phase {
+            Phase::Over(o) => {
+                let (why, by) = match o.why {
+                    Why::Conquest => ("conquest", None),
+                    Why::Limit => ("limit", None),
+                    Why::Fell { by } => ("fell", Some(by)),
+                };
+                serde_json::json!({ "winner": o.winner, "why": why, "by": by, "turn": picked + o.turn })
+            }
+            _ => serde_json::Value::Null,
+        };
+        let limit = over::ends_at(w).map(|at| serde_json::json!({ "turns": over::limit(w), "at": at }));
+        let standing: Vec<(u32, &BTreeMap<u32, f64>)> =
+            w.standing.iter().enumerate().map(|(k, s)| (picked + k as u32, s)).collect();
         let clan_civ: Vec<(u32, u32)> = w.clans.values().filter_map(|c| c.civ.map(|civ| (c.id, civ))).collect();
         // Each festival with the clans that go to it.
         let markets: BTreeMap<u32, serde_json::Value> = w
@@ -239,6 +259,9 @@ impl Sim {
             "civs": civ_rows,
             "units": units_json,
             "clan_civ": clan_civ,
+            "over": over,
+            "limit": limit,
+            "standing": standing,
             "contested": w.contested,
             "summary": stats::summary(w),
         })
@@ -292,12 +315,14 @@ impl Sim {
         civs::tile_civ(&self.world, i).map_or(-1, |c| c as i32)
     }
 
-    /// The phase: `"pregame"`, `"choose"` (founding is done, the player has yet to pick) or `"main"`.
+    /// The phase: `"pregame"`, `"choose"` (founding is done, the player has yet to pick), `"main"` or
+    /// `"over"` (the game has ended; the world runs on, and the player's orders are refused).
     pub fn phase(&self) -> String {
         match self.world.phase {
             Phase::Pregame => "pregame",
             Phase::Choose => "choose",
             Phase::Main => "main",
+            Phase::Over(_) => "over",
         }
         .to_string()
     }

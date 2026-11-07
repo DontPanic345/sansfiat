@@ -16,10 +16,9 @@ function claimCounts(c) {
 }
 
 /**
- * @param sim the wasm `Sim`; @param layout `Sim.layout()` parsed; @param rules `rules()` parsed;
- * @param prev the model before this change (for the Standing history), or null for a new game.
+ * @param sim the wasm `Sim`; @param layout `Sim.layout()` parsed; @param rules `rules()` parsed.
  */
-export function build(sim, layout, rules, prev = null) {
+export function build(sim, layout, rules) {
   const v = JSON.parse(sim.view());
   const civs = Object.values(v.civs || {});
   const clanCiv = new Map(v.clan_civ || []);
@@ -53,17 +52,6 @@ export function build(sim, layout, rules, prev = null) {
   const walkers = new Map(Object.values(v.markets).map((m) => [m.id, m.clans]));
   const mine = v.player != null ? Object.values(v.units).filter((u) => u.civ === v.player) : [];
 
-  // The Standing of every civ for each turn the page has seen since the pick.
-  let history = prev?.history ?? [];
-  if (history.length && history[history.length - 1][0] > v.turn) history = [];
-  if (v.phase === 'main') {
-    const at = Object.fromEntries(civs.map((c) => [c.id, c.standing]));
-    history = history.filter(([t]) => t !== v.turn);
-    history.push([v.turn, at]);
-  } else {
-    history = [];
-  }
-
   const claimOf = new Map(v.claims);
   return {
     v,
@@ -78,7 +66,6 @@ export function build(sim, layout, rules, prev = null) {
     leader,
     walkers,
     mine,
-    history,
     /** The clan whose territory holds tile `i`, or null. */
     clanAt: (i) => claimOf.get(i) || null,
     /** The civ an unaligned clan leans to most, with the tint it draws: its colour, the more opaque the

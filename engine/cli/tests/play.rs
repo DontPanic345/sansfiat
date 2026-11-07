@@ -9,6 +9,10 @@ use std::process::{Command, Stdio};
 use engine::{stats, Save, World};
 
 /// Runs the binary with `args` and `input` on stdin; its stdout, which must succeed.
+/// A civ starts with its scout and no army: its first warriors, raised at the pick (one warrior's pack
+/// is what the endowment less the scout's pack fills).
+const RAISE: &str = "{\"type\":\"raise\",\"n\":1,\"kind\":\"camp\"}\n";
+
 fn sansfiat(args: &[&str], input: &str) -> String {
     let mut child = Command::new(env!("CARGO_BIN_EXE_sansfiat"))
         .args(args)
@@ -87,7 +91,7 @@ fn play_without_civ_prints_the_cards_and_writes_no_file() {
 #[test]
 fn a_piped_session_is_logged_and_refusals_change_nothing() {
     let (_dir, game) = game_in("session");
-    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
     let (camp, post) = camp_and_post(&made);
     let pick = turn_of(&made);
     let before = log_len(&game);
@@ -108,17 +112,18 @@ fn a_piped_session_is_logged_and_refusals_change_nothing() {
 
     let lines = entries(&game);
     let results: Vec<&str> = lines.iter().map(|(_, r)| r.as_str()).collect();
-    assert_eq!(results.len(), 5);
-    assert!(results[0].starts_with("refused:"), "{results:?}");
-    assert_eq!(results[1], "ok");
-    assert_eq!(results[2], "noted");
-    assert_eq!(results[4], "ok");
+    // The raise at the pick is the first line, then the five of the session.
+    assert_eq!(results.len(), 6);
+    assert!(results[1].starts_with("refused:"), "{results:?}");
+    assert_eq!(results[2], "ok");
+    assert_eq!(results[3], "noted");
+    assert_eq!(results[5], "ok");
 }
 
 #[test]
 fn a_second_call_resumes_the_same_game() {
     let (_dir, game) = game_in("resume");
-    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
     let (camp, post) = camp_and_post(&made);
     sansfiat(&["play", "--game", &game], &format!("{{\"type\":\"move\",\"unit\":{camp},\"to\":{post}}}\nend 3\n"));
     let world = |game: &str| {
@@ -135,8 +140,9 @@ fn a_second_call_resumes_the_same_game() {
 
     // Every line of both calls is in the lines file, the last one `view`, with its result.
     let lines = entries(&game);
-    assert_eq!(lines.len(), 3);
-    assert_eq!(lines[2], ("view".to_string(), "ok".to_string()));
+    // The raise at the pick, the move and the turns of the first call, then the view.
+    assert_eq!(lines.len(), 4);
+    assert_eq!(lines[3], ("view".to_string(), "ok".to_string()));
 }
 
 #[test]
@@ -151,7 +157,7 @@ fn the_view_at_the_pick_is_under_80_lines() {
 #[test]
 fn judge_prints_a_score_line_and_the_control_for_the_led_civ() {
     let (_dir, game) = game_in("judge");
-    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
     let (camp, post) = camp_and_post(&made);
     sansfiat(&["play", "--game", &game], &format!("{{\"type\":\"move\",\"unit\":{camp},\"to\":{post}}}\nend 10\n"));
 
@@ -159,16 +165,17 @@ fn judge_prints_a_score_line_and_the_control_for_the_led_civ() {
     assert!(out.lines().any(|l| l.starts_with("turn ") && l.contains("leader")), "{out}");
     let led = out.lines().find(|l| l.starts_with("led civ ")).unwrap_or_else(|| panic!("no led civ line in:\n{out}"));
     assert!(led.contains("with every civ on the AI"), "{led}");
-    assert!(out.contains("player orders: 1 (move 1)"), "{out}");
+    // The raise at the pick and the move.
+    assert!(out.contains("player orders: 2 (move 1, raise 1)"), "{out}");
 }
 
 #[test]
 fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
-    // On small seed 9, 5 turns after the pick, an unaligned clan is in reach of the led civ's market
+    // On small seed 1 (the start's clans: seed 9 no longer has one), 5 turns after the pick, an unaligned clan is in reach of the led civ's market
     // but trades at another, so the civ's gift never reaches it: the view says so, and `why` for that
     // clan gives its reasons.
     let (_dir, game) = game_in("reach");
-    sansfiat(&["play", "--game", &game, "--seed", "9", "--size", "small", "--civ", "1"], "");
+    sansfiat(&["play", "--game", &game, "--seed", "1", "--size", "small", "--civ", "1"], RAISE);
     let out = sansfiat(&["play", "--game", &game], "end 5\n");
     assert!(out.contains("a gift reaches only those that trade there"), "{out}");
     let clan = out
@@ -183,7 +190,7 @@ fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
 #[test]
 fn the_view_at_the_pick_lists_the_claim_and_its_new_legal_orders() {
     let (_dir, game) = game_in("claim-view");
-    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
     assert!(made.lines().any(|l| l.starts_with("claim: ") && l.contains("held") && l.contains("paper")), "{made}");
     assert!(made.contains("unaligned clans on your land:"), "{made}");
     assert!(made.contains(r#"  {"type":"claim","tiles":"#), "{made}");
@@ -197,7 +204,7 @@ fn the_view_at_the_pick_lists_the_claim_and_its_new_legal_orders() {
 #[test]
 fn judge_prints_the_claim_lines_for_the_led_civ() {
     let (_dir, game) = game_in("judge-claim");
-    sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
+    sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
     sansfiat(&["play", "--game", &game], "{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}\nend 10\n");
     let out = sansfiat(&["judge", &game], "");
     let claim = out

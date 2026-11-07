@@ -33,7 +33,7 @@
 
 <section id="screen-play" data-screen="play" aria-label="Play" hidden>
   <header id="bar">
-    <div class="stat" id="turnstat"><b id="turn">0</b><span>Turn</span></div>
+    <div class="stat" id="turnstat"><b id="turn">0</b><span id="turnlabel">Turn</span></div>
     <div class="group" id="counts">
       <div class="stat" id="phase"><b id="phasetext">Pre-game</b><span id="phasenote">Phase</span></div>
       <div class="stat" title="People in the world"><b id="people">0</b><span>People</span></div>
@@ -120,7 +120,8 @@
 </section>
 
 <section id="screen-end" data-screen="end" aria-label="Standing over the game" hidden>
-  <h1 id="end-head">The game goes on</h1>
+  <h1 id="end-head"></h1>
+  <p id="end-line"></p>
   <div id="end-chart"></div>
   <div id="end-buttons">
     <button id="end-playon" type="button">Play on</button>

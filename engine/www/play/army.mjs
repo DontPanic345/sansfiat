@@ -48,6 +48,9 @@ try {
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   const civKey = `civ:${me}`;
 
+  // The guard holds the land (a civ with none holds its capital alone): three guards, raised through the civ's Raise….
+  await selectKey(page, civKey, cap);
+  for (let g = 0; g < 3; g++) await page.stepper('Raise…', { n: 1, option: 'a guard', go: true });
   // The led civ holds forest (archers are made on it), and its corridor meets a rival's guard from the first turn.
   const forest = await page.eval(`(() => { const v = game.view(), L = game.layout(), T = game.terrain();
     return v.civs[${me}].land.filter((i) => T[L.terrain[i]].name === 'forest').length; })()`);
