@@ -35,7 +35,7 @@ use crate::world::World;
 pub use ai::{ai, guard_order, post};
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
-pub use line::{cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, route, turns};
+pub use line::{cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, route, turns};
 pub use scout::{ground_worth, rich_ground, Hunger, ScoutState};
 pub use search::{route_plan, search_view, Plan, SearchView};
 

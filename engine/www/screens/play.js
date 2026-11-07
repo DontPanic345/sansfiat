@@ -26,6 +26,7 @@ let model = null; // the view model of the last change (model.js)
 let v = null; // its Sim.view()
 let cursor = 0; // into Sim.events
 let selected = null; // {kind: 'unit', id} | {kind: 'civ', civ} | {kind: 'clan', id} | {kind: 'festival', id} | {kind: 'tile', tile}
+let ringShares = null; // the ring of the selected army's or civ's civ, tile → share, or null
 let outcome = null; // how the player's last scout route ended: 'found' | 'nopath' | null
 let playing = false;
 let running = false;
@@ -209,6 +210,10 @@ function routes() {
   // The player's camp's line home, always faint; the selected clan's territory and route bright.
   const mineCamp = v.player != null ? Object.values(v.units).find((u) => u.civ === v.player && u.kind === 'camp') : null;
   view.setHomeLine(mineCamp?.line?.path.length ? [mineCamp.tile, ...mineCamp.line.path] : null);
+  // The ring of the civ an army or a civ is selected for: drawn, and read by the tile tooltip.
+  const ringCiv = selected?.kind === 'civ' ? selected.civ : selected?.kind === 'unit' && v.units[selected.id]?.kind === 'camp' ? v.units[selected.id].civ : null;
+  ringShares = ringCiv == null ? null : new Map(JSON.parse(sim.ring(ringCiv)));
+  view.setRing(ringShares?.size ? { colour: v.civs[ringCiv]?.color ?? '#ffffff', shares: ringShares } : null);
   view.setFocus(selected?.kind === 'clan' ? selected.id : selected?.kind === 'tile' ? view.clanAt(selected.tile) : null);
   // A selected festival: its walkers' routes are drawn bright.
   view.setFocusMarket(selected?.kind === 'festival' ? selected.id : null);
@@ -701,6 +706,10 @@ function fillTip(i) {
   if (layout.terrain[i] !== 0 && TERRAIN[layout.terrain[i]].land) {
     lines.push(h ? clanTip(i, h) : 'Held by nobody');
     for (const u of model.holders(i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s army`);
+    if (ringShares?.size) {
+      const share = ringShares.get(i);
+      lines.push(share !== undefined && share < 1 ? `Ring: its line takes ${Math.round(100 * share)}% of an army's days here` : "Past the ring: its line can't feed an army here");
+    }
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
     lines.push(...wearTip(i));
   }

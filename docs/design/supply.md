@@ -14,7 +14,7 @@ tuning from.
 ## The pack
 
 - A unit carries its food in a pack and eats from it each turn, wherever it stands.
-- A full pack holds several turns of food.
+- A full pack holds several turns of food. The pack is the army's train: what it carries with it, measured in turns of its eating.
 - A unit with an empty pack goes hungry; hungry for a few turns, it disbands.
 - A unit is made with a full pack, taken from the store.
 

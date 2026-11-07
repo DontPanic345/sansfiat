@@ -23,17 +23,18 @@ import * as leanings from './layers/leanings.js';
 import * as centres from './layers/centres.js';
 import * as capitals from './layers/capitals.js';
 import * as units from './layers/units.js';
+import * as ring from './layers/ring.js';
 import * as routes from './layers/routes.js';
 import * as overlay from './layers/overlay.js';
 
 import { CORNER, EDGE_DIR } from './geom.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, territories, worn, trails, hearths, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, units, routes, overlay];
+export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, territories, worn, trails, hearths, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */
-const GROUPS = { civs: ['land', 'held', 'lines', 'capitals', 'units', 'routes'], markets: ['festivals', 'centres'] };
+const GROUPS = { civs: ['land', 'held', 'lines', 'capitals', 'ring', 'units', 'routes'], markets: ['festivals', 'centres'] };
 
 const SQRT3 = Math.sqrt(3);
 const MAX_K = 35; // px per world unit: a tile is ~60 px wide
@@ -60,6 +61,7 @@ export class MapView {
     this.painting = false; // in paint mode a left press or drag paints tiles (onPaint) instead of picking or panning
     this.armed = false; // an armed click (Move to…): the crosshair, and the next left press is onPick's to route
     this.focus = null; // the selected clan's id: its territory and route are drawn bright, the others' dim
+    this.ring = null; // {colour, shares: Map tile -> share}: the ring of the selected army's or civ's civ, or null
     this.homeLine = null; // the led civ's camp's line home as tile lists, drawn faint at all times
     this.plan = null; // {known, possible}: the selected scout's route as tile lists from its start, or null
     this.routeStart = null; // {tile, colour}: the ring where a scout's route begins, while it is being set, or null
@@ -242,6 +244,12 @@ export class MapView {
   /** The led civ's camp's line home as tiles from the camp, drawn thin and faint; null for none. */
   setHomeLine(tiles) {
     this.homeLine = tiles;
+    this.requestDraw();
+  }
+
+  /** The ring drawn for the selected army or civ: `{colour, shares}`, or null for none. */
+  setRing(ring) {
+    this.ring = ring;
     this.requestDraw();
   }
 

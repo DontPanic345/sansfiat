@@ -419,6 +419,12 @@ assert.ok(route.path.length > 0 && route.path.at(-1) === target, 'the route ends
 assert.ok(route.cost > 0 && route.turns >= 1);
 assert.deepEqual(route, preview, 'the preview is the route');
 assert.equal(JSON.parse(sim.path(unit.tile, unit.tile + 1000000)), null);
+// The ring: the civ's capital is 0, every share is a number, and a civ with no ring (none, or no civ) is empty.
+const ring = JSON.parse(sim.ring(unit.civ));
+assert.ok(ring.length > 0, 'the army\'s civ has a ring');
+assert.deepEqual(ring.find(([i]) => i === w.civs[unit.civ].capital), [w.civs[unit.civ].capital, 0], 'the capital is 0');
+assert.ok(ring.every(([i, share]) => Number.isInteger(i) && share >= 0), 'every ring share is a whole tile and not negative');
+assert.deepEqual(JSON.parse(sim.ring(9999)), [], 'no civ has no ring');
 assert.ok(sim.check(ordered({ type: 'move', unit: unit.id, to: n + 5 })).length > 0, 'off the map is refused');
 // Another civ's unit, and another civ's order, are refused; so is the old action shape, which no longer parses.
 const rivalUnit = Object.values(w.units).find((u) => u.civ === rival.id);

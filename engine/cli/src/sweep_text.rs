@@ -143,6 +143,25 @@ pub(crate) fn print_text(r: &Report) {
         "total economy: store mean {:.2}, store max {:.2}, at pack {:.1} civ-turns a map, levy per turn {:.2}, largest army {:.1}, guard mean {:.2}",
         e.store_mean, e.store_max, e.turns_at_pack, e.levy_per_turn, e.largest_army, e.guard_mean
     );
+    let u = &t.supply;
+    let c = &u.counts;
+    println!(
+        "total supply: ring tiles {} at the pick ({} held), {} at +200 ({} held); army-turns inside {} ({} hungry), outside {} ({} hungry); scout-turns inside {} ({} hungry), outside {} ({} hungry); clan territory {:.2} at the pick, {} at +200",
+        c.ring_pick,
+        c.held_ring_pick,
+        c.ring_200,
+        c.held_ring_200,
+        c.army_inside,
+        c.army_inside_hungry,
+        c.army_outside,
+        c.army_outside_hungry,
+        c.scout_inside,
+        c.scout_inside_hungry,
+        c.scout_outside,
+        c.scout_outside_hungry,
+        u.clan_territory_pick,
+        u.clan_territory_200.map_or("-".to_string(), |v| format!("{v:.2}")),
+    );
     if let Some(s) = &t.solo {
         println!(
             "total solo: gain {:+.4} (clans {:+.4}, land {:+.4}) per civ over {} civs; above {} of {} civs by more than {}",
