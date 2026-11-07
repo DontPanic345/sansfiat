@@ -71,3 +71,6 @@ mechanic; one panel component fed a selection; one play driver for the scripts.
 - Every clan's territory tint is off by default, under View → Territories. A selected clan's territory is still drawn. (#103)
 - The atlas has three variants of each terrain at 128×148, with units and icons at 64×64 and masks tinted per civ; `atlas.json` is the artist's brief. `sounds.json` names a file per feed kind, and a missing file stays silent. (#103)
 - Until a game can end, Game → Standing so far opens the end screen, which reads "The game goes on" over each civ's Standing line since the pick. (#103)
+- The end screen comes up once, on the turn the game ends, and stops Play: "You won", "You lost", or "Blue won" for a watched game, with a line saying how and on which turn, then Standing over the game and Play on or New game. Before the end, Game → Standing so far reads "Turn N of M" and who leads; "The game goes on" is gone. (#152)
+- After Play on, End turn still works and every button that gives an order is greyed with "the game is over". A game saved after its end continues as ended. (#152)
+- Each pick card says "The game ends after N turns, at turn T"; the top bar shows the turn of the limit, and "Game over" once it ends. (#152)

@@ -99,13 +99,15 @@ pub fn step(w: &mut World) {
         Why::Fell { by } => Some(by),
         _ => None,
     }));
+    let name = |id: u32| w.civs.get(&id).map_or_else(|| format!("civ {id}"), |c| c.name.clone());
     let why = match over.why {
         Why::Conquest => "the last capital standing".to_string(),
         Why::Limit => "the highest Standing at the turn limit".to_string(),
-        Why::Fell { by } => format!("the led civ's capital fell to civ {by}"),
+        Why::Fell { by } => format!("the led civ's capital fell to {}", name(by)),
     };
+    let winner = name(over.winner);
     w.note(over.winner, format!("won the game: {why}"));
     if let Some(me) = w.player.filter(|&me| me != over.winner) {
-        w.note(me, format!("the game ended with civ {} winning: {why}", over.winner));
+        w.note(me, format!("the game ended with {winner} winning: {why}"));
     }
 }
