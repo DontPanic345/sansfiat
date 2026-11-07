@@ -91,7 +91,9 @@ try {
   await page.eval("document.querySelector('#alerts li button').click()");
   await page.eval(frames);
   const after = await alertTexts();
-  need(after.length === later.length - 1, `a click on an alert takes it out of the box (${later.length} → ${after.length})`);
+  // A click sees the alert and, by selecting its subject, every alert about that subject (feed.js `see`): so the
+  // alert clicked is gone, and the others about its subject with it.
+  need(!after.includes(later[0]) && after.length < later.length, `a click on an alert takes it out of the box (${later.length} → ${after.length})`);
   await page.shot(join(out, 'alerts.png'), 1);
 
   // The panel's reasons: a clan with the most, and the camp.

@@ -10,7 +10,7 @@ use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::market::{take, Basket};
-use crate::world::{Phase, World};
+use crate::world::World;
 
 /// The leaning a gift of `g` food buys a clan of `people`: `v × LEANING.gift × ln(1 + g /
 /// (LEANING.gift_scale × people))`, where `v` is `LEANING.starving` for a starving clan, else 1.
@@ -63,7 +63,7 @@ pub fn give(w: &mut World, civ: u32, ids: &[u32], kept: &mut [Basket], pool: f64
 /// turns leaves for it (`leave`), as does each living daughter of its old civ. Nothing before
 /// `Phase::Main`.
 pub fn lean(w: &mut World) {
-    if w.phase != Phase::Main {
+    if !w.phase.playing() {
         return;
     }
     let ids: Vec<u32> = w.clans.keys().copied().collect();

@@ -297,7 +297,7 @@ impl Sim {
         match self.world.phase {
             Phase::Pregame => "pregame",
             Phase::Choose => "choose",
-            Phase::Main => "main",
+            Phase::Main | Phase::Over(_) => "main",
         }
         .to_string()
     }

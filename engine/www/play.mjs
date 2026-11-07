@@ -358,9 +358,15 @@ export const raiseArmy = async (page, { warriors = 3, turns = 40 } = {}) => {
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   const people = () =>
     page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${me} && u.kind === 'camp').reduce((a, u) => a + u.people, 0)`);
+  // The first warrior makes the army at the capital; the rest go into it, selected on its tile (a Raise… from the
+  // civ's panel makes a new army each time, and a zone of one warrior's size paints one tile).
+  const army = () =>
+    page.eval(`(() => { const u = Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp'); return u && { id: u.id, tile: u.tile }; })()`);
   for (let t = 0; t < turns && (await people()) < warriors; t++) {
-    for (let n = 0; n < 8 && (await page.data()).selected !== `civ:${me}`; n++) {
-      await page.click(cap);
+    const a = await army();
+    const [key, at] = a ? [`unit:${a.id}`, a.tile] : [`civ:${me}`, cap];
+    for (let n = 0; n < 8 && (await page.data()).selected !== key; n++) {
+      await page.click(at);
       await page.eval('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))');
     }
     const r = await page.stepper('Raise…', { n: 1, option: 'warriors', go: true });

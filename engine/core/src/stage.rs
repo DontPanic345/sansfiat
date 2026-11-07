@@ -12,6 +12,7 @@ use crate::clans::new_clan;
 use crate::data::{size_radius, Config, Fighter, GUARD, N, PLAINS, SEA};
 use crate::hex::Hex;
 use crate::map::{self, Tile};
+use crate::over::Over;
 use crate::pregame::End;
 use crate::units::{self, Plan, Unit};
 use crate::world::Phase;
@@ -106,6 +107,7 @@ impl Stage {
             (None, Some(r)) => Stage::retro(&r.size, r.seed)?,
             _ => return Err("a stage needs one of map or retro".to_string()),
         };
+        stage.world.config.limit = spec.limit;
         if let Some(text) = &spec.marks {
             stage.marks(text)?;
         }
@@ -151,6 +153,14 @@ impl Stage {
         world.next_id = BASE_NEXT_ID;
         world.markets.clear();
         Stage { world, marks: BTreeMap::new() }
+    }
+
+    /// The end of the game, once it has ended (`Phase::Over`).
+    pub fn over(&self) -> Option<Over> {
+        match self.world.phase {
+            Phase::Over(o) => Some(o),
+            _ => None,
+        }
     }
 
     /// The world, for a read the stage has no method for.
@@ -472,6 +482,9 @@ pub struct StageSpec {
     pub lead: Option<usize>,
     #[serde(default)]
     pub armies: Vec<ArmySpec>,
+    /// The turn limit after the pick, which replaces the size's (`Config.limit`); `None` is the size's.
+    #[serde(default)]
+    pub limit: Option<u32>,
 }
 
 /// Opens a market on tile `tile` of `w`, founded on turn 0, as a centre's market is. Returns its id.

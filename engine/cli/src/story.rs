@@ -16,7 +16,8 @@ use std::fs;
 use engine::actors::walk_cost;
 use engine::data::{Fighter, SIZES, UNIT};
 use engine::market::total;
-use engine::{civs, claim, land, stats, units, Action, Config, Order, UnitKind, World};
+use engine::over::Why;
+use engine::{civs, claim, land, stats, units, Action, Config, Order, Phase, UnitKind, World};
 
 use crate::retro::to_pick;
 use crate::{size, USAGE};
@@ -261,7 +262,8 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
         .ok_or("there is no rival to fight")?;
     let pick = w.turn;
     let mut s = Story { w, me, rival, pick, trace, refused: Vec::new() };
-    for _ in 0..turns {
+    // `turns` is a cap: 0 plays to the end, which the limit always brings.
+    while (turns == 0 || s.n() < turns) && !matches!(s.w.phase, Phase::Over(_)) {
         script(&mut s);
         s.end_turn()?;
         if s.trace {
@@ -270,11 +272,24 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
     }
     fs::write(&save, serde_json::to_string(&s.w.save()).unwrap()).map_err(|e| format!("{save}: {e}"))?;
     let out = civs::alive(&s.w).count();
+    let end = match s.w.phase {
+        Phase::Over(o) => {
+            let winner = &s.w.civs[&o.winner].name;
+            let by = match o.why {
+                Why::Conquest => "by conquest".to_string(),
+                Why::Limit => "by the limit".to_string(),
+                Why::Fell { by } => format!("after its capital fell to {}", s.w.civs[&by].name),
+            };
+            format!("game over at +{}: {winner} won {by}", o.turn)
+        }
+        _ => "the game goes on".to_string(),
+    };
     println!(
-        "{name} on {} seed {seed}: led civ {} against {}, {turns} turns past the pick ({} civs alive), saved to {save}",
+        "{name} on {} seed {seed}: led civ {} against {}, {} turns past the pick ({} civs alive), saved to {save}; {end}",
         size_name(radius),
         s.w.civs[&me].name,
         s.w.civs[&s.rival].name,
+        s.n(),
         out
     );
     for (n, order, why) in &s.refused {

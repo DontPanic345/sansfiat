@@ -15,7 +15,7 @@ use crate::events::{Event, EventKind};
 use crate::land::{cost_map, passable, path};
 use crate::leaning;
 use crate::market::{clear, demand, take, Basket, Params};
-use crate::world::{Phase, World};
+use crate::world::World;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Market {
@@ -173,7 +173,7 @@ pub fn trade(w: &mut World) {
             })
             .unzip();
         // The civ whose capital market this is gives and posts what its store holds beyond its keep.
-        let civ = crate::civs::alive(w).find(|c| c.market == mid && w.phase == Phase::Main).map(|c| c.id);
+        let civ = crate::civs::alive(w).find(|c| c.market == mid && w.phase.playing()).map(|c| c.id);
         let mut posted = 0.0;
         if let Some(civ) = civ {
             let spare = (w.civs[&civ].store.iter().sum::<f64>() - civs::keep(w, civ)).max(0.0);

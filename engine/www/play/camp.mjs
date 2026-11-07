@@ -2,8 +2,8 @@
 // reasons and one button row (Move to…, Paint, Unpaint, Forage, Pillage, Resupply, the two switches,
 // Disband…); Move to… arms a click and sets `dest`; right-click moves; P and drag paint a zone and U
 // unpaints; each action applies or is greyed with a reason; Disband… opens a count. Then the hold: a
-// thicker guard marches onto a rival camp's post and cuts its line, with the warriors raised through the
-// civ's Raise… stepper (small seed 4: see HOLD_SEED).   node www/play/camp.mjs [--out DIR]
+// thicker guard marches onto a rival camp's post and cuts its line (small seed 4: see HOLD_SEED), which is
+// skipped until R: the AI raises no army until then.   node www/play/camp.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -296,14 +296,7 @@ async function lineHome(page) {
     await page.close();
   }
 }
-{
-  const page = await open(`?size=small&seed=${HOLD_SEED}&run=1`);
-  try {
-    await hold(page);
-  } catch (e) {
-    fail(e.stack ?? String(e));
-  } finally {
-    await page.close();
-  }
-}
+// The hold is skipped until R: the AI raises no army until then (`relay/specs/152`, The start), so a
+// rival camp to post against does not exist. `hold` stays for R, when it can run.
+console.log(`skip hold (seed ${HOLD_SEED}): it needs a rival camp at a post, and the AI raises none until R`);
 process.exitCode = failed ? 1 : 0;

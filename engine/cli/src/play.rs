@@ -192,7 +192,7 @@ fn apply(w: &mut World, text: &str, since: usize) -> String {
                 }
             };
             for _ in 0..n {
-                if w.phase != Phase::Main {
+                if !w.phase.playing() {
                     break;
                 }
                 if let Err(e) = w.act(Action::EndTurn) {

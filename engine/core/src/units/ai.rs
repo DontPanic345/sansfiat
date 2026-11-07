@@ -11,7 +11,7 @@ use crate::data::*;
 use crate::land::steps;
 use crate::market::total;
 use crate::orders::Order;
-use crate::world::{Phase, World};
+use crate::world::World;
 
 /// Where the AI posts `civ`'s camp: up to `UNIT.post` steps along the way from the capital to the
 /// nearest rival capital reachable by land, or with none, to its farthest clan, keeping to its
@@ -46,7 +46,7 @@ pub fn post(w: &World, civ: u32) -> usize {
 /// its camp to its post if it is idle somewhere else. The AI raises no army until R: a civ with no
 /// camp has none to send. Draws no random numbers.
 pub fn ai(w: &mut World) {
-    if w.phase != Phase::Main {
+    if !w.phase.playing() {
         return;
     }
     let ids: Vec<u32> = civs::alive(w).map(|c| c.id).filter(|&c| Some(c) != w.player).collect();

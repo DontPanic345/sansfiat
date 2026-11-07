@@ -48,10 +48,9 @@ not one the design solves for them.
 
 ## Winning
 
-Not decided yet. These are the usual options, held equally open:
+A civ loses when its capital falls. The game is won by the last capital standing, or, when the
+turn limit comes, by the civ with the most Standing. The ways that may come later:
 
-- **Conquest:** the last civ standing wins.
-- **Time limit:** after a set number of turns, the civ with the most people, land or goods wins.
 - **Influence:** most of the world's people choose to join your civ.
 - **Great work:** you are the first to finish a project that takes the world's labour, such as a
   temple, a city wall or a monument.

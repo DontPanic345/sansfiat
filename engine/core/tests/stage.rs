@@ -161,6 +161,7 @@ fn a_spec_round_trips_and_builds_the_builders_world() {
         people: Some(14.0),
         lead: Some(0),
         armies: vec![ArmySpec { civ: 0, at: TileRef::Tile { tile: at(12, -4, 0) }, people: 4.0 }],
+        limit: None,
     };
     let json = serde_json::to_string(&spec).unwrap();
     let back: StageSpec = serde_json::from_str(&json).unwrap();

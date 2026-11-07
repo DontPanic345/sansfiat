@@ -28,7 +28,7 @@ use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::steps;
 use crate::market::{add, take, total, Basket};
-use crate::world::{Phase, World};
+use crate::world::World;
 
 pub use ai::{ai, guard_order, post};
 pub use camp::{zone_cap, CampState};
@@ -778,7 +778,7 @@ pub fn step(w: &mut World) {
 
 /// The civ the player leads, or why there is none.
 pub fn leader(w: &World) -> Result<u32, String> {
-    if w.phase != Phase::Main {
+    if !w.phase.playing() {
         return Err("the game has not begun".to_string());
     }
     let civ = w.player.ok_or_else(|| "you're watching: you lead no civ".to_string())?;

@@ -72,7 +72,7 @@ pub(crate) fn after_run(
     lever: Option<f64>,
 ) -> MapRun {
     let claims = if claims { Claims::All } else { Claims::None };
-    let mut w = to_pick(Config { seed, radius, army, gifts, zone, claims, fight: true });
+    let mut w = to_pick(Config { seed, radius, army, gifts, zone, claims, fight: true, limit: None });
     let led = lever.and_then(|_| w.civs.keys().next().copied());
     w.act(Action::ChooseCiv { civ: led }).expect("a civ can be chosen at the pick");
     if let Some(g) = lever {

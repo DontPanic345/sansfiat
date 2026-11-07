@@ -3,7 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::world::World;
+use crate::over::Why;
+use crate::world::{Phase, World};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,6 +49,7 @@ pub enum EventKind {
     ArchersRaised,
     ArmySurrendered,
     CapitalFell,
+    GameOver,
 }
 
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
@@ -55,7 +57,8 @@ pub enum EventKind {
 /// for (`ClanLeft`, whose `civ` is the one it left) or the civ whose unit took a tile (`ClaimTaken`,
 /// `TileTaken`, whose `civ` is the one that lost it) or fought it (`Skirmish`, `Retreated`); `unit` is for units, and `amount` is the tiles lost.
 /// An `ArmySurrendered` is the army's civ (`civ`), the rival it joins (`other`), the army (`unit`), the
-/// clan it joined (`clan`) and the people (`amount`); a `CapitalFell` is the fallen civ and its taker.
+/// clan it joined (`clan`) and the people (`amount`); a `CapitalFell` is the fallen civ and its taker;
+/// a `GameOver` is the winner (`civ`) and, for a fall, the civ that took the led civ's capital (`other`).
 /// `alert` marks the events the led civ must hear of as they start (`flag_alerts`); the page and
 /// the CLI read it from the JSON as they read the rest.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -183,6 +186,7 @@ impl Event {
                 self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str()),
                 self.civ_name(w)
             ),
+            EventKind::GameOver => game_over(w),
             EventKind::PregameEnded => match &w.end {
                 Some(e) => {
                     let n = e.centres.len();
@@ -195,6 +199,20 @@ impl Event {
                 }
                 None => "The pre-game ends".to_string(),
             },
+        }
+    }
+}
+
+/// The wording of the end of the game, read from the world's phase (`Over`), which the event is of.
+fn game_over(w: &World) -> String {
+    let Phase::Over(o) = w.phase else { return "The game is over".to_string() };
+    let name = |id: u32| w.civs.get(&id).map_or("A civ", |c| c.name.as_str());
+    match o.why {
+        Why::Conquest => format!("{} won: the last capital standing", name(o.winner)),
+        Why::Limit => format!("{} won: the highest Standing at the turn limit", name(o.winner)),
+        Why::Fell { by } => {
+            let led = w.player.map_or("A civ", name);
+            format!("{led}'s capital fell to {}; {} leads", name(by), name(o.winner))
         }
     }
 }

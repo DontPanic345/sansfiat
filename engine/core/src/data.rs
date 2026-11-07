@@ -720,6 +720,10 @@ pub struct Config {
     /// the strength comparison alone). Old saves load with it on.
     #[serde(default = "yes")]
     pub fight: bool,
+    /// The turn limit in turns after the pick, which replaces the size's (`END`); `None` is the size's.
+    /// A stage, a test or a script sets a short one. Old saves load with `None`.
+    #[serde(default)]
+    pub limit: Option<u32>,
 }
 
 fn yes() -> bool {
@@ -729,9 +733,27 @@ fn yes() -> bool {
 impl Default for Config {
     /// Radius 16: three centres 10 steps apart need the room.
     fn default() -> Self {
-        Config { seed: 1, radius: 16, army: true, gifts: true, zone: true, claims: Claims::All, fight: true }
+        Config {
+            seed: 1,
+            radius: 16,
+            army: true,
+            gifts: true,
+            zone: true,
+            claims: Claims::All,
+            fight: true,
+            limit: None,
+        }
     }
 }
+
+/// How a game ends (`over.rs`): its turn limit, in turns after the pick, by map radius as `SIZES`. A
+/// radius between sizes takes the next size up's; one past the largest takes the largest's. The
+/// numbers are the starting ones, which the canvas sets on the retro maps (`relay/specs/152`).
+pub struct EndRules {
+    pub limit: [(i32, u32); 3],
+}
+
+pub const END: EndRules = EndRules { limit: [(16, 200), (23, 250), (33, 300)] };
 
 /// How many reasons (`World::note`) a subject keeps, and how many the selection panel shows.
 pub struct NotesRules {

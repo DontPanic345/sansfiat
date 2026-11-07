@@ -19,7 +19,9 @@ use crate::leaning;
 use crate::map::{self, Tile};
 use crate::markets::{self, Market};
 use crate::orders::Order;
+use crate::over::{self, Over};
 use crate::pregame::{self, End};
+use crate::stats;
 use crate::units::{self, Unit};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -74,6 +76,11 @@ pub struct World {
     /// saved; a replay rebuilds it.
     #[serde(skip)]
     pub picked: Option<u32>,
+    /// Every civ's Standing at the pick (index 0), then after each turn since, so index `k` is after
+    /// `k` turns: derived, not saved; a replay rebuilds it (`stats::standing`, pushed by `ChooseCiv` and
+    /// by the `over` step).
+    #[serde(skip)]
+    pub standing: Vec<BTreeMap<u32, f64>>,
 }
 
 /// A reason: a line about a subject, written where a rule acted on it.
@@ -89,6 +96,15 @@ pub enum Phase {
     Pregame,
     Choose,
     Main,
+    /// The game has ended (`over.rs`): the world runs on, the player's orders are refused.
+    Over(Over),
+}
+
+impl Phase {
+    /// Whether the world is played: in `Main`, or after the end, when the world runs on.
+    pub fn playing(&self) -> bool {
+        matches!(self, Phase::Main | Phase::Over(_))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -138,6 +154,7 @@ pub const TURN: &[Step] = &[
     Step { name: "hold", run: land::tend },
     Step { name: "markets", run: markets::form_and_fade },
     Step { name: "end", run: pregame::check_end },
+    Step { name: "over", run: over::step },
 ];
 
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
@@ -181,6 +198,7 @@ impl World {
             contested: Vec::new(),
             orders: BTreeMap::new(),
             picked: None,
+            standing: Vec::new(),
         };
         clans::seed(&mut w);
         w
@@ -188,6 +206,10 @@ impl World {
 
     /// Checks `action` against the world; `Err` says why it can't happen.
     pub fn validate(&self, action: &Action) -> Result<(), String> {
+        let player_acts = matches!(action, Action::Order { .. } | Action::SetKeep { .. } | Action::SetGift { .. });
+        if matches!(self.phase, Phase::Over(_)) && player_acts {
+            return Err("the game is over".to_string());
+        }
         match action {
             Action::EndTurn if self.phase == Phase::Choose => Err("choose a civ to lead, or watch".to_string()),
             Action::EndTurn => Ok(()),
@@ -220,6 +242,7 @@ impl World {
                 self.player = *civ;
                 self.phase = Phase::Main;
                 self.picked = Some(self.turn);
+                self.standing.push(stats::standing(self));
             }
             Action::Order { civ, order } => {
                 self.order(*civ, order.clone()).expect("validated: the order checks");
@@ -312,7 +335,7 @@ impl World {
             // surrender it is party to, and any fallen capital.
             EventKind::Skirmish | EventKind::ArmySurrendered => e.civ == Some(me) || e.other == Some(me),
             EventKind::Retreated | EventKind::TileTaken => e.civ == Some(me),
-            EventKind::CapitalFell => true,
+            EventKind::CapitalFell | EventKind::GameOver => true,
             _ => false,
         };
         if !mine {

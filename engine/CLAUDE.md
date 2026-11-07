@@ -22,6 +22,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | Path | What |
 | --- | --- |
 | `core/src/world.rs` | `World`, `phase`, `Action`, the `TURN` steps, `act`/`run`/`save`/`replay`, reasons, alerts, `SAVE_VERSION`. |
+| `core/src/over.rs` | The end: `Phase::Over` (winner, `Why`, turn), the `over` step, `limit` and `ends_at`. A game ends as a phase; the world runs on after it. |
 | `core/src/events.rs` | `Event`, `EventKind` and their wording. |
 | `core/src/data.rs` | Every rule's number and `Config`; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs. |
@@ -64,6 +65,8 @@ node www/play/all.mjs                        # every touch-point script; check.s
 - Reasons and alerts are derived (`#[serde(skip)]`): a rule writes one `w.note` where it acts.
 - A change that moves `stats::digest` bumps `SAVE_VERSION` and the pins in `cli/tests/save.rs`.
 - The world changes only through `act` and the AI's orders; a save replays to an identical world.
+- The end is a phase: only the `over` step sets `Phase::Over`, and the world runs on in it (`playing()`);
+  `validate` refuses the player's orders there.
 - A rule's proof is a stage (`core/src/stage.rs`), and a button's is `www/play/buttons.mjs`.
 - All randomness goes through `rng::rand`; `exp`, `ln`, `powf` go through `libm`, so native and wasm
   give the same digest every turn (`./cross-build.sh`).

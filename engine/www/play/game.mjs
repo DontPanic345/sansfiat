@@ -100,7 +100,10 @@ try {
   const camp = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp').id`);
   const campTile = () => page.eval(`game.view().units[${camp}].tile`);
   await page.select(await campTile(), 'unit');
-  for (let n = 0; n < 8 && (await page.data()).selected !== `unit:${camp}`; n++) await page.click(await campTile());
+  for (let n = 0; n < 8 && (await page.data()).selected !== `unit:${camp}`; n++) {
+    await page.click(await campTile());
+    await page.eval(frames);
+  }
   need((await page.data()).selected === `unit:${camp}`, 'a click on its tile selects the camp');
   await say('camp selected');
   const far = await page.eval(`(() => { const v = game.view(), L = game.layout(), cap = v.civs[${me}].capital;
@@ -117,7 +120,10 @@ try {
       break;
     }
     if ((await page.data()).armed) await page.key('Escape');
-    for (let n = 0; n < 8 && (await page.data()).selected !== `unit:${camp}`; n++) await page.click(await campTile());
+    for (let n = 0; n < 8 && (await page.data()).selected !== `unit:${camp}`; n++) {
+    await page.click(await campTile());
+    await page.eval(frames);
+  }
   }
   need(dest != null, `Move to… and a click send the camp to tile ${dest}`);
   await say('camp ordered');
@@ -126,7 +132,10 @@ try {
     await followAlert();
   }
   need((await campTile()) === dest, `the camp walks to tile ${dest} (turn ${await turn()})`);
-  for (let n = 0; n < 8 && (await page.data()).selected !== `unit:${camp}`; n++) await page.click(dest);
+  for (let n = 0; n < 8 && (await page.data()).selected !== `unit:${camp}`; n++) {
+    await page.click(dest);
+    await page.eval(frames);
+  }
   const ring = await page.eval(`(() => { const m = game.map, out = []; for (let d = 0; d < 6; d++) { const j = m.nb[${dest} * 6 + d]; if (j >= 0 && m.land[j]) out.push(j); } return out.slice(0, 2); })()`);
   await page.key('p');
   for (const t of ring) await page.click(t);
