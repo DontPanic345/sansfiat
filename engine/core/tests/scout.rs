@@ -92,7 +92,7 @@ fn a_hidden_route_is_priced_by_what_the_civ_knows() {
     let (cap, _) = capital(s.world());
     // Six steps out; the third is an unrevealed forest with a trail costing 1, the rest plains.
     let line = open_ray(s.world(), cap, 6);
-    s.paint(line[2], FOREST, Some(1.0), None);
+    s.paint(line[2], FOREST, Some(1.0 * DAY), None);
     let mut w = s.into_world();
     let me = w.player.unwrap();
     let to = line[5];
@@ -100,13 +100,13 @@ fn a_hidden_route_is_priced_by_what_the_civ_knows() {
     let forest = TERRAIN[FOREST].move_cost.unwrap();
     let plan = units::route_plan(&w, me, cap, to);
     // Known: the forest is bare; possible: it hides a trail at its cheapest hidden cost, 1.
-    assert_eq!(plan.known.as_ref().unwrap().1, 5.0 * bare + forest);
-    assert_eq!(plan.possible.as_ref().unwrap().1, 5.0 * bare + 1.0);
+    assert!((plan.known.as_ref().unwrap().1 - (5.0 * bare + forest)).abs() < 1e-9);
+    assert!((plan.possible.as_ref().unwrap().1 - (5.0 * bare + 1.0 * DAY)).abs() < 1e-9);
     assert_eq!(plan.candidates, vec![line[2]], "only the forest could change the answer");
     // Revealed, the same tile is its trail's cost, as known.
     w.civs.get_mut(&me).unwrap().revealed.insert(line[2]);
     let plan = units::route_plan(&w, me, cap, to);
-    assert_eq!(plan.known.as_ref().unwrap().1, 5.0 * bare + 1.0);
+    assert!((plan.known.as_ref().unwrap().1 - (5.0 * bare + 1.0 * DAY)).abs() < 1e-9);
     assert!(plan.candidates.is_empty());
 }
 
@@ -119,16 +119,25 @@ fn a_route_across_rough_country_is_searched_and_its_trails_built() {
     let line = open_ray(s.world(), cap, 6);
     for (k, &i) in line.iter().enumerate() {
         let terrain = if k % 2 == 0 { FOREST } else { HILLS };
-        s.paint(i, terrain, Some(1.0), None);
+        s.paint(i, terrain, Some(1.0 * DAY), None);
     }
     let mut w = s.into_world();
+    // No worn trail on the plains round the ray: the pick's clans have walked some, and a trail on
+    // plains would make a way round the ray cheaper than its six trails.
+    for t in w.tiles.iter_mut().filter(|t| t.terrain == PLAINS) {
+        t.trail = false;
+        t.traffic = 0.0;
+    }
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: line[5] })).unwrap();
     let turns = until_route_done(&mut w, 20);
     assert!(turns <= 20, "a 6-tile route within 20 turns, took {turns}");
     let built: Vec<usize> = line.iter().copied().filter(|&i| w.tiles[i].trail).collect();
     assert_eq!(built.len(), 6, "every tile of the route has its trail when the route is found");
     // Six tiles at their hidden cost of 1 once every trail is built.
-    assert!(w.events.iter().any(|e| e.kind == EventKind::ScoutRouteFound && e.cost == Some(6.0)));
+    assert!(w
+        .events
+        .iter()
+        .any(|e| e.kind == EventKind::ScoutRouteFound && e.cost.is_some_and(|c| (c - 6.0 * DAY).abs() < 1e-9)));
     let me = led_scout(&w);
     let mine = |kind| w.events.iter().any(|e| e.kind == kind && e.unit == Some(me));
     assert!(!mine(EventKind::ScoutHungry) && !mine(EventKind::ScoutStarved));
@@ -142,7 +151,7 @@ fn sealed_valley(s: &mut Stage, pass: Option<usize>) -> Vec<usize> {
     let ring: Vec<usize> = (0..s.world().tiles.len()).filter(|&i| s.world().tiles[i].hex().distance(ch) == 3).collect();
     for &i in &ring {
         let span = if Some(i) == pass { 1 } else { 2 };
-        s.paint(i, MOUNTAIN, Some(MAP.mountain_cost as f64), Some(span));
+        s.paint(i, MOUNTAIN, Some(MAP.mountain_cost), Some(span));
     }
     ring
 }
@@ -212,7 +221,7 @@ fn a_built_trail_cuts_the_camps_and_the_clans_walks() {
     let (cap, _) = capital(s.world());
     let line = open_ray(s.world(), cap, 4);
     for &i in &line {
-        s.paint(i, FOREST, Some(1.0), None);
+        s.paint(i, FOREST, Some(1.0 * DAY), None);
     }
     let mut w = s.into_world();
     let to = line[3];
@@ -222,7 +231,7 @@ fn a_built_trail_cuts_the_camps_and_the_clans_walks() {
     }
     let after = units::path_between(&w, cap, to).unwrap().1;
     assert!(after < before, "a built trail makes the camp's walk cheaper: {after} vs {before}");
-    assert_eq!(after, 4.0 * 1.0, "a trail brings each forest to its hidden cost");
+    assert!((after - 4.0 * DAY).abs() < 1e-9, "a trail brings each forest to its hidden cost");
 }
 
 #[test]

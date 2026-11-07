@@ -150,7 +150,7 @@ pub fn walks(w: &World, home: usize, territory: &[usize]) -> (Walks, Vec<f64>) {
 /// tile's take scaled by one factor so the whole comes to at most `surplus_target × people` less
 /// the store.
 pub fn reap(w: &World, people: f64, store: &Basket, routes: &[Route], tiles: &[usize], yearly: &[f64]) -> Vec<Basket> {
-    let work = actors::divide(people * CLAN.work, routes, yearly);
+    let work = actors::split(people, people * CLAN.work, routes, &[1.0], &[yearly.to_vec()]).swap_remove(0);
     let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
     let mut total = 0.0;
     for (&t, &labour) in tiles.iter().zip(&work) {

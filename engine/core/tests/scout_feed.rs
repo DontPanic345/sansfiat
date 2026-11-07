@@ -75,7 +75,10 @@ fn an_idle_scout_waits_on_rich_ground() {
     }
     let u = scout(&w);
     assert_eq!(u.people, SCOUT.people as f64, "no one starved");
-    assert!(steps(&w, u.home, food) <= SCOUT.reach as i32, "it waits where the food is within its reach");
+    // The wild grain regrows over the 50 turns, so it may have moved on from the tile it was set on: it
+    // waits where some food is within its reach.
+    let fed = |i: usize| steps(&w, u.home, i) <= SCOUT.reach as i32 && w.tiles[i].stock.iter().sum::<f64>() > 0.0;
+    assert!((0..w.tiles.len()).any(fed), "it waits where the food is within its reach");
     assert_eq!(u.scout().unwrap().wander, Some(u.home), "on the ground it picked");
     assert!(noted(&w, u.id, "waits on rich ground"));
     assert!(w.tiles.iter().all(|t| t.fallow == 0), "no tile it took from is fallow");
@@ -129,7 +132,7 @@ fn routed() -> (World, u32, usize, usize) {
     let cap = capital(s.world());
     let line = ray(s.world(), cap, 10);
     for (k, &i) in line.iter().enumerate() {
-        s.paint(i, if k % 2 == 0 { FOREST } else { HILLS }, Some(1.0), None);
+        s.paint(i, if k % 2 == 0 { FOREST } else { HILLS }, Some(1.0 * DAY), None);
     }
     let food = line[1];
     s.food(food, GRAIN, 60.0);

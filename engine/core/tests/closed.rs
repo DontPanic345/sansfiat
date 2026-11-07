@@ -197,7 +197,7 @@ fn a_sealed_valley_has_no_way_in_but_a_bridge() {
                     group.iter().filter(|&&i| tiles[i].terrain == MOUNTAIN && tiles[i].span == Some(1)).count();
                 assert!(bridges >= 1, "{say}: no wall mountain to bridge");
                 for &i in group.iter().filter(|&&i| tiles[i].span == Some(1)) {
-                    assert_eq!(tiles[i].trail_cost, Some(MAP.mountain_cost as f64));
+                    assert_eq!(tiles[i].trail_cost, Some(MAP.mountain_cost));
                 }
                 seen += 1;
             }

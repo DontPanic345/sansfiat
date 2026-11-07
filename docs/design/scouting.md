@@ -87,3 +87,4 @@ set its target. Debug views stay, but nothing in play needs them.
 - The scout's row is Move to… (it walks to a tile and stays there, foraging), Route from… (a ring marks the start) and Route to…, with Clear route and Stop. (#153)
 - Along a range the scout checks the mountain with the best case first: the cost through it plus its walk there. The panel lists the mountains it leaves, each with its cost through against the known route. (#153)
 - A low scout leaves its errand for the nearest ground within eight steps where a turn's foraging brings a fifth more than it eats, fills its pack and goes back to its errand; an idle scout waits on such ground. (#153)
+- A scout's built trails count as walked while it works its route, so they don't wear away behind it. (#154)

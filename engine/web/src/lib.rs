@@ -312,6 +312,14 @@ impl Sim {
         serde_json::to_string(&json).unwrap()
     }
 
+    /// A civ's ring: every land tile its line can feed an army from, as JSON `[[tile, share], …]`, the share
+    /// the part of an army's days its line takes to feed it there (`units::ring`); empty for no civ or a
+    /// fallen one.
+    pub fn ring(&self, civ: u32) -> String {
+        let pairs: Vec<(usize, f64)> = units::ring(&self.world, civ).into_iter().collect();
+        serde_json::to_string(&pairs).unwrap()
+    }
+
     /// A unit's route to its `dest`, as JSON `{path: [tiles after its own], cost, turns}`; `null` when
     /// it has no destination (or no route).
     pub fn route(&self, unit: u32) -> String {

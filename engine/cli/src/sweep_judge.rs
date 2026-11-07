@@ -9,6 +9,7 @@ use std::time::Instant;
 
 use engine::data::{Claims, END, JUDGE};
 use engine::judge::{CivLand, EndScores, Scores, Watch};
+use engine::judge_ring::SupplyCiv;
 use engine::rng;
 use engine::stats::Trails;
 use engine::{stats, Action, Config, Phase, World};
@@ -98,6 +99,7 @@ pub(crate) struct Total {
     pub(crate) motion: TotalMotion,
     pub(crate) land: TotalLand,
     pub(crate) economy: TotalEconomy,
+    pub(crate) supply: TotalSupply,
     pub(crate) solo: Option<TotalSolo>,
     pub(crate) armies: TotalArmies,
     pub(crate) fight: TotalFight,
@@ -192,6 +194,27 @@ pub(crate) struct TotalMotion {
     pub(crate) clans_left: u32,
     pub(crate) clans_joined: u32,
     pub(crate) claim_taken: u32,
+}
+
+/// The supply group over the maps: the ring and the units inside and outside it, summed over the maps,
+/// and the mean territory of a clan at the pick and at +200 (mean over the maps).
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct TotalSupply {
+    pub(crate) counts: SupplyCiv,
+    pub(crate) clan_territory_pick: f64,
+    pub(crate) clan_territory_200: Option<f64>,
+}
+
+fn total_supply(maps: &[MapJudged]) -> TotalSupply {
+    let mut counts = SupplyCiv::default();
+    for m in maps {
+        counts.add(&m.scores.supply.total);
+    }
+    TotalSupply {
+        counts,
+        clan_territory_pick: mean(&maps.iter().map(|m| m.scores.supply.clan_territory_pick).collect::<Vec<_>>()),
+        clan_territory_200: mean_some(&maps.iter().map(|m| m.scores.supply.clan_territory_200).collect::<Vec<_>>()),
+    }
 }
 
 fn total_economy(maps: &[MapJudged]) -> TotalEconomy {
@@ -481,6 +504,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
         },
         land: total_land(maps),
         economy: total_economy(maps),
+        supply: total_supply(maps),
         solo: total_solo(maps),
         end: total_end(maps),
         armies: TotalArmies {

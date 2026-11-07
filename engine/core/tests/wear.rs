@@ -208,8 +208,8 @@ fn desert_costs_two_to_enter() {
     let mut w = flat();
     let (a, d) = (at(0, 0), at(1, 0));
     w.tiles[d].terrain = DESERT;
-    assert_eq!(engine::land::step_cost(&w, a, d), Some(2.0));
-    assert_eq!(TERRAIN[DESERT].move_cost, Some(2.0));
+    assert_eq!(engine::land::step_cost(&w, a, d), Some(2.0 * DAY));
+    assert_eq!(TERRAIN[DESERT].move_cost, Some(2.0 * DAY));
 }
 
 #[test]
@@ -303,7 +303,7 @@ fn a_built_pass_is_kept_by_walking_and_no_mountain_gets_a_worn_trail() {
     for m in [pass, bare] {
         w.tiles[m].terrain = MOUNTAIN;
         w.tiles[m].span = Some(1);
-        w.tiles[m].trail_cost = Some(MAP.mountain_cost as f64);
+        w.tiles[m].trail_cost = Some(MAP.mountain_cost);
     }
     assert!(build_trail(&mut w, pass, TRAIL.work[2].1));
     for _ in 0..60 {
@@ -332,7 +332,7 @@ fn a_worn_flat_trail_brings_plains_and_coast_down_and_marsh_keeps_its_cost() {
     let row: Vec<usize> = (-2..=2).map(|q| at(q, 0)).collect();
     let path: Vec<usize> = std::iter::once(at(-3, 0)).chain(row.iter().copied()).collect();
     let bare = walk_cost(&w, &path);
-    assert_eq!(bare, 5.0);
+    assert!((bare - 5.0 * DAY).abs() < EPS);
     for i in row.iter().copied().chain([coast, marsh]) {
         w.tiles[i].traffic = TRAIL.on;
     }
@@ -341,8 +341,8 @@ fn a_worn_flat_trail_brings_plains_and_coast_down_and_marsh_keeps_its_cost() {
         assert!(w.tiles[i].trail, "tile {i} is worn to a trail");
     }
     assert!((walk_cost(&w, &path) - bare * TRAIL.flat).abs() < EPS, "five worn plains walk a quarter less");
-    assert_eq!(step_cost(&w, at(0, 0), coast), Some(TRAIL.flat));
-    assert_eq!(step_cost(&w, at(0, 0), marsh), Some(3.0));
+    assert_eq!(step_cost(&w, at(0, 0), coast), Some(TRAIL.flat * DAY));
+    assert_eq!(step_cost(&w, at(0, 0), marsh), Some(3.0 * DAY));
 }
 
 /// The first civ's errand on small 2 to the nearest rival capital: no plains or coast tile is among

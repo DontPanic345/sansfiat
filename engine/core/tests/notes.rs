@@ -23,7 +23,12 @@ fn a_watched_game_gives_reasons_to_clans_markets_civs_and_camps() {
     // The AI raises no army until R, so the watched game's civs raise theirs here, and it runs on.
     let mut w = watched(1, 50);
     armed_all(&mut w);
-    w.run(10);
+    // Fed each turn: the test's subject is the reasons, and a civ's store at the pick feeds an army
+    // a few turns only.
+    for _ in 0..10 {
+        fill_stores(&mut w);
+        w.run(1);
+    }
     assert!(w.clans.keys().any(|id| w.notes.contains_key(id)), "a clan has a reason");
     assert!(w.markets.keys().any(|id| w.notes.contains_key(id)), "a market has a reason");
     assert!(w.civs.keys().all(|id| w.notes.contains_key(id)), "every civ has a reason: it was founded");

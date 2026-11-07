@@ -127,11 +127,12 @@ pub fn guard_shares(w: &World, civ: u32) -> Vec<f64> {
             .collect();
     }
     let walks = actors::Walks::new(w, c.capital, &c.claim);
-    actors::divide(guard_people(w, civ) * GUARD.guarding, &[], &walks.yearly(GUARD.inside))
+    let people = guard_people(w, civ);
+    actors::split(people, people * GUARD.guarding, &[], &[1.0], &[walks.yearly(GUARD.inside)]).swap_remove(0)
 }
 
 /// Divides `civ`'s guard over its claim: `GUARD.guarding` a person of its guard, each tile's share
-/// paying its walk from the capital at `GUARD.inside` (`actors::divide`), plus the share of each of
+/// paying its walk from the capital at `GUARD.inside` (`actors::split`), plus the share of each of
 /// its camps that holds a claimed tile. Sets `Civ.guard`, aligned with the claim, and the guard's
 /// territory to the claim. Nothing else reads a guard share.
 pub fn divide(w: &mut World, civ: u32) {

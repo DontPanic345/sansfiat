@@ -167,7 +167,7 @@ pub fn generate_with(radius: i32, rng: &mut u32, salt: u32) -> Generated {
         if !walls.is_empty() && walls.iter().all(|&i| tiles[i].span != Some(1)) {
             let i = walls[rand_index(&mut hidden, walls.len())];
             tiles[i].span = Some(1);
-            tiles[i].trail_cost = Some(MAP.mountain_cost as f64);
+            tiles[i].trail_cost = Some(MAP.mountain_cost);
         }
     }
     Generated { tiles, wind, tries }
@@ -1146,12 +1146,12 @@ fn weighted<T: Copy>(rng: &mut u32, pairs: &[(T, u32)]) -> T {
 fn roll_trails(tiles: &mut [Tile], sub: &mut u32) {
     for t in tiles {
         match t.terrain {
-            FOREST => t.trail_cost = Some(weighted(sub, &MAP.forest_cost) as f64),
-            HILLS => t.trail_cost = Some(weighted(sub, &MAP.hills_cost) as f64),
+            FOREST => t.trail_cost = Some(weighted(sub, &MAP.forest_cost)),
+            HILLS => t.trail_cost = Some(weighted(sub, &MAP.hills_cost)),
             MOUNTAIN => {
                 if let Some(span) = weighted(sub, &MAP.mountain_span) {
                     t.span = Some(span);
-                    t.trail_cost = Some(MAP.mountain_cost as f64);
+                    t.trail_cost = Some(MAP.mountain_cost);
                 }
             }
             PLAINS | COAST => t.trail_cost = crate::land::flat_cost(t.terrain),

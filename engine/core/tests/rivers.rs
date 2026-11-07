@@ -239,28 +239,28 @@ fn river_world() -> World {
 fn entering_a_river_from_the_bank_costs_the_crossing() {
     let mut w = river_world();
     let (bank, here, up, down) = (at(-1, 0), at(0, 0), at(0, -1), at(0, 1));
-    assert_eq!(step_cost(&w, bank, here), Some(1.0 + RIVER.cross));
-    assert_eq!(step_cost(&w, up, here), Some(1.0), "down the course");
-    assert_eq!(step_cost(&w, down, here), Some(1.0), "up the course");
-    assert_eq!(step_cost(&w, here, at(1, 0)), Some(1.0), "leaving to the bank");
+    assert_eq!(step_cost(&w, bank, here), Some(1.0 * DAY + RIVER.cross));
+    assert_eq!(step_cost(&w, up, here), Some(1.0 * DAY), "down the course");
+    assert_eq!(step_cost(&w, down, here), Some(1.0 * DAY), "up the course");
+    assert_eq!(step_cost(&w, here, at(1, 0)), Some(1.0 * DAY), "leaving to the bank");
     // A tributary flowing in is along the course; a river beside it that doesn't flow in isn't.
     let (side, other) = (at(1, -1), at(-1, 1));
     w.tiles[side].river = 1;
     w.tiles[side].flow = Some(here);
     w.tiles[other].river = 1;
     w.tiles[other].flow = Some(at(-2, 1));
-    assert_eq!(step_cost(&w, side, here), Some(1.0));
-    assert_eq!(step_cost(&w, here, side), Some(1.0));
-    assert_eq!(step_cost(&w, here, other), Some(1.0 + RIVER.cross), "into a river not this one's course");
-    assert_eq!(step_cost(&w, other, here), Some(1.0 + RIVER.cross));
+    assert_eq!(step_cost(&w, side, here), Some(1.0 * DAY));
+    assert_eq!(step_cost(&w, here, side), Some(1.0 * DAY));
+    assert_eq!(step_cost(&w, here, other), Some(1.0 * DAY + RIVER.cross), "into a river not this one's course");
+    assert_eq!(step_cost(&w, other, here), Some(1.0 * DAY + RIVER.cross));
     // The crossing adds to the terrain; a trail bridges it and brings the terrain to its hidden cost.
     w.tiles[here].terrain = FOREST;
-    assert_eq!(step_cost(&w, bank, here), Some(2.0 + RIVER.cross));
-    assert_eq!(step_cost(&w, up, here), Some(2.0));
+    assert_eq!(step_cost(&w, bank, here), Some(2.0 * DAY + RIVER.cross));
+    assert_eq!(step_cost(&w, up, here), Some(2.0 * DAY));
     w.tiles[here].trail = true;
-    w.tiles[here].trail_cost = Some(1.0);
-    assert_eq!(step_cost(&w, bank, here), Some(1.0));
-    assert_eq!(step_cost(&w, up, here), Some(1.0));
+    w.tiles[here].trail_cost = Some(1.0 * DAY);
+    assert_eq!(step_cost(&w, bank, here), Some(1.0 * DAY));
+    assert_eq!(step_cost(&w, up, here), Some(1.0 * DAY));
 }
 
 #[test]
@@ -269,16 +269,20 @@ fn a_path_across_costs_more_and_a_path_along_does_not() {
     let plain = flat();
     let all = |_| true;
     let across = |w: &World| cost_map(w, &[at(-2, 0)], f64::INFINITY, all)[&at(2, 0)];
-    assert_eq!(across(&plain), 4.0);
-    assert_eq!(across(&w), 4.0 + RIVER.cross);
+    same(across(&plain), 4.0 * DAY);
+    same(across(&w), 4.0 * DAY + RIVER.cross);
     let along = |w: &World| cost_map(w, &[at(0, -4)], f64::INFINITY, all)[&at(0, 4)];
-    assert_eq!(along(&plain), 8.0);
-    assert_eq!(along(&w), 8.0);
+    same(along(&plain), 8.0 * DAY);
+    same(along(&w), 8.0 * DAY);
     // Out of a bank tile, the river and everything past it cost the crossing.
     let out = cost_map(&w, &[at(-1, 0)], f64::INFINITY, all);
-    assert_eq!(out[&at(0, 0)], 1.0 + RIVER.cross);
-    assert_eq!(out[&at(1, 0)], 2.0 + RIVER.cross);
-    assert_eq!(out[&at(-2, 0)], 1.0);
+    same(out[&at(0, 0)], 1.0 * DAY + RIVER.cross);
+    same(out[&at(1, 0)], 2.0 * DAY + RIVER.cross);
+    same(out[&at(-2, 0)], 1.0 * DAY);
+}
+
+fn same(a: f64, b: f64) {
+    assert!((a - b).abs() < 1e-9, "{a} against {b}");
 }
 
 /// The path cost from `home` to `to` over `territory`, as a clan walks it.
@@ -293,11 +297,11 @@ fn walk(w: &World, home: usize, territory: &[usize], to: usize) -> f64 {
 fn a_walk_inside_a_territory_crosses_the_river_once() {
     let w = river_world();
     let (west, ford, east, down) = (at(-1, 0), at(0, 0), at(1, 0), at(0, 1));
-    assert_eq!(walk(&w, west, &[west, ford, east], east), 2.0 + RIVER.cross);
+    same(walk(&w, west, &[west, ford, east], east), 2.0 * DAY + RIVER.cross);
     // Onto the river and along it: the crossing once.
-    assert_eq!(walk(&w, west, &[west, ford, down], down), 2.0 + RIVER.cross);
+    same(walk(&w, west, &[west, ford, down], down), 2.0 * DAY + RIVER.cross);
     // From a home on the river, along it and off: no crossing.
-    assert_eq!(walk(&w, ford, &[ford, down, at(1, 0)], down), 1.0);
+    same(walk(&w, ford, &[ford, down, at(1, 0)], down), 1.0 * DAY);
     // Only the territory's own tiles are walked.
     assert_eq!(walk(&w, west, &[west, east], east), f64::INFINITY);
 }
@@ -307,14 +311,14 @@ fn a_trail_on_the_river_bridges_walks_and_market_reach() {
     let mut w = river_world();
     let (west, ford, east) = (at(-1, 0), at(0, 0), at(1, 0));
     let territory = [west, ford, east];
-    assert_eq!(walk(&w, west, &territory, east), 2.0 + RIVER.cross);
+    same(walk(&w, west, &territory, east), 2.0 * DAY + RIVER.cross);
     assert!(!reach(&w, west).contains_key(&east), "across the river is out of reach");
     // The ford is plains, so its trail brings it to the flat cost (`TRAIL.flat` of 1): the walk is
     // 0.75 + 1 where it was 1 + 1 before the flat trail. The river's crossing is gone either way.
     w.tiles[ford].trail = true;
-    assert_eq!(walk(&w, west, &territory, east), 1.0 + TRAIL.flat);
-    assert_eq!(reach(&w, west)[&east], 1.0 + TRAIL.flat);
+    same(walk(&w, west, &territory, east), (1.0 + TRAIL.flat) * DAY);
+    same(reach(&w, west)[&east], (1.0 + TRAIL.flat) * DAY);
     // A trail at the course changes nothing along it: no crossing, and the flat trail's cost.
     w.tiles[at(0, 1)].trail = true;
-    assert_eq!(step_cost(&w, ford, at(0, 1)), Some(TRAIL.flat));
+    assert_eq!(step_cost(&w, ford, at(0, 1)), Some(TRAIL.flat * DAY));
 }

@@ -37,7 +37,7 @@ async function selectKey(page, key, i) {
 }
 
 // The seed the page's checks run on, and the seed the hold runs on.
-const SEED = 6;
+const SEED = 3;
 // The hold's map: seed 4. On seed 7 the camp's march starves ten warriors down to four, too few to hold the
 // ring (the zone holds one tile a warrior), so the cut never comes; seed 4 is where it does.
 const HOLD_SEED = hs >= 0 ? Number(args[hs + 1]) : 4;
@@ -105,7 +105,9 @@ async function panelChecks(page) {
   await page.drag(nb[0], nb[1]);
   await page.eval(frames);
   const z1 = await zone();
-  need(z1 > z0 + 1 || z1 >= 3, `a drag paints the zone (${z0} → ${z1} tiles)`);
+  // The zone holds one tile a warrior, so a camp of two warriors holds two.
+  const held = Math.floor(await page.eval(`game.view().units[${camp}].people`));
+  need(z1 > z0 + 1 || z1 >= Math.min(3, held), `a drag paints the zone (${z0} → ${z1} tiles, ${held} warriors)`);
   await page.key('Escape');
   await page.key('u');
   need((await page.eval("document.body.dataset.painting")) === 'unpaint', 'U arms unpainting');

@@ -1,0 +1,45 @@
+[
+  {
+    "id": "build-1",
+    "title": "The split, the ladder, the guard's meal and the muster",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 0, New 1, Miss 0, Reach 2. Every change is proved byte for byte by the digest pins and three digests against main, so the checks catch any slip; split and Ladder are adapted from divide and the two unit turns. The piece's Shape line called this the clay; scored at 3 it isn't the hard part, so the piece is Easel and Canvas (spec.md, Shape). About 8 files, 450 lines, mostly moved: actors.rs (+120 with tests), clans.rs, claim.rs, camp.rs, scout.rs, search.rs, guard.rs, units/mod.rs into muster.rs (~300 moved), core/tests/actors.rs, engine/CLAUDE.md."
+  },
+  {
+    "id": "build-2",
+    "title": "The labels and the day",
+    "part": "easel",
+    "model": "sonnet",
+    "effort": "medium",
+    "points": 6,
+    "why": "Open 0, New 1, Miss 3, Reach 2. The brief lists every number to scale and the grid the spec step tried, so done is exact; but a number left unscaled shows only on a real map, and the reach test it writes first is its guard. A sweep against two nulls is a report, not a bound (spec.md, decision 1). About 14 files, 500 lines: data.rs (labels on every number, ~150), map.rs, land.rs, actors.rs, markets.rs, view.rs, panels.js, play.js, lib.rs, core/tests/day.rs (~200 new), the fallout in core/tests and cli/tests/save.rs, day.md."
+  },
+  {
+    "id": "build-3",
+    "title": "The ring",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 2, New 1, Miss 1, Reach 1. The formula, the layer's look, the judge's counts and the retro maps' ring test with its bounds are settled in the brief; how the layer reads at a glance is judged by eye from its screenshot (Open 2). A reversed Dijkstra is adapted from cost_map_by, the layer from lines.js, the judge module from judge.rs, the retro maps' test from the spec-review's ring-probe.rs (which passes on main, probe-ring.md). Tests it writes catch the formula. Spec-review: the AI raises no army before R, so the judge's army-turns are zero on the retro maps; the ring's real-map proof is now staged armies by band of share, an ignored report test, and the walk-out runs 40 turns, since a pack spoiling a tenth a turn lasts ~29 at the first tile past. About 10 files, 650 lines: line.rs (+60), judge_ring.rs (~150 new), judge.rs, sweep_judge.rs, sweep_text.rs, lib.rs, ring.js (~70), view.js, play.js, ring.mjs (~60), core/tests/ring.rs (~220), supply.md, engine/CLAUDE.md, ring.md."
+  },
+  {
+    "id": "build-4",
+    "title": "The per-person walk",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 10,
+    "why": "Open 4, New 1, Miss 3, Reach 2: Opus low on the ladder; the canvas runs a rung below, Sonnet high. The rule is settled; its weighting is searched for on the retro maps against main and two last-bit nulls, and the scouts may need retuning at one person's pace. The ring bound is build-3's staged retro-map test rerun, plus scouts inside the ring (spec-review). I expect Sonnet to run four to six settings from the probe's start and either pass every bound or send the ask with the nearest. About 9 files, 350 lines: actors.rs, clans.rs, markets.rs, civs.rs, claim.rs, camp.rs, scout.rs, search.rs, data.rs, tests in actors.rs or clans.rs and scout_errand.rs, the pins, walk.md; each sweep is about 2 minutes, so 8 to 10 sweeps fit."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is judged on the retro maps against nulls the review must run itself, and the per-person walk is a rule the player meets in every festival and march: Opus medium."
+  }
+]

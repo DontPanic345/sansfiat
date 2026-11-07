@@ -1,14 +1,15 @@
 //! Actors: everything that acts in the world works the same way (`docs/design/actors.md`). An
 //! actor is people with a home, a store, a territory it spreads its labour over and routes it
 //! walks beyond it. Every walk is priced by `walk_cost`; labour is divided evenly over the
-//! territory by `divide`, each tile's walk paid from its share; `change` is the one rule for
-//! adding and dropping a tile. Nothing here knows what an actor spends its work on.
+//! territory by `divide` (or `split`, over several jobs), each tile's walk paid from its share;
+//! `change` is the one rule for adding and dropping a tile, and `meal` the one rule for eating from
+//! kin's stores. Nothing here knows what an actor spends its work on.
 
 use serde::{Deserialize, Serialize};
 
 use crate::data::*;
-use crate::land::{neighbours, passable, step_cost, steps};
-use crate::market::{take, Basket};
+use crate::land::{grid, neighbours, passable, step_cost, steps};
+use crate::market::{take, total, Basket};
 use crate::world::World;
 
 /// A walk beyond the territory, made there and back once a turn.
@@ -80,7 +81,7 @@ pub fn stride(w: &World, from: usize, path: &[usize], labour: f64, slack: f64) -
     let mut taken = 0;
     for &next in path {
         let Some(cost) = step_cost(w, at, next) else { break };
-        if cost > left + slack {
+        if cost > left + slack + 1e-9 {
             break;
         }
         left -= cost;
@@ -94,6 +95,12 @@ pub fn stride(w: &World, from: usize, path: &[usize], labour: f64, slack: f64) -
 /// route, less for walks inside a territory that cost little.
 pub fn walk_cost(path_cost: f64, weight: f64) -> f64 {
     2.0 * path_cost * weight
+}
+
+/// The people who walk a route carrying `brought` food, a load (`CARRY.load`) each, at least one: a
+/// route's yearly cost is its path's cost times this.
+pub fn carriers(brought: f64) -> f64 {
+    (brought / CARRY.load).max(1.0)
 }
 
 /// The walks from home to each tile of a territory over the territory's own tiles.
@@ -124,7 +131,7 @@ impl Walks {
             // Territories are small: a scan beats a heap.
             let mut next: Option<usize> = None;
             for k in 0..n {
-                if !done[k] && cost[k].is_finite() && next.is_none_or(|b| cost[k] < cost[b]) {
+                if !done[k] && cost[k].is_finite() && next.is_none_or(|b| grid(cost[k]) < grid(cost[b])) {
                     next = Some(k);
                 }
             }
@@ -136,7 +143,7 @@ impl Walks {
                     continue;
                 }
                 let Some(step) = step_cost(w, territory[k], j) else { continue };
-                if cost[k] + step < cost[m] {
+                if !cost[m].is_finite() || grid(cost[k] + step) < grid(cost[m]) {
                     cost[m] = cost[k] + step;
                     before[m] = Some(k);
                 }
@@ -173,15 +180,50 @@ impl Walks {
 }
 
 /// Divides `labour` over a territory: the routes are paid first, what's left is split evenly over
-/// the tiles, and each tile's share pays its walk (`walks`, yearly) before the work. Returns each
-/// tile's work, 0 where the walk eats the share.
-pub fn divide(labour: f64, routes: &[Route], walks: &[f64]) -> Vec<f64> {
-    if walks.is_empty() {
-        return Vec::new();
-    }
+/// the tiles, and each tile's share pays its walk (`walks`, yearly, a person's) for every one of
+/// the `people` walking it before the work. Returns each tile's work, 0 where the walks eat the
+/// share. `split` with one job of share 1.
+pub fn divide(people: f64, labour: f64, routes: &[Route], walks: &[f64]) -> Vec<f64> {
+    split(people, labour, routes, &[1.0], &[walks.to_vec()]).swap_remove(0)
+}
+
+/// Splits `labour` over several jobs (`jobs`: each job's walks, yearly, one person's, one per
+/// tile). The routes are paid once from `labour`; what is left goes to each job by its share
+/// (`shares`, summing to one). Each job divides its part evenly over its tiles, and every tile is
+/// walked by the job's people over its tiles (`people` × its share ÷ its tiles), each paying the
+/// walk before the work, as `divide` does. Returns each job's work per tile, 0 where the walks eat
+/// the share. A job with no tiles gets nothing, and its share is not handed on to the other jobs.
+pub fn split(people: f64, labour: f64, routes: &[Route], shares: &[f64], jobs: &[Vec<f64>]) -> Vec<Vec<f64>> {
     let left = (labour - routes.iter().map(|r| r.cost).sum::<f64>()).max(0.0);
-    let share = left / walks.len() as f64;
-    walks.iter().map(|&w| (share - w).max(0.0)).collect()
+    jobs.iter()
+        .zip(shares)
+        .map(|(walks, &share)| {
+            if walks.is_empty() {
+                return Vec::new();
+            }
+            let n = walks.len() as f64;
+            let each = left * share / n;
+            let walking = people * share / n;
+            walks.iter().map(|&w| (each - w * walking).max(0.0)).collect()
+        })
+        .collect()
+}
+
+/// Eats `need` for an actor: from its own `store` first, then from its kin's stores, biggest first
+/// (ties to the lower id), until `need` is met or the kin are out. Returns what was eaten. The kin
+/// are `(id, store)` pairs; each store gives what it holds in turn.
+pub fn meal<'a>(need: f64, store: &mut Basket, kin: impl IntoIterator<Item = (u32, &'a mut Basket)>) -> f64 {
+    const EPS: f64 = 1e-9;
+    let mut got = total(&take(store, need));
+    let mut kin: Vec<(f64, u32, &mut Basket)> = kin.into_iter().map(|(id, s)| (total(s), id, s)).collect();
+    kin.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
+    for (_, _, s) in kin {
+        if got + EPS >= need {
+            break;
+        }
+        got += total(&take(s, need - got));
+    }
+    got
 }
 
 /// Whether `territory` (sorted) is connected over its own passable tiles and holds `home`.

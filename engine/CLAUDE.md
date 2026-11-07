@@ -24,30 +24,31 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/world.rs` | `World`, `phase`, `Action`, the `TURN` steps, `act`/`run`/`save`/`replay`, reasons, alerts, `SAVE_VERSION`. |
 | `core/src/over.rs` | The end: `Phase::Over` (winner, `Why`, turn), the `over` step, `limit` and `ends_at`. A game ends as a phase; the world runs on after it. |
 | `core/src/events.rs` | `Event`, `EventKind` and their wording. |
-| `core/src/data.rs` | Every rule's number and `Config`; tune here first. |
+| `core/src/data.rs` | Every rule's number and `Config`, each in days (`DAY`), food, turns, people or a share; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs and the flat trail cost. |
 | `core/src/land.rs` | Neighbours, move costs, `path`, `steps`, and the `regrow`, `wear` and `tend` steps. |
-| `core/src/actors.rs` | What every actor does: spoil, eat, `stride`, `walk_cost`, traffic, `divide`, `change`. |
+| `core/src/actors.rs` | What every actor does: spoil, eat, `meal` (from kin's stores), `stride`, `walk_cost`, `carriers`, traffic, `divide` and `split` (over jobs; a tile pays its walk for each person walking it), `change`. |
 | `core/src/clans.rs` | Clans: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
 | `core/src/market.rs`, `markets.rs` | Barter clearing; festivals: reach, the `go` step, trading, forming, fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
 | `core/src/claim.rs` | A civ's claim, its guard's division, `held`, `tile_civ` and the `claim` step. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
-| `core/src/units/` | `line.rs` (paths, the line home, cuts), `camp.rs` (an army's turn and zone), `guard.rs`, `search.rs` (the route search), `scout.rs` (the scout's turn and feeding), `ai.rs` (the AI's orders), `fight.rs`. |
+| `core/src/units/` | `line.rs` (paths, the line home, cuts, `ring`: the shares a civ's line feeds an army with), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats, and `Ladder`, its labour spent), `muster.rs` (raising, disbanding, giving up), `guard.rs`, `search.rs` (the route search), `scout.rs` (the scout's turn and feeding), `ai.rs` (the AI's orders), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game: the engine's second player. |
 | `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map (the `map` text, or a retro pick, cached), layers, placements, orders and reads; `StageSpec` is its data form. `maptext.rs` reads the map's text (`map::parse`). A staged world is not a save. |
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
 | `core/src/judge.rs` | `Watch`: a game scored from its pick in the score groups, the end group included. Reads the world only. |
+| `core/src/judge_ring.rs` | The `supply` group: each civ's ring at the pick and +200, the armies and scouts inside the ring and outside it, hungry turns, clan territory. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
 | `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view, under 80 lines), `story.rs` (the scripted stories of war: skirmish, stack, surrender, conquest). |
 | `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the order form; `Sim.stage` builds a staged game (`staged()` says so). |
-| `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js` and `panels.js` (a selection's shape and its buttons), `model.js` (the view model), `map/` (`MapView` and one file per layer), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
+| `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js` and `panels.js` (a selection's shape and its buttons), `model.js` (the view model), `map/` (`MapView` and one file per layer, `ring.js` among them), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim` (`Sim.stage`): the panel shapes as data, and Disband all as the page presses it; the panel context both share. |
 | `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`. |
-| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout (which presses Move to…, Route from… and Route to…), civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
+| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, ring, scout (which presses Move to…, Route from… and Route to…), civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
 
 ## Adding a mechanic
 

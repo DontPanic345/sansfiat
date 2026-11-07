@@ -99,7 +99,7 @@ export function orderTip(sim, u, i, v) {
   if (!u || u.civ !== v.player || (u.kind !== 'camp' && u.kind !== 'scout')) return [];
   const lines = [];
   const r = JSON.parse(sim.path(u.tile, i));
-  lines.push(r ? `Move here: cost ${f2(r.cost)}, ${r.turns} turn${r.turns === 1 ? '' : 's'}` : 'No route');
+  lines.push(r ? `Move here: ${f2(r.cost)} days, ${r.turns} turn${r.turns === 1 ? '' : 's'}` : 'No route');
   if (u.kind === 'scout' && (routing.arm === 'move' || routing.arm === 'to')) {
     const line = JSON.parse(sim.lineFrom(u.id, i));
     if (!line) lines.push("Past the line's reach: no line reaches it");

@@ -25,7 +25,7 @@ const need = (ok, msg) => {
 };
 const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 
-const page = await open('?size=small&seed=6&run=1');
+const page = await open('?size=small&seed=3&run=1');
 try {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');

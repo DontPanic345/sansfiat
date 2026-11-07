@@ -66,3 +66,6 @@ territory the player has fixed; the actor divides its labour around it as any ac
 - A civ may raise warriors, and the order names the civ rather than a unit. (#100)
 - A camp can only be posted or sent to land, never onto a built pass over a mountain, whoever sends it. (#100)
 - An army's people stand on the tiles it holds in proportion to how it guards each one, and a guard's stand over its civ's land the same way, so a thin line is thin in a fight too. (#104)
+- An actor pays its routes first, then splits its days between its jobs by share, and each job divides over its own tiles. (#154)
+- The guard eats from the civ's store first, then from its clans' stores, biggest first. (#154)
+- A unit walks together: each of its people pays every step, so a scout walks at one person's pace, as a camp does. Its searching and trail work are not walking, and its people's labour for them is pooled. (#154)

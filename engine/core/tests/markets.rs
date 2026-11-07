@@ -92,7 +92,7 @@ fn a_festival_is_worth_its_gain_and_desire_less_the_walk() {
     let c = &w.clans[&id];
     let g = gain(m, &[0.0, 10.0, 0.0, 0.0, 0.0], 5.0) * CLAN.harvest_labour;
     assert!(g > 0.0);
-    assert_eq!(worths(&w, c), vec![(mid, g + MARKET.desire - walk_cost(1.0, 1.0), 2.0)]);
+    assert_eq!(worths(&w, c), vec![(mid, g + MARKET.desire - walk_cost(1.0 * DAY, 1.0), 2.0 * DAY)]);
     // Company: more for each clan that came last turn, up to the cap.
     let mut m = m.clone();
     m.traders = MARKET.company_cap + 3;
@@ -109,13 +109,13 @@ fn a_clan_goes_where_the_trade_beats_the_walk_and_its_route_is_its_trip() {
     assert_eq!(c.market, Some(mid));
     assert_eq!(c.routes.len(), 1);
     let r = &c.routes[0];
-    assert_eq!((r.to, r.path.clone(), r.cost), (out(0, 1), vec![out(0, 1)], 2.0));
+    assert_eq!((r.to, r.path.clone(), r.cost), (out(0, 1), vec![out(0, 1)], 2.0 * DAY));
     assert_eq!(c.trip(), r.cost);
 
     // Far enough that the walk costs more than the gain and the desire.
     let (mut w, id, _) = grain_clan(1, 0.0, 0.4);
     let g = gain(&w.markets.values().next().unwrap().clone(), &[0.0, 10.0, 0.0, 0.0, 0.0], 5.0);
-    let k = ((g * CLAN.harvest_labour + MARKET.desire) / 2.0).floor() as i32 + 1;
+    let k = ((g * CLAN.harvest_labour + MARKET.desire) / (2.0 * DAY)).floor() as i32 + 1;
     let (mut far, fid, _) = grain_clan(k, 0.0, 0.4);
     assert!(k < R);
     go(&mut far);
@@ -125,21 +125,22 @@ fn a_clan_goes_where_the_trade_beats_the_walk_and_its_route_is_its_trip() {
     // A surplus adds the desire to gather.
     let store = 0.6;
     let (mut rich, rid, rmid) = grain_clan(k, store, 0.4);
-    assert!(store >= MARKET.surplus_at * 5.0 && 2.0 * k as f64 <= MARKET.reach_walk);
+    assert!(store >= MARKET.surplus_at * 5.0 && 2.0 * k as f64 * DAY <= MARKET.reach_walk);
     go(&mut rich);
-    assert_eq!((rich.clans[&rid].market, rich.clans[&rid].trip()), (Some(rmid), 2.0 * k as f64));
+    assert_eq!(rich.clans[&rid].market, Some(rmid));
+    assert!((rich.clans[&rid].trip() - 2.0 * k as f64 * DAY).abs() < EPS);
 
     // It harvests with the route's labour paid first: left 3 of it, it takes 3 food.
     go(&mut w);
     let c = w.clans.get_mut(&id).unwrap();
-    c.routes[0].cost = 5.0 * CLAN.work - 3.0;
+    c.routes[0].cost = 5.0 * CLAN.work - 3.0 * DAY;
     harvest(&mut w);
     let got: f64 = w.clans[&id].harvest.iter().sum();
-    assert!((got - 3.0 / CLAN.harvest_labour).abs() < EPS, "harvested {got}");
+    assert!((got - 3.0 * DAY / CLAN.harvest_labour).abs() < EPS, "harvested {got}");
     assert!(w.tiles[out(0, 1)].traffic > 0.0, "the route is walked");
 
     // Nothing to gain (only grain ever traded there), no surplus, and the walk beats the desire.
-    let k = (MARKET.desire / 2.0).floor() as i32 + 1;
+    let k = (MARKET.desire / (2.0 * DAY)).floor() as i32 + 1;
     let (mut w, id, mid) = grain_clan(k, 0.0, 0.4);
     assert!(k < R);
     w.markets.get_mut(&mid).unwrap().goods = vec![GRAIN];
@@ -154,7 +155,7 @@ fn a_clan_goes_to_the_festival_worth_most() {
     w.markets.get_mut(&near).unwrap().goods = vec![GRAIN, FISH];
     w.markets.get_mut(&near).unwrap().prices[FISH] = 0.4;
     go(&mut w);
-    assert_eq!((w.clans[&id].market, w.clans[&id].trip()), (Some(near), 2.0));
+    assert_eq!((w.clans[&id].market, w.clans[&id].trip()), (Some(near), 2.0 * DAY));
     // Company at the far one outweighs its longer walk.
     w.markets.get_mut(&far).unwrap().traders = MARKET.company_cap;
     w.clans.get_mut(&id).unwrap().market = None;
@@ -187,4 +188,46 @@ fn a_clan_keeps_its_festival_unless_another_beats_it_by_the_margin() {
     assert_eq!(choose(&[(a, 0.5, 2.0), (b, -1.0, 2.0)], Some(b), keep), Some(a));
     assert_eq!(choose(&[(a, -0.5, 2.0), (b, -1.0, 2.0)], Some(b), keep), Some(b));
     assert_eq!(choose(&[(a, -0.5, 2.0), (b, -MARKET.stay_margin - 0.1, 2.0)], Some(b), keep), None);
+}
+
+/// A clan of `people` at the middle with a basket of `fill` × its carry of grain from last turn, and a
+/// festival three steps away worth the walk to either.
+fn carrying(people: f64, fill: f64) -> (World, u32, u32) {
+    let mut w = flat();
+    let o = at(0, 0);
+    w.tiles[o].stock[GRAIN] = 40.0;
+    let id = put(&mut w, &[o], people);
+    let c = w.clans.get_mut(&id).unwrap();
+    c.basket[GRAIN] = fill * MARKET.carry * people;
+    c.harvest[GRAIN] = c.basket[GRAIN];
+    let mid = open(&mut w, out(0, 3));
+    let m = w.markets.get_mut(&mid).unwrap();
+    m.prices[FISH] = 0.4;
+    m.goods = vec![GRAIN, FISH];
+    (w, id, mid)
+}
+
+#[test]
+fn a_clan_that_carries_more_pays_more_days_to_the_same_festival() {
+    let one_walker = 2.0 * 3.0 * DAY;
+    let (mut few, a, mid) = carrying(2.0, 1.0);
+    let (mut many, b, _) = carrying(20.0, 1.0);
+    // Two people bring 0.4 food, under a load: one walker. Twenty bring 4: 4 ÷ load walkers.
+    let walkers = (MARKET.carry * 20.0 / CARRY.load).max(1.0);
+    assert!(walkers > 1.0, "a clan of twenty brings more than a load");
+    let cost = |w: &World, id: u32, mid: u32| worths(w, &w.clans[&id]).iter().find(|x| x.0 == mid).unwrap().2;
+    assert!((cost(&few, a, mid) - one_walker).abs() < EPS);
+    assert!((cost(&many, b, mid) - one_walker * walkers).abs() < EPS);
+    for (w, id) in [(&mut few, a), (&mut many, b)] {
+        w.clans.get_mut(&id).unwrap().harvest[GRAIN] = 1000.0;
+        go(w);
+    }
+    let (ra, rb) = (&few.clans[&a].routes, &many.clans[&b].routes);
+    assert_eq!((ra.len(), rb.len()), (1, 1));
+    assert_eq!(ra[0].path, rb[0].path, "the same festival, the same path");
+    assert!((ra[0].cost - one_walker).abs() < EPS && (rb[0].cost - one_walker * walkers).abs() < EPS);
+    assert!(rb[0].cost > ra[0].cost);
+    // A clan of twenty that brings nothing walks it alone, as a clan of two does.
+    let (empty, c, mid) = carrying(20.0, 0.0);
+    assert!((cost(&empty, c, mid) - one_walker).abs() < EPS);
 }

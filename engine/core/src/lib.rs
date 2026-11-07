@@ -10,6 +10,7 @@ pub mod data;
 pub mod events;
 pub mod hex;
 pub mod judge;
+pub mod judge_ring;
 pub mod land;
 pub mod leaning;
 pub mod map;

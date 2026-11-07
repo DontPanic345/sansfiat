@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::actors::{walk_cost, Route};
+use crate::actors::{carriers, walk_cost, Route};
 use crate::civs;
 use crate::clans::{nutrition, surplus, Clan};
 use crate::data::*;
@@ -59,25 +59,32 @@ pub fn desire(m: &Market, surplus: bool) -> f64 {
     MARKET.desire + company + if surplus { MARKET.gather_bonus } else { 0.0 }
 }
 
+/// The people who walk a clan's festival route: the carriers of what it brought last turn, its basket
+/// capped at `MARKET.carry × people` as `trade` caps it (`actors::carriers`).
+pub fn walkers(clan: &Clan) -> f64 {
+    carriers(clan.basket.iter().sum::<f64>().min(MARKET.carry * clan.people))
+}
+
 /// What `clan` would make of going to each festival whose route from its home costs at most
 /// `MARKET.reach_walk`, in id order: the festival's id, its worth (`gain × harvest_labour +
 /// desire − route cost`) and the route's cost.
 pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
     let most = MARKET.reach_walk / 2.0;
     let home = w.tiles[clan.home].hex();
-    // Every step costs at least 1, so a festival further than the path can go is out of reach.
-    if !w.markets.values().any(|m| f64::from(w.tiles[m.tile].hex().distance(home)) <= most) {
+    // A bare step costs `DAY`, so a festival further than `most / DAY` steps is out of reach.
+    if !w.markets.values().any(|m| f64::from(w.tiles[m.tile].hex().distance(home)) <= most / DAY) {
         return Vec::new();
     }
     let near = cost_map(w, &[clan.home], most, |i| passable(w, i));
     let b: Basket = std::array::from_fn(|f| clan.store[f] + clan.harvest[f]);
+    let walkers = walkers(clan);
     let surplus = clan.store.iter().sum::<f64>() >= MARKET.surplus_at * clan.people;
     // A civ clan is drawn to its capital's market.
     let capital = clan.civ.and_then(|c| w.civs.get(&c)).map(|c| c.market);
     w.markets
         .values()
         .filter_map(|m| {
-            let cost = walk_cost(*near.get(&m.tile)?, 1.0);
+            let cost = walk_cost(*near.get(&m.tile)?, 1.0) * walkers;
             let pull = if Some(m.id) == capital { CIV.pull } else { 0.0 };
             Some((m.id, gain(m, &b, clan.people) * CLAN.harvest_labour + desire(m, surplus) + pull - cost, cost))
         })
@@ -120,7 +127,7 @@ pub fn go(w: &mut World) {
         let route = choice.and_then(|mid| {
             let to = w.markets[&mid].tile;
             let (path, cost) = path(w, c.home, to, |i| passable(w, i))?;
-            Some(Route { to, path, cost: walk_cost(cost, 1.0) })
+            Some(Route { to, path, cost: walk_cost(cost, 1.0) * walkers(c) })
         });
         let c = w.clans.get_mut(&id).unwrap();
         let was = c.market;

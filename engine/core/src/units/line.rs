@@ -2,12 +2,15 @@
 //! what the camp's food is carried along and whether rival ground cuts it. `walk` and `turns` are
 //! the walking the camp's labour pays for.
 
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BinaryHeap};
+
 use super::{UnitKind, EPS};
 use crate::actors::{stride, walk_cost};
 use crate::civs;
 use crate::claim;
 use crate::data::*;
-use crate::land::{passable, path};
+use crate::land::{grid, neighbours, passable, path, step_cost};
 use crate::world::World;
 
 /// Whether a camp may walk onto tile `i`: passable land, or a built pass over a mountain.
@@ -67,6 +70,67 @@ fn line_at(w: &World, unit: u32, from: usize, hold: bool) -> Option<(Vec<usize>,
     let cost = walk_cost(cost, 1.0);
     let carry = if cost > 0.0 { u.people * UNIT.labour * UNIT.carry / cost } else { f64::INFINITY };
     Some((tiles, cost, carry))
+}
+
+/// The ring of civ `civ`: every walkable tile (land, or a built pass) from which a line may reach its
+/// capital (the tiles `line_at` accepts, reading held ground), with the share of an army's days its line takes
+/// to feed it there: `UNIT.food × walk_cost(path cost, 1) / (UNIT.labour × UNIT.carry)`, the line's
+/// cost priced as `line_at` prices it. The capital is 0. Inside the ring the share is under one; it
+/// has no army size in it, so one map serves every army and scout of the civ. A fallen civ has none.
+pub fn ring(w: &World, civ: u32) -> BTreeMap<usize, f64> {
+    let mut out = BTreeMap::new();
+    let Some(c) = w.civs.get(&civ).filter(|c| !c.is_out()) else { return out };
+    let capital = c.capital;
+    // Who holds each tile, as `civs::holder` reads it: the first army holding it, else the land's civ.
+    let mut holder: Vec<Option<u32>> = vec![None; w.tiles.len()];
+    for u in w.units.values() {
+        for &t in u.held() {
+            holder[t].get_or_insert(u.civ);
+        }
+    }
+    // A tile a line may pass through: walkable and not a rival's. The capital is always its own end.
+    let open: Vec<bool> = (0..w.tiles.len())
+        .map(|i| {
+            let held = holder[i].or_else(|| civs::tile_civ(w, i));
+            walkable(w, i) && (i == capital || held.is_none_or(|h| h == civ))
+        })
+        .collect();
+    // Dijkstra from the capital over the reversed steps: a tile's cost is the path cost of its line
+    // home, so the step from `i` into `j` (`j` nearer home) is priced when `j` is settled.
+    let mut best: Vec<Option<(i64, f64)>> = vec![None; w.tiles.len()];
+    let mut heap = BinaryHeap::new();
+    best[capital] = Some((0, 0.0));
+    if open[capital] {
+        heap.push(Reverse((0, capital)));
+    }
+    while let Some(Reverse((g, j))) = heap.pop() {
+        let Some((bg, cj)) = best[j] else { continue };
+        if g > bg {
+            continue;
+        }
+        for i in neighbours(w, j) {
+            let Some(step) = step_cost(w, i, j) else { continue };
+            let nc = cj + step;
+            let ng = grid(nc);
+            if best[i].is_some_and(|(b, _)| b <= ng) {
+                continue;
+            }
+            best[i] = Some((ng, nc));
+            // A tile's line starts there whatever it is; only an open tile carries a line on.
+            if open[i] {
+                heap.push(Reverse((ng, i)));
+            }
+        }
+    }
+    for (i, b) in best.iter().enumerate() {
+        if let Some((_, cost)) = b {
+            if walkable(w, i) {
+                let cost = walk_cost(*cost, 1.0);
+                out.insert(i, UNIT.food * cost / (UNIT.labour * UNIT.carry));
+            }
+        }
+    }
+    out
 }
 
 /// Whether the camp is cut off: no line, or one that can't carry a turn's food for its warriors

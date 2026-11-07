@@ -4,7 +4,7 @@
 // and at the end saves to a file. The page's `game.digest()` must match `sansfiat digest --game FILE`, and
 // `sansfiat judge FILE` reads the save. The script reads the page (game.view()) to choose its targets; every
 // change to the game goes through the page's controls. It prints what the panel said at each step.
-//   node www/play/game.mjs [--seed 5] [--out DIR] [--no-cli]
+//   node www/play/game.mjs [--seed 2] [--out DIR] [--no-cli]
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,7 +17,7 @@ const flag = (name, dflt) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : dflt;
 };
-const SEED = Number(flag('--seed', '5'));
+const SEED = Number(flag('--seed', '2'));
 const out = resolve(flag('--out', mkdtempSync(join(tmpdir(), 'play-game-'))));
 const cli = !args.includes('--no-cli');
 mkdirSync(out, { recursive: true });

@@ -221,9 +221,10 @@ fn switch_to_capitals(w: &mut World) {
         let Some((_, mid)) = best else { continue };
         let to = w.markets[&mid].tile;
         let Some((path, cost)) = path(w, c.home, to, |i| passable(w, i)) else { continue };
+        let walkers = crate::markets::walkers(c);
         let c = w.clans.get_mut(&id).unwrap();
         c.market = Some(mid);
-        c.routes = vec![Route { to, path, cost: walk_cost(cost, 1.0) }];
+        c.routes = vec![Route { to, path, cost: walk_cost(cost, 1.0) * walkers }];
     }
     // Last turn's traders, as the clans now stand, so the next choice sees who switched.
     for m in w.markets.values_mut() {

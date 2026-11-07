@@ -86,13 +86,13 @@ fn step_costs() {
     // Off any river, the tile left doesn't matter.
     let from = neighbours(&w, plains).next().unwrap();
     assert_eq!(step_cost(&w, from, sea), None);
-    assert_eq!(step_cost(&w, from, plains), Some(1.0));
+    assert_eq!(step_cost(&w, from, plains), Some(1.0 * DAY));
     w.tiles[plains].terrain = FOREST;
-    assert_eq!(step_cost(&w, from, plains), Some(2.0));
+    assert_eq!(step_cost(&w, from, plains), Some(2.0 * DAY));
     // No hidden cost (the flat one a plains tile carries is cleared): a trail gains nothing.
     w.tiles[plains].trail_cost = None;
     w.tiles[plains].trail = true;
-    assert_eq!(step_cost(&w, from, plains), Some(2.0), "a trail with no hidden cost gains nothing");
+    assert_eq!(step_cost(&w, from, plains), Some(2.0 * DAY), "a trail with no hidden cost gains nothing");
 }
 
 #[test]
@@ -101,15 +101,15 @@ fn a_trail_brings_a_tile_to_its_hidden_cost_and_never_raises_it() {
     let (from, i) = (at(1, 0), at(1, 1));
     w.tiles[i].terrain = FOREST;
     w.tiles[i].trail = true;
-    w.tiles[i].trail_cost = Some(1.0);
-    assert_eq!(step_cost(&w, from, i), Some(1.0));
-    w.tiles[i].trail_cost = Some(3.0);
-    assert_eq!(step_cost(&w, from, i), Some(2.0), "a costlier hidden cost leaves the terrain");
+    w.tiles[i].trail_cost = Some(1.0 * DAY);
+    assert_eq!(step_cost(&w, from, i), Some(1.0 * DAY));
+    w.tiles[i].trail_cost = Some(3.0 * DAY);
+    assert_eq!(step_cost(&w, from, i), Some(2.0 * DAY), "a costlier hidden cost leaves the terrain");
     w.tiles[i].terrain = HILLS;
-    w.tiles[i].trail_cost = Some(1.0);
-    assert_eq!(step_cost(&w, from, i), Some(1.0));
+    w.tiles[i].trail_cost = Some(1.0 * DAY);
+    assert_eq!(step_cost(&w, from, i), Some(1.0 * DAY));
     w.tiles[i].trail = false;
-    assert_eq!(step_cost(&w, from, i), Some(2.0), "without a trail, the terrain");
+    assert_eq!(step_cost(&w, from, i), Some(2.0 * DAY), "without a trail, the terrain");
 }
 
 #[test]
@@ -118,12 +118,12 @@ fn a_mountain_is_passable_only_with_a_trail_and_costs_its_hidden_cost() {
     let (west, pass) = (at(-1, 0), at(0, 0));
     w.tiles[pass].terrain = MOUNTAIN;
     w.tiles[pass].span = Some(1);
-    w.tiles[pass].trail_cost = Some(MAP.mountain_cost as f64);
+    w.tiles[pass].trail_cost = Some(MAP.mountain_cost);
     assert!(!passable(&w, pass));
     assert_eq!(step_cost(&w, west, pass), None);
     w.tiles[pass].trail = true;
     assert!(passable(&w, pass));
-    assert_eq!(step_cost(&w, west, pass), Some(MAP.mountain_cost as f64));
+    assert_eq!(step_cost(&w, west, pass), Some(MAP.mountain_cost));
     w.tiles[pass].trail_cost = None;
     assert!(!passable(&w, pass), "a trail with no hidden cost crosses nothing");
     assert_eq!(step_cost(&w, west, pass), None);
@@ -135,10 +135,10 @@ fn a_trail_goes_only_where_a_hidden_cost_is_rolled_and_a_mountain_span_is_bridge
     let t = at(0, 0);
     assert!(!trailable(&w, t), "plains have no hidden cost");
     w.tiles[t].terrain = FOREST;
-    w.tiles[t].trail_cost = Some(1.0);
+    w.tiles[t].trail_cost = Some(1.0 * DAY);
     assert!(trailable(&w, t));
     w.tiles[t].terrain = MOUNTAIN;
-    w.tiles[t].trail_cost = Some(MAP.mountain_cost as f64);
+    w.tiles[t].trail_cost = Some(MAP.mountain_cost);
     w.tiles[t].span = Some(CIV.bridge_span);
     assert!(trailable(&w, t));
     w.tiles[t].span = Some(CIV.bridge_span + 1);
@@ -152,7 +152,7 @@ fn building_a_trail_takes_its_terrains_work_and_gives_it_the_traffic_to_live_on(
     let mut w = flat();
     let t = at(0, 0);
     w.tiles[t].terrain = HILLS;
-    w.tiles[t].trail_cost = Some(1.0);
+    w.tiles[t].trail_cost = Some(1.0 * DAY);
     let need = TRAIL.work.iter().find(|&&(terrain, _)| terrain == HILLS).unwrap().1;
     assert!(!build_trail(&mut w, t, need - 0.5));
     assert!(!w.tiles[t].trail);
@@ -166,7 +166,7 @@ fn building_a_trail_takes_its_terrains_work_and_gives_it_the_traffic_to_live_on(
 
     let m = at(0, 1);
     w.tiles[m].terrain = MOUNTAIN;
-    w.tiles[m].trail_cost = Some(MAP.mountain_cost as f64);
+    w.tiles[m].trail_cost = Some(MAP.mountain_cost);
     w.tiles[m].span = Some(CIV.bridge_span + 1);
     assert!(!build_trail(&mut w, m, 100.0), "a span too wide for the bridge");
     w.tiles[m].span = Some(CIV.bridge_span);
@@ -180,13 +180,13 @@ fn a_camp_crosses_a_built_pass_and_no_unbuilt_one() {
     let mut w = island(&[at(-2, 0), west, east, at(2, 0)]);
     w.tiles[pass].terrain = MOUNTAIN;
     w.tiles[pass].span = Some(1);
-    w.tiles[pass].trail_cost = Some(MAP.mountain_cost as f64);
+    w.tiles[pass].trail_cost = Some(MAP.mountain_cost);
     let (a, b) = (at(-2, 0), at(2, 0));
     assert!(units::path_between(&w, a, b).is_none(), "no way over an unbuilt mountain");
     w.tiles[pass].trail = true;
     let (tiles, cost) = units::path_between(&w, a, b).unwrap();
     assert_eq!(tiles, vec![west, pass, east, b]);
-    assert_eq!(cost, 1.0 + MAP.mountain_cost as f64 + 1.0 + 1.0);
+    assert!((cost - (1.0 + 3.0 + 1.0 + 1.0) * DAY).abs() < 1e-9);
 }
 
 #[test]

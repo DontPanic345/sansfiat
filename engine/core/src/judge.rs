@@ -10,6 +10,7 @@ use crate::civs::{alive, tile_civ};
 use crate::claim;
 use crate::data::{JUDGE, TERRAIN, UNIT};
 use crate::events::EventKind;
+use crate::judge_ring::{Supply, SupplyScores};
 use crate::over::Why;
 use crate::stats;
 use crate::units::{self, UnitKind};
@@ -128,6 +129,8 @@ pub struct Watch {
     /// Each civ's land at +200.
     civs_200: Vec<CivLand>,
     economy: Economy,
+    /// The ring and the units inside and outside it (`judge_ring`).
+    supply: Supply,
 }
 
 impl Watch {
@@ -159,6 +162,7 @@ impl Watch {
             parts_200: None,
             civs_200: Vec::new(),
             economy: Economy::default(),
+            supply: Supply::pick(w),
         }
     }
 
@@ -219,6 +223,8 @@ impl Watch {
         let camp = w.units.values().filter(|u| u.kind() == UnitKind::Camp).map(|u| u.people).fold(0.0, f64::max);
         self.economy.largest_army = self.economy.largest_army.max(camp);
 
+        self.supply.turn(w);
+
         let now = self.turns();
         let mut festival = BTreeMap::new();
         for (&id, c) in &w.clans {
@@ -242,6 +248,7 @@ impl Watch {
             self.trails_200 = Some(stats::trails(w));
             self.parts_200 = Some(stats::standing_parts(w));
             self.civs_200 = civ_lands(w);
+            self.supply.at_200(w);
         }
     }
 
@@ -373,6 +380,7 @@ impl Watch {
             },
             fight: FightScores::of(w),
             economy: self.economy.scores(),
+            supply: self.supply.scores(),
             end: self.end_scores(w),
         }
     }
@@ -418,6 +426,8 @@ pub struct Scores {
     /// What fighting cost and moved, read from the civs' counters at the end of the watch.
     pub fight: FightScores,
     pub economy: EconomyScores,
+    /// The ring and the units inside and outside it, and the clans' territory.
+    pub supply: SupplyScores,
     pub end: EndScores,
 }
 
