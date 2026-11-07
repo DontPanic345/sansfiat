@@ -14,12 +14,13 @@ items 1–6 and `probe.md`, where the spec step measured it. The code: `core/src
    share of its bare cost that a trail brings plains and coast to (M4 answer 4); the same on
    every flat tile, so nothing about it is hidden. Leave `TRAIL.work` as it is: the scout
    builds no flat trail (spec decision 3).
-2. **`map::flat_cost(terrain: usize) -> Option<f64>`**: `Some(move_cost × TRAIL.flat)` for
-   `PLAINS` and `COAST`, else `None`. Call it in `roll_trails` for plains and coast tiles
+2. **`land::flat_cost(terrain: usize) -> Option<f64>`**, in `land.rs` beside `step_cost` (not
+   in `map.rs`, which is over 1200 lines): `Some(move_cost × TRAIL.flat)` for `PLAINS` and
+   `COAST`, else `None`. Call it in `roll_trails` for plains and coast tiles
    without drawing from `sub`, so every other roll stays where it was. Call it in `map::parse`
    where it clears `trail_cost` (set `trail_cost = map::flat_cost(terrain)` once the terrain is
-   known), and in `Stage::plain` (its doc says the plains carry the flat trail cost and no
-   hidden costs). `Stage::paint` stays literal.
+   known), and in `Stage::plain` (change its doc from "no hidden costs" to "the plains carry
+   the flat trail cost and nothing hidden"). `Stage::paint` stays literal.
 3. **Check, don't change**: `step_cost` already takes the lower of bare and `trail_cost` on a
    trailed tile, and `tend` wears and clears trails on every terrain but mountain. Confirm the
    scout's `tile_cost` prices a flat tile the same known and possible, so no flat tile becomes
@@ -35,6 +36,9 @@ items 1–6 and `probe.md`, where the spec step measured it. The code: `core/src
 5. **The fallout.** Run `cargo test`. The pre-game on every retro map changes, so tests pinned
    to a retro map's numbers move:
    - `SAVE_VERSION` bumps by one, and the pins in `cli/tests/save.rs` move.
+   - `core/tests/map.rs`'s check that every terrain but forest, hills and mountain has no
+     `trail_cost` now expects `flat_cost` on plains and coast: the rule changed, so that one
+     changes. A test that sets `trail_cost` by hand on a staged tile stays as it is.
    - **An assertion of a rule may not change.** An assertion whose number comes from the map
      (a tile id, a count at the pick, a turn a route is found) may, with a comment saying the
      number follows the map. List every assertion you changed, and why, in

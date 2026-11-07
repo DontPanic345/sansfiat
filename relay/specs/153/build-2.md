@@ -5,7 +5,7 @@ scout gets a `Move` order; the line's reach can be read from any tile. Read `spe
 7–13 and `relay/specs/151/cases.md` (the cases this flips). Build-1 gave flat land its trail
 cost (`flat.md` says what moved). The code: `core/src/units/scout.rs` (all of it),
 `core/src/units/mod.rs` (`UnitFlat`, `ScoutState`'s fields there, `step`),
-`core/src/units/line.rs` (`line`, `line_with`, `route`), `core/src/orders.rs` (`check_order`,
+`core/src/units/line.rs` (`line`, `line_by`, `route`), `core/src/orders.rs` (`check_order`,
 `check_move`, `order_move`, `order_route`), `core/tests/cases.rs` (`best_case`, `through`,
 `check_search_order`), `core/tests/scout.rs`, `web/src/lib.rs` (`view`'s unit rows, `route`),
 `cli/src/view.rs`.
@@ -30,13 +30,20 @@ cost (`flat.md` says what moved). The code: `core/src/units/scout.rs` (all of it
    `a_scout_searches_a_range_by_best_case` and make its doc say what it checks. If build-1
    moved this case to other maps, use its maps. The owner's invariant
    (`settled_scouts_leave_nothing_unrevealed_that_could_beat_them`) and the forest control
-   must stay green. Leave `a_settled_route_has_no_cheaper_trail` as build-1 left it.
+   must stay green. The test's open set is every unrevealed mountain on the map whose cost
+   through beats the known route; `ordered`'s set is only the ranges joined to a mountain
+   candidate. If the case still fails because the scout skipped a mountain it never
+   considered, widen the tier to every unrevealed mountain whose cost through beats the known
+   route, pricing through from two cost maps (possible-priced from the route's start, and into
+   its end) rather than two `path_by`s a mountain. Leave `a_settled_route_has_no_cheaper_trail` as build-1 left it.
 3. **`search_view(w, unit) -> Option<SearchView>`** in `search.rs` (spec item 9):
    `SearchView { next: Vec<usize>, left: Vec<(usize, f64)>, known: Option<f64> }`. `left` is
    the unrevealed mountains of every range touching the possible or known path (on it, or
    beside one of its tiles, and every unrevealed mountain joined to one of those), whose cost
    through is not below the known cost by more than `EPS`, sorted by cost then tile, ten at
-   most. `None` without a route. `Sim.view()`'s scout row gains
+   most. `None` without a route. Price every mountain's cost through from two cost maps (from
+   the start, and into the end), not two `path_by`s each: `view()` runs every turn, and a large
+   map's range holds dozens of mountains. `Sim.view()`'s scout row gains
    `search: {next, left: [{tile, through}], known}` (or `null`), documented in `view`'s doc.
 4. **The scout's `Move`** (spec item 10). `ScoutState` gains `dest: Option<usize>`, read from
    and written to `UnitFlat.dest` (a camp's `dest` field, already there). `check_order` takes
@@ -50,14 +57,14 @@ cost (`flat.md` says what moved). The code: `core/src/units/scout.rs` (all of it
    scout's march to its `dest` as it does a camp's, so `Sim.route(id)` and the page's march
    path work for both.
 5. **`line_from(w, unit, tile) -> Option<(f64, f64)>`** in `line.rs` (spec item 11): `line`'s
-   cost and carry as if the unit stood on `tile`. Factor `line_with` so both share one body;
-   don't copy it. Add `pub fn past_reach(w, unit, tile) -> bool`: no line, or a carry below
+   cost and carry as if the unit stood on `tile`. Factor `line_by` to take the tile it reads from,
+   so both share one body; don't copy it. Add `pub fn past_reach(w, unit, tile) -> bool`: no line, or a carry below
    `people × UNIT.food`. `order_move` and `order_route` (for the route's end) add the note
    "past its line's reach: its line there would carry {carry:.1} of the {eats:.0} it eats", or
    "past its line's reach: no line reaches X". `Sim.lineFrom(unit, tile)` returns
    `{cost, carry, eats}` or `null`.
 6. **The CLI view** (`cli/src/view.rs`): a scout's line reads "going to X" when it has a `dest`.
-   Keep the file under 80 lines.
+   The view it prints stays under 80 lines (`cli/tests/play.rs` checks it).
 7. **Tests** in `core/tests/scout.rs` (if it passes 400 lines, put the new ones in
    `core/tests/scout_orders.rs`), each on a stage:
    - a scout moved four steps out on a plain stage walks there over turns, stays for five

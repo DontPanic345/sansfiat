@@ -31,7 +31,8 @@ the map.
 | Score | Measure | Control |
 |---|---|---|
 | Decisions | **The three buttons each have a visible result**, pressed in `www/play/scout.mjs` on small seed 2 (a retro map) and in `buttons.mjs` on the staged game. Move to…: the scout's `dest` is the tile, its route to it is drawn and the panel reads "Going to …", and after enough turns it stands there. Route from…: a start mark is drawn on the tile and the hint names it. Route to…: the route is set from the start (or the scout's tile) and its known and possible paths are drawn. Disband all on a camp of 4.6, a scout and a guard sends every person home (`check-stage.mjs`, the four `expectBug` wrappers gone). | Main: Move to… sets a route (`scout.mjs`), Route from… has no mark, and Disband all keeps 0.6 of the camp. |
-| Health | **Every scout lives through its first errand**: `core/tests/scout_errand.rs` on the stage. On each of the seven retro maps the first civ's scout gets four errands, each with no refill: routed to the nearest rival capital, routed to `Lead`'s target, moved (Move to…) to `Lead`'s target, and left idle. All 28 are alive at 50 turns. The table it prints (hungry turns, people lost) goes in `errand.md`. | Main: 11 of 14 routed errands lost (`probe.md`). |
+| Health | **Every scout lives through its first errand**: `core/tests/scout_errand.rs` on the stage. On each of the seven retro maps the first civ's scout gets four errands, each with no refill: routed to the nearest rival capital, routed to `Lead`'s target, moved (Move to…) to `Lead`'s target, and left idle. All 28 are alive at 50 turns. The table it prints (hungry turns, people lost, turns wandering, tiles revealed and trails built) goes in `errand.md`. | Main: 11 of 14 routed errands lost (`probe.md`); with the flat trail and graze alone, 13 (`review-probe.md`). |
+| Health (reported) | **What the living scout gets done**: on the 14 routed errands, the tiles revealed and trails built in 50 turns and the turns spent wandering, against a refilled control (the same errand with `cases.rs`'s `refill` each turn, so it never feeds itself), run in the same test. Not a bound: the piece asks for survival. Under a quarter of the control's work, the canvas sends an `ask` (`review-probe.md`: a fifth at the starting numbers). | The refilled control: 152 tiles revealed over the 14 on the flat-trail maps. |
 | Health | **The AI's idle scouts live**: on `sweep --judge`'s runs no AI scout is lost by +200 (the canvas counts them; see build-5). | Main's sweep. |
 | Standing, motion | **The flat trail moves trade and Standing without stilling the map**: `sweep --judge --json --floor` on main and on the branch, `judge --compare`. Trading share at the pick and at +200, and the aligned share at +200, rise past the floor. Every pre-game ends by centres. The AI's orders per 100 turns stay above half of main's, and land changing hands stays above half of main's. | Main (a worktree at the branch's base). |
 | Health | `check.sh` green. The flat trail and the feeding move `stats::digest`, so `SAVE_VERSION` bumps and the pins move, once per build that moves them. `cases.rs` keeps the owner's invariant green, and `a_scout_searches_a_range_by_best_case` loses its `should_panic`. | |
@@ -41,6 +42,14 @@ share from 0.898 to 0.929 at the pick and the aligned share from 0.209 to 0.236,
 of 0.000 and 0.008. Every pre-game ends by centres on the seven maps and on seeds 1–10 of every
 size, and the AI's orders fall by 32%, not by half. Main loses 11 of 14 routed errands. A
 one-person scout loses 12, so the person count is not the lever. The feeding rule is.
+
+**Spec-review's probe** (`review-probe.md`): a rough build of items 14–17 on main loses 0 of 14
+routed errands and 0 of 7 idle ones, once rich ground counts the walk labour and a wandering
+scout fills its pack. On the flat-trail maps it loses 3 routed errands and 1 idle one, and
+graze alone (no wander) loses 13 of 14 there. The scouts that live spend 68% of their errand's
+turns wandering, and reveal 32 tiles over the 14 errands where a refilled scout (fed for free)
+reveals 152. So the feeding rule can keep a scout alive, its numbers are real work for the
+canvas, and how much a fed scout still gets done is reported beside its survival.
 
 ## Shape: Easel and Canvas, with the flat trail moved into the easel
 
@@ -58,8 +67,8 @@ re-measures the flat trail on the finished branch, and may move it if a bound fa
 |---|---|---|---|
 | build-1 | easel | The flat trail: `data.rs`, `map.rs`, `maptext.rs`, `stage.rs`, the fallout on the retro maps, `scouting.md`'s line | Every later step stands on the new maps |
 | build-2 | easel | The search and the orders, in core and `Sim`: `scout.rs` splits into `units/search.rs`, best-case order, the reasons a mountain is left, the scout's `Move`, `line_from` and the reach notes | The page and the feeding read these |
-| build-3 | easel | The feeding, in core: regrow-only foraging, the wander, the idle scout on rich ground, the hunger reason, `SCOUT`'s starting numbers, `scout_errand` on the stage | Needs `Move` (build-2) for its errand |
-| build-4 | easel | The page: the scout's row, the start mark, the warnings, the Unrevealed row, the hunger line, Disband all for every unit, the scripts | Needs every view field from builds 2 and 3 |
+| build-3 | easel | The feeding, in core: the unit's food into `units/forage.rs`, regrow-only foraging, rich ground by what a turn's foraging brings, the wander, the idle scout on rich ground, the hunger reason, `SCOUT`'s starting numbers, `scout_errand` on the stage and its refilled control | Needs `Move` (build-2) for its errand |
+| build-4 | easel | The page: the armed clicks into `www/screens/orders.js`, the scout's row, the start mark, the warnings, the Unrevealed row, the hunger line, Disband all for every unit, the scripts | Needs every view field from builds 2 and 3 |
 | build-5 | canvas | The feeding's numbers against the 28 errands and the AI's scouts; the flat trail re-measured against main; `errand.md`, `trail.md` | Needs all of it |
 
 ## Settled: the flat trail (build-1)
@@ -67,10 +76,12 @@ re-measures the flat trail on the finished branch, and may move it if a bound fa
 1. **`TRAIL.flat: 0.75`** in `data.rs`: the share of its bare cost that a trail brings plains
    and coast to, with a `note` (M4 answer 4; `probe.md`). It is a share, not a roll: every flat
    tile gets the same, so the map draws nothing new and the rest of the map rolls as before.
-2. **The map gives it.** A helper `map::flat_cost(terrain) -> Option<f64>`
-   (`Some(bare × TRAIL.flat)` for plains and coast, else `None`) sets `trail_cost` in
-   `roll_trails`, in `map::parse` (`maptext.rs`, which otherwise clears it) and in
-   `Stage::plain`, so a parsed or plain stage walks as a generated map does. `Stage::paint`
+2. **The map gives it.** A helper `land::flat_cost(terrain) -> Option<f64>`
+   (`Some(bare × TRAIL.flat)` for plains and coast, else `None`; in `land.rs` beside
+   `step_cost`, since `map.rs` is over 1200 lines) sets `trail_cost` in `roll_trails`, in
+   `map::parse` (`maptext.rs`, which otherwise clears it) and in `Stage::plain`, so a parsed or
+   plain stage walks as a generated map does. `core/tests/map.rs`'s check that every other
+   terrain has no trail cost now expects `flat_cost` on plains and coast: the rule changed. `Stage::paint`
    keeps what it is given. Marsh and desert get none: a marsh trail only bridges its river
    (`scouting.md` Decided), and desert isn't named.
 3. **Nothing else in the rule changes.** `step_cost` already prices a trailed tile at the lower
@@ -109,7 +120,12 @@ re-measures the flat trail on the finished branch, and may move it if a bound fa
    scout stands on the mountain or beside it, else the least known-priced cost
    (`step_as(.., false)`, the pricing `route_plan`'s `known` uses) from the scout's tile to a
    tile beside it. Ties go to the lower tile. This is `best_case` in `core/tests/cases.rs`
-   exactly: one known-priced cost map from the scout's tile gives every walk. The second tier
+   exactly: one known-priced cost map from the scout's tile gives every walk. The set is not
+   the test's: the test's open set is every unrevealed mountain on the map whose cost through
+   beats the known route, and the engine's is the ranges joined to a mountain candidate. If the
+   case still fails on a mountain the engine never considered, widen the tier to every
+   unrevealed mountain whose cost through beats the known route, priced from two cost maps (one
+   from the route's start, one into its end) rather than two searches a mountain. The second tier
    (forest and hills) keeps its order: nearest, then the biggest saving. A mountain the scout
    can't reach is skipped as now, by `approach`. `a_scout_searches_a_range_by_best_case` loses
    its `#[should_panic]` and passes. The invariant and the forest control stay green.
@@ -119,6 +135,8 @@ re-measures the flat trail on the finished branch, and may move it if a bound fa
    possible path or the known path (a mountain on either, or beside a tile of either, and every
    unrevealed mountain joined to it), whose cost through is not below the known cost by more
    than `EPS`, each with that cost. They are sorted by cost, then by tile, ten at most.
+   Cost through comes from two cost maps (from the start, into the end), not two path searches
+   a mountain: `view()` runs every turn.
    `Sim.view()`'s scout row gains `search: {next, left: [{tile, through}], known}` when it has
    a route.
 10. **The scout's `Move`.** `Order::Move { unit, to }` takes a scout as well as a camp: the same
@@ -130,15 +148,16 @@ re-measures the flat trail on the finished branch, and may move it if a bound fa
     every scout does. `line::route` (the page's march path) reads a scout's `dest` as it reads
     a camp's. Notes: "going to X, N steps away", then "at X, foraging".
 11. **The line's reach.** `pub fn line_from(w, unit, tile) -> Option<(f64, f64)>` in
-    `line.rs`: the cost and carry of the unit's line as if it stood on `tile`, by `line`'s
-    rules (rival land and held ground block it, and carry uses all its labour). A tile is
+    `line.rs`: the cost and carry of the unit's line as if it stood on `tile`, by `line_by`'s
+    rules (one body, taking the tile: rival land and held ground block it, and carry uses all its labour). A tile is
     **past the line's reach** when there is no line, or it carries less than the unit eats
     (`people × UNIT.food`). `Move` and `Route` add a note when their tile is past the reach
     (`Route`: its end): "past its line's reach: its line there would carry 0.8 of the 2 it
     eats". `Sim.lineFrom(unit, tile)` gives `{cost, carry, eats}` or `null`, for the page's
     hover.
 12. **The CLI's view** (`cli/src/view.rs`): a scout's line says where it is going (`dest`)
-    and, once build-3 lands, whether it is wandering. It stays under 80 lines.
+    and, once build-3 lands, whether it is wandering. The view it prints stays under
+    80 lines (`cli/tests/play.rs`).
 13. Tests on the stage (`core/tests/scout.rs`, split into `scout_orders.rs` if it passes 400
     lines): a scout moved four steps out walks there, stays, and keeps no route; `Route`
     after `Move` clears `dest`; `Move` to a sea tile is refused; `search_view.left` on a staged
@@ -157,36 +176,53 @@ re-measures the flat trail on the finished branch, and may move it if a bound fa
     (auto-forage, the one-shot Forage and Pillage, at the scout's tile or round it) takes at
     most the spare, adds what it took to `take` (so a second scout sees it), and **never sets
     `fallow`**. Pillage keeps its rate. Armies forage as now (`strip_at` with fallow).
-15. **Rich ground**: a tile within `SCOUT.wander` steps of the scout that it can walk to, whose
-    round (itself and its tiles within `SCOUT.reach`, as `forage_round` reads them) spares at
-    least the scout's eating for a turn (`people × UNIT.food`). The nearest by walk cost wins,
-    then the lower tile. With none in range, it takes the tile in range whose round spares the
-    most; with nothing spared in range, it stays where it is.
+    The unit's food (`strip`, `strip_at`, the new `graze_at`, `supply`, `room`) moves out of
+    `units/mod.rs` (789 lines) into `units/forage.rs`.
+15. **Rich ground**: a tile within `SCOUT.wander` steps of the scout that it can walk to, where
+    a turn's foraging brings at least `SCOUT.rich` turns of its eating
+    (`SCOUT.rich × people × UNIT.food`). A turn's foraging there is what `forage_round` would
+    take from its round (itself and its tiles within `SCOUT.reach`) with the scout's whole
+    labour, paying the walk to each tile of the round: not the round's spare summed, which
+    picks hills and coast whose food the scout's labour can't reach (`review-probe.md`: raw
+    spare loses 2 to 5 of 14 routed errands, the labour-aware measure 0). It must beat the
+    scout's eating by a margin, or the pack never fills to `SCOUT.fed`. The nearest by walk
+    cost wins, then the lower tile. With none in range, it takes the tile in range where a
+    turn brings the most; with nothing in range, it stays where it is.
 16. **A hungry scout wanders.** At the start of its feeding, a scout whose pack holds less than
     `SCOUT.low` turns of its eating, or that is hungry, leaves its errand. Its route and its
     `dest` stay set. `ScoutState.wander: Option<usize>` (`#[serde(default)]`) holds the rich
-    ground it goes to. It walks there and forages round it, and auto-supply runs as now. While
+    ground it goes to. It walks there and forages round it **for its pack's room**, not just this
+    turn's eating (today `forage_round` wants only `need − store`, so the pack could never
+    reach `SCOUT.fed`), and auto-supply runs as now. While
     it wanders it doesn't search or walk to its `dest`. Once its pack holds `SCOUT.fed` turns
     of eating, `wander` clears and the errand resumes next turn. If its rich ground no longer
-    spares its eating when it gets there, it picks again. Notes: "leaves its route to forage at
+    brings `SCOUT.rich` turns when it gets there (read at the start of the turn, before it
+    forages), it picks again. Notes: "leaves its route to forage at
     X, N steps away", "fed: back to its route" (or "back to X" for a `dest`).
 17. **An idle scout waits on rich ground.** A scout with no route and no `dest` doesn't walk
     home to the capital. It goes to rich ground (item 15) and stays there, foraging. It picks
-    again only when its tile's round no longer spares its eating. Note: "waits on rich ground
+    again only when a turn's foraging there, read at the start of the turn before it forages,
+    no longer brings its eating. (Read after foraging, the probe's idle scout bounced between
+    two grounds a step apart and starved beside its capital.) Note: "waits on rich ground
     at X".
 18. **The hunger has a reason.** Each turn a scout eats less than its need, its note says what
     the turn brought: "goes hungry at X: foraging brought 0.4 and its line 0.3 of the 2 it eats;
     its line costs 14 and carries 0.5 a turn from here". With no line it says "no line reaches
     it". The `ScoutHungry` event stays once, on the first hungry turn.
 19. **Starting numbers**, to run and for the canvas to tune: `SCOUT.wander: 4` (steps),
-    `SCOUT.low: 1.0` and `SCOUT.fed: 3.0` (turns of its eating in the pack; the pack holds
-    `UNIT.pack`, 5), `SCOUT.reach` and `SCOUT.people` as now (1 and 2). Each has a `note`.
+    `SCOUT.low: 2.0` and `SCOUT.fed: 4.0` (turns of its eating in the pack; the pack holds
+    `UNIT.pack`, 5), `SCOUT.rich: 1.5` (turns of eating a turn's foraging on rich ground
+    brings), `SCOUT.reach` and `SCOUT.people` as now (1 and 2). Each has a `note`. On main's
+    maps these keep all 14 routed and all 7 idle scouts alive; on the flat-trail maps 3 routed
+    errands still die (`review-probe.md`), so the errand test most likely lands ignored.
 20. **`scout_errand` on the stage** (`core/tests/scout_errand.rs`, rewritten on `Stage::retro`
     as `cases.rs` does): on the seven retro maps the first civ is led. Its scout gets four
     errands, one per stage, with no refill: routed to the nearest rival capital, routed to
     `Lead`'s target, moved to `Lead`'s target (`Order::Move`), and idle. Each runs 50 turns.
-    It prints the table (map, errand, hungry turns, people lost, alive, turns wandering) and
-    asserts every scout is alive. If the starting numbers don't keep all 28 alive, the
+    It prints the table (map, errand, hungry turns, people lost, alive, turns wandering, tiles
+    revealed, trails built) and asserts every scout is alive. A second test,
+    `#[ignore]`d as a report, runs the 14 routed errands refilled each turn (`cases.rs`'s
+    `refill`) and prints the same table: the control for the work a living scout does. If the starting numbers don't keep all 28 alive, the
     assertion stays and the test is `#[ignore = "build-5 tunes the feeding"]`, with the
     table in `feeding.md`. The canvas removes the attribute.
 21. **The other scout tests.** `an_idle_scout_at_the_capital_neither_forages_nor_starves`
@@ -254,12 +290,16 @@ All in build-5, the canvas:
 
 - **How far a hungry scout wanders, when it counts as fed, and whether it needs one person
   or a bigger pack** (`SCOUT.wander`, `low`, `fed`, `reach`, `people`, and a `SCOUT.pack` in
-  place of `UNIT.pack` for the scout if a bigger pack is the answer). What proves it:
-  `scout_errand` passes with no `#[ignore]`, every one of the 28 scouts alive at 50 turns on
-  the seven retro maps, and none of the AI's scouts lost by +200 on `sweep --judge`'s runs.
-  Among the settings that pass, take the one that spends the fewest scout-turns wandering on
-  the routed errands, so the scout spends its turns on its errand. The probe says one person
-  alone does not do it.
+  place of `UNIT.pack` for the scout if a bigger pack is the answer), with `SCOUT.rich` (how
+  much more than its eating rich ground must bring) and whether the errand's own foraging fills
+  the pack or only covers the turn's eating. What proves it: `scout_errand` passes with no
+  `#[ignore]`, every one of the 28 scouts alive at 50 turns on the seven retro maps, and none
+  of the AI's scouts lost by +200 on `sweep --judge`'s runs. Among the settings that pass,
+  take the one whose routed errands reveal the most tiles and build the most trails, and
+  report them and the turns wandering against the refilled control. The probe says one person
+  alone does not do it. `review-probe.md` gives the starting point: labour-aware rich ground,
+  `rich 1.5`, `low 2`, `fed 4`, `wander 4`, which loses 3 routed errands on the flat-trail maps
+  and does a fifth of the control's work.
 - **The flat trail on the finished branch.** Re-run `sweep --judge --json --floor` on the
   branch and on main, then `judge --compare`. Keep 0.75 while trade and Standing rise past the
   floor, every pre-game ends by centres, and the AI's orders and land changing hands stay
@@ -271,7 +311,8 @@ All in build-5, the canvas:
 
 - `engine/check.sh`.
 - `cargo test --release -p engine --test scout_errand -- --nocapture`: all 28 alive, and the
-  table matches `errand.md`.
+  table matches `errand.md`. Then with `--ignored`: the refilled control, so the PR gives the
+  tiles revealed and trails built by the living scouts beside a scout fed for free.
 - `cargo test -p engine --test cases -- --nocapture`: the search-order case green with no
   `should_panic`, the invariant and the control green.
 - `sansfiat sweep --judge --json --floor` on main (a worktree) and on the branch, then
@@ -332,3 +373,12 @@ All in build-5, the canvas:
     One name per click, and the scout and the camp share Move to….
 20. **Escape clears the route's start mark after painting and before the selection**: it is
     one more armed thing, so it takes its place in `page.md`'s Escape order (#103).
+21. **Rich ground is judged by what a turn's foraging there brings, after the walks, and it
+    must bring more than the scout eats** (spec-review, `review-probe.md`). The piece says "a
+    hungry scout … leaves its errand for the nearest tile in range with food to spare". Read
+    as the round's raw spare, that picks hills whose food the scout's labour can't reach, and
+    ground that spares only its eating never fills the pack.
+22. **A wandering scout forages for its pack's room**, so it can count as fed and go back.
+23. **The scout's work is reported, not bounded**: the piece asks that it live. How many
+    tiles it reveals beside a scout fed for free goes in the PR, and an `ask` if it is under a
+    quarter.

@@ -14,6 +14,13 @@ code: `www/panels.js` (`scoutShape`, `campShape`, `guardShape`, `disband`, `swit
 
 ## What to build
 
+0. **Make room first.** `www/screens/play.js` is 786 lines and this build adds to its clicks
+   and tooltip. Move the armed clicks out, unchanged, into a new `www/screens/orders.js`:
+   `routing`, `arm`, `syncArm`, `armedPick`, `onCommand` (the right-click) and the tooltip's
+   order lines (the "Move here" line and, below, the reach warning), with `play.js` importing
+   them. `check.sh` green on the move alone, then build. `www/panels.js` is 531 lines: if this
+   build takes it past 600, move the unit shapes (`campShape`, `scoutShape`, `guardShape`,
+   `disband`, `switchButtons`) into `www/panels-units.js`.
 1. **The scout's row** (spec item 23), for the player's scout, in this order: **Move to…**
    (arms `'move'`), **Route from…** (arms `'start'`), **Route to…** (arms `'to'`), then
    **Clear route** while it has a route and **Stop** while it has a `dest`, then Forage,
