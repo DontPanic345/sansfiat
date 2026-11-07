@@ -82,7 +82,7 @@ fn the_scout_is_made_at_the_capital_with_its_packs_from_the_store() {
     assert_eq!(scouts.len(), w.civs.len(), "one scout per civ");
     let s = units::scout(&w, me).unwrap();
     assert_eq!((s.home, s.people, s.scout().unwrap().route), (cap, SCOUT.people as f64, None));
-    assert!(units::camp(&w, me).is_some_and(|c| c.id != s.id), "the scout is not the camp");
+    assert!(units::camp(&w, me).is_none(), "a civ starts with its scout and no army");
 }
 
 #[test]

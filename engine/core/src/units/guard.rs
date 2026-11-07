@@ -39,11 +39,6 @@ pub fn raise(w: &mut World, civ: u32, n: u32) -> u32 {
     k as u32
 }
 
-/// Founding's guard: `GUARD.start` people, as `raise` takes them.
-pub fn raise_at_founding(w: &mut World, civ: u32) {
-    raise(w, civ, GUARD.start);
-}
-
 /// The guard's turn, in the `units` step: it eats its `UNIT.food` a person from the civ's store, then
 /// from its civ's clans' stores. A
 /// turn it isn't fed it is hungry; hungry `UNIT.hungry_turns` in a row, it disbands a person.

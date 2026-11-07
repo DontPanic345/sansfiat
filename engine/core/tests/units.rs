@@ -21,18 +21,18 @@ fn founding_with_no_centre_clan_makes_the_biggest_near_clan_the_civ_and_moves_no
     assert_eq!(red.clan, small, "but the near one is the civ");
     assert_eq!(red.capital, at_big(-5, 0), "the capital stays on the site");
     assert_eq!(w.markets[&red.market].tile, at_big(-5, 0), "the market does not move");
-    assert_eq!(red.army.raised, 1);
-    let camp = units::camp(&w, red.id).unwrap();
-    assert_eq!((camp.tile(), camp.people), (at_big(-5, 0), f64::from(UNIT.start)));
-    // One person from each clan in turn, biggest first: the camp's three, then the scout's two, then the
-    // guard's three (the far clan takes two of each round, the near one the last).
-    assert_eq!((w.clans[&small].people, w.clans[&far].people), (2.0, 15.0));
-    // A pack each from the store: the goods are the store's, the camp's and the scout's packs.
-    assert!((total(&camp.store) - pack_total(camp.people)).abs() < 1e-9);
+    // A civ starts with its scout and nothing else (`founding.md`, The start): no army, no guard.
+    assert_eq!(red.army.raised, 0);
+    assert!(units::camp(&w, red.id).is_none());
+    assert!(units::guard_of(&w, red.id).is_none());
+    // The scout's people come from the clans, biggest first, and its pack from the store.
     let scout = units::scout(&w, red.id).unwrap();
-    assert!((total(&red.store) + total(&scout.store) + total(&camp.store) - total(&CIV.endowment)).abs() < 1e-9);
-    // The civs with no clan in reach are left without a camp, but Blue and Gold had no clans at all.
-    assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 1);
+    assert_eq!(scout.people, f64::from(SCOUT.people));
+    assert_eq!(w.clans[&small].people + w.clans[&far].people, 25.0 - f64::from(SCOUT.people));
+    // The store holds the endowment less the scout's pack; the rest of it stays there.
+    assert!((total(&red.store) - (total(&CIV.endowment) - pack_total(scout.people))).abs() < 1e-9);
+    assert!((total(&red.store) + total(&scout.store) - total(&CIV.endowment)).abs() < 1e-9);
+    assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 0);
 }
 
 fn pack_total(people: f64) -> f64 {
@@ -302,6 +302,7 @@ fn corridor() -> (World, u32, u32) {
     put(&mut w, &[at_big(5, 0)], 14.0);
     found(&mut w, &ms);
     let ids: Vec<u32> = w.civs.keys().copied().collect();
+    armed_all(&mut w);
     // Blue holds the corridor from its capital to seven tiles east: the land the line can't pass.
     hold_land(&mut w, ids[1], &[at_big(3, 0), at_big(4, 0), at_big(6, 0), at_big(7, 0)]);
     // Red holds the corridor from its capital to one tile east of it.
@@ -532,8 +533,12 @@ fn the_ai_raises_a_lost_camp_and_posts_it_off_the_capital() {
     fill_stores(&mut w);
     units::ai(&mut w);
     assert!(units::camp(&w, ids[0]).is_none(), "not the player's civ");
-    let blue = units::camp(&w, ids[1]).expect("the AI raised its camp");
-    assert_eq!(w.civs[&ids[1]].army.raised, 2);
+    assert!(units::camp(&w, ids[1]).is_none(), "the AI raises no army until R");
+    // Its camp, once it has one (as its own Raise makes it), is posted off the capital.
+    armed(&mut w, ids[1]);
+    units::ai(&mut w);
+    let blue = units::camp(&w, ids[1]).expect("its camp");
+    assert_eq!(w.civs[&ids[1]].army.raised, 2, "its first camp, from three(), and this one");
     let id = blue.id;
     let dest = units::camp(&w, ids[1]).unwrap().camp().unwrap().dest.expect("posted");
     assert_ne!(dest, w.civs[&ids[1]].capital);
@@ -551,17 +556,20 @@ fn a_real_map_replays_with_the_camp_under_orders() {
     while w.phase != Phase::Choose {
         w.act(Action::EndTurn).unwrap();
     }
-    assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 3, "a camp each at the pick");
-    for u in w.units.values().filter(|u| u.kind() == UnitKind::Camp) {
-        assert_eq!(u.tile(), w.civs[&u.civ].capital);
-        assert_eq!(u.people, f64::from(UNIT.start));
-        assert_eq!(w.civs[&u.civ].army.raised, 1);
-    }
+    // A civ starts with its scout and nothing else: no camp at the pick (`founding.md`, The start).
+    assert_eq!(w.units.values().filter(|u| u.kind() == UnitKind::Camp).count(), 0, "no camp at the pick");
     let me = *w.civs.keys().next().unwrap();
     w.act(Action::ChooseCiv { civ: Some(me) }).unwrap();
     let pick = w.turn;
     for _ in 0..120 {
         let n = w.turn - pick;
+        if n == 0 {
+            // The store at the pick (the endowment less the scout's pack) fills one warrior's pack, not three.
+            let _ = w.act(led_order(
+                &w,
+                Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None },
+            ));
+        }
         let camp = units::camp(&w, me).map(|u| u.id);
         if n > 0 && n.is_multiple_of(20) {
             let _ = w.act(led_order(
@@ -662,6 +670,11 @@ fn on_a_real_map_the_ai_camps_that_survive_the_pick_are_fed_by_their_line() {
         w.run(1);
     }
     w.act(Action::ChooseCiv { civ: None }).unwrap();
+    // The AI raises no army until R, so each civ's first army is raised here, as its own Raise would.
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    for id in ids {
+        armed(&mut w, id);
+    }
     w.run(100);
     // The guard eats from the store the camps are fed from, so on this map a civ can starve its camp
     // out (`army.lost`, and the sweep's report): those civs have no camp to check.
@@ -771,6 +784,7 @@ fn corridor_off() -> (World, u32, u32) {
     put(&mut w, &[at_big(5, -1)], 14.0);
     found(&mut w, &ms);
     let ids: Vec<u32> = w.civs.keys().copied().collect();
+    armed_all(&mut w);
     (w, ids[0], ids[1])
 }
 

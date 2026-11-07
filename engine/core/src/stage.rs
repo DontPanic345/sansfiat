@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use serde::{Deserialize, Serialize};
 
 use crate::clans::new_clan;
-use crate::data::{size_radius, Config, Fighter, N, PLAINS, SEA};
+use crate::data::{size_radius, Config, Fighter, GUARD, N, PLAINS, SEA};
 use crate::hex::Hex;
 use crate::map::{self, Tile};
 use crate::pregame::End;
@@ -125,6 +125,10 @@ impl Stage {
             let people = spec.people.ok_or("civs need people")?;
             let tiles = spec.civs.iter().map(|r| stage.tile(r)).collect::<Result<Vec<_>, _>>()?;
             ids = stage.civs(&tiles, people);
+        }
+        // A staged civ has the guard it had at founding before the start moved (`GUARD.first`).
+        for &civ in &ids {
+            units::guard::raise(&mut stage.world, civ, GUARD.first);
         }
         if let Some(k) = spec.lead {
             let civ = *ids.get(k).ok_or(format!("lead: there is no civ {k}"))?;
@@ -278,10 +282,14 @@ impl Stage {
         t.span = span;
     }
 
-    /// Moves `civ`'s camp onto tile `i` with `people` warriors, in one stack and a full pack. Returns
-    /// the camp's unit id.
+    /// Moves `civ`'s camp onto tile `i` with `people` warriors, in one stack and a full pack. A civ
+    /// with no camp (a civ starts with none) gets an empty one at its capital first, which takes no
+    /// people from its clans. Returns the camp's unit id.
     pub fn army(&mut self, civ: u32, i: usize, people: f64) -> u32 {
-        let id = units::camp(&self.world, civ).expect("a camp").id;
+        let id = match units::camp(&self.world, civ) {
+            Some(u) => u.id,
+            None => units::make_camp(&mut self.world, civ),
+        };
         let u: &mut Unit = self.world.units.get_mut(&id).expect("the camp");
         u.actor.home = i;
         u.actor.territory = vec![i];

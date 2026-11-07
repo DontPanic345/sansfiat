@@ -5,7 +5,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open } from '../play.mjs';
+import { open, raiseArmy } from '../play.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -29,6 +29,7 @@ try {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');
   await page.until("document.body.dataset.phase === 'main'");
+  await raiseArmy(page);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   for (let turn = 0; turn < 6; turn++) await page.button('End turn');

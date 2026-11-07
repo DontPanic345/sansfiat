@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{led_camp, led_order, led_scout};
+use common::{armed_all, led_camp, led_order, led_scout};
 use engine::units;
 use engine::{Action, Config, Order, Phase, World};
 
@@ -22,6 +22,8 @@ fn led_game() -> World {
     let mut w = at_pick();
     let me = *w.civs.keys().next().unwrap();
     w.act(Action::ChooseCiv { civ: Some(me) }).unwrap();
+    // A civ starts with no army: each raises its first one here.
+    armed_all(&mut w);
     w
 }
 
@@ -123,7 +125,8 @@ fn every_order_is_refused_for_a_unit_of_the_wrong_kind() {
 
 #[test]
 fn every_order_is_refused_before_the_game_has_begun() {
-    let w = at_pick();
+    let mut w = at_pick();
+    armed_all(&mut w);
     assert_eq!(w.phase, Phase::Choose);
     let civ = *w.civs.keys().next().unwrap();
     let camp = units::camp(&w, civ).unwrap().id;
@@ -164,6 +167,7 @@ fn the_players_order_is_logged_and_act_refuses_a_civ_it_does_not_lead() {
 fn a_watcher_gives_no_orders() {
     let mut w = at_pick();
     w.act(Action::ChooseCiv { civ: None }).unwrap();
+    armed_all(&mut w);
     let civ = *w.civs.keys().next().unwrap();
     let camp = units::camp(&w, civ).unwrap().id;
     let order = Action::Order { civ, order: Order::Resupply { unit: camp } };
@@ -174,6 +178,7 @@ fn a_watcher_gives_no_orders() {
 fn the_ais_orders_are_not_in_the_log() {
     let mut w = at_pick();
     w.act(Action::ChooseCiv { civ: None }).unwrap();
+    armed_all(&mut w);
     for _ in 0..30 {
         w.act(Action::EndTurn).unwrap();
     }

@@ -278,6 +278,10 @@ fn disband_all_sends_every_person_home() {
     let mut stage = Stage::retro("small", 2).unwrap();
     let me = *stage.world().civs.keys().next().unwrap();
     stage.lead(me).unwrap();
+    // A civ starts with no army or guard: the stage places its army and raises its guard.
+    let cap = stage.world().civs[&me].capital;
+    stage.army(me, cap, 3.0);
+    units::guard::raise(stage.world_mut(), me, 3);
     let w = stage.world_mut();
     let camp = units::camp(w, me).unwrap().id;
     let scout = units::scout(w, me).unwrap().id;

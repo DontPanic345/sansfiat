@@ -10,7 +10,7 @@ import { mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { open, lead } from '../play.mjs';
+import { open, lead, raiseArmy } from '../play.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -37,6 +37,7 @@ const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationF
 const page = await open('');
 try {
   await lead(page, { seed: SEED });
+  await raiseArmy(page);
   const turn = async () => Number(await page.eval('game.view().turn'));
   const me = Number(await page.eval('game.view().player'));
   const t0 = await turn();

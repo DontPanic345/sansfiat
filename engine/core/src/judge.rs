@@ -193,7 +193,7 @@ impl Watch {
         }
         self.event_mark = w.events.len();
 
-        let pack = units::pack_cap(UNIT.start as f64);
+        let pack = units::pack_cap(UNIT.first as f64);
         for c in alive(w) {
             let store: f64 = c.store.iter().sum();
             let e = &mut self.economy;
@@ -386,7 +386,7 @@ pub struct EconomyScores {
     pub store_mean: f64,
     /// The most food any civ's store held after a turn.
     pub store_max: f64,
-    /// The civ-turns on which a store held at least a pack's worth, `units::pack_cap(UNIT.start)`.
+    /// The civ-turns on which a store held at least a pack's worth, `units::pack_cap(UNIT.first)`.
     pub turns_at_pack: u32,
     /// The food the market levy paid a civ in its turn, mean over civ-turns (0 on a turn with none).
     pub levy_per_turn: f64,

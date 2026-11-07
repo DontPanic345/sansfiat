@@ -210,9 +210,9 @@ for (const c of civs) {
   assert.equal(typeof RULES.save_version, 'number', 'rules carry the save version');
 }
 const camps = Object.values(v.units).filter((u) => u.kind === 'camp');
-assert.equal(camps.length, 3, 'a camp each');
+// A civ starts with its scout and no army (founding.md, The start): the camps come from each civ's own Raise.
+assert.equal(camps.length, 0, 'no camp at the pick');
 assert.equal(Object.values(v.units).filter((u) => u.kind === 'scout').length, 3, 'a scout each');
-assert.ok(camps.every((u) => u.tile === v.civs[u.civ].capital && u.people > 0));
 // The fight's data (build-4): each fighter's name and strength, FIGHT's entrenchment, hunger and surrender; each
 // army's stack by kind sums to its people; each civ's posture; the contested tiles of the last turn.
 assert.deepEqual(RULES.fighters.map((f) => f.name), ['warriors', 'archers'], 'rules name the fighters in order');
@@ -340,16 +340,15 @@ w = JSON.parse(sim.view());
 assert.equal(w.civs[w.player].keep_set, null, 'keep returns to the default');
 assert.ok(w.civs[w.player].keep > 0, 'the default keep is the camp\'s pack');
 
-// Warriors raised, if the civ can spare a person.
-const made = sim.check(ordered({ type: 'raise', n: 1 }));
-assert.ok(made === '' || made.length > 0);
-if (made === '') {
-  const before = Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'camp').people;
-  sim.act(ordered({ type: 'raise', n: 1 }));
-  w = JSON.parse(sim.view());
-  assert.ok(Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'camp').people > before, 'warriors raised');
-}
-const unit = Object.values(w.units).find((u) => u.civ === w.player && u.kind === 'camp');
+// Warriors raised: the led civ's first army, from the store's pack and its clans (a civ starts with none).
+const armyOf = (view) => Object.values(view.units).filter((u) => u.civ === view.player && u.kind === 'camp');
+assert.equal(sim.check(ordered({ type: 'raise', n: 1 })), '', 'the first warriors can be raised');
+const before = armyOf(w).reduce((a, u) => a + u.people, 0);
+sim.act(ordered({ type: 'raise', n: 1 }));
+w = JSON.parse(sim.view());
+assert.ok(armyOf(w).reduce((a, u) => a + u.people, 0) > before, 'warriors raised');
+const armyView = w;
+const unit = armyOf(w)[0];
 assert.equal(sim.route(unit.id), 'null', 'no route without a destination');
 
 const hexSteps = (a, b) => {
@@ -496,7 +495,7 @@ for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.
 
 // A save carries its version, and one without it is refused with a reason that names the version.
 const save = JSON.parse(sim.save());
-assert.equal(save.version, 7, 'a save carries its version');
+assert.equal(save.version, 8, 'a save carries its version');
 assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
 const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');
@@ -514,9 +513,10 @@ fallenView.civs[victim.id] = { ...victim, fallen: [12, other.id] };
 const fallenShape = describe(panelCtx(fallenView), { kind: 'civ', civ: victim.id });
 assert.equal(fallenShape.doing, `Fallen to ${other.name} on turn 12`, 'a fallen civ reads its fall');
 assert.equal(fallenShape.buttons.length, 0, 'a fallen civ has no buttons');
-const ledId = Number(Object.keys(v.civs)[0]);
-const ledView = { ...v, player: ledId };
-const armyUnit = Object.values(v.units).find((u) => u.kind === 'camp' && u.civ === ledId);
+// The led civ's view after its first warriors were raised above (a civ starts with no army).
+const ledId = armyView.player;
+const ledView = armyView;
+const armyUnit = armyOf(armyView)[0];
 const armyShape = describe(panelCtx(ledView), { kind: 'unit', id: armyUnit.id });
 assert.match(armyShape.name, /'s army \d+$/, 'an army is named by its civ and id');
 assert.ok(armyShape.numbers.some((n) => n.label === 'Archers') && armyShape.numbers.some((n) => n.label === 'Attack'), 'an army gives its archers and attack');

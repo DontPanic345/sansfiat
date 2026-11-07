@@ -350,22 +350,16 @@ pub fn found(w: &mut World) {
     // as close to a capital switch to it.
     crate::markets::go(w);
     switch_to_capitals(w);
-    // Each civ claims the stand-in (or its capital alone), then raises its camp, its scout and last its
-    // guard on the claim, which takes what the clans have left; its guard is divided at once, so the
-    // pick's cards read land.
+    // Each civ claims the stand-in (or its capital alone) and raises its scout, and nothing else: its
+    // army and guard are its own to raise (`founding.md`, The start). Its claim is divided at once, so
+    // the pick's cards read land.
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     for &id in &ids {
         let claim = if claim::may_claim(w, id) { claim::ai_claim(w, id) } else { vec![w.civs[&id].capital] };
         w.civs.get_mut(&id).unwrap().claim = claim;
     }
     for id in ids {
-        if w.config.army {
-            units::raise_at_founding(w, id);
-        }
         units::raise_scout_at_founding(w, id);
-        if w.config.army && claim::may_claim(w, id) {
-            units::guard::raise_at_founding(w, id);
-        }
         claim::divide(w, id);
     }
     w.phase = Phase::Choose;
@@ -473,7 +467,7 @@ pub fn keep(w: &World, civ: u32) -> f64 {
     let base = match c.keep {
         Some(k) => k,
         None if !w.config.army => 0.0,
-        None => units::pack_cap(units::camp(w, civ).map_or(f64::from(UNIT.start), |u| u.people)),
+        None => units::pack_cap(units::camp(w, civ).map_or(f64::from(UNIT.first), |u| u.people)),
     };
     base + guard
 }

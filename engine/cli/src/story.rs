@@ -6,9 +6,10 @@
 //! in its doc comment.
 //!
 //! Every story sets gift 0 and keeps its guard by the AI's own rule (`units::guard_order`), and none
-//! leaves its camp at the capital beside the guard: with every store at 0 at the pick and the levy
-//! bringing about three or four food a turn, a camp resupplied from the store at home and the guard
-//! together outeat it (`relay/specs/104/spec-review.md`).
+//! leaves its camp at the capital beside the guard: with every store at 10 grain at the pick (the
+//! endowment less the scout's pack, on small 2 for every civ) and the levy bringing about three or four
+//! food a turn, a camp resupplied from the store at home and the guard together outeat it
+//! (`relay/specs/104/spec-review.md`). A store fills one warrior's pack at the pick, not three.
 
 use std::fs;
 
@@ -288,8 +289,7 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
 /// - Every turn: the claim is the capital and the corridor, sent whenever it differs from the claim (a
 ///   tile lost is claimed again). Its guard is kept by the AI's rule, so its guard holds what its share
 ///   reaches, and a tile of the corridor the rival also holds is contested.
-/// - +0: the starting army is disbanded (it would eat the store beside the guard). From turn 30, or
-///   when the store fills three warriors' packs, those warriors are raised into one army, staged
+/// - From turn 30, or when the store fills three warriors' packs, those warriors are raised into one army, staged
 ///   (`stage_then_push`) and posted on the last corridor tile outside the rival's claim, with its zone
 ///   over the two tiles beyond. On small seed 2 the store never fills three packs, so the army is
 ///   the one warrior it can raise and the skirmish is the guards'.
@@ -310,15 +310,9 @@ fn skirmish(s: &mut Story) {
     }
 }
 
-/// +0: the starting army is disbanded to its clans, so that it doesn't eat the store beside the
-/// guard. Then the store banks until it fills `want` warriors' packs (or turn `by`), and every
-/// warrior it fills is raised at once into one army.
+/// The store banks until it fills `want` warriors' packs (or turn `by`), and every warrior it fills
+/// is raised at once into one army.
 fn bank_and_raise(s: &mut Story, want: u32, by: u32) {
-    if s.n() == 0 {
-        if let Some(id) = s.camp().map(|u| u.id) {
-            s.give(Order::Disband { unit: id, n: None, fighter: None });
-        }
-    }
     if s.camp().is_none() && s.n() > 0 && (s.fillable() >= want || s.n() >= by) {
         s.raise_all();
     }
@@ -341,7 +335,6 @@ fn corridor_claim(w: &World, me: u32, rival: u32) -> Vec<usize> {
 /// **stack.** The led civ banks its store, raises every warrior it fills at once into one army and
 /// marches it at the nearest rival's capital.
 ///
-/// - +0: the starting army is disbanded to its clans (it would eat the store beside the guard).
 /// - Until the store fills `STACK_WANT` warriors' packs, or turn `STACK_BY`: nothing but the guard's
 ///   upkeep. Then every warrior the store fills is raised at once into one army at the capital.
 /// - The army marches to the last tile of the way whose line is not cut (`stage_tile`), waits there
@@ -361,7 +354,9 @@ const STACK_BY: u32 = 25;
 /// **surrender.** The led civ marches its starting army into the rival's land, past its guard, and
 /// halts it two tiles inside.
 ///
-/// - +0: the army, both switches on, is sent along the way to the rival's capital to the second tile
+/// - +0: `UNIT.first` warriors are raised into an army at the capital, with their packs from the store
+///   (refused if the store can't fill them, and then there is no army to march). Its two switches
+///   go on, and the army is sent along the way to the rival's capital to the second tile
 ///   of the rival's stand-in claim (`claim::ai_claim`) on it, and left there. The rival's stand-in
 ///   takes back the tiles behind it (it skips only tiles a rival army holds), which cuts the army's
 ///   line; hungry three turns in a row with its line cut by the rival's land, it surrenders to it.
@@ -369,6 +364,7 @@ fn surrender(s: &mut Story) {
     if s.n() > 0 {
         return;
     }
+    s.give(Order::Raise { n: UNIT.first, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None });
     let way = s.way();
     let theirs = claim::ai_claim(&s.w, s.rival);
     let first = way.iter().position(|t| theirs.contains(t)).unwrap_or(way.len().saturating_sub(2));

@@ -205,7 +205,7 @@ fn a_played_game_scores_the_same_twice() {
 fn a_staged_store_at_a_pack_is_a_turn_at_pack() {
     let mut s = Stage::retro("small", 2).unwrap();
     let civs: Vec<u32> = s.world().civs.keys().copied().collect();
-    let pack = units::pack_cap(UNIT.start as f64);
+    let pack = units::pack_cap(UNIT.first as f64);
     for &c in &civs {
         s.world_mut().civs.get_mut(&c).unwrap().store = [0.0; N];
     }

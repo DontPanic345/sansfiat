@@ -523,8 +523,11 @@ pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05, ai_ring: 1, ai_reach: 4 
 
 /// The guard: the people a civ keeps on its claim at its capital (`units/guard.rs`, `claim.rs`).
 pub struct GuardRules {
-    /// Guards raised at founding, from the civ's clans, one person each.
+    /// Guards raised at founding, from the civ's clans, one person each. 0: a civ starts with its
+    /// scout and nothing else, and raises its guard on its claim itself (`founding.md`, The start).
     pub start: u32,
+    /// The guards a staged civ has (`StageSpec`): the guard founding gave a civ before the start moved.
+    pub first: u32,
     /// Labour a guard person puts into holding the claim: its whole labour (`UNIT.labour`), since a
     /// guard does nothing else. Divided over the claim with `inside`.
     pub guarding: f64,
@@ -537,7 +540,7 @@ pub struct GuardRules {
 }
 
 // Inside 0.02 (a tenth of a camp's) and keep_turns 1, so the store still gives (canvas.md).
-pub const GUARD: GuardRules = GuardRules { start: 3, guarding: 3.5, inside: 0.02, keep_turns: 1.0 };
+pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5, inside: 0.02, keep_turns: 1.0 };
 
 pub struct UnitRules {
     /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
@@ -548,8 +551,12 @@ pub struct UnitRules {
     pub hungry_turns: u32,
     /// The fewest people a clan must have to give one to the camp.
     pub min_clan: f64,
-    /// Warriors raised at founding.
+    /// Warriors raised at founding. 0: a civ starts with its scout and nothing else, and raises its
+    /// army itself (`founding.md`, The start).
     pub start: u32,
+    /// The warriors of a first army, where a script or the judge needs a number (`Lead`, the stories,
+    /// the camp sweep's lever, the economy group's pack).
+    pub first: u32,
     /// Turns of food a warrior's share of the pack holds.
     pub pack: f64,
     /// Food a unit of labour carries one unit of line cost (a line of cost `c` carries
@@ -578,7 +585,8 @@ pub const UNIT: UnitRules = UnitRules {
     food: 1.0,
     hungry_turns: 3,
     min_clan: 2.0,
-    start: 3,
+    start: 0,
+    first: 3,
     pack: 5.0,
     carry: 3.0,
     forage: 0.5,

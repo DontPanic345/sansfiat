@@ -33,8 +33,8 @@ fn every_kind_fires_in_real_runs() {
         CentreFormed,
         PregameEnded,
         CivFounded,
-        // The others (hungry, disbanded, starved) are held in units.rs.
-        CampRaised,
+        // The others (hungry, disbanded, starved) are held in units.rs. CampRaised is not: the AI raises
+        // no army until R, so these runs raise none (units.rs and the stories raise and see it).
     ];
     let mut seen = vec![0usize; all.len()];
     // Seed 3 ends on the turn limit with a top-up; the others end on their own.

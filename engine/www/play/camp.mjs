@@ -7,7 +7,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open } from '../play.mjs';
+import { open, raiseArmy } from '../play.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -143,9 +143,12 @@ async function panelChecks(page) {
  *  nearest rival camp's post (its tile), the ring round it is painted, and turns end until the rival's
  *  line is cut by our army and its camp goes hungry. */
 async function hold(page) {
-  const WARRIORS = 10;
+  // The store at the pick fills one warrior's pack and the guard eats from the store, so the hold raises seven, not ten.
+  const WARRIORS = 7;
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');
+  await page.until("document.body.dataset.phase === 'main'");
+  await raiseArmy(page);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   const mine = () => page.eval(`(() => { const u = Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp');
@@ -155,15 +158,15 @@ async function hold(page) {
   await selectKey(page, `unit:${(await mine()).id}`, cap);
   let raised = null;
   let refusals = 0;
-  for (let turn = 0; turn < 60 && (raised = await mine()).people < WARRIORS; turn++) {
-    const r = await page.stepper('Raise…', { n: Math.ceil(WARRIORS - raised.people), option: 'warriors', go: true });
+  for (let turn = 0; turn < 150 && (raised = await mine()).people < WARRIORS; turn++) {
+    const r = await page.stepper('Raise…', { n: 1, option: 'warriors', go: true });
     if (!r.go) {
       refusals++;
       await page.button('End turn');
     }
   }
   console.log(JSON.stringify({ seed: HOLD_SEED, raised: raised.people, refusals, turn: Number((await page.data()).turn) }));
-  if (raised.people < 8) throw new Error(`raised only ${raised.people} warriors through the stepper`);
+  if (raised.people < WARRIORS) throw new Error(`raised only ${raised.people} warriors through the stepper`);
   need(true, `the army's Raise… raises warriors to the camp (${raised.people})`);
 
   // The nearest rival camp at its post (not at its capital): the camp marches onto it with Move to….
@@ -273,6 +276,7 @@ async function lineHome(page) {
     await page.until("document.body.dataset.phase === 'choose'");
     await page.button('Lead ');
     await page.until("document.body.dataset.phase === 'main'");
+    await raiseArmy(page);
     await panelChecks(page);
   } finally {
     await page.close();
@@ -284,6 +288,7 @@ async function lineHome(page) {
     await page.until("document.body.dataset.phase === 'choose'");
     await page.button('Lead ');
     await page.until("document.body.dataset.phase === 'main'");
+    await raiseArmy(page);
     await lineHome(page);
   } catch (e) {
     fail(e.stack ?? String(e));

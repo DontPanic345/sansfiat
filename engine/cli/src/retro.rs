@@ -29,10 +29,10 @@ pub(crate) fn pregame(mut w: World) -> World {
     w
 }
 
-/// Whether `civ` kept its first camp to the end: no camp lost, and at least the warriors it started with.
+/// Whether `civ` kept its camps to the end: no camp lost (`army.lost` is 0). A civ that never raised
+/// one has lost none, so it kept what it had.
 pub(crate) fn kept_camp(w: &World, civ: u32) -> bool {
-    let warriors = units::camp(w, civ).map_or(0.0, |u| u.people);
-    w.civs[&civ].army.lost == 0 && warriors >= f64::from(UNIT.start)
+    w.civs[&civ].army.lost == 0
 }
 
 /// What the camp sweep reports for one civ at the end: its line, whether it kept its first camp, and
@@ -85,7 +85,7 @@ pub(crate) fn after_run(
                 let _ = w.act(Action::Order {
                     civ,
                     order: Order::Raise {
-                        n: UNIT.start,
+                        n: UNIT.first,
                         kind: units::UnitKind::Camp,
                         fighter: Default::default(),
                         into: None,
@@ -197,11 +197,7 @@ pub(crate) fn sweep_after(
         (true, false) => "control, no gifts",
         (false, false) => "control, no army, no gifts",
     };
-    println!(
-        "civs that kept their first camp: {kept} of {} (no camp lost, at least {} warriors at the end)",
-        all.len(),
-        UNIT.start
-    );
+    println!("civs that kept their camps: {kept} of {} (no camp lost)", all.len());
     let sum = |f: fn(&CivArmy) -> u32| all.iter().map(|c| f(c)).sum::<u32>();
     println!(
         "camps' hungry turns {}, warriors starved {}, tile-turns held {}, turns cut by an army {}",
