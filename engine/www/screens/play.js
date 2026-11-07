@@ -12,6 +12,7 @@ import { autosave } from '../save.js';
 import { legendHtml } from '../legend.js';
 import * as bar from '../bar.js';
 import { Pick } from './pick.js';
+import { routing, resetRouting, routeDone, arm, disarm, armedPick, onCommand, orderTip } from './orders.js';
 
 const $ = (id) => document.getElementById(id);
 const RATES = { slow: 1, normal: 4, fast: 20 };
@@ -25,7 +26,6 @@ let model = null; // the view model of the last change (model.js)
 let v = null; // its Sim.view()
 let cursor = 0; // into Sim.events
 let selected = null; // {kind: 'unit', id} | {kind: 'civ', civ} | {kind: 'clan', id} | {kind: 'festival', id} | {kind: 'tile', tile}
-let routing = { arm: null, start: null, unit: null }; // the selected scout's route: a map click arms 'start' or 'to'
 let outcome = null; // how the player's last scout route ended: 'found' | 'nopath' | null
 let playing = false;
 let running = false;
@@ -46,7 +46,7 @@ export function init() {
     rules: RULES,
     atlas: app.atlas,
     onPick,
-    onCommand,
+    onCommand: (i) => onCommand(i, host()),
     onPaint,
     onHover: showTip,
     onHoverEnd: hideTip,
@@ -136,7 +136,7 @@ function begin(next, { speed = null, run = false, play: go = false } = {}) {
   layout = JSON.parse(sim.layout());
   model = null;
   selected = null;
-  routing = { arm: null, start: null, unit: null };
+  resetRouting();
   outcome = null;
   painting = null;
   view.setLayout(layout);
@@ -238,8 +238,7 @@ function order(action) {
     $('error').textContent = '';
     if (action.type === 'order' && (action.order.type === 'route' || action.order.type === 'clearRoute')) {
       outcome = null;
-      routing.arm = null;
-      routing.start = null;
+      routeDone();
     }
   } catch (e) {
     $('error').textContent = String(e);
@@ -440,7 +439,7 @@ function showFeed(on) {
 function select(sel, { fromFeed = false } = {}) {
   const unit = sel?.kind === 'unit' ? sel.id : null;
   // Picking another thing forgets a route being set; the same unit keeps its start.
-  if (unit !== routing.unit) routing = { arm: null, start: null, unit };
+  if (unit !== routing.unit) resetRouting(unit);
   else routing.arm = null;
   if (painting && keyOf(sel) !== keyOf(selected)) {
     painting = null;
@@ -467,7 +466,7 @@ function syncSelection() {
 /** A left-click: the first thing on the tile, or the next one if something there is already selected. */
 function onPick(i) {
   if (routing.arm) {
-    armedPick(i);
+    armedPick(i, host());
     return;
   }
   if (i < 0) {
@@ -483,47 +482,6 @@ function onPick(i) {
   select(next);
 }
 
-/** The map click after a route button: the start, or the end, which sends `SetRoute` from the start (or the scout's tile). */
-function armedPick(i) {
-  const kind = routing.arm;
-  routing.arm = null;
-  if (i < 0) {
-    panelDraw();
-    syncArm();
-    return;
-  }
-  if (kind === 'start') {
-    routing.start = i;
-    panelDraw();
-    syncArm();
-    return;
-  }
-  const u = v.units[routing.unit];
-  if (!u) return;
-  if (u.kind === 'camp') order(unitOrder(u, { type: 'move', to: i }));
-  else order(unitOrder(u, { type: 'route', from: routing.start ?? u.tile, to: i }));
-}
-
-/** Arms (or disarms, if it is armed already) a map click for the route: 'start' or 'to'. */
-function arm(kind) {
-  routing.arm = routing.arm === kind ? null : kind;
-  syncArm();
-  panelDraw();
-}
-
-/** The armed click's state on the page: the crosshair cursor, and `body.dataset.armed`. */
-function syncArm() {
-  document.body.dataset.armed = routing.arm ?? '';
-  view.setArmed(routing.arm != null);
-}
-
-/** A right-click: the selected camp of the player's goes to the tile (a scout's sends nothing). */
-function onCommand(i) {
-  const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
-  if (i < 0 || !u || u.civ !== v.player || u.kind !== 'camp') return;
-  order(unitOrder(u, { type: 'move', to: i }));
-}
-
 /** A feed item's subject is selected and the map centred on it. */
 function onFeed(item) {
   const sel = subjectOf(ctx(), item);
@@ -531,12 +489,15 @@ function onFeed(item) {
   view.centreOn(tileOf(ctx(), sel), { minK: 24, smooth: true });
 }
 
+/** What the armed clicks and the right-click need of this screen (orders.js). */
+const host = () => ({ view, v, order, panelDraw });
+
 /** The bottom panel: what is selected, drawn by panel.js from the shape panels.js gives. */
 function panelDraw() {
   panel.render($('detail'), selected ? describe(ctx(), selected) : null, {
     check: (action) => sim.check(action),
     run: order,
-    arm,
+    arm: (kind) => arm(kind, host()),
     armed: routing.arm,
     paint: (mode) => setPainting(painting === mode ? null : mode),
     painting,
@@ -638,11 +599,8 @@ function keys(e) {
   if (e.key === 'Escape') {
     e.preventDefault();
     if (bar.closeMenus()) return;
-    if (routing.arm) {
-      routing.arm = null;
-      syncArm();
-      panelDraw();
-    } else if (painting) setPainting(null);
+    if (routing.arm) disarm(host());
+    else if (painting) setPainting(null);
     else select(null);
     return;
   }
@@ -761,10 +719,7 @@ function fillTip(i) {
   if (m) lines.push(`Market ${m.id}${v.end && v.end.centres.includes(m.id) ? ' (centre)' : ''}`);
   if (isHearth(i)) lines.push('Hearth');
   const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
-  if (u && u.civ === v.player && (u.kind === 'camp' || routing.arm === 'to')) {
-    const r = JSON.parse(sim.path(u.tile, i));
-    lines.push(r ? `Move here: cost ${f2(r.cost)}, ${r.turns} turn${r.turns === 1 ? '' : 's'}` : 'No route');
-  }
+  lines.push(...orderTip(sim, u, i, v));
   $('tip').innerHTML = lines.join('<br>');
 }
 
