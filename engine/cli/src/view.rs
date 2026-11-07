@@ -233,7 +233,10 @@ fn unit_line(w: &World, u: &Unit) -> String {
                         plan.candidates.len()
                     )
                 }
-                None => "no route".to_string(),
+                None => match u.dest() {
+                    Some(dest) => format!("going to {}", tile(w, dest)),
+                    None => "no route".to_string(),
+                },
             };
             format!("  scout {} at {}: {route}, hungry {} turns\n", u.id, tile(w, u.tile()), u.hungry)
         }

@@ -72,3 +72,5 @@ first, so there's no reserve to set.
 - Foraging takes only what it takes, for every unit: the tile keeps the rest of its food and rests in proportion. (#104)
 - A scout has the army's switches, and can be ordered to forage, pillage and resupply. (#104)
 - A civ can raise people into an army only while that army's line is open, so a cut-off army can't be reinforced. (#104)
+- A scout forages only what a tile regrows after the clans' harvest, and never leaves a tile fallow; armies forage as before. (#153)
+- A hungry scout's reasons say what foraging and its line brought against what it eats, and what its line costs from there. Move to… and Route to… warn when the line there can't carry what the scout eats. (#153)

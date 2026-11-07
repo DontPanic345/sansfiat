@@ -25,7 +25,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/over.rs` | The end: `Phase::Over` (winner, `Why`, turn), the `over` step, `limit` and `ends_at`. A game ends as a phase; the world runs on after it. |
 | `core/src/events.rs` | `Event`, `EventKind` and their wording. |
 | `core/src/data.rs` | Every rule's number and `Config`; tune here first. |
-| `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs. |
+| `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs and the flat trail cost. |
 | `core/src/land.rs` | Neighbours, move costs, `path`, `steps`, and the `regrow`, `wear` and `tend` steps. |
 | `core/src/actors.rs` | What every actor does: spoil, eat, `stride`, `walk_cost`, traffic, `divide`, `change`. |
 | `core/src/clans.rs` | Clans: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
@@ -34,7 +34,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/claim.rs` | A civ's claim, its guard's division, `held`, `tile_civ` and the `claim` step. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
-| `core/src/units/` | `line.rs` (paths, the line home, cuts), `camp.rs` (an army's turn and zone), `guard.rs`, `scout.rs` (the route search), `ai.rs` (the AI's orders), `fight.rs`. |
+| `core/src/units/` | `line.rs` (paths, the line home, cuts), `camp.rs` (an army's turn and zone), `guard.rs`, `search.rs` (the route search), `scout.rs` (the scout's turn and feeding), `ai.rs` (the AI's orders), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game: the engine's second player. |
 | `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map (the `map` text, or a retro pick, cached), layers, placements, orders and reads; `StageSpec` is its data form. `maptext.rs` reads the map's text (`map::parse`). A staged world is not a save. |
@@ -47,7 +47,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim` (`Sim.stage`): the panel shapes as data, and Disband all as the page presses it; the panel context both share. |
 | `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`. |
-| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout, civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
+| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, scout (which presses Move to…, Route from… and Route to…), civ, select, feed, army, layout), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
 
 ## Adding a mechanic
 

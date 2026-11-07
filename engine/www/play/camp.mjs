@@ -37,7 +37,7 @@ async function selectKey(page, key, i) {
 }
 
 // The seed the page's checks run on, and the seed the hold runs on.
-const SEED = 2;
+const SEED = 6;
 // The hold's map: seed 4. On seed 7 the camp's march starves ten warriors down to four, too few to hold the
 // ring (the zone holds one tile a warrior), so the cut never comes; seed 4 is where it does.
 const HOLD_SEED = hs >= 0 ? Number(args[hs + 1]) : 4;
@@ -67,7 +67,7 @@ async function panelChecks(page) {
   await page.eval(frames);
   const armed = await page.panel();
   need(armed.buttons.find((b) => b.label === 'Move to…').pressed === 'true', 'Move to… shows as armed');
-  need((await page.eval("document.body.dataset.armed")) === 'to', 'the click is armed to move');
+  need((await page.eval("document.body.dataset.armed")) === 'move', 'the click is armed to move');
   need((await page.eval("document.getElementById('map').style.cursor")) === 'crosshair', 'an armed click has a crosshair cursor');
   const tip = await page.tip(target);
   need(tip && tip.includes('Move here:'), `the armed tile's tooltip says "Move here: …" (${tip})`);

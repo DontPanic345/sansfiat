@@ -214,6 +214,9 @@ pub struct TrailRules {
     /// Labour to finish a built trail, by the terrain it goes on (`scout`'s work: forest, hills, a
     /// mountain pass). A trail brings a tile to its hidden `trail_cost`, not to a flat cost.
     pub work: [(usize, f64); 3],
+    /// The share of its bare cost that a trail brings plains and coast to (M4 answer 4). It is the
+    /// same on every flat tile, so nothing about it is hidden, and the scout builds none there.
+    pub flat: f64,
 }
 
 /// Traffic is people-walks, so a tile's steady traffic is ten times a turn's. On the retro maps at
@@ -222,7 +225,7 @@ pub struct TrailRules {
 /// and shared routes and under a third of the worked tiles; `off` 90 lets a trail ride out a dip
 /// without keeping the ones once worn.
 pub const TRAIL: TrailRules =
-    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)] };
+    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)], flat: 0.75 };
 
 pub struct DepletionRules {
     /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
@@ -457,9 +460,26 @@ pub struct ScoutRules {
     /// there and back paid from its labour. A scout on a long errand has no line to live off, and
     /// the tile it stands on is soon bare; one step more finds a tile that isn't.
     pub reach: usize,
+    /// Steps from its tile a scout looks for rich ground when it runs low: ground it can walk to where
+    /// a turn's foraging brings the most, so a scout far from its line finds a meal, not a march.
+    pub wander: usize,
+    /// Turns of eating in the pack under which a routed scout leaves its errand for rich ground.
+    pub low: f64,
+    /// Turns of eating in the pack at which a wandering scout is fed and goes back to its errand: the
+    /// gap between `low` and `fed` stops it leaving again the turn after it returns.
+    pub fed: f64,
+    /// Turns of eating a turn's foraging must bring for ground to count as rich: ground that only just
+    /// feeds a scout is left again as soon as it takes from it.
+    pub rich: f64,
 }
 
-pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1 };
+// Tuned against the 28 errands on the seven retro maps and the AI's scouts (relay/specs/153/errand.md): of the
+// settings that keep every scout alive, the most tiles and trails on the 14 routed errands. Wander 4 left the
+// ground a scout needed out of range (6 of 28 lost); 8 finds it (10 and 12 find more work, but then one of the
+// AI's idle scouts loses a person on medium 9). Rich 1.5 passed over ground that only just fed a scout, and it
+// starved beside it; 1.2 takes it. Low 1.5 and fed 2.5 leave the errand later and come back sooner than 2 and 4:
+// the same lives for a third fewer turns off the errand. Two people: one lost 2 to 8 of 28 at every setting.
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 1.2 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's

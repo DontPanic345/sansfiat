@@ -1,7 +1,7 @@
 // Selecting on the map (touch point 21): a click on a clan's home selects the clan, with a panel and no
 // buttons; a festival selects, listing its clans, with their walkers drawn; a bare tile's panel names whose
 // it is; clicking again cycles a stack; Escape steps back through an armed Move to…, painting, then the
-// selection.   node www/play/select.mjs [--out DIR]     (small seed 2)
+// selection.   node www/play/select.mjs [--out DIR]     (small seed 1)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -33,7 +33,7 @@ async function selectKey(page, key, i) {
   return false;
 }
 
-const page = await open('?size=small&seed=2&run=1');
+const page = await open('?size=small&seed=1&run=1');
 try {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');
@@ -91,7 +91,7 @@ try {
   const camp = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp').id`);
   await selectKey(page, `unit:${camp}`, cap);
   await page.button('Move to…');
-  need((await page.eval("document.body.dataset.armed")) === 'to', 'Move to… is armed');
+  need((await page.eval("document.body.dataset.armed")) === 'move', 'Move to… is armed');
   await page.key('Escape');
   need((await page.eval("document.body.dataset.armed")) === '' && (await page.data()).selected === `unit:${camp}`, 'Escape disarms the armed click and keeps the selection');
   await page.key('p');

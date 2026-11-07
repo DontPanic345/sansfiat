@@ -1154,6 +1154,7 @@ fn roll_trails(tiles: &mut [Tile], sub: &mut u32) {
                     t.trail_cost = Some(MAP.mountain_cost as f64);
                 }
             }
+            PLAINS | COAST => t.trail_cost = crate::land::flat_cost(t.terrain),
             _ => {}
         }
     }

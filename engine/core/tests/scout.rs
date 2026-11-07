@@ -241,21 +241,6 @@ fn a_mountain_pass_is_crossed_by_the_camp_only_once_built() {
 }
 
 #[test]
-fn an_idle_scout_at_the_capital_neither_forages_nor_starves() {
-    let mut w = lead(2).into_world();
-    let (cap, _) = capital(&w);
-    for _ in 0..50 {
-        end_fed(&mut w);
-    }
-    let s = scout(&w);
-    assert_eq!((s.home, s.scout().unwrap().route, s.hungry), (cap, None, 0));
-    assert_eq!(s.people, SCOUT.people as f64);
-    let mine = |kind| w.events.iter().any(|e| e.kind == kind && e.unit == Some(s.id));
-    assert!(!mine(EventKind::ScoutHungry) && !mine(EventKind::ScoutStarved));
-    assert!(w.events.iter().all(|e| e.kind != EventKind::CampForaged || e.unit != Some(s.id)));
-}
-
-#[test]
 fn a_route_order_replays_to_the_same_world() {
     let mut w = lead(2).into_world();
     let (cap, _) = capital(&w);

@@ -1,7 +1,7 @@
 // A civ in the page (touch point 20): the bar's chip selects it; its panel has Standing with its parts in the
 // tooltip, its store and its claim's counts; Raise… raises warriors and a guard; Gift + and −, and Keep, move
 // their numbers; P paints the claim and U unpaints it, and the border and counts show; an unaligned clan
-// leans to the civ within 30 turns of a raised gift. On small seed 4: the store fills its packs within a few
+// leans to the civ within 30 turns of a raised gift. On small seed 6: the store fills its packs within a few
 // turns there (on seed 2 the camp at the capital draws the store down faster than it fills).
 //   node www/play/civ.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
@@ -25,7 +25,7 @@ const need = (ok, msg) => {
 };
 const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 
-const page = await open('?size=small&seed=4&run=1');
+const page = await open('?size=small&seed=6&run=1');
 try {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');

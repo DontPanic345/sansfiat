@@ -89,6 +89,8 @@ fn step_costs() {
     assert_eq!(step_cost(&w, from, plains), Some(1.0));
     w.tiles[plains].terrain = FOREST;
     assert_eq!(step_cost(&w, from, plains), Some(2.0));
+    // No hidden cost (the flat one a plains tile carries is cleared): a trail gains nothing.
+    w.tiles[plains].trail_cost = None;
     w.tiles[plains].trail = true;
     assert_eq!(step_cost(&w, from, plains), Some(2.0), "a trail with no hidden cost gains nothing");
 }

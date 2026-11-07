@@ -3,6 +3,7 @@
 
 use engine::data::{size_radius, GRAIN};
 use engine::hex::Hex;
+use engine::land;
 use engine::map::{self, index};
 use engine::stage::{pregame_runs, ArmySpec, Stage, StageSpec, TileRef, RETRO};
 use engine::{stats, Config, Order, World};
@@ -190,7 +191,15 @@ fn plain_makes_the_land_bare_and_clears_what_the_led_civ_has_seen() {
     s.plain();
     let w = s.world();
     assert!(w.tiles.iter().all(|t| t.terrain == engine::data::SEA || t.terrain == engine::data::PLAINS));
-    assert!(w.tiles.iter().all(|t| !t.trail && t.river == 0 && t.trail_cost.is_none() && t.span.is_none()));
+    // Plains carry the flat trail cost (the sea none), so `plain` leaves nothing hidden but that.
+    let flat = |t: &engine::map::Tile| {
+        if t.terrain == engine::data::SEA {
+            None
+        } else {
+            land::flat_cost(engine::data::PLAINS)
+        }
+    };
+    assert!(w.tiles.iter().all(|t| !t.trail && t.river == 0 && t.trail_cost == flat(t) && t.span.is_none()));
     assert!(w.civs[&first].revealed.is_empty());
 }
 

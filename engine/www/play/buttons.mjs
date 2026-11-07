@@ -1,9 +1,9 @@
 // Every button of every panel, pressed once each on a staged game, and the world checked after each press.
 // The panels are the page's own: `game.shape()` is the shape `describe` gives the selection, and each button
 // is pressed as a player presses it (a click, an armed tile, a painted tile, a stepper's Go). A label with no
-// case in CASES fails the script ("button X has no case"), so a new button forces a case. Two things are red on
-// main and wrapped in expectBug until they are fixed: Disband all (the stepper opens at 1 and sends that) and
-// Keep ±1 (the button moves the keep by more than one: the guard's food is in the keep the page shows).
+// case in CASES fails the script ("button X has no case"), so a new button forces a case. One thing is red on
+// main and wrapped in expectBug until it is fixed: Keep ±1 (the button moves the keep by more than one: the guard's
+// food is in the keep the page shows).
 //   node www/play/buttons.mjs [--out DIR] [--break forage]     (--break: Forage's case presses Pillage: a control)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -239,14 +239,13 @@ async function expectBug(name, message, fn) {
   console.log(`ok      ${name}: red on main, as its bug says (${message})`);
 }
 
-/** Disband…'s `all` as a player presses it: the stepper opens at its count and Go is pressed, no count set. */
+/** Disband all as a player presses it: the button sends the whole unit, with no count. */
 async function disbandAll(kind) {
   const word = kind === 'camp' ? 'army' : kind;
   await select(kind);
   const u0 = await unit(kind);
   const clan0 = await clanPeople();
-  const r = await stepperGo('Disband…', { option: 'all' });
-  need(r.pressed, `Disband… all is pressed on the ${word}${r.refused ? ': ' + r.refused : ''}`);
+  need(await press('Disband all'), `Disband all is pressed on the ${word}`);
   const w = await live();
   need(w.v.units[u0.id] === undefined, `Disband all sends the whole ${word} home: the ${word} is still on the map`);
   const got = (await clanPeople()) - clan0;
@@ -267,24 +266,36 @@ async function keepStep(label, step) {
 const CASES = {
   'Move to…': async (kind) => {
     await select(kind);
-    const w0 = await live();
     await armAndClick('Move to…', T);
     const w = await live();
     if (kind === 'camp') {
       need(w.v.units[w.camp.id].dest === T, `Move to… then a click sends the camp to ${T}`);
     } else {
-      need(JSON.stringify(w.v.units[w.scout.id].route) === JSON.stringify([w0.v.units[w0.scout.id].tile, T]), `Move to… sets the scout's route to ${T}`);
+      need(w.v.units[w.scout.id].dest === T, `Move to… sends the scout to ${T}`);
+      need(w.v.units[w.scout.id].route == null, 'Move to… sets no route');
     }
   },
-  Stop: async () => {
-    await select('camp');
+  'Route to…': async () => {
+    await select('scout');
+    const tile = (await live()).v.units[(await live()).scout.id].tile;
+    await armAndClick('Route to…', T);
     const w = await live();
-    await page.command(T);
-    await page.eval(frames);
-    need((await live()).v.units[w.camp.id].dest === T, 'a right-click marches the camp to the tile');
-    need(await press('Stop'), 'Stop is pressed on the marching camp');
-    const d = (await live()).v.units[w.camp.id].dest;
-    need(d == null || d === (await live()).v.units[w.camp.id].tile, `Stop leaves the camp with no march (dest ${d})`);
+    need(JSON.stringify(w.v.units[w.scout.id].route) === JSON.stringify([tile, T]), `Route to… sets the scout's route from its tile to ${T}`);
+  },
+  Stop: async (kind) => {
+    await select(kind);
+    const w = await live();
+    if (kind === 'camp') {
+      await page.command(T);
+      await page.eval(frames);
+      need((await live()).v.units[w.camp.id].dest === T, 'a right-click marches the camp to the tile');
+    } else {
+      await armAndClick('Move to…', T);
+      need((await live()).v.units[w.scout.id].dest === T, 'Move to… sends the scout to the tile');
+    }
+    need(await press('Stop'), `Stop is pressed on the marching ${kind}`);
+    const u = (await live()).v.units[kind === 'camp' ? w.camp.id : w.scout.id];
+    need(u.dest == null || u.dest === u.tile, `Stop leaves the ${kind} with no march (dest ${u.dest})`);
   },
   'Paint (P)': async () => {
     await select('camp');
@@ -377,6 +388,15 @@ const CASES = {
   'Raise…/archers': async (kind) => (kind === 'civ' ? raiseCivKind('archers', (u) => u.kind === 'camp') : raiseIntoCamp('archers')),
   'Raise…/a guard': async () => raiseCivKind('a guard', (u) => u.kind === 'guard'),
   'Raise…/a scout': async () => raiseCivKind('a scout', (u) => u.kind === 'scout'),
+  'Disband…/people': async (kind) => {
+    await select(kind);
+    const u0 = await unit(kind);
+    const c0 = await clanPeople();
+    const r = await stepperGo('Disband…', { option: 'people', n: 1 });
+    need(r.pressed, `Disband… people, 1, Go is pressed on the ${kind}${r.refused ? ': ' + r.refused : ''}`);
+    need(Math.abs((await unit(kind)).people - u0.people + 1) < 1e-9, `one person went home from the ${kind}, and it keeps ${u0.people - 1}`);
+    need(Math.abs((await clanPeople()) - c0 - 1) < 1e-9, 'the clan has the person back');
+  },
   'Disband…/warriors': async () => {
     await select('camp');
     const u0 = await unit('camp');
@@ -386,10 +406,7 @@ const CASES = {
     need(Math.abs((await unit('camp')).people - u0.people + 1) < 1e-9, 'one warrior went home from the army');
     need(Math.abs((await clanPeople()) - c0 - 1) < 1e-9, 'the clan has the person back');
   },
-  'Disband…/all': async (kind) => {
-    const word = kind === 'camp' ? 'army' : kind;
-    await expectBug(`Disband all, the ${word}`, `Disband all sends the whole ${word} home: the ${word} is still on the map`, () => disbandAll(kind));
-  },
+  'Disband all': async (kind) => disbandAll(kind),
   'Route from…': async () => {
     await select('scout');
     need(await press('Route from…'), 'Route from… is pressed on the scout');
@@ -397,13 +414,16 @@ const CASES = {
     need((await page.eval("document.body.dataset.armed")) === 'start', 'Route from… arms the start');
     await page.click(S);
     await page.eval(frames);
-    await armAndClick('Move to…', T);
+    need((await page.eval("document.body.dataset.routeStart")) === String(S), `the start mark is on ${S}`);
+    need((await page.eval("document.body.dataset.armed")) === '', 'the start is set, and nothing is armed');
+    await armAndClick('Route to…', T);
     const w = await live();
     need(JSON.stringify(w.v.units[w.scout.id].route) === JSON.stringify([S, T]), `the route is set from ${S} to ${T}`);
+    need((await page.eval("document.body.dataset.routeStart")) === '', 'the start mark clears once the route is sent');
   },
   'Clear route': async () => {
     await select('scout');
-    await armAndClick('Move to…', T);
+    await armAndClick('Route to…', T);
     need((await live()).v.units[(await live()).scout.id].route != null, 'the scout has a route');
     need(await press('Clear route'), 'Clear route is pressed on the routed scout');
     need((await live()).v.units[(await live()).scout.id].route == null, 'Clear route clears it');
@@ -503,7 +523,8 @@ const PANELS = [
   { name: 'camp, deployed', sel: 'camp', kind: 'camp', setup: async () => { await paintTile('Paint (P)', N); } },
   { name: 'civ, keep set', sel: 'civ', kind: 'civ', setup: async () => { await press('Keep +1'); } },
   { name: 'scout', sel: 'scout', kind: 'scout', setup: async () => {} },
-  { name: 'scout, routed', sel: 'scout', kind: 'scout', setup: async () => { await armAndClick('Move to…', T); } },
+  { name: 'scout, moving', sel: 'scout', kind: 'scout', setup: async () => { await armAndClick('Move to…', T); } },
+  { name: 'scout, routed', sel: 'scout', kind: 'scout', setup: async () => { await armAndClick('Route to…', T); } },
   { name: 'guard', sel: 'guard', kind: 'guard', setup: async () => {} },
 ];
 

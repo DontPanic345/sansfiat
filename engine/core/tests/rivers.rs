@@ -309,10 +309,12 @@ fn a_trail_on_the_river_bridges_walks_and_market_reach() {
     let territory = [west, ford, east];
     assert_eq!(walk(&w, west, &territory, east), 2.0 + RIVER.cross);
     assert!(!reach(&w, west).contains_key(&east), "across the river is out of reach");
+    // The ford is plains, so its trail brings it to the flat cost (`TRAIL.flat` of 1): the walk is
+    // 0.75 + 1 where it was 1 + 1 before the flat trail. The river's crossing is gone either way.
     w.tiles[ford].trail = true;
-    assert_eq!(walk(&w, west, &territory, east), 2.0);
-    assert_eq!(reach(&w, west)[&east], 2.0);
-    // A trail at the course changes nothing along it.
+    assert_eq!(walk(&w, west, &territory, east), 1.0 + TRAIL.flat);
+    assert_eq!(reach(&w, west)[&east], 1.0 + TRAIL.flat);
+    // A trail at the course changes nothing along it: no crossing, and the flat trail's cost.
     w.tiles[at(0, 1)].trail = true;
-    assert_eq!(step_cost(&w, ford, at(0, 1)), Some(1.0));
+    assert_eq!(step_cost(&w, ford, at(0, 1)), Some(TRAIL.flat));
 }

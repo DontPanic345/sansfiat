@@ -46,6 +46,9 @@ pub fn parse(text: &str) -> Result<Parsed, String> {
             return Err(format!("row {}, column {}: {:?} is not a map glyph", cell.row, cell.col, cell.c));
         }
     }
+    for t in &mut tiles {
+        t.trail_cost = crate::land::flat_cost(t.terrain);
+    }
     Ok(Parsed { radius, tiles })
 }
 

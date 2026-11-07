@@ -1,5 +1,6 @@
 // A unit's route: a line along the path with a flag at the end (the selected one firm, the rest faint),
-// and the selected scout's plan: known solid, possible dashed, both from where its search starts.
+// the selected scout's plan: known solid, possible dashed, both from where its search starts; and the ring where
+// a route being set begins, in its scout's colour.
 export const name = 'routes';
 
 export function draw(ctx, model, view) {
@@ -54,5 +55,16 @@ export function draw(ctx, model, view) {
     // Known first, the possible dashed over it: where the two are one path, both still show.
     if (known && known.length > 1) draw(known, [], '#7fd3ff', 4);
     if (possible && possible.length > 1) draw(possible, [Math.max(px * 6, 0.5), Math.max(px * 4, 0.35)], '#ffb347', 3);
+  }
+  if (view.routeStart) {
+    const { tile, colour } = view.routeStart;
+    ctx.beginPath();
+    ctx.arc(view.px[tile], view.py[tile], 1.05, 0, 2 * Math.PI);
+    ctx.setLineDash([]);
+    for (const [c, lw] of [[casing, 5], [colour, 2.8]]) {
+      ctx.strokeStyle = c;
+      ctx.lineWidth = Math.max(px * lw, 0.1);
+      ctx.stroke();
+    }
   }
 }

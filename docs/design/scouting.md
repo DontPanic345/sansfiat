@@ -22,8 +22,8 @@ and costs work to build, more on rougher ground. A mountain keeps a high cost ev
 trail, and takes the most work.
 
 A mountain can be crossed only where a bridge would span it, and only a few can. Bridge span
-is a technology later; for now every civ has the shortest span. Flat land gains nothing from
-a trail.
+is a technology later; for now every civ has the shortest span. A trail brings flat land down a
+little; walking wears one there, and a scout builds trails only on rough ground and mountains.
 
 ## Trails
 
@@ -83,3 +83,7 @@ set its target. Debug views stay, but nothing in play needs them.
 - The player hears of a route when it's found and again when it's built. (#74, #77)
 - A scout forages its own tile and the tiles next to it, and pays the walk to each. (#104)
 - A scout keeps its route until the route is cleared, and the trails along it count as walked while it does. (#104)
+- A trail brings plains and coast to three quarters of their bare cost, worn by traffic as on rough ground; marsh and desert gain nothing. The scout builds no flat trail. (#153)
+- The scout's row is Move to… (it walks to a tile and stays there, foraging), Route from… (a ring marks the start) and Route to…, with Clear route and Stop. (#153)
+- Along a range the scout checks the mountain with the best case first: the cost through it plus its walk there. The panel lists the mountains it leaves, each with its cost through against the known route. (#153)
+- A low scout leaves its errand for the nearest ground within eight steps where a turn's foraging brings a fifth more than it eats, fills its pack and goes back to its errand; an idle scout waits on such ground. (#153)

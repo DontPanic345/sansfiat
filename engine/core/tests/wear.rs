@@ -5,7 +5,8 @@ use common::{at, flat, put};
 use engine::actors::Route;
 use engine::clans::harvest;
 use engine::data::*;
-use engine::land::{build_trail, domestic, tend, wear};
+use engine::land::{build_trail, domestic, flat_cost, step_cost, steps, tend, wear};
+use engine::stage::Stage;
 use engine::stats::summary;
 use engine::{EventKind, World};
 
@@ -311,4 +312,57 @@ fn a_built_pass_is_kept_by_walking_and_no_mountain_gets_a_worn_trail() {
     assert!(w.tiles[pass].trail, "walked, a built pass stays");
     assert!(!w.tiles[bare].trail, "walked bare, a mountain never gets a trail");
     assert!(w.tiles[bare].traffic >= TRAIL.on);
+}
+
+/// The sum of the labour to walk `path` in order.
+fn walk_cost(w: &World, path: &[usize]) -> f64 {
+    path.windows(2).map(|p| step_cost(w, p[0], p[1]).unwrap()).sum()
+}
+
+/// On plains and coast a worn trail brings the tile to `TRAIL.flat` of its bare cost; a marsh keeps
+/// its cost, and five worn plains tiles walk a quarter less than five bare ones.
+#[test]
+fn a_worn_flat_trail_brings_plains_and_coast_down_and_marsh_keeps_its_cost() {
+    let mut w = flat();
+    let (coast, marsh) = (at(0, 1), at(0, -1));
+    w.tiles[coast].terrain = COAST;
+    w.tiles[coast].trail_cost = flat_cost(COAST);
+    w.tiles[marsh].terrain = MARSH;
+    w.tiles[marsh].trail_cost = None;
+    let row: Vec<usize> = (-2..=2).map(|q| at(q, 0)).collect();
+    let path: Vec<usize> = std::iter::once(at(-3, 0)).chain(row.iter().copied()).collect();
+    let bare = walk_cost(&w, &path);
+    assert_eq!(bare, 5.0);
+    for i in row.iter().copied().chain([coast, marsh]) {
+        w.tiles[i].traffic = TRAIL.on;
+    }
+    tend(&mut w);
+    for i in row.iter().copied().chain([coast, marsh]) {
+        assert!(w.tiles[i].trail, "tile {i} is worn to a trail");
+    }
+    assert!((walk_cost(&w, &path) - bare * TRAIL.flat).abs() < EPS, "five worn plains walk a quarter less");
+    assert_eq!(step_cost(&w, at(0, 0), coast), Some(TRAIL.flat));
+    assert_eq!(step_cost(&w, at(0, 0), marsh), Some(3.0));
+}
+
+/// The first civ's errand on small 2 to the nearest rival capital: no plains or coast tile is among
+/// its candidates, since a flat tile costs the same known and possible.
+#[test]
+fn a_retro_errand_on_small_2_has_no_flat_candidate() {
+    let mut s = Stage::retro("small", 2).unwrap();
+    let me = *s.world().civs.keys().next().unwrap();
+    s.lead(me).unwrap();
+    let w = s.world();
+    let cap = w.civs[&me].capital;
+    let to = w
+        .civs
+        .values()
+        .filter(|c| c.id != me)
+        .min_by_key(|c| (steps(w, cap, c.capital), c.id))
+        .map(|c| c.capital)
+        .unwrap();
+    let plan = s.route(me, cap, to);
+    let flat: Vec<usize> =
+        plan.candidates.iter().copied().filter(|&i| matches!(w.tiles[i].terrain, PLAINS | COAST)).collect();
+    assert!(flat.is_empty(), "flat tiles among the candidates: {flat:?}");
 }

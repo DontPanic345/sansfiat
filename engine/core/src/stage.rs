@@ -88,6 +88,7 @@ impl Stage {
         let mut tiles = maptext::bare(radius);
         for t in &mut tiles {
             t.terrain = if t.hex().distance(Hex::ORIGIN) < radius { PLAINS } else { SEA };
+            t.trail_cost = crate::land::flat_cost(t.terrain);
         }
         Stage::base(radius, tiles)
     }
@@ -262,8 +263,8 @@ impl Stage {
         Ok(())
     }
 
-    /// Makes every land tile plains and bare: no rivers, trails, lakes or hidden costs, and no food
-    /// set on it. The led civ's revealed set is cleared, so it has seen nothing. The capital, its
+    /// Makes every land tile plains and bare: no rivers, trails or lakes, the plains carry the flat
+    /// trail cost and nothing hidden, and no food set on it. The led civ's revealed set is cleared, so it has seen nothing. The capital, its
     /// camp and its scout are left as they are. Not logged: a plain stage is not a save.
     pub fn plain(&mut self) {
         for t in &mut self.world.tiles {
@@ -274,7 +275,7 @@ impl Stage {
             t.flow = None;
             t.trail = false;
             t.trail_work = 0.0;
-            t.trail_cost = None;
+            t.trail_cost = crate::land::flat_cost(t.terrain);
             t.span = None;
         }
         if let Some(me) = self.world.player {

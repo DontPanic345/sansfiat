@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BinaryHeap};
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::map::{self, Tile};
+use crate::market::Basket;
 use crate::world::World;
 
 /// On-map neighbours of tile `i`, in `DIRS` order.
@@ -27,11 +28,14 @@ pub fn steps(w: &World, a: usize, b: usize) -> i32 {
     w.tiles[a].hex().distance(w.tiles[b].hex())
 }
 
-/// Whether a trail can be built on tile `i`: it has a hidden trail cost, and a mountain's span is
-/// one `CIV.bridge_span` can bridge.
+/// Whether a trail can be built on tile `i`: it is rough ground or a mountain (`TRAIL.work`) with a
+/// hidden trail cost, and a mountain's span is one `CIV.bridge_span` can bridge. A flat tile's
+/// trail is never built by labour (it comes of traffic alone).
 pub fn trailable(w: &World, i: usize) -> bool {
     let t = &w.tiles[i];
-    t.trail_cost.is_some() && (t.terrain != MOUNTAIN || t.span.is_some_and(|s| s <= CIV.bridge_span))
+    t.trail_cost.is_some()
+        && TRAIL.work.iter().any(|&(k, _)| k == t.terrain)
+        && (t.terrain != MOUNTAIN || t.span.is_some_and(|s| s <= CIV.bridge_span))
 }
 
 /// Labour to step from tile `from` into tile `to`; `None` is impassable. A tile with a trail costs
@@ -48,6 +52,15 @@ pub fn step_cost(w: &World, from: usize, to: usize) -> Option<f64> {
         _ => terrain?,
     };
     Some(cost + cross)
+}
+
+/// The hidden trail cost of a flat tile of `terrain`: `TRAIL.flat` of its bare cost on plains and
+/// coast, and `None` on any other terrain (rough ground and mountains have their own).
+pub fn flat_cost(terrain: usize) -> Option<f64> {
+    match terrain {
+        PLAINS | COAST => TERRAIN[terrain].move_cost.map(|c| c * TRAIL.flat),
+        _ => None,
+    }
 }
 
 /// Puts `labour` into a trail on tile `i`, which must be `trailable`. It is finished when its work
@@ -94,6 +107,17 @@ impl Ord for Entry {
 /// Path cost from the nearest of `from` to every tile within `max`: sources cost 0, each step
 /// costs its `step_cost`, and only `allowed` tiles are entered.
 pub fn cost_map(w: &World, from: &[usize], max: f64, allowed: impl Fn(usize) -> bool) -> BTreeMap<usize, f64> {
+    cost_map_by(w, from, max, allowed, |i, j| step_cost(w, i, j))
+}
+
+/// `cost_map` with each step priced by `cost(i, j)` (`None` is no step), as `path_by` prices a path.
+pub fn cost_map_by(
+    w: &World,
+    from: &[usize],
+    max: f64,
+    allowed: impl Fn(usize) -> bool,
+    cost: impl Fn(usize, usize) -> Option<f64>,
+) -> BTreeMap<usize, f64> {
     let mut best: BTreeMap<usize, f64> = BTreeMap::new();
     let mut heap = BinaryHeap::new();
     for &s in from {
@@ -105,7 +129,7 @@ pub fn cost_map(w: &World, from: &[usize], max: f64, allowed: impl Fn(usize) -> 
             continue;
         }
         for j in neighbours(w, i) {
-            let Some(step) = step_cost(w, i, j) else { continue };
+            let Some(step) = cost(i, j) else { continue };
             let nc = c + step;
             if nc > max || !allowed(j) || best.get(&j).is_some_and(|&b| b <= nc) {
                 continue;
@@ -225,6 +249,31 @@ fn settle_caps(t: &mut Tile) {
     }
 }
 
+/// The yield a tile's food `f` sustains a turn: what it regrows, whatever its stock. A food that
+/// breeds regrows a quarter of its rate and restocks.
+pub fn yield_of(t: &Tile, f: usize) -> f64 {
+    let food = &FOOD[f];
+    let cap = t.cap[f];
+    if food.breeds {
+        (food.regen / 4.0 + food.restock) * cap
+    } else {
+        food.regen * cap
+    }
+}
+
+/// What a scout may take from a tile this turn: per food, the stock up to what the yield leaves after
+/// this turn's take. Nothing on a fallow tile.
+pub fn spare(t: &Tile) -> Basket {
+    let mut b = [0.0; N];
+    if t.fallow > 0 {
+        return b;
+    }
+    for (f, s) in b.iter_mut().enumerate() {
+        *s = t.stock[f].min((yield_of(t, f) - t.take[f]).max(0.0));
+    }
+    b
+}
+
 /// The `wear` step, after eating: each food on each tile takes its wear from this turn's take
 /// against its sustainable yield at its cap, the yield `regen × cap` (game breeds, so its most,
 /// `(regen / 4 + restock) × cap`). A take above the yield wears the food by `DEPLETION.rate` times
@@ -232,10 +281,10 @@ fn settle_caps(t: &mut Tile) {
 /// `DEPLETION.recover`. Wear stays in `0..=DEPLETION.max`, and the caps follow it.
 pub fn wear(w: &mut World) {
     for t in &mut w.tiles {
-        for (f, food) in FOOD.iter().enumerate() {
+        for f in 0..FOOD.len() {
             let cap = t.cap[f];
             let take = t.take[f];
-            let yielded = if food.breeds { (food.regen / 4.0 + food.restock) * cap } else { food.regen * cap };
+            let yielded = yield_of(t, f);
             let wear = if cap > 0.0 && take > yielded {
                 t.wear[f] + DEPLETION.rate * (take - yielded) / cap
             } else {

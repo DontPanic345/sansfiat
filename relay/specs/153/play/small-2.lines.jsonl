@@ -1,0 +1,37 @@
+{"turn":260,"line":"note meant: send the scout on a route to find trails did: route scout 514 from capital to 119 (-10,-4), a near tile, to see what it does surprised: Blue leads with 12% while I have 4%","result":"noted"}
+{"turn":260,"line":"{\"type\":\"route\",\"unit\":514,\"from\":142,\"to\":119}","result":"ok"}
+{"turn":260,"line":"note meant: see scout reaction did: end 5 surprised: nothing yet","result":"noted"}
+{"turn":265,"line":"end 5","result":"ok"}
+{"turn":265,"line":"note meant: lift standing by feeding clans did: setGift 6 since clans starving and store 22 surprised: scout route ended, no route can exist","result":"noted"}
+{"turn":265,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":265,"line":"note meant: raise a guard to hold land did: raise guard 1 surprised: nothing","result":"noted"}
+{"turn":265,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":265,"line":"note meant: watch gift effect did: end 10 surprised: nothing","result":"noted"}
+{"turn":275,"line":"end 10","result":"ok"}
+{"turn":275,"line":"note meant: see orders now did: view surprised: nothing","result":"noted"}
+{"turn":275,"line":"view","result":"ok"}
+{"turn":275,"line":"note meant: try an army did: raise 1 warrior army surprised: no scout Move order in the text view, only route","result":"noted"}
+{"turn":275,"line":"{\"type\":\"raise\",\"n\":1}","result":"ok"}
+{"turn":275,"line":"note meant: pass time did: end 10 surprised: nothing","result":"noted"}
+{"turn":285,"line":"end 10","result":"ok"}
+{"turn":285,"line":"note meant: learn why people leave did: why 301 surprised: people leaving each few turns","result":"noted"}
+{"turn":285,"line":"why 301","result":"ok"}
+{"turn":285,"line":"note meant: pillage/forage try did: forage army 551 surprised: nothing","result":"noted"}
+{"turn":285,"line":"{\"type\":\"forage\",\"unit\":551}","result":"ok"}
+{"turn":285,"line":"note meant: pass time did: end 10 surprised: nothing","result":"noted"}
+{"turn":295,"line":"end 10","result":"ok"}
+{"turn":295,"line":"note meant: stop draining store did: setGift 1 since store is 1.1 and gift 6 gave 0.0 (nothing reaches clans: no unaligned in reach) surprised: gave 0.0 all along, the gift did nothing","result":"noted"}
+{"turn":295,"line":"{\"type\":\"setGift\",\"food\":1}","result":"ok"}
+{"turn":295,"line":"note meant: try zone did: move army 551 to 167 to test move surprised: nothing","result":"noted"}
+{"turn":295,"line":"{\"type\":\"move\",\"unit\":551,\"to\":167}","result":"ok"}
+{"turn":295,"line":"note meant: pass time did: end 10 surprised: nothing","result":"noted"}
+{"turn":305,"line":"end 10","result":"ok"}
+{"turn":305,"line":"note meant: more fighters to hold land did: raise 1 into army 551 surprised: Standing fell to 4.9","result":"noted"}
+{"turn":305,"line":"{\"type\":\"raise\",\"n\":1,\"into\":551}","result":"ok"}
+{"turn":305,"line":"note meant: pass did: end 15 surprised: nothing","result":"noted"}
+{"turn":320,"line":"end 15","result":"ok"}
+{"turn":320,"line":"note meant: pass did: end 15 surprised: nothing","result":"noted"}
+{"turn":335,"line":"end 15","result":"ok"}
+{"turn":335,"line":"note meant: finish did: end 25 surprised: army pack is 0.2, near hungry","result":"noted"}
+{"turn":360,"line":"end 25","result":"ok"}
+{"turn":360,"line":"view","result":"ok"}
