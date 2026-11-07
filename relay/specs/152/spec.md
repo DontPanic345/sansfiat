@@ -32,7 +32,7 @@ stories' maps, and every game ends; and the judge reads the end on every later p
 |---|---|---|
 | Doubt | **Every game ends.** `sweep --judge` on the seven retro maps: each AI run and each no-fight run reaches `Over`, by the limit or sooner; the report's end group says how and when. | None needed: a run that doesn't end is a failure. |
 | Doubt | **Some games end before the limit on the stories' maps.** The stories (the canvas's, `story NAME` on each retro map and civ, played to the end) and `judge FILE` on each save: games ended before the limit, capitals fallen, turns to the end, the led civ's rank at the end. | The same story with `--no-fight`: no capital can fall, so every game ends at the limit. |
-| Doubt | **The limit ends a game in time to matter**: on the retro maps' AI runs, the leader at the limit is the leader the game settles on (the canvas defines settled and measures it; see build-5). | The same runs played on long past the limit. |
+| Doubt | **The limit ends a game in time to matter**: on the retro maps' AI runs, the leader at the limit is the leader at +600 on six of seven maps or better, and the limit is past the stories' arc (see build-5 and `review-probe.md`). | The same runs played on to +600. |
 | Standing | The led civ's rank at the end in each story's save, beside the AI control's and the idle control's (`judge FILE`). | The idle led civ. |
 | Health | `check.sh` green; `stats::digest` moves (the start and the end are rule changes): `SAVE_VERSION` bumps once and the pins with it; a save played past its end replays to the same digest. | |
 | Decisions | Every new thing the player meets is pressed in `www/play/end.mjs` on staged games: the end screen by conquest, by the led civ's fall and by the limit; Play on (End turn still works, orders are refused with "the game is over"); New game; the pick's card shows the limit. | |
@@ -93,30 +93,43 @@ the retro maps at the end, on everything the easels built. So:
 9. **The step.** A last step in `TURN`, `over`, in `core/src/over.rs` (a module of its own):
    in `Main`, after the pick, it pushes the turn's Standing (item 11) and then ends the game on
    the first of:
+   - **Fell**: the player leads a civ and its capital has fallen. The winner is the standing
+     civ with the highest Standing (a tie to the lower id), so with one rival left it is that
+     rival; `by` is the civ that took the capital (`Civ.fallen`). In a watched game one capital
+     falling ends nothing. Fell comes before Conquest so the led civ's own fall is always told
+     as its fall ("Your capital fell to Blue"), even when it leaves one capital standing.
    - **Conquest**: at least two civs were founded and at most one is standing
      (`civs::alive`). The winner is the one left (if none is left, the highest Standing, a tie
      to the lower id).
-   - **Fell**: the player leads a civ and its capital has fallen. The winner is the standing
-     civ with the highest Standing (a tie to the lower id); `by` is the civ that took the
-     capital. In a watched game one capital falling ends nothing.
    - **Limit**: the turns since the pick reach the limit (item 10). The winner is the standing
      civ with the highest Standing, a tie to the lower id (the older civ, as `war.md`'s
      decided ties go).
+   The step runs inside the turn, before `World.turn` advances, so the turns since the pick
+   there are `w.turn + 1 − picked`: after the `k`-th `EndTurn` since `ChooseCiv`, `standing`
+   has `k + 1` entries and `Over.turn` is `k`. A game with limit `L` is `Over` with
+   `turn == L` once the `L`-th turn has ended, when `World.turn == picked + L`.
    It emits a `GameOver` event (`civ` the winner, `other` the fallen civ's taker for Fell) and
    notes the winner. In `Over` the step only pushes Standing: the result never changes.
 10. **The limit** counts turns after the pick. `END.limit` in `data.rs` is a turn count per
     size, by radius (`[(16, _), (23, _), (33, _)]`, as `SIZES`); a radius between sizes takes
     the next size up's, and one past the largest the largest's. `Config.limit: Option<u32>`
-    (`#[serde(default)]`, `None` = the size's) lets a stage, a test or a script set a short one;
-    `World::limit()` gives the one in force. Starting numbers, for the canvas to set: small
+    (`#[serde(default)]`, `None` = the size's) lets a stage, a test or a script set a short one.
+    `over::limit(w) -> u32` gives the one in force in any phase (the pick's cards read it
+    before the pick); `over::ends_at(w) -> Option<u32>` gives the world turn it falls on,
+    `picked + limit`, `None` before the pick. Starting numbers, for the canvas to set: small
     200, medium 250, large 300.
 11. **Standing over time.** `World.standing: Vec<BTreeMap<u32, f64>>`: index 0 is
     `stats::standing` at the pick (pushed by `ChooseCiv`), index `k` after `k` turns, every
     civ founded (a fallen civ's runs on at what the rule gives it). Derived and not saved
     (`#[serde(skip)]`), rebuilt by a replay as `orders` and `picked` are.
 12. **Refusals.** In `Over`, `validate` refuses `Order`, `SetKeep` and `SetGift` with "the
-    game is over"; `EndTurn` goes on. `World::order` (the AI's door) is not refused: the AI
-    plays on.
+    game is over", checked first (before `units::leader`, whose own phase check would say "the
+    game has not begun"); `EndTurn` goes on. `World::order` (the AI's door) is not refused:
+    `check_order` and `units::leader` read `playing()`, so the AI plays on. The `Phase::Main`
+    checks to move are `leaning.rs` (`lean`), `markets.rs` (the capital's market),
+    `orders.rs` (`check_order`), `units/mod.rs` (`leader`, and the `units` step), `units/ai.rs`,
+    `script.rs` (`Lead`, which stops at `Over`), `cli/src/play.rs` (`end`'s loop) and
+    `web/src/lib.rs` (`phase()`).
 13. **The CLI.** `play`'s view says the end in its first line ("the game is over: Blue won,
     the highest Standing at the turn limit, turn 512"), `end` keeps ending turns, and orders
     print the refusal. `story` stops at the end of the game or its `--turns`, whichever is
@@ -143,14 +156,17 @@ the retro maps at the end, on everything the easels built. So:
     for the run and for the no-fight control, so `judge --compare` reads it.
 18. **`judge FILE`** reads the game's end group beside the AI control's and the idle
     control's, each played to the game's turns as now, and prints "end (game / control / idle)"
-    with how each ended and the led civ's rank at the end.
+    with how each ended and the led civ's rank at the end. A game played on past its end reads
+    its ranks at `Over`. A control that hasn't ended by the game's turns (the game ended early)
+    reads "goes on" and its rank at its last turn: at the turn the game ended, that is the
+    comparison that matters. A game that ended at the limit has controls that end there too.
 19. `sweep_judge.rs` is 664 lines: its text output (`print_text` and the line helpers) moves
     to `cli/src/sweep_text.rs` first, byte for byte, then the end lines are added there.
 
 ## Settled: the page (build-4)
 
-20. **`Sim.view()`** gains `over` (`null` or `{winner, why, by, turn}`), `limit` (`{turns,
-    at}`: the limit after the pick and the turn it falls on; `null` before the pick) and
+20. **`Sim.view()`** gains `over` (`null` or `{winner, why, by, turn}`, `turn` the world's turn
+    it ended on, `picked + Over.turn`), `limit` (`{turns, at}`: the limit after the pick and the turn it falls on; `null` before the pick) and
     `standing` (`[[turn, {civ: share}]]` from `World.standing`); `phase` reads `"over"`.
     `model.js`'s own Standing history goes: the engine's is the one, so a loaded game has its
     whole line.
@@ -162,8 +178,10 @@ the retro maps at the end, on everything the easels built. So:
     it how.
     - Won: "You won" / "Yours is the last capital standing, on turn N" or "The highest Standing
       when the turn limit came, on turn N".
-    - Lost: "You lost" / "Your capital fell to Blue on turn N" or "Blue had the highest
-      Standing when the turn limit came, on turn N".
+    - Lost: "You lost" / "Your capital fell to Blue on turn N" (Fell, item 9's order) or
+      "Blue's is the last capital standing, on turn N" (Conquest without the led civ's fall,
+      which only a stage reaches) or "Blue had the highest Standing when the turn limit came,
+      on turn N".
     - Watched: "Blue won" / the same lines in the third person.
     - Before the end, Game → Standing so far: "Turn 312 of 512" / "Blue leads".
     Below it the chart as now, from `view.standing`, then Play on and New game.
@@ -173,7 +191,8 @@ the retro maps at the end, on everything the easels built. So:
 25. **`www/play/end.mjs`** checks it on staged games (`game.stage`), each pressing the page's
     own buttons: a two-civ stage with the led civ's army on the rival's capital and no guard
     there (ends by conquest: "You won"); a three-civ stage where a rival army takes the led
-    capital ("You lost", "fell to"); a stage with `limit: 3` ("turn limit"); then Play on, End
+    capital ("You lost", "fell to"); a stage with `limit: 3` ("turn limit"), and the same stage watched (a stage with no `lead`
+    stays at the pick: press Watch); then Play on, End
     turn advances the turn, a Raise is refused with "the game is over", and New game reaches
     start. `pick.mjs` checks a card's limit line. `check-stage.mjs` checks `view.over`,
     `view.limit` and `view.standing`'s length.
@@ -182,12 +201,16 @@ the retro maps at the end, on everything the easels built. So:
 
 All in build-5, the canvas:
 
-- **The limit per size.** What proves it: on the seven retro maps all on the AI, played past
-  the limit, the leader at the limit is the leader the game settles on (define settled, for
-  example the leader at the last lead change), and the Standing spread at the limit is no
-  longer moving by more than the lead margin a sample; and the limit is longer than the turns
-  any story takes to end a game on that size. A large map's turns cost most: the sweep's wall
-  time is recorded.
+- **The limit per size.** What proves it: on the seven retro maps all on the AI, played to
+  +600, the leader at the limit is the leader at +600 on as many maps as any limit in reach
+  gives, and the two maps that never settle are reported, not chased; and the limit is longer
+  than the turns any story takes to end a game, take a capital or bring an army to a rival
+  capital on that size, with a margin. The spec-review probe (`review-probe.md`) ran the first
+  half: with the new start the AI's lead is settled by +60 on five maps, small 9 is neck and
+  neck to +346 and medium 8's third civ overtakes between +300 and +400; the starting limits
+  give the +600 leader on six of seven. So the AI's world doesn't bind the limit from below;
+  the player's room (the stories) does, and the limit should not drag far past it. Wall time
+  doesn't bind it: 600 turns on all seven maps take 19 s.
 - **Whether a story ends a game before the limit.** A `conquest` story (or `stack`
   rewritten): what a determined player could script to take the nearest rival's capital and
   then the other, with the levers the player has (bank, raise, resupply, the switches,
@@ -216,7 +239,8 @@ All in build-5, the canvas:
    lengths. The card shows both the count and the turn it lands on.
 2. **The led civ's fall ends the game** (Why::Fell): "lost when your capital falls". The
    winner is then the highest Standing among the civs left, as the decided rule says when no
-   last capital stands; the taker is named in the why.
+   last capital stands; the taker is named in the why. It is checked before Conquest, so the led civ's fall is told
+   as its fall even when it leaves one capital standing (spec-review).
 3. **A fallen civ's player may keep watching** (the designer settles): Play on runs the world
    on as a watched game; the led civ's orders are refused as after any end.
 4. **A watched game's end screen** (the designer settles) names the winner and how, in the
@@ -237,3 +261,6 @@ All in build-5, the canvas:
 12. **The canvas changes no fight, supply or economy number** to make a story conquer: the
     question asks whether the game as built ends early, and F and R are the pieces that move
     it.
+13. **The limit's proof is a count over the maps** (spec-review, `review-probe.md`): the leader at
+    the limit is the leader at +600 on six of seven maps or better. Small 9 and medium 8 change
+    leader past +300 by the judge's rule, so no limit makes every map's leader the settled one.

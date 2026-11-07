@@ -5,7 +5,8 @@ conquest, by the led civ's fall or at the limit (`core/src/over.rs`, `END.limit`
 `Config.limit`, build-2), the judge reads the end on every run (`Scores.end`, the sweep plays
 each run to its end, `judge FILE` prints the end beside its controls, build-3), and the page
 shows it (build-4). Read `spec.md` (all of it: the question, the unsettled items, the
-decisions), `probe.md` (the spec step's runs: no story takes a capital), `start.md` and
+decisions), `probe.md` (the spec step's runs: no story takes a capital), `review-probe.md` (when the AI's
+lead settles), `start.md` and
 `judge.md` (the earlier builds' records), `cli/src/story.rs`, `cli/src/sweep_judge.rs`,
 `core/src/units/fight.rs` (militia, entrenchment, the fall), `core/src/units/camp.rs` and
 `line.rs` (supply), `docs/design/war.md`.
@@ -42,18 +43,24 @@ economy". Don't spend past an hour of the session on the search.
 Set `END.limit` for small, medium and large. Two constraints, measured, and the method is
 yours:
 
-- **In time to matter.** On the seven retro maps all on the AI (`sweep --judge`, or a run of
-  your own reading `World.standing`), played well past the limit: the leader at the limit is
-  the leader the game settles on, and the spread is no longer moving by more than
-  `JUDGE.lead_margin` a sample by then. Define "settles" in `limit.md` (for example: the
-  leader after the last lead change, and its turn) and show the turn on each map. A limit far
-  past that drags; one before it ends a game still in play.
-- **Room for conquest.** The limit on a size is later than the turn any story ends a game or
-  takes a capital on that size's maps, with a margin.
+- **In time to matter.** On the seven retro maps all on the AI, played to +600 (a run of your
+  own reading `World.standing`, or the sweep with a longer floor): the leader at the limit (by
+  the judge's rule, `JUDGE.lead_margin`) is the leader at +600 on as many maps as any limit in
+  reach gives. The spec-review probe (`review-probe.md`) ran this on the new start: the AI's
+  lead is settled by +60 on five maps; small 9's top two are neck and neck and swap to +346;
+  medium 8's third civ overtakes between +300 and +400; the starting limits give the +600
+  leader on six of seven. So the AI's world doesn't bind the limit from below: report the two
+  late maps, don't chase them. A limit far past the stories' arc drags.
+- **Room for conquest.** The limit on a size is later than the turn any story ends a game,
+  takes a capital, or brings an army to a rival capital on that size's maps, with a margin. If
+  no story gets that far, the bound is the latest turn the best story's army is still marching
+  or fighting, with a margin, and `limit.md` says so.
 
-Record in `relay/specs/152/limit.md`: per map, the settle turn, the spread's last move, the
-story's capital-taking turns, and the limit chosen per size with its reason; and the sweep's
-wall time at the chosen limits beside main's 33 s. Put the reason in a `note` beside
+Record in `relay/specs/152/limit.md`: per map, the last lead change before +600, the leader at
+the limit beside the leader at +600, the stories' furthest turns (capital taken, army at a
+capital, last march), and the limit chosen per size with its reason; and the sweep's wall time
+at the chosen limits beside main's 33 s (wall time is not expected to bind: 600 turns on all
+seven maps took 19 s in the probe). Put the reason in a `note` beside
 `END.limit`.
 
 ## 3. Then

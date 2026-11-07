@@ -36,8 +36,11 @@ Read `spec.md` items 16–19. The code: `core/src/judge.rs` (`Watch`, `Scores`, 
    `compare.rs`'s group order gains `end` after `fight`.
 5. **`judge FILE`.** `GameJudged`'s three `Scores` carry `end`; `Ending` gains `game_end`,
    `control_end` and `idle_end` (how each ended, or "goes on", and the led civ's rank at its
-   end). `print_game` prints "end (game / control / idle): fell +88 rank 3 / limit +200 rank
-   2 / limit +200 rank 2" or the like, beside its Standing lines.
+   end). The controls are played to the game's turns, as now: a control that hasn't ended by
+   then reads "goes on" with its rank at its last turn; a game played on past its end reads its
+   ranks at `Over`. `print_game` prints "end (game / control / idle): fell +88 rank 3 / goes on
+   +88 rank 2 / goes on +88 rank 2" or "limit +200 rank 1 / limit +200 rank 2 / limit +200 rank
+   2", beside its Standing lines.
 6. **Tests.** `core/tests/judge.rs`: on a stage with `limit: 3`, `Watch` reads `over` with
    why "limit" and `turn` 3, `early` false, and `ranks` from `World.standing`; on the
    build-2 conquest stage, why "conquest", `early` true and `capitals_fallen` 1.
@@ -49,7 +52,8 @@ Read `spec.md` items 16–19. The code: `core/src/judge.rs` (`Watch`, `Scores`, 
 
 `sansfiat sweep --judge` on the branch: put the end lines and the total block in
 `relay/specs/152/judge.md`, with the wall time beside main's (32–34 s), since every run now
-plays to its limit.
+plays to its limit (expect little: the spec-review probe ran 600 turns on all seven maps in
+19 s).
 
 ## Done
 

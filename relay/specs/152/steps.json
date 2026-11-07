@@ -15,7 +15,7 @@
   "model": "haiku",
   "effort": "high",
   "points": 4,
-  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high. Open 0: the phase, the three ends in their order, the winner, ties, the limit's lookup, the history's indexing and the refusal text are all in spec items 8-15. New 1: a TURN step and a derived field rebuilt by replay have patterns (pregame::check_end, World.orders); a phase with data is new but small. Miss 1: the brief lists the tests it writes on the stage, including the replay of a save past its end. Reach 2: a step every turn, and every Phase::Main check becomes playing(). I expect Haiku high to land it, with the conquest stage needing a retry to find a capital clan small enough to fall. About 14 files, 600 lines. Part and score agree."
+  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high. Open 0: the phase, the three ends in their order (Fell before Conquest, spec-review), the turn count inside the step (w.turn + 1 - picked), the winner, ties, the limit's lookup, the history's indexing and the refusal text are all in spec items 8-15. New 1: a TURN step and a derived field rebuilt by replay have patterns (pregame::check_end, World.orders); a phase with data is new but small. Miss 1: the brief lists the tests it writes on the stage, including the replay of a save past its end. Reach 2: a step every turn, and every Phase::Main check becomes playing(). I expect Haiku high to land it, with the conquest stage needing a retry to find a capital clan small enough to fall. About 14 files, 600 lines. Part and score agree."
  },
  {
   "id": "build-3",
@@ -42,7 +42,7 @@
   "model": "sonnet",
   "effort": "high",
   "points": 9,
-  "why": "Open 4, New 1, Miss 3, Reach 1 = 9: opus low on the ladder, run a rung below as Sonnet high, as each piece runs its canvas. Open 4: the limit is searched against two measured constraints, and the story is a search for a plan that takes capitals. New 1: the stories and the sweep exist. Miss 3: only runs on the retro maps show either. Reach 1: END.limit is read every turn, and the stories. I expect Sonnet high to set the limits with a clear settle measure, and to find that no story ends a game early on this economy (the spec probe: armies reach a capital starving with one to three warriors), recording how near it gets and why; a capital taken would be the surprise worth the step. About 4 files, 400 lines plus two records. Part and score agree."
+  "why": "Open 4, New 1, Miss 3, Reach 1 = 9: opus low on the ladder, run a rung below as Sonnet high, as each piece runs its canvas. Open 4: the limit is searched against two measured constraints, and the story is a search for a plan that takes capitals. New 1: the stories and the sweep exist. Miss 3: only runs on the retro maps show either. Reach 1: END.limit is read every turn, and the stories. I expect Sonnet high to set the limits against the count over the maps (spec-review's probe, review-probe.md: the AI's lead settles by +60 on five maps, two never do, and the starting limits match the +600 leader on six of seven, so the stories' arc binds the limit), and to find that no story ends a game early on this economy (the spec probe: armies reach a capital starving with one to three warriors), recording how near it gets and why; a capital taken would be the surprise worth the step. About 4 files, 400 lines plus two records. Part and score agree."
  },
  {
   "id": "review",

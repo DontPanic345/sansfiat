@@ -13,10 +13,10 @@ turn loop, Play), `www/model.js` (its `history`), `www/bar.js` (the phase chip, 
 
 1. **`Sim.view()`** gains `over` (`null`, or `{winner, why: "conquest" | "limit" | "fell", by,
    turn}`, `by` null but for fell, `turn` the world's turn it ended on), `limit` (`{turns, at}`:
-   `over::limit` and the world turn it falls on; `null` before the pick) and `standing`
+   `over::limit` and `over::ends_at`; `null` before the pick) and `standing`
    (`[[turn, {civ: share}]]` from `World.standing`, the turn being the world's). `phase()` reads
    `"over"` in `Over`. Update the doc comment of `view` and `phase`.
-2. **`civs::cards`** carry `limit: Option<u32>` (the limit in force, turns after the pick); the
+2. **`civs::cards`** carry `limit: u32` (`over::limit`, the limit in force, turns after the pick); the
    card's last line reads "The game ends after 200 turns, at turn 437" (`at` = the turn now
    plus the limit, since the pick is now).
 3. **`model.js`** drops its own Standing history and reads `v.standing`; the end screen and
@@ -49,12 +49,14 @@ turn loop, Play), `www/model.js` (its `history`), `www/bar.js` (the phase chip, 
      has one). End turn until the end screen shows: the header "You won", the line "last
      capital", a polyline per civ. Screenshot `end-won.png`.
    - **Fell**: three civs, a rival's army on the led capital and the led civ's clan there
-     small. Header "You lost", the line names the taker. Screenshot `end-lost.png`.
+     small. Header "You lost", the line names the taker (the step checks Fell before Conquest,
+     so the led civ's fall is told as its fall). Screenshot `end-lost.png`.
    - **Limit**: three civs, `limit: 3`, End turn three times: the line says "turn limit".
      Screenshot `end-limit.png`. Then **Play on**: the map is back, End turn advances the turn,
      the civ panel's Raise… is greyed with "the game is over", and Game → Standing so far
      shows the screen again; **New game** reaches start.
-   - **Watched**: the limit stage watched (no lead): the header names the winner, not you.
+   - **Watched**: the limit stage watched: a stage with no `lead` stays at the pick, so press
+     the pick's Watch, then End turn three times: the header names the winner, not you.
    `pick.mjs` checks each card's "The game ends after" line and that its turn is the pick's
    turn plus `view.limit.turns` once picked.
 9. **`docs/design/page.md`** is the owner's: don't edit it. The review retires the ledger's
