@@ -22,6 +22,9 @@ fn sweep_judge_json_has_the_claim_groups_and_keys() {
         let solo = m["solo"].as_array().expect("the solo runs, with --solo");
         assert_eq!(solo.len(), 3, "one solo run per civ");
         assert!(solo.iter().all(|s| s["gain"].is_f64() && s["clans"].is_f64() && s["land"].is_f64()), "{m}");
+        assert!(m["end"]["early"].is_boolean() && m["end"]["capitals_fallen"].is_u64(), "{m}");
+        assert!(m["end"]["ranks"].is_object() && m["no_fight"]["end"]["over"]["why"].is_string(), "{m}");
+        assert!(m["no_fight"]["end"]["over"]["turn"].is_u64(), "{m}");
     }
     let t = &v["total"];
     assert!(t["solo"]["above"].is_u64() && t["solo"]["civs"].is_u64(), "{t}");
@@ -32,6 +35,8 @@ fn sweep_judge_json_has_the_claim_groups_and_keys() {
     assert!(t["economy"]["store_mean"].is_f64() && t["economy"]["levy_per_turn"].is_f64(), "{t}");
     assert!(t["economy"]["turns_at_pack"].is_f64() && t["economy"]["largest_army"].is_f64(), "{t}");
     assert_eq!(t["health"]["panics"], 0, "{t}");
+    assert!(t["end"]["early"].is_u64() && t["end"]["of"] == 7, "{t}");
+    assert!(t["end"]["turns_mean"].is_f64() && t["end"]["no_fight_capitals_fallen"].is_u64(), "{t}");
 }
 
 /// `judge --json` and the text carry the idle led civ: the same map, the led civ given no orders, and
@@ -59,4 +64,10 @@ fn judge_has_an_idle_led_civ_the_same_on_every_run() {
     let text = Command::new(env!("CARGO_BIN_EXE_sansfiat")).args(["judge", file]).output().unwrap();
     let text = String::from_utf8_lossy(&text.stdout);
     assert!(text.lines().any(|l| l.starts_with("led civ ") && l.contains("idle led civ")), "{text}");
+    assert!(text.lines().any(|l| l.starts_with("end (game / control / idle): ") && l.contains(" rank ")), "{text}");
+    assert!(
+        a["standing"]["game_end"]["how"].is_string() && a["standing"]["idle_end"]["rank"].is_u64(),
+        "{}",
+        a["standing"]
+    );
 }

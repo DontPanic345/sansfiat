@@ -39,9 +39,9 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/script.rs` | `Lead`, the scripted game: the engine's second player. |
 | `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map (the `map` text, or a retro pick, cached), layers, placements, orders and reads; `StageSpec` is its data form. `maptext.rs` reads the map's text (`map::parse`). A staged world is not a save. |
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
-| `core/src/judge.rs` | `Watch`: a game scored from its pick in the score groups. Reads the world only. |
+| `core/src/judge.rs` | `Watch`: a game scored from its pick in the score groups, the end group included. Reads the world only. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
-| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge) and `game_judge.rs` (the file's judge), `view.rs` (the text view, under 80 lines), `story.rs` (the scripted stories of war). |
+| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view, under 80 lines), `story.rs` (the scripted stories of war). |
 | `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the order form; `Sim.stage` builds a staged game (`staged()` says so). |
 | `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js` and `panels.js` (a selection's shape and its buttons), `model.js` (the view model), `map/` (`MapView` and one file per layer), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |

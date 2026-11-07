@@ -3,7 +3,14 @@
 
 use engine::data::JUDGE;
 
+use engine::judge::EndScores;
+
 use crate::sweep_judge::{civ_means, Report};
+
+/// An end as the text reads it: its why and turn, or "goes on".
+fn ended(e: &EndScores) -> String {
+    e.over.as_ref().map_or("goes on".to_string(), |o| format!("{} +{}", o.why, o.turn))
+}
 
 pub(crate) fn print_text(r: &Report) {
     for p in &r.panics {
@@ -54,6 +61,16 @@ pub(crate) fn print_text(r: &Report) {
             m.no_fight.fight.surrendered,
             h.pregame_by_centres,
             h.digest_mismatches,
+        );
+        let winner = s.end.over.as_ref().map_or(String::new(), |o| {
+            format!(", winner {}", m.names.get(&o.winner).cloned().unwrap_or_else(|| format!("civ {}", o.winner)))
+        });
+        println!(
+            "        end: {}{winner}; no fight: {}; capitals fallen {} ({})",
+            ended(&s.end),
+            ended(&m.no_fight.end),
+            s.end.capitals_fallen,
+            m.no_fight.end.capitals_fallen,
         );
         let (claimed, held, guard) = civ_means(&l.civs_200);
         println!(
@@ -141,6 +158,11 @@ pub(crate) fn print_text(r: &Report) {
     println!(
         "total fight (control, fighting off): people fallen {:.2} ({:.2}), tiles taken {} ({}), armies surrendered {} ({})",
         fi.fallen, fi.control_fallen, fi.taken, fi.control_taken, fi.surrendered, fi.control_surrendered
+    );
+    let en = &t.end;
+    println!(
+        "total end: games ended before the limit {} of {} (no fight {} of {}), turns to the end {:.1} ({:.1}), capitals fallen {} ({})",
+        en.early, en.of, en.no_fight_early, en.of, en.turns_mean, en.no_fight_turns_mean, en.capitals_fallen, en.no_fight_capitals_fallen
     );
     let h = &t.health;
     println!(

@@ -2,11 +2,12 @@ mod common;
 
 use common::*;
 use engine::data::{JUDGE, N, UNIT};
-use engine::judge::Watch;
+use engine::judge::{rank_of, Watch};
 use engine::stage::Stage;
 use engine::stats::{self, standing};
 use engine::units::{self, UnitKind};
 use engine::{Action, Config, Order, Phase, World};
+use std::collections::BTreeMap;
 
 /// Three civs' clans from `three`, with no units; the first two clans are the civs' with the given
 /// people, the third is unaligned with `unaligned` people. Every other clan is empty.
@@ -241,4 +242,87 @@ fn the_levy_pays_in_the_first_turns_after_the_pick() {
     }
     let e = watch.scores(s.world(), &civs).economy;
     assert!(e.levy_per_turn > 0.0, "{e:?}");
+}
+
+/// Two or three civs on a flat map with a civ on each of `n` tiles, the first led; each capital's
+/// clan has `people`. As `over.rs`'s helper of the same name.
+fn civs_on_flat(n: usize, people: f64) -> (Stage, Vec<u32>) {
+    let mut s = Stage::flat(BIG);
+    let tiles = [at_big(-5, 0), at_big(5, 0), at_big(0, -10)];
+    let ids = s.civs(&tiles[..n], people);
+    s.lead(ids[0]).unwrap();
+    (s, ids)
+}
+
+/// Makes `civ`'s capital fall to an army of `people` warriors placed on it by `taker`.
+fn capital_open_to(s: &mut Stage, civ: u32, taker: u32, people: f64) {
+    let cap = s.world().civs[&civ].capital;
+    for k in s.world_mut().clans.values_mut().filter(|k| k.home == cap && k.civ == Some(civ)) {
+        k.people = 0.5;
+    }
+    s.army(taker, cap, people);
+    let id = s.camp(taker).expect("the taker's army").id;
+    s.world_mut().units.get_mut(&id).unwrap().camp_mut().unwrap().dest = Some(cap);
+}
+
+#[test]
+fn a_game_ended_by_the_limit_reads_its_end_and_the_ranks_at_it() {
+    let mut s = Stage::flat(BIG);
+    let ids = s.civs(&[at_big(-5, 0), at_big(5, 0)], 14.0);
+    s.world_mut().config.limit = Some(3);
+    s.lead(ids[0]).unwrap();
+    let mut watch = Watch::new(s.world());
+    for _ in 0..3 {
+        s.turn(1).unwrap();
+        watch.turn(s.world());
+    }
+    let e = watch.scores(s.world(), &ids).end;
+    let over = e.over.clone().expect("the game ended at its limit");
+    assert_eq!((over.why.as_str(), over.turn), ("limit", 3));
+    assert_eq!(over.winner, s.over().unwrap().winner);
+    assert!(!e.early, "the limit is not early");
+    assert_eq!(e.capitals_fallen, 0);
+    let at_end = &s.world().standing[3];
+    let expect: BTreeMap<u32, usize> = ids.iter().map(|&id| (id, rank_of(at_end, id))).collect();
+    assert_eq!(e.ranks, expect, "the ranks are read from World.standing at the end");
+    assert_eq!(e.led_rank, Some(expect[&ids[0]]), "the led civ's rank");
+}
+
+#[test]
+fn a_watched_game_has_no_led_rank_and_a_game_still_on_has_no_end() {
+    let mut s = Stage::flat(BIG);
+    let ids = s.civs(&[at_big(-5, 0), at_big(5, 0)], 14.0);
+    s.act(Action::ChooseCiv { civ: None }).unwrap();
+    let mut watch = Watch::new(s.world());
+    s.turn(2).unwrap();
+    watch.turn(s.world());
+    watch.turn(s.world());
+    let e = watch.scores(s.world(), &ids).end;
+    assert!(e.over.is_none(), "the game goes on");
+    assert!(!e.early);
+    assert_eq!(e.led_rank, None, "no civ is led when watching");
+    assert_eq!(e.ranks.len(), ids.len(), "every civ has a rank at the watch's last turn");
+}
+
+#[test]
+fn a_conquest_reads_as_early_with_its_capital_taken() {
+    let (mut s, ids) = civs_on_flat(2, 14.0);
+    let (me, rival) = (ids[0], ids[1]);
+    capital_open_to(&mut s, rival, me, 5.0);
+    let mut watch = Watch::new(s.world());
+    for _ in 0..5 {
+        if matches!(s.world().phase, Phase::Over(_)) {
+            break;
+        }
+        s.turn(1).unwrap();
+        watch.turn(s.world());
+    }
+    let e = watch.scores(s.world(), &ids).end;
+    let over = e.over.clone().expect("the rival's capital fell and the game ended");
+    assert_eq!(over.why, "conquest");
+    assert_eq!(over.winner, me);
+    assert!(e.early, "a conquest is before the limit");
+    assert_eq!(e.capitals_fallen, 1, "one capital taken after the pick");
+    let at_end = &s.world().standing[over.turn as usize];
+    assert_eq!(e.ranks[&me], rank_of(at_end, me), "the rank at the end, at Over");
 }

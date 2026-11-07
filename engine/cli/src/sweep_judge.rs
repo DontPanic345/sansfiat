@@ -7,19 +7,23 @@ use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::time::Instant;
 
-use engine::data::{Claims, JUDGE};
-use engine::judge::{CivLand, Scores, Watch};
+use engine::data::{Claims, END, JUDGE};
+use engine::judge::{CivLand, EndScores, Scores, Watch};
 use engine::rng;
 use engine::stats::Trails;
-use engine::{stats, Action, Config, World};
+use engine::{stats, Action, Config, Phase, World};
 use serde::Serialize;
 
 use crate::compare::flatten;
 use crate::retro::{kept_camp, retro_maps, to_pick};
 use crate::sweep_text::print_text;
 
-/// The turns past the pick each map is run for.
+/// The turns past the pick each map is run for, at least; a run goes on until it has ended.
 const AFTER: u32 = 200;
+
+/// The turns past the largest limit a run may go before it has ended: a game that does not end is a
+/// failure, so the sweep panics (a `Panicked` map) rather than run on.
+const BACKSTOP: u32 = 100;
 
 /// The nulls `--floor` runs when `--nulls` is not given: the sweep once more with one harmless
 /// difference at the pick.
@@ -68,6 +72,9 @@ pub(crate) struct MapJudged {
     pub(crate) no_claims: Scores,
     /// The same map with `Config.fight` off: the control the fight group is read against.
     pub(crate) no_fight: Scores,
+    /// Each civ's name, for the text (the ids are not the names' places in `CIVS`).
+    #[serde(skip)]
+    pub(crate) names: BTreeMap<u32, String>,
     /// With `--solo`: each civ's gain from claiming alone, in id order.
     pub(crate) solo: Option<Vec<SoloGain>>,
     pub(crate) armies: Armies,
@@ -94,7 +101,21 @@ pub(crate) struct Total {
     pub(crate) solo: Option<TotalSolo>,
     pub(crate) armies: TotalArmies,
     pub(crate) fight: TotalFight,
+    pub(crate) end: TotalEnd,
     pub(crate) health: TotalHealth,
+}
+
+/// The end group over the maps: how many games ended before the limit, the mean turns to the end and
+/// the capitals taken after the pick, each beside the no-fight control's.
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct TotalEnd {
+    pub(crate) early: u32,
+    pub(crate) of: u32,
+    pub(crate) no_fight_early: u32,
+    pub(crate) turns_mean: f64,
+    pub(crate) no_fight_turns_mean: f64,
+    pub(crate) capitals_fallen: u32,
+    pub(crate) no_fight_capitals_fallen: u32,
 }
 
 /// The economy group over the maps: means over the maps of each map's means, and the largest over the
@@ -228,8 +249,9 @@ pub(crate) struct Report {
     pub(crate) floor: Option<BTreeMap<String, f64>>,
 }
 
-/// One run to the end: the world, and its watch. `draws` extra rolls of the world's rng are taken
-/// after the pick (the null perturbation; 0 is the base run).
+/// One run to the end: the world, and its watch. It plays until the game is `Over` and at least
+/// `AFTER` turns past the pick. `draws` extra rolls of the world's rng are taken after the pick (the
+/// null perturbation; 0 is the base run).
 fn played(config: Config, draws: u32) -> (World, Watch) {
     let mut w = to_pick(config);
     w.act(Action::ChooseCiv { civ: None }).expect("watching is always allowed at the pick");
@@ -237,7 +259,9 @@ fn played(config: Config, draws: u32) -> (World, Watch) {
         rng::rand(&mut w.rng);
     }
     let mut watch = Watch::new(&w);
-    for _ in 0..AFTER {
+    let backstop = END.limit.iter().map(|l| l.1).max().unwrap_or(0) + BACKSTOP;
+    while watch.turns() < AFTER || !matches!(w.phase, Phase::Over(_)) {
+        assert!(watch.turns() < backstop, "a game never ended: not over by {backstop} turns past the pick");
         w.run(1);
         watch.turn(&w);
     }
@@ -313,6 +337,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
         scores: watch.scores(&w, &civs),
         no_claims,
         no_fight: calm_watch.scores(&calm, &civs),
+        names: w.civs.iter().map(|(&id, c)| (id, c.name.clone())).collect(),
         solo,
         armies,
         health,
@@ -378,6 +403,27 @@ fn total_land(maps: &[MapJudged]) -> TotalLand {
     }
 }
 
+/// The end group over the maps: the games that ended before the limit, the mean turns to the end and
+/// the capitals taken, each beside the no-fight control's.
+fn total_end(maps: &[MapJudged]) -> TotalEnd {
+    let run: Vec<&EndScores> = maps.iter().map(|m| &m.scores.end).collect();
+    let calm: Vec<&EndScores> = maps.iter().map(|m| &m.no_fight.end).collect();
+    let turns = |v: &[&EndScores]| {
+        mean(&v.iter().filter_map(|e| e.over.as_ref()).map(|o| f64::from(o.turn)).collect::<Vec<_>>())
+    };
+    let early = |v: &[&EndScores]| v.iter().filter(|e| e.early).count() as u32;
+    let capitals = |v: &[&EndScores]| v.iter().map(|e| e.capitals_fallen).sum();
+    TotalEnd {
+        early: early(&run),
+        of: maps.len() as u32,
+        no_fight_early: early(&calm),
+        turns_mean: turns(&run),
+        no_fight_turns_mean: turns(&calm),
+        capitals_fallen: capitals(&run),
+        no_fight_capitals_fallen: capitals(&calm),
+    }
+}
+
 fn total_solo(maps: &[MapJudged]) -> Option<TotalSolo> {
     if maps.iter().all(|m| m.solo.is_none()) {
         return None;
@@ -436,6 +482,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
         land: total_land(maps),
         economy: total_economy(maps),
         solo: total_solo(maps),
+        end: total_end(maps),
         armies: TotalArmies {
             camps_kept: sum(|m| m.armies.camps_kept),
             camps_of: sum(|m| m.armies.camps_of),
