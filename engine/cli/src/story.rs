@@ -34,6 +34,7 @@ struct Plan {
 const SKIRMISH: Plan = Plan { size: "small", seed: 2, civ: 1, turns: 80 };
 const STACK: Plan = Plan { size: "small", seed: 2, civ: 1, turns: 80 };
 const SURRENDER: Plan = Plan { size: "small", seed: 2, civ: 1, turns: 60 };
+const CONQUEST: Plan = Plan { size: "small", seed: 2, civ: 1, turns: 0 };
 
 /// A story in progress: the world, the civ it leads and the nearest rival by path.
 struct Story {
@@ -45,6 +46,22 @@ struct Story {
     trace: bool,
     /// Orders refused so far: the turn since the pick, the order and the reason.
     refused: Vec<(u32, String, String)>,
+    /// What the led civ's armies did: the most warriors in one army, the most steps from its own capital
+    /// any army got, and the most warriors it had on a rival's capital at a turn's end.
+    reach: Reach,
+}
+
+/// The led civ's armies' best: see `Story::reach`.
+#[derive(Default)]
+struct Reach {
+    largest: f64,
+    farthest: i32,
+    /// The turn since the pick the farthest was first reached.
+    farthest_at: u32,
+    at_capital: f64,
+    /// The turns since the pick an army first stood on a rival's capital and a capital first fell.
+    capital_at: Option<u32>,
+    fell_at: Option<u32>,
 }
 
 impl Story {
@@ -64,6 +81,11 @@ impl Story {
                 false
             }
         }
+    }
+
+    /// Sets the food the led civ keeps in its store.
+    fn keep(&mut self, food: f64) {
+        let _ = self.w.act(Action::SetKeep { food: Some(food) });
     }
 
     /// The led civ's first army, if it has one.
@@ -158,7 +180,26 @@ impl Story {
     /// Ends the turn: the guard is kept first.
     fn end_turn(&mut self) -> Result<(), String> {
         self.keep_guard();
-        self.w.act(Action::EndTurn)
+        self.w.act(Action::EndTurn)?;
+        let n = self.n();
+        let w = &self.w;
+        if self.reach.fell_at.is_none() && w.civs.values().any(|c| c.is_out()) {
+            self.reach.fell_at = Some(n);
+        }
+        let rivals: Vec<usize> = w.civs.values().filter(|c| c.id != self.me).map(|c| c.capital).collect();
+        for u in w.units.values().filter(|u| u.civ == self.me && u.kind() == UnitKind::Camp) {
+            self.reach.largest = self.reach.largest.max(u.people);
+            let far = land::steps(w, w.civs[&self.me].capital, u.home);
+            if far > self.reach.farthest {
+                self.reach.farthest = far;
+                self.reach.farthest_at = n;
+            }
+            if rivals.contains(&u.home) {
+                self.reach.at_capital = self.reach.at_capital.max(u.people);
+                self.reach.capital_at.get_or_insert(n);
+            }
+        }
+        Ok(())
     }
 
     /// A line for `--trace`: the turn, the led civ's store, its armies, its guard, and the fight so far.
@@ -184,6 +225,11 @@ impl Story {
             })
             .collect();
         let (me, rv) = (&w.civs[&self.me], &w.civs[&self.rival]);
+        let rcap = self.rival_capital();
+        let mil: f64 = w.clans.values().filter(|k| k.civ == Some(self.rival) && k.home == rcap).map(|k| k.people).sum();
+        let own: f64 =
+            w.clans.values().filter(|k| k.civ == Some(self.me) && k.home == self.capital()).map(|k| k.people).sum();
+        println!("   rival capital {rcap} clans {mil:.1}, own {own:.1}, givers {}", units::givers(w, self.me).len());
         println!(
             "+{} store {:.1} guard {:.1} claim {} held {}; rival guard {:.1} held {}; contested {}; fallen {:.2}/{:.2} taken {}/{}; standing {:.3}/{:.3}; {}",
             self.n(),
@@ -224,7 +270,8 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
         "skirmish" => (&SKIRMISH, skirmish),
         "stack" => (&STACK, stack),
         "surrender" => (&SURRENDER, surrender),
-        _ => return Err(format!("unknown story {name}: skirmish, stack or surrender\n{USAGE}")),
+        "conquest" => (&CONQUEST, conquest),
+        _ => return Err(format!("unknown story {name}: skirmish, stack, surrender or conquest\n{USAGE}")),
     };
     let (mut seed, mut radius, mut civ, mut turns, mut save) =
         (plan.seed, size(plan.size)?, plan.civ, plan.turns, None);
@@ -261,7 +308,7 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
         .map(|c| c.id)
         .ok_or("there is no rival to fight")?;
     let pick = w.turn;
-    let mut s = Story { w, me, rival, pick, trace, refused: Vec::new() };
+    let mut s = Story { w, me, rival, pick, trace, refused: Vec::new(), reach: Reach::default() };
     // `turns` is a cap: 0 plays to the end, which the limit always brings.
     while (turns == 0 || s.n() < turns) && !matches!(s.w.phase, Phase::Over(_)) {
         script(&mut s);
@@ -284,13 +331,21 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
         }
         _ => "the game goes on".to_string(),
     };
+    let r = &s.reach;
+    let capitals = s.w.civs.values().filter(|c| c.is_out()).count();
     println!(
-        "{name} on {} seed {seed}: led civ {} against {}, {} turns past the pick ({} civs alive), saved to {save}; {end}",
+        "{name} on {} seed {seed}: led civ {} against {}, {} turns past the pick ({} civs alive, {capitals} capitals fallen), saved to {save}; {end}; largest army {:.0}, farthest {} steps (at +{}), most at a rival capital {:.1}, first at one {}, first capital fell {}",
         size_name(radius),
         s.w.civs[&me].name,
         s.w.civs[&s.rival].name,
         s.n(),
-        out
+        out,
+        r.largest,
+        r.farthest,
+        r.farthest_at,
+        r.at_capital,
+        r.capital_at.map_or("never".to_string(), |n| format!("at +{n}")),
+        r.fell_at.map_or("never".to_string(), |n| format!("at +{n}"))
     );
     for (n, order, why) in &s.refused {
         println!("  refused at +{n}: {order} ({why})");
@@ -389,3 +444,51 @@ fn surrender(s: &mut Story) {
         s.give(Order::Move { unit: id, to: stop });
     }
 }
+
+/// **conquest.** The strongest plan the player's levers allow (`stories.md`), to take the nearest rival's
+/// capital and then the other's.
+///
+/// - +0: gift 0 (the story's), and the store kept whole (`SetKeep`, `CONQUEST_KEEP`): by default the
+///   civ posts what it holds past a pack to the market, and with the keep the store banks to its cap.
+/// - Once the store fills `CONQUEST_WANT` warriors' packs, or at turn `CONQUEST_BY`, every warrior it fills is
+///   raised at once into one army (`bank_and_raise`), both switches on, and sent straight at the nearest
+///   standing rival's capital: no stage and no wait. A wait at the stage tile eats a pack the store
+///   can't refill (`probe.md`), and a march leaves no labour for the line, so the pack's five turns are
+///   what the army has. Hopping a tile a turn to pillage on the way was tried: a rival's land holds too
+///   little food to pillage and the hop is slower.
+/// - An army lost on the way or at the capital is followed by the next one, banked and raised the same
+///   way (`bank_and_raise` raises whenever the civ has no army). When a capital falls the target is the
+///   other rival's.
+fn conquest(s: &mut Story) {
+    let cap = s.capital();
+    if let Some(next) = civs::alive(&s.w)
+        .filter(|c| c.id != s.me)
+        .min_by_key(|c| (land::steps(&s.w, cap, c.capital), c.id))
+        .map(|c| c.id)
+    {
+        s.rival = next;
+    }
+    if s.n() == 0 {
+        // Keep the whole store, out of the market's posting: it banks to its cap.
+        s.keep(CONQUEST_KEEP);
+    }
+    bank_and_raise(s, CONQUEST_WANT, CONQUEST_BY);
+    let Some((id, home, marching)) = s.camp().map(|u| (u.id, u.home, u.camp().is_some_and(|c| c.dest.is_some())))
+    else {
+        return;
+    };
+    let target = s.rival_capital();
+    if home == cap {
+        s.give(Order::Switches { unit: id, forage: true, supply: true });
+    }
+    if !marching && home != target {
+        s.give(Order::Move { unit: id, to: target });
+    }
+}
+
+/// The warriors' packs the conquest story banks before it raises (waves of four beat bigger ones: a bigger
+/// wave waits longer and starves as long on the march), the turn it raises at whatever the store holds,
+/// and the food it keeps in the store (the store's cap).
+const CONQUEST_WANT: u32 = 4;
+const CONQUEST_BY: u32 = 80;
+const CONQUEST_KEEP: f64 = 60.0;

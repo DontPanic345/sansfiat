@@ -747,13 +747,22 @@ impl Default for Config {
 }
 
 /// How a game ends (`over.rs`): its turn limit, in turns after the pick, by map radius as `SIZES`. A
-/// radius between sizes takes the next size up's; one past the largest takes the largest's. The
-/// numbers are the starting ones, which the canvas sets on the retro maps (`relay/specs/152`).
+/// radius between sizes takes the next size up's; one past the largest takes the largest's.
 pub struct EndRules {
     pub limit: [(i32, u32); 3],
+    pub note: &'static str,
 }
 
-pub const END: EndRules = EndRules { limit: [(16, 200), (23, 250), (33, 300)] };
+pub const END: EndRules = EndRules {
+    limit: [(16, 200), (23, 250), (33, 300)],
+    note: "Measured on the seven retro maps (relay/specs/152/limit.md). In time to matter: all on the AI to \
+           +600, the judge's leader at the limit is the leader at +600 on six of seven maps at these \
+           limits (the AI's lead settles by +73 on six maps; small 9's top two swap to +348, so only a \
+           limit of 150 or 300 and up matches there, and it is a coin flip). Room: the conquest story's \
+           best armies reach a rival capital by +21 on small and a capital falls by +76; on medium and \
+           large no army reaches one, and the farthest is out by +87 and +37; each limit is 2.6 times \
+           the latest of these or more.",
+};
 
 /// How many reasons (`World::note`) a subject keeps, and how many the selection panel shows.
 pub struct NotesRules {
