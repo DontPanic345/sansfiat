@@ -284,6 +284,7 @@ function scoutShape(ctx, u) {
   let base;
   if (u.wander != null && errand) base = `Foraging at ${hex(ctx, u.wander)} until fed, then ${u.route ? 'back to its route' : `on to ${hex(ctx, u.dest)}`}`;
   else if (u.route) base = `Searching ${hex(ctx, u.route[0])} → ${hex(ctx, u.route[1])}: known cost ${plan?.known ? f2(plan.known.cost) : 'none'}, possible ${plan?.possible ? f2(plan.possible.cost) : 'none'}`;
+  else if (u.dest != null && u.dest === u.tile) base = `At ${hex(ctx, u.tile)}, foraging`;
   else if (u.dest != null) {
     const r = JSON.parse(sim.route(u.id));
     base = `Going to ${hex(ctx, u.dest)}${r ? `: ${plural(r.turns, 'turn')}` : ': no route'}`;

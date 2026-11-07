@@ -470,12 +470,15 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
         banked = search(w, id, &mut left, start);
         keep_route(w, id);
     } else if let Some(dest) = sc(w, id).dest {
+        // It walks to its destination and stays there: the destination is its errand until another
+        // order, so a hungry scout comes back to it fed.
         let home = w.units[&id].home;
-        if let Some((p, _)) = super::line::path_between(w, home, dest) {
-            if march(w, id, &p, &mut left, &mut banked) {
-                sc_mut(w, id).dest = None;
-                let at = w.at(dest);
-                w.note(id, format!("at {at}, foraging"));
+        if home != dest {
+            if let Some((p, _)) = super::line::path_between(w, home, dest) {
+                if march(w, id, &p, &mut left, &mut banked) {
+                    let at = w.at(dest);
+                    w.note(id, format!("at {at}, foraging"));
+                }
             }
         }
     }

@@ -25,7 +25,7 @@ pub fn path_between(w: &World, from: usize, to: usize) -> Option<(Vec<usize>, f6
 /// its cost, for the page.
 pub fn route(w: &World, unit: u32) -> Option<(Vec<usize>, f64)> {
     let u = w.units.get(&unit)?;
-    path_between(w, u.home, u.dest()?)
+    path_between(w, u.home, u.dest().filter(|&d| d != u.home)?)
 }
 
 /// The camp's line: the cheapest path to the capital over walkable tiles that don't count for a

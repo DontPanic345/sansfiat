@@ -74,3 +74,5 @@ mechanic; one panel component fed a selection; one play driver for the scripts.
 - The end screen comes up once, on the turn the game ends, and stops Play: "You won", "You lost", or "Blue won" for a watched game, with a line saying how and on which turn, then Standing over the game and Play on or New game. Before the end, Game → Standing so far reads "Turn N of M" and who leads; "The game goes on" is gone. (#152)
 - After Play on, End turn still works and every button that gives an order is greyed with "the game is over". A game saved after its end continues as ended. (#152)
 - Each pick card says "The game ends after N turns, at turn T"; the top bar shows the turn of the limit, and "Game over" once it ends. (#152)
+- Every unit has a Disband all button that sends no count; Disband… keeps the counts, and a scout or guard shows it only from two people. (#153)
+- With Move to… or Route to… armed, the tooltip says when the tile is past the line's reach. (#153)

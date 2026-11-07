@@ -80,7 +80,7 @@ fn a_scout_moved_four_steps_out_walks_there_and_stays() {
     }
     let u = &w.units[&id];
     assert!(u.scout().unwrap().route.is_none(), "a moved scout has no route");
-    assert_eq!(u.dest(), None, "arriving clears the destination");
+    assert_eq!(u.dest(), Some(target), "the destination stays its errand once it arrives");
     assert!(w.notes[&id].iter().any(|n| n.text.starts_with("at ") && n.text.ends_with("foraging")));
 }
 
