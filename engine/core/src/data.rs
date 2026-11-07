@@ -473,7 +473,13 @@ pub struct ScoutRules {
     pub rich: f64,
 }
 
-pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1, wander: 4, low: 2.0, fed: 4.0, rich: 1.5 };
+// Tuned against the 28 errands on the seven retro maps and the AI's scouts (relay/specs/153/errand.md): of the
+// settings that keep every scout alive, the most tiles and trails on the 14 routed errands. Wander 4 left the
+// ground a scout needed out of range (6 of 28 lost); 8 finds it (10 and 12 find more work, but then one of the
+// AI's idle scouts loses a person on medium 9). Rich 1.5 passed over ground that only just fed a scout, and it
+// starved beside it; 1.2 takes it. Low 1.5 and fed 2.5 leave the errand later and come back sooner than 2 and 4:
+// the same lives for a third fewer turns off the errand. Two people: one lost 2 to 8 of 28 at every setting.
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 1.2 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's

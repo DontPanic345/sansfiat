@@ -75,7 +75,8 @@ fn an_idle_scout_waits_on_rich_ground() {
     }
     let u = scout(&w);
     assert_eq!(u.people, SCOUT.people as f64, "no one starved");
-    assert_eq!((u.home, u.scout().unwrap().wander), (food, Some(food)), "it waits on the food");
+    assert!(steps(&w, u.home, food) <= SCOUT.reach as i32, "it waits where the food is within its reach");
+    assert_eq!(u.scout().unwrap().wander, Some(u.home), "on the ground it picked");
     assert!(noted(&w, u.id, "waits on rich ground"));
     assert!(w.tiles.iter().all(|t| t.fallow == 0), "no tile it took from is fallow");
 }
