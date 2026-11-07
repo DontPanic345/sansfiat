@@ -195,7 +195,13 @@ At +100 on the seven maps (`core/tests/walk.rs`, `cargo test --release -p engine
 --nocapture`): each clan with a festival route, binned by the food it brought the turn before (its basket capped
 at `MARKET.carry × people`, as `go` reads it).
 
-WALKTABLE
+| brought (food) | clans | mean brought | mean brought a person | mean people | mean walkers | festival walk, days | at one walker, days |
+|---|---|---|---|---|---|---|---|
+| under 0.5 | 46 | 0.43 | 0.191 | 2.3 | 1.00 | 3.38 | 3.38 |
+| 0.5 to 1 | 647 | 0.80 | 0.200 | 4.0 | 1.00 | 4.87 | 4.87 |
+| 1 to 1.5 | 533 | 1.24 | 0.200 | 6.2 | 1.00 | 4.83 | 4.83 |
+| 1.5 to 2 | 101 | 1.56 | 0.200 | 7.8 | 1.00 | 4.77 | 4.77 |
+| 2 and more | 2 | 2.42 | 0.200 | 12.1 | 1.21 | 4.97 | 3.75 |
 
 **This does not rise on the retro maps.** Every clan brings its cap, 0.2 food a person, so what a person
 brings is the same for all and what a clan brings is its people, and the clans of the retro maps have 4 to 8 people
@@ -205,9 +211,16 @@ and shows on a stage (`core/tests/markets.rs`, `a_clan_that_carries_more_pays_mo
 a clan of twenty bringing its fill pays two walkers' days to the festival a clan of two pays one for), and
 in the sweep it has no effect. A load of 1 food would put a walker on each food carried (clans of 4 to 12
 people send 1 to 2) but is the setting the probe says collapses the festivals (`probe.md`, route: trading at
-the pick 0.902). LOADK
+the pick 0.902). 
 
-Settings 1 to 5 are met by J; setting 6's table half is not (see above), its stage half is. This is the `ask`.
+**Load 1 (setting K: J with `CARRY.load` 1, one sweep, run once).** Markets at the pick 205, trading 0.932 and
+0.927, clans joined 99, people changed 507, land changed 1,074, AI orders 4.91: bounds 2 and 3 hold, but
+pre-games end by centres on 6 of 7 (bound 1 needs the same setting's `CLAN.work` × (1 + 10⁻¹²) null to end 7,
+which was not run), and the levy is 8.3 against 6.8–7.2. At load 1 a clan of 4 to 12 people sends 1 to 2
+walkers, so the table would rise. It is the nearest setting with the festival walk rising; the owner can take
+it, after that null.
+
+Settings 1 to 5 are met by J; bound 6's table half is not (see above), its stage half is. This is the `ask`.
 
 ## The ring on the finished rules
 
@@ -237,7 +250,35 @@ The scout walks at one person's pace, so a 2-person scout's turn is half the ste
 (the camp's turns, the festival's worths, `MARKET.reach`, a clan's territory after 20 turns) hold.
 `scout_errand` (50 turns, no refill):
 
-SCOUTTABLE
+| map | errand | hungry turns | people lost | turns wandering | tiles revealed | trails built | route found | alive |
+| small 2 | route to the rival | 0 | 0 | 0 | 1 | 1 | turn 1 | yes |
+| small 2 | route to Lead's target | 0 | 0 | 47 | 2 | 0 | - | yes |
+| small 2 | move to Lead's target | 0 | 0 | 47 | 0 | 0 | - | yes |
+| small 2 | idle | 0 | 0 | 50 | 0 | 0 | - | yes |
+| small 3 | route to the rival | 1 | 0 | 43 | 5 | 0 | - | yes |
+| small 3 | route to Lead's target | 0 | 0 | 0 | 1 | 0 | turn 1 | yes |
+| small 3 | move to Lead's target | 2 | 0 | 37 | 0 | 0 | - | yes |
+| small 3 | idle | 0 | 0 | 50 | 0 | 0 | - | yes |
+| small 6 | route to the rival | 1 | 0 | 13 | 3 | 1 | turn 24 | yes |
+| small 6 | route to Lead's target | 0 | 0 | 2 | 2 | 2 | turn 2 | yes |
+| small 6 | move to Lead's target | 12 | 0 | 36 | 0 | 0 | - | yes |
+| small 6 | idle | 0 | 0 | 50 | 0 | 0 | - | yes |
+| small 9 | route to the rival | 0 | 0 | 47 | 1 | 0 | - | yes |
+| small 9 | route to Lead's target | 0 | 0 | 3 | 2 | 1 | turn 2 | yes |
+| small 9 | move to Lead's target | 0 | 0 | 31 | 0 | 0 | - | yes |
+| small 9 | idle | 0 | 0 | 50 | 0 | 0 | - | yes |
+| medium 8 | route to the rival | 2 | 0 | 25 | 7 | 1 | turn 46 | yes |
+| medium 8 | route to Lead's target | 1 | 0 | 27 | 4 | 0 | - | yes |
+| medium 8 | move to Lead's target | 6 | 0 | 34 | 0 | 0 | - | yes |
+| medium 8 | idle | 0 | 0 | 50 | 0 | 0 | - | yes |
+| medium 9 | route to the rival | 46 | 2 | 5 | 1 | 0 | - | no |
+| medium 9 | route to Lead's target | 39 | 2 | 4 | 2 | 0 | turn 1 | no |
+| medium 9 | move to Lead's target | 45 | 2 | 5 | 0 | 0 | - | no |
+| medium 9 | idle | 42 | 2 | 11 | 0 | 0 | - | no |
+| large 8 | route to the rival | 0 | 0 | 27 | 1 | 0 | - | yes |
+| large 8 | route to Lead's target | 0 | 0 | 2 | 2 | 0 | turn 2 | yes |
+| large 8 | move to Lead's target | 9 | 0 | 33 | 0 | 0 | - | yes |
+| large 8 | idle | 0 | 0 | 50 | 0 | 0 | - | yes |
 
 4 of 28 scouts are lost, all four on medium 9 (every errand, the idle one included); the table at `SCOUT.rich`
 1.2 loses 5 (small 6's route to the rival as well). The scan of `SCOUT`:
