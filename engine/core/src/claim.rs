@@ -127,7 +127,8 @@ pub fn guard_shares(w: &World, civ: u32) -> Vec<f64> {
             .collect();
     }
     let walks = actors::Walks::new(w, c.capital, &c.claim);
-    actors::split(guard_people(w, civ) * GUARD.guarding, &[], &[1.0], &[walks.yearly(GUARD.inside)]).swap_remove(0)
+    let people = guard_people(w, civ);
+    actors::split(people, people * GUARD.guarding, &[], &[1.0], &[walks.yearly(GUARD.inside)]).swap_remove(0)
 }
 
 /// Divides `civ`'s guard over its claim: `GUARD.guarding` a person of its guard, each tile's share

@@ -173,8 +173,10 @@ fn march(s: Stage) -> (i32, usize) {
 
 #[test]
 fn a_scouts_march_over_one_turn() {
-    assert_eq!(march(plain()), (7, 16));
-    assert_eq!(march(rough()), (7, 17));
+    // The per-person walk (#154 build-4): a scout walks at one person's pace, so a 2-person scout's turn
+    // takes half the steps it took when its people's labour was pooled (7 on both stages).
+    assert_eq!(march(plain()), (3, 16));
+    assert_eq!(march(rough()), (3, 16));
 }
 
 /// Markets at the capital's neighbours at distance 2, 4 and 6, on land.

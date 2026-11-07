@@ -27,7 +27,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/data.rs` | Every rule's number and `Config`, each in days (`DAY`), food, turns, people or a share; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs and the flat trail cost. |
 | `core/src/land.rs` | Neighbours, move costs, `path`, `steps`, and the `regrow`, `wear` and `tend` steps. |
-| `core/src/actors.rs` | What every actor does: spoil, eat, `meal` (from kin's stores), `stride`, `walk_cost`, traffic, `divide` and `split` (over jobs), `change`. |
+| `core/src/actors.rs` | What every actor does: spoil, eat, `meal` (from kin's stores), `stride`, `walk_cost`, `carriers`, traffic, `divide` and `split` (over jobs; a tile pays its walk for each person walking it), `change`. |
 | `core/src/clans.rs` | Clans: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
 | `core/src/market.rs`, `markets.rs` | Barter clearing; festivals: reach, the `go` step, trading, forming, fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |

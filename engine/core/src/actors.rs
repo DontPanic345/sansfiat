@@ -97,6 +97,12 @@ pub fn walk_cost(path_cost: f64, weight: f64) -> f64 {
     2.0 * path_cost * weight
 }
 
+/// The people who walk a route carrying `brought` food, a load (`CARRY.load`) each, at least one: a
+/// route's yearly cost is its path's cost times this.
+pub fn carriers(brought: f64) -> f64 {
+    (brought / CARRY.load).max(1.0)
+}
+
 /// The walks from home to each tile of a territory over the territory's own tiles.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Walks {
@@ -174,18 +180,20 @@ impl Walks {
 }
 
 /// Divides `labour` over a territory: the routes are paid first, what's left is split evenly over
-/// the tiles, and each tile's share pays its walk (`walks`, yearly) before the work. Returns each
-/// tile's work, 0 where the walk eats the share. `split` with one job of share 1.
-pub fn divide(labour: f64, routes: &[Route], walks: &[f64]) -> Vec<f64> {
-    split(labour, routes, &[1.0], &[walks.to_vec()]).swap_remove(0)
+/// the tiles, and each tile's share pays its walk (`walks`, yearly, a person's) for every one of
+/// the `people` walking it before the work. Returns each tile's work, 0 where the walks eat the
+/// share. `split` with one job of share 1.
+pub fn divide(people: f64, labour: f64, routes: &[Route], walks: &[f64]) -> Vec<f64> {
+    split(people, labour, routes, &[1.0], &[walks.to_vec()]).swap_remove(0)
 }
 
-/// Splits `labour` over several jobs (`jobs`: each job's walks, yearly, one per tile). The routes
-/// are paid once from `labour`; what is left goes to each job by its share (`shares`, summing to
-/// one). Each job divides its part evenly over its tiles, each tile's share paying its walk before
-/// the work, as `divide` does. Returns each job's work per tile, 0 where a walk eats the share.
-/// A job with no tiles gets nothing, and its share is not handed on to the other jobs.
-pub fn split(labour: f64, routes: &[Route], shares: &[f64], jobs: &[Vec<f64>]) -> Vec<Vec<f64>> {
+/// Splits `labour` over several jobs (`jobs`: each job's walks, yearly, one person's, one per
+/// tile). The routes are paid once from `labour`; what is left goes to each job by its share
+/// (`shares`, summing to one). Each job divides its part evenly over its tiles, and every tile is
+/// walked by the job's people over its tiles (`people` × its share ÷ its tiles), each paying the
+/// walk before the work, as `divide` does. Returns each job's work per tile, 0 where the walks eat
+/// the share. A job with no tiles gets nothing, and its share is not handed on to the other jobs.
+pub fn split(people: f64, labour: f64, routes: &[Route], shares: &[f64], jobs: &[Vec<f64>]) -> Vec<Vec<f64>> {
     let left = (labour - routes.iter().map(|r| r.cost).sum::<f64>()).max(0.0);
     jobs.iter()
         .zip(shares)
@@ -193,8 +201,10 @@ pub fn split(labour: f64, routes: &[Route], shares: &[f64], jobs: &[Vec<f64>]) -
             if walks.is_empty() {
                 return Vec::new();
             }
-            let each = left * share / walks.len() as f64;
-            walks.iter().map(|&w| (each - w).max(0.0)).collect()
+            let n = walks.len() as f64;
+            let each = left * share / n;
+            let walking = people * share / n;
+            walks.iter().map(|&w| (each - w * walking).max(0.0)).collect()
         })
         .collect()
 }

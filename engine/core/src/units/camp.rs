@@ -173,7 +173,7 @@ pub(super) fn hold(w: &mut World) -> BTreeMap<u32, f64> {
         cand.sort_unstable();
         cand.dedup();
         let walks = Walks::new(w, u.home, &cand);
-        let shares = divide(guarding(u), &[], &walks.yearly(UNIT.inside));
+        let shares = divide(u.people, guarding(u), &[], &walks.yearly(UNIT.inside));
         for (k, &t) in cand.iter().enumerate() {
             if t == u.home || shares[k] + EPS >= UNIT.guard {
                 want.push((t, u.id, u.civ, shares[k], c.held.contains(&t)));

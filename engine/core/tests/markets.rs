@@ -189,3 +189,45 @@ fn a_clan_keeps_its_festival_unless_another_beats_it_by_the_margin() {
     assert_eq!(choose(&[(a, -0.5, 2.0), (b, -1.0, 2.0)], Some(b), keep), Some(b));
     assert_eq!(choose(&[(a, -0.5, 2.0), (b, -MARKET.stay_margin - 0.1, 2.0)], Some(b), keep), None);
 }
+
+/// A clan of `people` at the middle with a basket of `fill` × its carry of grain from last turn, and a
+/// festival three steps away worth the walk to either.
+fn carrying(people: f64, fill: f64) -> (World, u32, u32) {
+    let mut w = flat();
+    let o = at(0, 0);
+    w.tiles[o].stock[GRAIN] = 40.0;
+    let id = put(&mut w, &[o], people);
+    let c = w.clans.get_mut(&id).unwrap();
+    c.basket[GRAIN] = fill * MARKET.carry * people;
+    c.harvest[GRAIN] = c.basket[GRAIN];
+    let mid = open(&mut w, out(0, 3));
+    let m = w.markets.get_mut(&mid).unwrap();
+    m.prices[FISH] = 0.4;
+    m.goods = vec![GRAIN, FISH];
+    (w, id, mid)
+}
+
+#[test]
+fn a_clan_that_carries_more_pays_more_days_to_the_same_festival() {
+    let one_walker = 2.0 * 3.0 * DAY;
+    let (mut few, a, mid) = carrying(2.0, 1.0);
+    let (mut many, b, _) = carrying(20.0, 1.0);
+    // Two people bring 0.4 food, under a load: one walker. Twenty bring 4: 4 ÷ load walkers.
+    let walkers = (MARKET.carry * 20.0 / CARRY.load).max(1.0);
+    assert!(walkers > 1.0, "a clan of twenty brings more than a load");
+    let cost = |w: &World, id: u32, mid: u32| worths(w, &w.clans[&id]).iter().find(|x| x.0 == mid).unwrap().2;
+    assert!((cost(&few, a, mid) - one_walker).abs() < EPS);
+    assert!((cost(&many, b, mid) - one_walker * walkers).abs() < EPS);
+    for (w, id) in [(&mut few, a), (&mut many, b)] {
+        w.clans.get_mut(&id).unwrap().harvest[GRAIN] = 1000.0;
+        go(w);
+    }
+    let (ra, rb) = (&few.clans[&a].routes, &many.clans[&b].routes);
+    assert_eq!((ra.len(), rb.len()), (1, 1));
+    assert_eq!(ra[0].path, rb[0].path, "the same festival, the same path");
+    assert!((ra[0].cost - one_walker).abs() < EPS && (rb[0].cost - one_walker * walkers).abs() < EPS);
+    assert!(rb[0].cost > ra[0].cost);
+    // A clan of twenty that brings nothing walks it alone, as a clan of two does.
+    let (empty, c, mid) = carrying(20.0, 0.0);
+    assert!((cost(&empty, c, mid) - one_walker).abs() < EPS);
+}

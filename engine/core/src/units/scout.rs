@@ -94,17 +94,18 @@ pub(super) fn sc_mut(w: &mut World, id: u32) -> &mut ScoutState {
     w.units.get_mut(&id).and_then(|u| u.scout_mut()).expect("a scout")
 }
 
-/// Puts a scout's walk on `path` into its labour `left`: steps taken while each costs no more than
-/// what is left. A step part-paid carries to next turn as `banked`. Returns whether it reached the
-/// end of the path.
+/// Puts a scout's walk on `path` into its labour `left`: a unit walks together, so each step is paid
+/// by every one of its people (it costs `step_cost × people`), and is taken while it costs no more
+/// than what is left. A step part-paid carries to next turn as `banked`. Returns whether it reached
+/// the end of the path.
 pub(super) fn march(w: &mut World, id: u32, path: &[usize], ladder: &mut Ladder, banked: &mut f64) -> bool {
-    let (taken, rest) = stride(w, w.units[&id].home, path, ladder.left, EPS);
     let people = w.units[&id].people;
+    let (taken, each) = stride(w, w.units[&id].home, path, ladder.left / people, EPS / people);
     for &t in &path[..taken] {
         w.tiles[t].traffic += people;
         w.tiles[t].used = true;
     }
-    ladder.left = rest;
+    ladder.left = each * people;
     let u = w.units.get_mut(&id).unwrap();
     if taken > 0 {
         let at = path[taken - 1];
@@ -204,10 +205,11 @@ struct Take {
 
 /// The foraging round a scout standing on `at` would make with `labour`: its own tile and the tiles
 /// within `SCOUT.reach` steps it can walk to, richest spare first, up to `want` of food, each walk
-/// there and back paid from the labour. A tile that costs more labour a unit of food than
+/// there and back paid from the labour by every one of its people. A tile that costs more labour a unit of food than
 /// `line_price` is left. The one costing `forage_round` takes and `rich_ground` values.
 fn round_plan(w: &World, id: u32, at: usize, labour: f64, want: f64, line_price: Option<f64>) -> Vec<Take> {
     let costs = walk_costs(w, at);
+    let people = w.units[&id].people;
     let mut tiles: Vec<(f64, usize)> = near(w, at, SCOUT.reach)
         .into_iter()
         .filter(|&t| t == at || walkable(w, t))
@@ -226,7 +228,7 @@ fn round_plan(w: &World, id: u32, at: usize, labour: f64, want: f64, line_price:
             0.0
         } else {
             match costs.get(&t) {
-                Some(&cost) => walk_cost(cost, 1.0),
+                Some(&cost) => walk_cost(cost, 1.0) * people,
                 None => continue,
             }
         };

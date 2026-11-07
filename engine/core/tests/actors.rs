@@ -120,8 +120,9 @@ fn one_job_of_share_one_is_divide_bit_for_bit() {
         (3.3, &routes[..1], vec![]),
     ];
     for (labour, routes, walks) in cases {
-        let one = split(labour, routes, &[1.0], std::slice::from_ref(&walks));
-        let old = divide(labour, routes, &walks);
+        let people = 1.0 + walks.len() as f64;
+        let one = split(people, labour, routes, &[1.0], std::slice::from_ref(&walks));
+        let old = divide(people, labour, routes, &walks);
         assert_eq!(one.len(), 1);
         assert_eq!(one[0].len(), old.len());
         for (a, b) in one[0].iter().zip(&old) {
@@ -134,16 +135,28 @@ fn one_job_of_share_one_is_divide_bit_for_bit() {
 fn two_jobs_each_get_their_share_less_their_walks() {
     use engine::actors::split;
     // Labour 1.0, no routes: job A (share 0.25) has two tiles, B (0.75) has one.
-    let out = split(1.0, &[], &[0.25, 0.75], &[vec![0.1, 0.0], vec![0.2]]);
+    // Eight people: job A's two tiles are walked by 8 × 0.25 ÷ 2 = 1 person each, B's by 8 × 0.75 ÷ 1 = 6.
+    let out = split(8.0, 1.0, &[], &[0.25, 0.75], &[vec![0.1, 0.0], vec![0.02]]);
     assert!(close(out[0][0], 0.125 - 0.1) && close(out[0][1], 0.125), "{:?}", out[0]);
-    assert!(close(out[1][0], 0.75 - 0.2), "{:?}", out[1]);
+    assert!(close(out[1][0], 0.75 - 0.02 * 6.0), "{:?}", out[1]);
+}
+
+#[test]
+fn a_tile_pays_its_walk_for_every_person_walking_it() {
+    use engine::actors::divide;
+    // Four tiles, a walk of 0.05 a person on three: 2 people walk each tile, then 8.
+    let walks = [0.0, 0.05, 0.05, 0.05];
+    let few = divide(4.0, 4.0, &[], &walks);
+    let many = divide(16.0, 4.0, &[], &walks);
+    assert!(close(few[1], 1.0 - 0.05) && close(many[1], 1.0 - 0.05 * 4.0), "{few:?} {many:?}");
+    assert!(close(few[0], 1.0) && close(many[0], 1.0));
 }
 
 #[test]
 fn routes_are_paid_once_not_per_job() {
     use engine::actors::{split, Route};
     let routes = [Route { to: 2, path: vec![1, 2], cost: 0.4 }];
-    let out = split(1.0, &routes, &[0.5, 0.5], &[vec![0.0], vec![0.0]]);
+    let out = split(1.0, 1.0, &routes, &[0.5, 0.5], &[vec![0.0], vec![0.0]]);
     // What is left after the route is 0.6, shared: 0.3 each. Paying the route twice would leave 0.2.
     assert!(close(out[0][0], 0.3) && close(out[1][0], 0.3), "{out:?}");
 }
@@ -151,7 +164,7 @@ fn routes_are_paid_once_not_per_job() {
 #[test]
 fn a_job_with_no_tiles_gets_nothing_and_its_share_is_not_handed_on() {
     use engine::actors::split;
-    let out = split(1.0, &[], &[0.5, 0.5], &[vec![], vec![0.0]]);
+    let out = split(1.0, 1.0, &[], &[0.5, 0.5], &[vec![], vec![0.0]]);
     assert!(out[0].is_empty());
     // B keeps its own half, not the whole labour.
     assert!(close(out[1][0], 0.5), "{out:?}");

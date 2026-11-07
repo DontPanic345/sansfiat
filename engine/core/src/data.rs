@@ -296,6 +296,20 @@ pub struct TendingRules {
 
 pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5, beyond: 0.1 };
 
+/// What a person carries on a route: a walk beyond the territory is paid by every person carrying
+/// what the actor brings (`actors::carriers`).
+pub struct CarryRules {
+    /// Food a person carries on a route. A route's walkers are what the actor brings over this, at
+    /// least one: a clan's festival route, and a civ clan's route to the capital.
+    pub load: f64,
+}
+
+/// A load of 2 food is about nine days' eating (a person eats a food a turn of `CLAN.work`, 4.67 days),
+/// "some days' food" (`labour.md`). A clan brings at most `MARKET.carry` × people, 0.2 a person, so a load
+/// of 3 or more sends every clan with one walker and changes nothing, and 1 collapses the festivals
+/// (`walk.md`).
+pub const CARRY: CarryRules = CarryRules { load: 2.0 };
+
 pub struct MarketRules {
     /// Turns a home must have been held for a market to form there.
     pub form_after: u32,
@@ -439,6 +453,10 @@ pub struct ClanRules {
     /// No territory tile is further than this from home, in hex steps.
     pub territory_radius: i32,
     /// A share: the weight of a clan's walks to its own tiles (`actors::walk_cost`): little, but not nothing.
+    /// Every person walking a tile pays it: the clan's people over its tiles (`actors::split`).
+    /// 0.2 (the weight a camp's zone and a guard's claim walk at): the territory walk at 0.125 with a
+    /// load of 2 held the pre-game and the festivals but left the AI's claims and the land that changes
+    /// hands under three quarters of the controls on every pick tried; 0.25 and 0.2 held (`walk.md`).
     pub inside: f64,
 }
 
@@ -469,7 +487,7 @@ pub const CLAN: ClanRules = ClanRules {
     choice_spread: 0.05,
     land_margin: 0.02,
     territory_radius: 2,
-    inside: 0.25,
+    inside: 0.2,
 };
 
 /// The civs founding makes, in the order of the centres: name and colour.
@@ -521,8 +539,12 @@ pub struct ScoutRules {
 // AI's idle scouts loses a person on medium 9). Rich 1.5 passed over ground that only just fed a scout, and it
 // starved beside it; 1.2 takes it. Low 1.5 and fed 2.5 leave the errand later and come back sooner than 2 and 4:
 // the same lives for a third fewer turns off the errand. Two people: one lost 2 to 8 of 28 at every setting.
+// The scout walks at one person's pace (`walk.md`): its turn's steps halve. Rich 0.8 takes ground that only
+// half feeds it and so loses one scout fewer than 1.2 (4 of 28, all on medium 9, against 5) and reveals and
+// trails more (34 tiles and 6 trails against 28 and 4); wander, low and fed at 6 to 12, 1.5 to 3 and 2.5 to 5
+// lost 4 or 5 (walk.md). Medium 9's four scouts starve with the walk off as well: its pick, not the walk.
 pub const SCOUT: ScoutRules =
-    ScoutRules { people: 2, reveal: 1.0 * DAY, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 1.2 };
+    ScoutRules { people: 2, reveal: 1.0 * DAY, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 0.8 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's
@@ -597,16 +619,18 @@ pub struct GuardRules {
     /// Days a person a turn a guard puts into holding the claim: its whole labour (`UNIT.labour`), since a
     /// guard does nothing else. Divided over the claim with `inside`.
     pub guarding: f64,
-    /// The weight of a guard's walk from the capital over the claim (`walk_cost`): a quarter of a
-    /// camp's `UNIT.inside`, since guards stand out on the land. At the camp's weight three guards
-    /// hold nothing past the capital (`spec-review.md`).
+    /// The weight of a guard's walk from the capital over the claim (`walk_cost`), paid by every guard
+    /// walking a tile: the guard's people over the claim. The camp's `UNIT.inside`: the walk is a
+    /// share of a person's days on a tile whatever the guard's size, so a weight a tenth of that left
+    /// the walk free and one guard held the claim (the AI's raises and claims fell to a seventh; `walk.md`).
     pub inside: f64,
     /// Turns of a guard's food the civ keeps in its store out of posting and gifts (`civs::keep`).
     pub keep_turns: f64,
 }
 
-// Inside 0.02 (a tenth of a camp's) and keep_turns 1, so the store still gives (canvas.md).
-pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5 * DAY, inside: 0.02, keep_turns: 1.0 };
+// Inside 0.2 (the camp's; 0.02, 0.1 and 0.15 left the AI's orders at 1.2 to 3.4 a hundred turns against the base's 8.3: walk.md)
+// and keep_turns 1, so the store still gives (canvas.md).
+pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5 * DAY, inside: 0.2, keep_turns: 1.0 };
 
 pub struct UnitRules {
     /// Days a person a turn: one person's work: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
