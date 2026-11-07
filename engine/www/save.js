@@ -2,8 +2,8 @@
 // the player ends and each action, and at most once a second while a run goes (and once when it stops).
 // A write that throws (storage refused or full) turns autosave off for the session; the Game menu says so.
 // A staged game (`Sim.stage`) is not a save: it is never written.
-// The entry holds {version, saved, seed, size, turn, civ} (civ is the led civ's name, or null), the save
-// (`Sim.save()`) and the Standing history. Continue loads it through `Sim.load`.
+// The entry holds {version, saved, seed, size, turn, civ} (civ is the led civ's name, or null) and the save
+// (`Sim.save()`, which carries the Standing history by replay). Continue loads it through `Sim.load`.
 
 import { app } from './app.js';
 
@@ -44,7 +44,6 @@ export class Autosave {
         turn: v.turn,
         civ,
         save,
-        history: model.history,
       };
       globalThis.localStorage.setItem(KEY, JSON.stringify(entry));
       this.last = performance.now();

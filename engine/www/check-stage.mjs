@@ -132,4 +132,28 @@ expectBug('Disband all, the guard as the stepper opens', 'Disband all sends the 
 pressAll('scout', 'cap');
 pressAll('guard', 'cap');
 
-console.log('ok: staged arm (shapes, digest, Disband all)');
+// The end: a staged game with a limit of two turns is over after the second EndTurn. Its orders are refused with
+// "the game is over"; the world runs on, so an EndTurn still goes through.
+{
+  const sim = staged({ ...SPEC, limit: 2 });
+  const picked = JSON.parse(sim.view()).turn;
+  sim.act('{"type":"endTurn"}');
+  assert.equal(JSON.parse(sim.view()).phase, 'main', 'a game with two turns is still going after one');
+  sim.act('{"type":"endTurn"}');
+  const view = JSON.parse(sim.view());
+  assert.equal(view.phase, 'over', 'the game is over after its limit');
+  assert.equal(view.over.why, 'limit', 'the limit ends it');
+  assert.equal(view.over.turn, picked + 2, 'it ends on the limit\'s turn');
+  assert.deepEqual(view.limit, { turns: 2, at: picked + 2 }, 'the view gives the limit and the turn it falls on');
+  assert.equal(view.standing.length, 3, 'Standing at the pick and after each of the two turns');
+  assert.equal(view.standing[0][0], picked, 'the first Standing is the pick\'s turn');
+  const army = Object.values(view.units).find((u) => u.kind === 'camp' && u.civ === view.player);
+  const order = JSON.stringify({ type: 'order', civ: view.player, order: { type: 'raise', kind: 'guard', n: 1 } });
+  assert.equal(sim.check(order), 'the game is over', 'an order is refused once the game is over');
+  assert.throws(() => sim.act(order), /the game is over/, 'and an order is not taken');
+  sim.act('{"type":"endTurn"}');
+  assert.equal(JSON.parse(sim.view()).turn, picked + 3, 'the world runs on after the end');
+  assert.ok(army, 'the army is still on the map');
+}
+
+console.log('ok: staged arm (shapes, digest, Disband all) and the end');

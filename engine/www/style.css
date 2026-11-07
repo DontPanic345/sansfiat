@@ -30,6 +30,7 @@ label { color:var(--dim); font-size:12px; }
 /* ---- the end screen ------------------------------------------------------------------------ */
 #screen-end { padding:16px 20px; gap:12px; overflow:auto; }
 #screen-end h1 { margin:0; font-size:18px; }
+#end-line { font-size:18px; margin:0 0 12px; }
 #end-chart { max-width:920px; width:100%; }
 #end-chart svg { width:100%; height:auto; display:block; }
 #end-chart text { fill:var(--dim); font-size:13px; }

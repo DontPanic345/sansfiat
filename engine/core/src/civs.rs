@@ -569,6 +569,8 @@ pub struct Card {
     pub rival_steps: Option<i32>,
     /// Whether any other capital can be reached over passable land.
     pub rival_by_land: bool,
+    /// The turn limit in force, in turns after the pick (`over::limit`).
+    pub limit: u32,
 }
 
 /// One card per civ, in id order.
@@ -606,6 +608,7 @@ pub fn cards(w: &World) -> Vec<Card> {
                 terrain,
                 rival_steps: rivals.iter().map(|&t| steps(w, c.capital, t)).min(),
                 rival_by_land: rivals.iter().any(|t| by_land.contains_key(t)),
+                limit: crate::over::limit(w),
             }
         })
         .collect()

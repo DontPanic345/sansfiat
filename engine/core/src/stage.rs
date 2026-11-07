@@ -292,7 +292,8 @@ impl Stage {
         t.span = span;
     }
 
-    /// Moves `civ`'s camp onto tile `i` with `people` warriors, in one stack and a full pack. A civ
+    /// Moves `civ`'s camp onto tile `i` with `people` warriors, in one stack and a full pack, and holds it
+    /// there: its march is to `i` (a camp posts itself elsewhere, and a rival's capital is no zone). A civ
     /// with no camp (a civ starts with none) gets an empty one at its capital first, which takes no
     /// people from its clans. Returns the camp's unit id.
     pub fn army(&mut self, civ: u32, i: usize, people: f64) -> u32 {
@@ -309,6 +310,7 @@ impl Stage {
         c.held = vec![i];
         c.stack = [0.0; 2];
         c.stack[Fighter::Warriors.index()] = people;
+        c.dest = Some(i);
         id
     }
 

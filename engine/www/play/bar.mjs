@@ -41,6 +41,10 @@ try {
   need(chips.every((c) => c.title.startsWith('Standing ')), 'a chip has no Standing tooltip');
   const untitledNow = await page.eval(`[...document.querySelectorAll('#bar .stat, #bar .chip')].filter((e) => e.offsetParent && !e.title).length`);
   need(untitledNow === 0, `${untitledNow} bar numbers without a tooltip`);
+  // The turn reads against the limit: "312 of 437", the turn the limit falls on.
+  const turnText = await page.eval(`document.getElementById('turn').textContent + ' ' + document.getElementById('turnlabel').textContent`);
+  const shown = JSON.parse(await page.eval('JSON.stringify({ turn: game.view().turn, limit: game.view().limit })'));
+  need(turnText === `${shown.turn} of ${shown.limit.at}`, `the turn reads "${turnText}", not "${shown.turn} of ${shown.limit.at}"`);
   await page.shot(join(out, 'bar.png'), 0.5);
 
   // End turn by button and by space.
