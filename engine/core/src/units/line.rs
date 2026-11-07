@@ -21,10 +21,11 @@ pub fn path_between(w: &World, from: usize, to: usize) -> Option<(Vec<usize>, f6
     path(w, from, to, |i| walkable(w, i))
 }
 
-/// A camp's route from where it stands to its `dest`, with its cost, for the page.
+/// A unit's march from where it stands to its `dest` (a camp's, or a scout's with no route), with
+/// its cost, for the page.
 pub fn route(w: &World, unit: u32) -> Option<(Vec<usize>, f64)> {
     let u = w.units.get(&unit)?;
-    path_between(w, u.home, u.camp()?.dest?)
+    path_between(w, u.home, u.dest()?)
 }
 
 /// The camp's line: the cheapest path to the capital over walkable tiles that don't count for a
@@ -37,14 +38,32 @@ pub fn line(w: &World, unit: u32) -> Option<(Vec<usize>, f64, f64)> {
     line_by(w, unit, true)
 }
 
+/// The line as `line` would be from `tile`: its cost and the food it carries a turn, as if the unit
+/// stood there. `None` when no line reaches the capital from `tile`.
+pub fn line_from(w: &World, unit: u32, tile: usize) -> Option<(f64, f64)> {
+    line_at(w, unit, tile, true).map(|(_, cost, carry)| (cost, carry))
+}
+
+/// Whether a unit standing on `tile` has no line, or one that carries less than what its people eat
+/// in a turn: the line's reach from there.
+pub fn past_reach(w: &World, unit: u32, tile: usize) -> bool {
+    let eats = w.units.get(&unit).map_or(0.0, |u| u.people * UNIT.food);
+    line_from(w, unit, tile).is_none_or(|(_, carry)| carry < eats)
+}
+
 /// The line as `line`, reading held ground (`hold`) or only land.
 pub(super) fn line_by(w: &World, unit: u32, hold: bool) -> Option<(Vec<usize>, f64, f64)> {
+    line_at(w, unit, w.units.get(&unit)?.home, hold)
+}
+
+/// The line from `from` (`line_by`'s body, for any tile the unit could stand on).
+fn line_at(w: &World, unit: u32, from: usize, hold: bool) -> Option<(Vec<usize>, f64, f64)> {
     let u = w.units.get(&unit)?;
     let c = w.civs.get(&u.civ).filter(|c| !c.is_out())?;
     let capital = c.capital;
     let civ_of = |i| if hold { civs::holder(w, i) } else { civs::tile_civ(w, i) };
     let (tiles, cost) =
-        path(w, u.home, capital, |i| walkable(w, i) && (i == capital || civ_of(i).is_none_or(|c| c == u.civ)))?;
+        path(w, from, capital, |i| walkable(w, i) && (i == capital || civ_of(i).is_none_or(|c| c == u.civ)))?;
     let cost = walk_cost(cost, 1.0);
     let carry = if cost > 0.0 { u.people * UNIT.labour * UNIT.carry / cost } else { f64::INFINITY };
     Some((tiles, cost, carry))

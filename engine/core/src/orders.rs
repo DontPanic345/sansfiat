@@ -116,7 +116,9 @@ impl World {
                 }
                 check_disband(*n)
             }
-            Order::Move { unit, to } => check_move(self, unit_of(self, civ, *unit, UnitKind::Camp)?, *to),
+            Order::Move { unit, to } => {
+                check_move(self, unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout])?, *to)
+            }
             Order::Zone { unit, tiles } => {
                 let u = unit_of(self, civ, *unit, UnitKind::Camp)?;
                 units::zone_ok(self, u, tiles).map(|_| ())
@@ -298,13 +300,14 @@ fn check_disband(n: Option<u32>) -> Result<(), String> {
     Ok(())
 }
 
-/// Checks `Move` for camp `u`: a tile of the map, land a camp can stand on, and a walk there.
+/// Checks `Move` for camp or scout `u`: a tile of the map, land it can stand on, and a walk there.
 fn check_move(w: &World, u: &Unit, to: usize) -> Result<(), String> {
     if to >= w.tiles.len() {
         return Err(format!("{to} is not a tile"));
     }
     if !(TERRAIN[w.tiles[to].terrain].land && passable(w, to)) {
-        return Err("a camp can only go over land".to_string());
+        let kind = if u.scout().is_some() { "a scout" } else { "a camp" };
+        return Err(format!("{kind} can only go over land"));
     }
     units::path_between(w, u.home, to).map(|_| ()).ok_or_else(|| "no route there".to_string())
 }
@@ -336,26 +339,59 @@ fn check_route(w: &World, from: usize, to: usize) -> Result<(), String> {
     Ok(())
 }
 
-/// Applies `Move`: a new destination and nothing banked; its own tile clears the order. Any move
-/// order undeploys: the zone and held ground go back to the camp's own tile.
+/// Applies `Move`: a new destination and nothing banked; its own tile clears the order. A camp's
+/// move undeploys: the zone and held ground go back to the camp's own tile. A scout's move clears
+/// its route, and says how far it is and whether its line reaches there.
 fn order_move(w: &mut World, unit: u32, to: usize) {
-    if let Some(u) = w.units.get_mut(&unit) {
-        u.banked = 0.0;
-        u.actor.territory = vec![u.actor.home];
-        let home = u.actor.home;
-        if let Some(c) = u.camp_mut() {
-            c.dest = if home == to { None } else { Some(to) };
-            let g = c.held.iter().position(|&t| t == home).map(|k| c.guard.get(k).copied().unwrap_or(0.0));
-            c.held = g.map(|_| vec![home]).unwrap_or_default();
-            c.guard = g.into_iter().collect();
-            c.full = false;
-        }
+    let Some(u) = w.units.get_mut(&unit) else { return };
+    u.banked = 0.0;
+    u.actor.territory = vec![u.actor.home];
+    let home = u.actor.home;
+    let dest = if home == to { None } else { Some(to) };
+    if let Some(c) = u.camp_mut() {
+        c.dest = dest;
+        let g = c.held.iter().position(|&t| t == home).map(|k| c.guard.get(k).copied().unwrap_or(0.0));
+        c.held = g.map(|_| vec![home]).unwrap_or_default();
+        c.guard = g.into_iter().collect();
+        c.full = false;
     }
-    if let Some(home) = w.units.get(&unit).filter(|u| u.camp().is_some_and(|c| c.dest.is_some())).map(|u| u.home) {
+    if let Some(s) = u.scout_mut() {
+        s.dest = dest;
+        s.route = None;
+        s.heard = false;
+        s.blocked = false;
+        s.built = false;
+    }
+    if dest.is_some() {
         let steps = units::path_between(w, home, to).map_or(0, |(p, _)| p.len());
         let at = w.at(to);
-        w.note(unit, format!("marching to {at}, {steps} steps away"));
+        let scout = w.units[&unit].scout().is_some();
+        let text = if scout {
+            format!("going to {at}, {steps} steps away")
+        } else {
+            format!("marching to {at}, {steps} steps away")
+        };
+        w.note(unit, text);
     }
+    if dest.is_some() && w.units[&unit].scout().is_some() {
+        reach_note(w, unit, to);
+    }
+}
+
+/// Says a scout's line from `tile` does not carry what it eats, or reaches nothing there.
+fn reach_note(w: &mut World, unit: u32, tile: usize) {
+    if !units::past_reach(w, unit, tile) {
+        return;
+    }
+    let at = w.at(tile);
+    let text = match units::line_from(w, unit, tile) {
+        Some((_, carry)) => {
+            let eats = w.units[&unit].people * UNIT.food;
+            format!("past its line's reach: its line there would carry {carry:.1} of the {eats:.0} it eats")
+        }
+        None => format!("past its line's reach: no line reaches {at}"),
+    };
+    w.note(unit, text);
 }
 
 /// Applies `Zone`: the zone is the camp's territory; held tiles outside it stop being held at once.
@@ -391,8 +427,12 @@ fn order_route(w: &mut World, unit: u32, route: Option<(usize, usize)>) {
     };
     let Some(s) = w.units.get_mut(&unit).and_then(|u| u.scout_mut()) else { return };
     s.route = route;
+    s.dest = None;
     s.heard = false;
     s.blocked = false;
     s.built = false;
     w.note(unit, text);
+    if let Some((_, to)) = route {
+        reach_note(w, unit, to);
+    }
 }

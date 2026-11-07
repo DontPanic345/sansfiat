@@ -34,7 +34,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/claim.rs` | A civ's claim, its guard's division, `held`, `tile_civ` and the `claim` step. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
-| `core/src/units/` | `line.rs` (paths, the line home, cuts), `camp.rs` (an army's turn and zone), `guard.rs`, `scout.rs` (the route search), `ai.rs` (the AI's orders), `fight.rs`. |
+| `core/src/units/` | `line.rs` (paths, the line home, cuts), `camp.rs` (an army's turn and zone), `guard.rs`, `search.rs` (the route search), `scout.rs` (the scout's turn and feeding), `ai.rs` (the AI's orders), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game: the engine's second player. |
 | `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map (the `map` text, or a retro pick, cached), layers, placements, orders and reads; `StageSpec` is its data form. `maptext.rs` reads the map's text (`map::parse`). A staged world is not a save. |

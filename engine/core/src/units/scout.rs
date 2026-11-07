@@ -18,6 +18,8 @@ use crate::world::World;
 /// it has said about it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScoutState {
+    /// The tile a scout marches to when it has no route (`Move`), and forages at on arriving.
+    pub dest: Option<usize>,
     /// The tile the scout searches from and the tile it searches for.
     pub route: Option<(usize, usize)>,
     /// A scout has said what its route costs; it is in `heard` once a route is found.
@@ -40,6 +42,7 @@ impl ScoutState {
     /// A scout with no route and its switches on.
     pub fn new() -> Self {
         ScoutState {
+            dest: None,
             route: None,
             heard: false,
             blocked: false,
@@ -253,17 +256,6 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     let mut banked = 0.0;
     w.units.get_mut(&id).unwrap().banked = 0.0;
 
-    // Without a route it walks home to the capital, to be fed there rather than starve out in the
-    // country.
-    if sc(w, id).route.is_none() {
-        let (home, capital) = (w.units[&id].home, w.civs[&civ].capital);
-        if let Some((p, _)) = path_between(w, home, capital) {
-            if !p.is_empty() {
-                march(w, id, &p, &mut left, &mut banked);
-            }
-        }
-    }
-
     // One-shot orders, on this turn's labour.
     let (once_forage, once_pillage, once_supply) = {
         let s = sc_mut(w, id);
@@ -292,11 +284,20 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
         bring(w, id, &mut left, want);
     }
 
-    // Searches on what labour is left.
+    // Searches on what labour is left, or without a route marches to its destination.
     let start = left;
     if sc(w, id).route.is_some() {
         banked = search(w, id, &mut left, start);
         keep_route(w, id);
+    } else if let Some(dest) = sc(w, id).dest {
+        let home = w.units[&id].home;
+        if let Some((p, _)) = path_between(w, home, dest) {
+            if march(w, id, &p, &mut left, &mut banked) {
+                sc_mut(w, id).dest = None;
+                let at = w.at(dest);
+                w.note(id, format!("at {at}, foraging"));
+            }
+        }
     }
     // Auto-supply refills the pack to full on what the search left.
     if sc(w, id).auto_supply {

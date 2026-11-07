@@ -34,9 +34,9 @@ use crate::world::World;
 pub use ai::{ai, guard_order, post};
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
-pub use line::{cut_at, cut_by_rival, cut_off, line, path_between, route, turns};
+pub use line::{cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, route, turns};
 pub use scout::ScoutState;
-pub use search::{route_plan, Plan};
+pub use search::{route_plan, search_view, Plan, SearchView};
 
 use camp::{camp_march, camp_turn, hold};
 use scout::scout_turn;
@@ -171,6 +171,11 @@ struct UnitFlat {
 impl From<Unit> for UnitFlat {
     fn from(u: Unit) -> Self {
         let kind = u.kind();
+        let dest = match &u.state {
+            UnitState::Camp(c) => c.dest,
+            UnitState::Scout(s) => s.dest,
+            UnitState::Guard => None,
+        };
         let (camp, scout) = match u.state {
             UnitState::Camp(c) => (c, ScoutState::new()),
             UnitState::Scout(s) => (
@@ -191,7 +196,7 @@ impl From<Unit> for UnitFlat {
             civ: u.civ,
             kind,
             actor: u.actor,
-            dest: camp.dest,
+            dest,
             banked: u.banked,
             hungry: u.hungry,
             auto_forage: camp.auto_forage,
@@ -240,6 +245,7 @@ impl From<UnitFlat> for Unit {
                 bows: f.bows,
             }),
             UnitKind::Scout => UnitState::Scout(ScoutState {
+                dest: f.dest,
                 route: f.route,
                 heard: f.heard,
                 blocked: f.blocked,
@@ -303,6 +309,15 @@ impl Unit {
             UnitState::Camp(_) => UnitKind::Camp,
             UnitState::Scout(_) => UnitKind::Scout,
             UnitState::Guard => UnitKind::Guard,
+        }
+    }
+
+    /// The tile a camp or a scout is marching to: its `dest`.
+    pub fn dest(&self) -> Option<usize> {
+        match &self.state {
+            UnitState::Camp(c) => c.dest,
+            UnitState::Scout(s) => s.dest,
+            UnitState::Guard => None,
         }
     }
 

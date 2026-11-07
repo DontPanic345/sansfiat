@@ -114,6 +114,8 @@ fn every_order_is_refused_for_a_unit_of_the_wrong_kind() {
                 continue;
             }
             Order::Pillage { .. } => "there is nothing to pillage here: it isn't a rival's land",
+            // A scout takes a Move as a camp does, and refuses the sea (tile 0 here) with its own words.
+            Order::Move { .. } => "a scout can only go over land",
             _ => "that unit is not a camp",
         };
         assert_eq!(w.check_order(me, &order), Err(want.to_string()), "{order:?}");

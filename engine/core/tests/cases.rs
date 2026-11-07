@@ -200,10 +200,13 @@ fn settled_scouts_leave_nothing_unrevealed_that_could_beat_them() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Red on main: T orders the search by best case, then removes the `should_panic`. The scout sweeps a
-/// range nearest-first, so on small 9 to the rival it reveals a mountain while a mountain with a
-/// better best case is open (small 9 turn 22, after the flat trail: 131 at 32 while 178 at 28 was
-/// open). The expected text is the map's number at the failure, which moves with the map.
+/// The search orders a range's mountains by best case: on each turn that reveals a mountain, it is
+/// open at the turn's start (its cost through beats the known route) and its best case is the least
+/// of the open set, within `EPS`. Red after build-2: the search orders only the mountains joined to
+/// its candidates' ranges, so on small 9 to the rival it reveals 131 (best case 32) while 178 (best
+/// case 28, in no candidate's range) is open. Widening the set to every open mountain makes the
+/// errand unsettled in 120 turns (`settled_scouts_leave_nothing_unrevealed_that_could_beat_them`), so
+/// the fix needs the owner's call (`relay/specs/153/search.md`).
 #[test]
 #[should_panic(expected = "small 9 turn 22: the scout revealed mountain 131")]
 fn a_scout_searches_a_range_by_best_case() {
@@ -224,7 +227,7 @@ fn a_scouts_search_on_small_9_to_the_forest_is_in_order() {
 /// 17.8 possible, the step into tile 436 costing 2.0 where known it costs 4.0. The expected text is
 /// the map's number at the failure, which moves with the map.
 #[test]
-#[should_panic(expected = "small 3 to Lead's target turn 52: the settled route costs 18.8 known and 17.8 possible")]
+#[should_panic(expected = "small 3 to Lead's target turn 25: the settled route costs 18.8 known and 17.8 possible")]
 fn a_settled_route_has_no_cheaper_trail() {
     for (size, seed, rival) in [("small", 2, true), ("small", 3, false)] {
         let mut e = errand(size, seed, rival);

@@ -116,7 +116,10 @@ impl Sim {
     /// line: the line it would have without held ground, the first tile on it a rival holds and that
     /// civ; else null). A scout also has `plan` when it has a route: `{known, possible, candidates}`,
     /// where `known` and `possible` are `{path, cost}` (path from the route's start, null
-    /// when there is none) and `candidates` the unrevealed tiles the search would reveal next.
+    /// when there is none) and `candidates` the unrevealed tiles the search would reveal next. A scout's
+    /// `search` is null without a route, else `{next, left, known}`: `next` the tiles the search will try
+    /// in its order, `left` the unrevealed mountains it leaves (`{tile, through}`, cheapest first, ten at
+    /// most), and `known` the known route's cost. A scout's `dest` is the tile it marches to with no route.
     /// `clan_civ` is `[clan, civ]` for every clan with a civ. `over` is null in a game still going, else
     /// `{winner, why: "conquest" | "limit" | "fell", by, turn}`: `by` the civ that took the led civ's capital
     /// (for "fell", else null), `turn` the world's turn the game ended on. `limit` is `{turns, at}`: the turn
@@ -201,6 +204,14 @@ impl Sim {
                     let way = |p: &Option<(Vec<usize>, f64)>| p.as_ref().map(|(path, cost)| serde_json::json!({ "path": path, "cost": cost }));
                     row["plan"] = serde_json::json!({ "known": way(&plan.known), "possible": way(&plan.possible), "candidates": plan.candidates });
                 }
+                if u.kind() == UnitKind::Scout {
+                    row["search"] = units::search_view(w, u.id)
+                        .map(|v| {
+                            let left: Vec<_> = v.left.iter().map(|&(tile, through)| serde_json::json!({ "tile": tile, "through": through })).collect();
+                            serde_json::json!({ "next": v.next, "left": left, "known": v.known })
+                        })
+                        .into();
+                }
                 (u.id, row)
             })
             .collect();
@@ -281,6 +292,18 @@ impl Sim {
     /// hearths, terrain: [[name, share]], rival_steps (null with one civ), rival_by_land}]`.
     pub fn pick(&self) -> String {
         serde_json::to_string(&civs::cards(&self.world)).unwrap()
+    }
+
+    /// A unit's line as if it stood on `tile`, as JSON `{cost, carry, eats}`: the cost of the walk to the
+    /// capital from there, the food the line carries a turn (null without limit, at the capital), and
+    /// what the unit's people eat a turn. `null` when no line reaches the capital from `tile`.
+    #[wasm_bindgen(js_name = lineFrom)]
+    pub fn line_from(&self, unit: u32, tile: usize) -> String {
+        let w = &self.world;
+        let eats = w.units.get(&unit).map_or(0.0, |u| u.people * UNIT.food);
+        let json = units::line_from(w, unit, tile)
+            .map(|(cost, carry)| serde_json::json!({ "cost": cost, "carry": carry, "eats": eats }));
+        serde_json::to_string(&json).unwrap()
     }
 
     /// A unit's route to its `dest`, as JSON `{path: [tiles after its own], cost, turns}`; `null` when

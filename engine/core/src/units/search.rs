@@ -9,7 +9,7 @@ use super::scout::{blocked, clear_route, march, sc, sc_mut, scout_event};
 use super::EPS;
 use crate::data::*;
 use crate::events::EventKind;
-use crate::land::{self, build_trail, cost_map, path_by, steps, trailable};
+use crate::land::{self, build_trail, cost_map, cost_map_by, path_by, steps, trailable};
 use crate::world::World;
 
 // ---- the route search ---------------------------------------------------------------------------
@@ -156,27 +156,35 @@ pub(super) fn approach(w: &World, costs: &BTreeMap<usize, f64>, home: usize, j: 
     path_between(w, home, n).map(|(p, _)| p)
 }
 
-/// The tiles a scout works on next, in order: mountains first (the ones that decide whether a
-/// route exists), then the nearest to the scout, then the biggest saving. A mountain candidate
-/// stands for its range: the unrevealed mountains joined to it whose cheapest possible route
-/// through them beats the known one. So the search sweeps along a range from where it stands.
+/// The cheapest possible cost from `from` to each tile, and from each tile into `to`, within `max`:
+/// priced as `route_plan` prices a possible path. A mountain's cost through is its two entries.
+fn through_maps(w: &World, civ: u32, from: usize, to: usize, max: f64) -> (BTreeMap<usize, f64>, BTreeMap<usize, f64>) {
+    let out = cost_map_by(w, &[from], max, |_| true, |i, j| step_as(w, civ, i, j, true));
+    let into = cost_map_by(w, &[to], max, |_| true, |i, j| step_as(w, civ, j, i, true));
+    (out, into)
+}
+
+/// The tiles a scout works on next, in order. Mountains come first, by best case: the cost through
+/// them plus the scout's walk to one beside them, the walk priced as the known route prices it (0
+/// when the scout stands next to the mountain). Ties go to the lower tile. Then the forest and hills,
+/// the nearest to the scout first, then the biggest saving. A mountain candidate stands for its
+/// range: the unrevealed mountains joined to it whose cheapest possible route through them beats the
+/// known one. So the search sweeps along a range from where it stands.
 pub(super) fn ordered(
     w: &World,
     civ: u32,
     plan: &Plan,
     from: usize,
     to: usize,
+    home: usize,
     costs: &BTreeMap<usize, f64>,
 ) -> Vec<usize> {
     let known_cost = plan.known.as_ref().map_or(f64::INFINITY, |k| k.1);
     let mut set: BTreeSet<usize> = plan.candidates.iter().copied().collect();
-    let through = |m: usize| {
-        let a = path_by(w, from, m, |i, j| step_as(w, civ, i, j, true));
-        let b = path_by(w, m, to, |i, j| step_as(w, civ, i, j, true));
-        match (a, b) {
-            (Some((_, x)), Some((_, y))) => x + y,
-            _ => f64::INFINITY,
-        }
+    let (out, into) = through_maps(w, civ, from, to, known_cost);
+    let through = |m: usize| match (out.get(&m), into.get(&m)) {
+        (Some(a), Some(b)) => a + b,
+        _ => f64::INFINITY,
     };
     for &c in plan.candidates.iter().filter(|&&c| w.tiles[c].terrain == MOUNTAIN) {
         let mut range = BTreeSet::new();
@@ -193,19 +201,27 @@ pub(super) fn ordered(
         }
         set.extend(range.into_iter().filter(|&m| through(m) < known_cost - EPS));
     }
+    let walks = cost_map_by(w, &[home], f64::INFINITY, |_| true, |i, j| step_as(w, civ, i, j, false));
     let mut keyed: Vec<(u8, f64, f64, usize)> = set
         .into_iter()
         .map(|j| {
+            if w.tiles[j].terrain == MOUNTAIN {
+                let walk = if steps(w, home, j) <= 1 {
+                    0.0
+                } else {
+                    land::neighbours(w, j).filter_map(|n| walks.get(&n).copied()).fold(f64::INFINITY, f64::min)
+                };
+                return (0, through(j) + walk, 0.0, j);
+            }
             let reach = beside(w, costs, j).map_or(f64::INFINITY, |(c, _)| c);
-            let tier = u8::from(w.tiles[j].terrain != MOUNTAIN);
             let saving = match tile_cost(w, civ, j, false) {
                 Some(k) => k - tile_cost(w, civ, j, true).unwrap_or(k),
                 None => f64::INFINITY,
             };
-            (tier, reach, saving, j)
+            (1, reach, -saving, j)
         })
         .collect();
-    keyed.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(b.2.total_cmp(&a.2)).then(a.3.cmp(&b.3)));
+    keyed.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(a.2.total_cmp(&b.2)).then(a.3.cmp(&b.3)));
     keyed.into_iter().map(|k| k.3).collect()
 }
 
@@ -229,7 +245,7 @@ pub(super) fn search(w: &mut World, id: u32, left: &mut f64, start: f64) -> f64 
             break;
         }
         let costs = walk_costs(w, home);
-        let order = ordered(w, civ, &plan, from, to, &costs);
+        let order = ordered(w, civ, &plan, from, to, home, &costs);
         let reach = order.iter().find_map(|&j| approach(w, &costs, home, j).map(|p| (j, p)));
         if let Some((j, path)) = reach {
             if !path.is_empty() {
@@ -316,4 +332,59 @@ pub(super) fn reveal(w: &mut World, id: u32, civ: u32, j: usize) {
     if w.tiles[j].terrain == MOUNTAIN && trailable(w, j) {
         scout_event(w, EventKind::ScoutPassFound, j, civ, id, None);
     }
+}
+
+/// What a scout's search is doing on its route, as `Sim.view()` shows it: the tiles it will try, in
+/// its order (`next`); the unrevealed mountains it leaves, each with its cost through, cheapest first
+/// and ten at most (`left`); and the known route's cost (`known`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SearchView {
+    pub next: Vec<usize>,
+    pub left: Vec<(usize, f64)>,
+    pub known: Option<f64>,
+}
+
+/// The search of scout `id` on its route, or `None` without one. `left` holds the unrevealed
+/// mountains of every range that touches the possible or known path (on it, beside one of its tiles,
+/// or joined to one of those), whose cost through is not below the known cost by more than `EPS`.
+pub fn search_view(w: &World, id: u32) -> Option<SearchView> {
+    let (from, to) = super::scout::sc(w, id).route?;
+    let (civ, home) = (w.units[&id].civ, w.units[&id].home);
+    let plan = route_plan(w, civ, from, to);
+    let costs = walk_costs(w, home);
+    let next = ordered(w, civ, &plan, from, to, home, &costs);
+    let known = plan.known.as_ref().map(|k| k.1);
+    let known_cost = known.unwrap_or(f64::INFINITY);
+    let (out, into) = through_maps(w, civ, from, to, f64::INFINITY);
+    let through = |m: usize| match (out.get(&m), into.get(&m)) {
+        (Some(a), Some(b)) => Some(a + b),
+        _ => None,
+    };
+    let path: Vec<usize> = std::iter::once(from)
+        .chain(plan.known.iter().chain(plan.possible.iter()).flat_map(|p| p.0.iter().copied()))
+        .collect();
+    let mut range = BTreeSet::new();
+    let mut stack: Vec<usize> = path
+        .iter()
+        .flat_map(|&t| std::iter::once(t).chain(land::neighbours(w, t).collect::<Vec<_>>()))
+        .filter(|&m| w.tiles[m].terrain == MOUNTAIN && !revealed(w, civ, m))
+        .collect();
+    while let Some(m) = stack.pop() {
+        if !range.insert(m) {
+            continue;
+        }
+        for n in land::neighbours(w, m) {
+            if w.tiles[n].terrain == MOUNTAIN && !revealed(w, civ, n) && !range.contains(&n) {
+                stack.push(n);
+            }
+        }
+    }
+    let mut left: Vec<(usize, f64)> = range
+        .into_iter()
+        .filter_map(|m| through(m).map(|x| (m, x)))
+        .filter(|&(_, x)| x.is_finite() && x >= known_cost - EPS)
+        .collect();
+    left.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
+    left.truncate(10);
+    Some(SearchView { next, left, known })
 }

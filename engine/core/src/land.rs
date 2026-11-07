@@ -106,6 +106,17 @@ impl Ord for Entry {
 /// Path cost from the nearest of `from` to every tile within `max`: sources cost 0, each step
 /// costs its `step_cost`, and only `allowed` tiles are entered.
 pub fn cost_map(w: &World, from: &[usize], max: f64, allowed: impl Fn(usize) -> bool) -> BTreeMap<usize, f64> {
+    cost_map_by(w, from, max, allowed, |i, j| step_cost(w, i, j))
+}
+
+/// `cost_map` with each step priced by `cost(i, j)` (`None` is no step), as `path_by` prices a path.
+pub fn cost_map_by(
+    w: &World,
+    from: &[usize],
+    max: f64,
+    allowed: impl Fn(usize) -> bool,
+    cost: impl Fn(usize, usize) -> Option<f64>,
+) -> BTreeMap<usize, f64> {
     let mut best: BTreeMap<usize, f64> = BTreeMap::new();
     let mut heap = BinaryHeap::new();
     for &s in from {
@@ -117,7 +128,7 @@ pub fn cost_map(w: &World, from: &[usize], max: f64, allowed: impl Fn(usize) -> 
             continue;
         }
         for j in neighbours(w, i) {
-            let Some(step) = step_cost(w, i, j) else { continue };
+            let Some(step) = cost(i, j) else { continue };
             let nc = c + step;
             if nc > max || !allowed(j) || best.get(&j).is_some_and(|&b| b <= nc) {
                 continue;
