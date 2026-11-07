@@ -24,7 +24,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/world.rs` | `World`, `phase`, `Action`, the `TURN` steps, `act`/`run`/`save`/`replay`, reasons, alerts, `SAVE_VERSION`. |
 | `core/src/over.rs` | The end: `Phase::Over` (winner, `Why`, turn), the `over` step, `limit` and `ends_at`. A game ends as a phase; the world runs on after it. |
 | `core/src/events.rs` | `Event`, `EventKind` and their wording. |
-| `core/src/data.rs` | Every rule's number and `Config`; tune here first. |
+| `core/src/data.rs` | Every rule's number and `Config`, each in days (`DAY`), food, turns, people or a share; tune here first. |
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs and the flat trail cost. |
 | `core/src/land.rs` | Neighbours, move costs, `path`, `steps`, and the `regrow`, `wear` and `tend` steps. |
 | `core/src/actors.rs` | What every actor does: spoil, eat, `meal` (from kin's stores), `stride`, `walk_cost`, traffic, `divide` and `split` (over jobs), `change`. |

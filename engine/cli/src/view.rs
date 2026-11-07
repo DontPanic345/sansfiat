@@ -196,7 +196,7 @@ fn unit_line(w: &World, u: &Unit) -> String {
             let line = match units::line(w, u.id) {
                 None => "no line".to_string(),
                 Some((_, _, carry)) if carry.is_infinite() => "at the capital, no limit".to_string(),
-                Some((_, cost, carry)) => format!("line cost {cost:.1}, carries {carry:.1} a turn"),
+                Some((_, cost, carry)) => format!("line {cost:.1} days, carries {carry:.1} food a turn"),
             };
             let cut = if units::cut_off(w, u.id) { ", cut off" } else { "" };
             let cut_at = units::cut_at(w, u.id)
@@ -222,10 +222,10 @@ fn unit_line(w: &World, u: &Unit) -> String {
                 Some((from, to)) => {
                     let plan = units::route_plan(w, u.civ, from, to);
                     let cost = |p: &Option<(Vec<usize>, f64)>| {
-                        p.as_ref().map_or("none".to_string(), |(_, c)| format!("{c:.1}"))
+                        p.as_ref().map_or("none".to_string(), |(_, c)| format!("{c:.1} days"))
                     };
                     format!(
-                        "route {} to {}, known cost {}, possible cost {}, {} tiles to search",
+                        "route {} to {}, known route {}, possible route {}, {} tiles to search",
                         tile(w, from),
                         tile(w, to),
                         cost(&plan.known),

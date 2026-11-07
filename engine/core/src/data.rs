@@ -1,5 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+// A day is one person's labour for one day; a turn is a year of `CLAN.work` days, the days a person
+// gives (`labour.md`). Every number's doc says its unit.
+
+/// The days a bare plains step takes: 1 until the day becomes the step's unit.
+pub const DAY: f64 = 1.0;
+
 /// The foods. Only food exists for now; the market library trades these.
 pub const GOODS: [&str; 5] = ["game", "grain", "fruit", "fish", "shellfish"];
 pub const FOODS: [&str; 5] = GOODS;
@@ -15,7 +21,7 @@ pub struct Terrain {
     pub name: &'static str,
     pub color: &'static str,
     pub land: bool,
-    /// Labour to enter the tile; `None` is impassable.
+    /// Days a step to enter the tile; `None` is impassable.
     pub move_cost: Option<f64>,
     /// Each food's cap before fertility.
     pub food: [f64; N],
@@ -74,7 +80,7 @@ pub struct MapRules {
     /// Tiles upwind a ridge shades a plains tile, and how much a ridge tile there takes off its score.
     pub shadow_reach: i32,
     pub shadow_weight: f64,
-    /// Hidden trail costs, as `(value, weight)`: forest, hills, the mountain's cost, and its bridge span.
+    /// Hidden trail costs, as `(value, weight)`: forest, hills, the mountain's cost (days a step), and its bridge span (hex steps).
     pub forest_cost: [(u8, u32); 2],
     pub hills_cost: [(u8, u32); 2],
     pub mountain_cost: u8,
@@ -174,7 +180,7 @@ pub struct Features {
 pub const FEATURES: Features = Features { river: [0.0, 1.0, 0.0, 5.0, 0.0] };
 
 pub struct RiverRules {
-    /// Extra labour to enter a river tile off its course, unless a trail bridges it.
+    /// Extra days a step to enter a river tile off its course, unless a trail bridges it.
     pub cross: f64,
 }
 
@@ -211,10 +217,10 @@ pub struct TrailRules {
     pub on: f64,
     /// …and keeps it until its traffic falls under this (`off < on`).
     pub off: f64,
-    /// Labour to finish a built trail, by the terrain it goes on (`scout`'s work: forest, hills, a
+    /// Days to finish a built trail, by the terrain it goes on (`scout`'s work: forest, hills, a
     /// mountain pass). A trail brings a tile to its hidden `trail_cost`, not to a flat cost.
     pub work: [(usize, f64); 3],
-    /// The share of its bare cost that a trail brings plains and coast to (M4 answer 4). It is the
+    /// A share: of its bare cost (days a step) that a trail brings plains and coast to (M4 answer 4). It is the
     /// same on every flat tile, so nothing about it is hidden, and the scout builds none there.
     pub flat: f64,
 }
@@ -259,29 +265,29 @@ pub struct MarketRules {
     pub form_after: u32,
     /// Hex steps from every other market.
     pub spacing: i32,
-    /// Path cost from a market's tile that counts as its land: for a centre's hearths and the
+    /// Days of path cost from a market's tile that count as its land: for a centre's hearths and the
     /// clans a civ founded there takes in.
     pub reach: f64,
-    /// The most a festival route may cost a turn (`walk_cost`, there and back) for a clan to
+    /// The most days a festival route may cost a turn (`walk_cost`, there and back) for a clan to
     /// weigh going, and for a clan to count as in reach of a home where a market might form.
     pub reach_walk: f64,
     /// How much of last turn's activity is kept.
     pub fade: f64,
     /// A market whose activity (clans that came, smoothed) falls under this goes.
     pub min_attendance: f64,
-    /// The most food a clan brings to a festival, a person.
+    /// The most food a clan brings to a festival, food a person.
     pub carry: f64,
     /// A starving clan offers this × people × (1 − fed_ratio) people at a festival.
     pub shed: f64,
-    /// Labour a clan with a surplus is willing to walk to gather, on top of `desire`.
+    /// Days a clan with a surplus is willing to walk to gather, on top of `desire`.
     pub gather_bonus: f64,
-    /// Labour any clan is willing to walk to gather.
+    /// Days any clan is willing to walk to gather.
     pub desire: f64,
-    /// More labour for each clan that came to the festival last turn ("to see others")…
+    /// More days for each clan that came to the festival last turn ("to see others")…
     pub company: f64,
     /// …counting at most this many.
     pub company_cap: usize,
-    /// How much more another festival must be worth, in labour, for a clan to change to it.
+    /// How many more days another festival must be worth for a clan to change to it.
     pub switch_margin: f64,
     /// Turns a clan keeps a festival it has just started going to, whatever the worths.
     pub keep_turns: u32,
@@ -344,15 +350,15 @@ pub const PREGAME: PregameRules = PregameRules {
 };
 
 pub struct ClanRules {
-    /// Seed clans.
+    /// Seed clans (people: `start_pop`).
     pub seeds: usize,
     /// People in a seed clan.
     pub start_pop: f64,
     /// Land tiles for a landmass to get its own seed.
     pub min_landmass: usize,
-    /// Labour a person gives a turn.
+    /// Days a person gives a turn.
     pub work: f64,
-    /// Labour to harvest one unit of food.
+    /// Days a food to harvest: labour to harvest one unit of food.
     pub harvest_labour: f64,
     /// Most of a tile's stock a clan takes in a turn.
     pub take_rate: f64,
@@ -384,11 +390,11 @@ pub struct ClanRules {
     pub settle_fed: f64,
     /// Starving turns before a clan moves on.
     pub patience: u32,
-    /// Steps a clan looks when moving on.
+    /// Hex steps a clan looks when moving on.
     pub move_range: i32,
     /// How much better a site must be to move.
     pub move_margin: f64,
-    /// Steps a daughter looks.
+    /// Hex steps a daughter looks.
     pub scout_range: i32,
     /// Softness of site choice.
     pub choice_spread: f64,
@@ -396,7 +402,7 @@ pub struct ClanRules {
     pub land_margin: f64,
     /// No territory tile is further than this from home, in hex steps.
     pub territory_radius: i32,
-    /// The weight of a clan's walks to its own tiles (`actors::walk_cost`): little, but not nothing.
+    /// A share: the weight of a clan's walks to its own tiles (`actors::walk_cost`): little, but not nothing.
     pub inside: f64,
 }
 
@@ -444,7 +450,7 @@ pub struct CivRules {
     pub levy: f64,
     /// The most goods, in all, a civ's store holds; the excess is lost.
     pub store_cap: f64,
-    /// What a civ clan makes of going to its capital's market over another festival, in labour.
+    /// What a civ clan makes of going to its capital's market over another festival, in days.
     pub pull: f64,
 }
 
@@ -454,16 +460,16 @@ pub const CIV: CivRules =
 pub struct ScoutRules {
     /// People a scout is made with, from the civ's clans, one each.
     pub people: u32,
-    /// Labour to reveal a forest or hills tile (a mountain takes a whole turn's search labour).
+    /// Days to reveal a forest or hills tile (a mountain takes a whole turn's search labour).
     pub reveal: f64,
-    /// Steps from its tile a scout forages: its own tile and those within this many steps, each walk
+    /// Hex steps from its tile a scout forages: its own tile and those within this many steps, each walk
     /// there and back paid from its labour. A scout on a long errand has no line to live off, and
     /// the tile it stands on is soon bare; one step more finds a tile that isn't.
     pub reach: usize,
-    /// Steps from its tile a scout looks for rich ground when it runs low: ground it can walk to where
+    /// Hex steps from its tile a scout looks for rich ground when it runs low: ground it can walk to where
     /// a turn's foraging brings the most, so a scout far from its line finds a meal, not a march.
     pub wander: usize,
-    /// Turns of eating in the pack under which a routed scout leaves its errand for rich ground.
+    /// Turns of eating (food a person a turn) in the pack under which a routed scout leaves its errand for rich ground.
     pub low: f64,
     /// Turns of eating in the pack at which a wandering scout is fed and goes back to its errand: the
     /// gap between `low` and `fed` stops it leaving again the turn after it returns.
@@ -531,8 +537,11 @@ pub const LEANING: LeaningRules = LeaningRules {
 /// to be held; the AI's stand-in claim is every land tile within `ai_ring` steps of the capital or of
 /// a clan's home within `ai_reach` steps of it.
 pub struct ClaimRules {
+    /// A share (of a person's days a turn).
     pub floor: f64,
+    /// Hex steps.
     pub ai_ring: i32,
+    /// Hex steps.
     pub ai_reach: i32,
 }
 
@@ -548,7 +557,7 @@ pub struct GuardRules {
     pub start: u32,
     /// The guards a staged civ has (`StageSpec`): the guard founding gave a civ before the start moved.
     pub first: u32,
-    /// Labour a guard person puts into holding the claim: its whole labour (`UNIT.labour`), since a
+    /// Days a person a turn a guard puts into holding the claim: its whole labour (`UNIT.labour`), since a
     /// guard does nothing else. Divided over the claim with `inside`.
     pub guarding: f64,
     /// The weight of a guard's walk from the capital over the claim (`walk_cost`): a quarter of a
@@ -563,9 +572,9 @@ pub struct GuardRules {
 pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5, inside: 0.02, keep_turns: 1.0 };
 
 pub struct UnitRules {
-    /// One person's work a turn: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
+    /// Days a person a turn: one person's work: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
     pub labour: f64,
-    /// What a warrior eats a turn from the pack: one person's need.
+    /// Food a person a turn a warrior eats from the pack: one person's need.
     pub food: f64,
     /// Hungry turns in a row before the camp loses a warrior (and one more each turn after).
     pub hungry_turns: u32,
@@ -577,26 +586,26 @@ pub struct UnitRules {
     /// The warriors of a first army, where a script or the judge needs a number (`Lead`, the stories,
     /// the camp sweep's lever, the economy group's pack).
     pub first: u32,
-    /// Turns of food a warrior's share of the pack holds.
+    /// Turns of food (food a person a turn) a warrior's share of the pack holds.
     pub pack: f64,
-    /// Food a unit of labour carries one unit of line cost (a line of cost `c` carries
-    /// `labour × carry / c`).
+    /// Food a day of line per day it costs (a line of cost `c` days carries
+    /// `labour × carry / c` food).
     pub carry: f64,
-    /// Food a unit of labour takes from a tile it forages (own or unclaimed land).
+    /// Food a day a unit takes from a tile it forages (own or unclaimed land).
     pub forage: f64,
-    /// Food a unit of labour takes from a rival's tile it pillages.
+    /// Food a day a unit takes from a rival's tile it pillages.
     pub pillage: f64,
     /// Turns a stripped tile yields nothing to anyone and regrows nothing.
     pub fallow: u32,
-    /// Steps from the capital the AI posts its camp.
+    /// Hex steps from the capital the AI posts its camp.
     pub post: usize,
-    /// Labour a warrior sets aside to guard a deployed camp's zone, divided over its held tiles.
+    /// Days a person a turn a warrior sets aside to guard a deployed camp's zone, divided over its held tiles.
     pub guarding: f64,
-    /// The guard share a tile must keep after its walk to stay held (`divide`).
+    /// A share: the guard share a tile must keep after its walk to stay held (`divide`).
     pub guard: f64,
     /// The weight of a guard's walk inside the zone (`walk_cost`), as a clan's inside its territory.
     pub inside: f64,
-    /// Tiles of its line the AI's zone covers past the camp's own, at most `people − 1`.
+    /// Tiles (hex steps) of its line the AI's zone covers past the camp's own, at most `people − 1`.
     pub zone: usize,
 }
 

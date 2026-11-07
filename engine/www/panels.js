@@ -182,7 +182,7 @@ function campShape(ctx, u) {
   const line = u.cut_at
     ? 'cut'
     : u.line && u.line.path.length
-      ? `${plural(u.line.path.length, 'step')}, cost ${f2(u.line.cost)}, carries ${u.line.carry == null ? 'without limit' : `${f2(u.line.carry)} a turn`}`
+      ? `${plural(u.line.path.length, 'step')}, line ${f2(u.line.cost)} days, carries ${u.line.carry == null ? 'without limit' : `${f2(u.line.carry)} food a turn`}`
       : u.line
         ? 'at the capital'
         : 'none';
@@ -198,7 +198,7 @@ function campShape(ctx, u) {
       tip: `Turns it has stood still; each turn adds ${Math.round(100 * rules.fight.entrench)}% to its defence, to ${Math.round(100 * rules.fight.entrench_cap)}%`,
     },
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
-    { label: 'Line', value: line, tip: 'Its line home: steps, the cost, and the food a turn it carries with all its labour' },
+    { label: 'Line', value: line, tip: 'Its line home: steps, the days it costs, and the food a turn it carries with all its labour' },
   ];
   if (u.kind === 'camp') {
     const guard = u.guard.length ? u.guard.reduce((a, b) => a + b, 0) / u.guard.length : 0;
@@ -283,7 +283,7 @@ function scoutShape(ctx, u) {
   const errand = u.route != null || u.dest != null;
   let base;
   if (u.wander != null && errand) base = `Foraging at ${hex(ctx, u.wander)} until fed, then ${u.route ? 'back to its route' : `on to ${hex(ctx, u.dest)}`}`;
-  else if (u.route) base = `Searching ${hex(ctx, u.route[0])} → ${hex(ctx, u.route[1])}: known cost ${plan?.known ? f2(plan.known.cost) : 'none'}, possible ${plan?.possible ? f2(plan.possible.cost) : 'none'}`;
+  else if (u.route) base = `Searching ${hex(ctx, u.route[0])} → ${hex(ctx, u.route[1])}: known route ${plan?.known ? `${f2(plan.known.cost)} days` : 'none'}, possible ${plan?.possible ? `${f2(plan.possible.cost)} days` : 'none'}`;
   else if (u.dest != null && u.dest === u.tile) base = `At ${hex(ctx, u.tile)}, foraging`;
   else if (u.dest != null) {
     const r = JSON.parse(sim.route(u.id));
@@ -295,8 +295,8 @@ function scoutShape(ctx, u) {
   const numbers = [
     { label: 'People', value: f2(u.people), tip: 'The people in the scout' },
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
-    { label: 'Known cost', value: plan?.known ? f2(plan.known.cost) : 'none', tip: 'The cost of the route over the tiles the player has seen' },
-    { label: 'Possible cost', value: plan?.possible ? f2(plan.possible.cost) : 'none', tip: 'The cost of the cheapest route if the unrevealed tiles are as they could be' },
+    { label: 'Known route', value: plan?.known ? `${f2(plan.known.cost)} days` : 'none', tip: 'The days of the route over the tiles the player has seen' },
+    { label: 'Possible route', value: plan?.possible ? `${f2(plan.possible.cost)} days` : 'none', tip: 'The days of the cheapest route if the unrevealed tiles are as they could be' },
     {
       label: 'Unrevealed',
       value: search ? `${search.next.length} to check${left.length ? `; ${left.length} left` : ''}` : 'none',
@@ -484,7 +484,7 @@ function clanShape(ctx, k) {
     { label: 'Fed', value: `${Math.round(100 * k.fed_ratio)}%`, tip: 'The share of its food need the clan met last turn' },
     { label: 'Territory', value: `${k.territory.length} tiles`, tip: 'Tiles of the clan’s territory' },
   ];
-  if (k.market != null) numbers.push({ label: 'Route', value: `${f2(cost)} a year`, tip: `Labour a year to walk to festival ${k.market}` });
+  if (k.market != null) numbers.push({ label: 'Route', value: `${f2(cost)} days a turn`, tip: `Days a turn to walk to festival ${k.market}` });
   numbers.push({ label: 'Leanings', value: leans.length ? leans.join(', ') : 'none', tip: `Shares of the joining line (${rules.join}) for each civ` });
   return {
     name: `Clan ${k.id}`,
