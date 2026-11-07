@@ -1,0 +1,65 @@
+diff --git a/engine/core/src/civs.rs b/engine/core/src/civs.rs
+index a5dd859..6a65400 100644
+--- a/engine/core/src/civs.rs
++++ b/engine/core/src/civs.rs
+@@ -221,9 +221,10 @@ fn switch_to_capitals(w: &mut World) {
+         let Some((_, mid)) = best else { continue };
+         let to = w.markets[&mid].tile;
+         let Some((path, cost)) = path(w, c.home, to, |i| passable(w, i)) else { continue };
++        let k = crate::markets::walkers(&w.clans[&id]);
+         let c = w.clans.get_mut(&id).unwrap();
+         c.market = Some(mid);
+-        c.routes = vec![Route { to, path, cost: walk_cost(cost, 1.0) }];
++        c.routes = vec![Route { to, path, cost: walk_cost(cost, 1.0) * k }];
+     }
+     // Last turn's traders, as the clans now stand, so the next choice sees who switched.
+     for m in w.markets.values_mut() {
+diff --git a/engine/core/src/clans.rs b/engine/core/src/clans.rs
+index a69ecff..9b3e961 100644
+--- a/engine/core/src/clans.rs
++++ b/engine/core/src/clans.rs
+@@ -150,7 +150,10 @@ pub fn walks(w: &World, home: usize, territory: &[usize]) -> (Walks, Vec<f64>) {
+ /// tile's take scaled by one factor so the whole comes to at most `surplus_target × people` less
+ /// the store.
+ pub fn reap(w: &World, people: f64, store: &Basket, routes: &[Route], tiles: &[usize], yearly: &[f64]) -> Vec<Basket> {
+-    let work = actors::divide(people * CLAN.work, routes, yearly);
++    let k: f64 = std::env::var("PERK").ok().and_then(|v| v.parse().ok()).unwrap_or(1.0);
++    let per = if tiles.is_empty() || k == 0.0 { 1.0 } else { people / tiles.len() as f64 / k };
++    let yearly: Vec<f64> = yearly.iter().map(|y| y * per).collect();
++    let work = actors::divide(people * CLAN.work, routes, &yearly);
+     let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
+     let mut total = 0.0;
+     for (&t, &labour) in tiles.iter().zip(&work) {
+diff --git a/engine/core/src/markets.rs b/engine/core/src/markets.rs
+index 66da442..e83da1a 100644
+--- a/engine/core/src/markets.rs
++++ b/engine/core/src/markets.rs
+@@ -77,7 +77,7 @@ pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
+     w.markets
+         .values()
+         .filter_map(|m| {
+-            let cost = walk_cost(*near.get(&m.tile)?, 1.0);
++            let cost = walk_cost(*near.get(&m.tile)?, 1.0) * walkers(clan);
+             let pull = if Some(m.id) == capital { CIV.pull } else { 0.0 };
+             Some((m.id, gain(m, &b, clan.people) * CLAN.harvest_labour + desire(m, surplus) + pull - cost, cost))
+         })
+@@ -120,7 +120,7 @@ pub fn go(w: &mut World) {
+         let route = choice.and_then(|mid| {
+             let to = w.markets[&mid].tile;
+             let (path, cost) = path(w, c.home, to, |i| passable(w, i))?;
+-            Some(Route { to, path, cost: walk_cost(cost, 1.0) })
++            Some(Route { to, path, cost: walk_cost(cost, 1.0) * walkers(c) })
+         });
+         let c = w.clans.get_mut(&id).unwrap();
+         let was = c.market;
+@@ -419,3 +419,10 @@ pub fn raise(w: &mut World, tile: usize) -> u32 {
+     w.markets.insert(id, m);
+     id
+ }
++
++/// Probe: the people who walk a clan's festival route: those carrying what it brought last turn.
++pub fn walkers(c: &Clan) -> f64 {
++    let load: f64 = std::env::var("LOAD").ok().and_then(|v| v.parse().ok()).unwrap_or(1.0);
++    let brought = c.basket.iter().sum::<f64>().min(MARKET.carry * c.people);
++    (brought / load).max(1.0)
++}
