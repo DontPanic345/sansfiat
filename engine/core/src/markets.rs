@@ -65,8 +65,8 @@ pub fn desire(m: &Market, surplus: bool) -> f64 {
 pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
     let most = MARKET.reach_walk / 2.0;
     let home = w.tiles[clan.home].hex();
-    // Every step costs at least 1, so a festival further than the path can go is out of reach.
-    if !w.markets.values().any(|m| f64::from(w.tiles[m.tile].hex().distance(home)) <= most) {
+    // A bare step costs `DAY`, so a festival further than `most / DAY` steps is out of reach.
+    if !w.markets.values().any(|m| f64::from(w.tiles[m.tile].hex().distance(home)) <= most / DAY) {
         return Vec::new();
     }
     let near = cost_map(w, &[clan.home], most, |i| passable(w, i));

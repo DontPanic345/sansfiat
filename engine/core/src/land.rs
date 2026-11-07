@@ -84,7 +84,13 @@ pub fn build_trail(w: &mut World, i: usize, labour: f64) -> bool {
     true
 }
 
-struct Entry(f64, usize);
+/// A cost on the grid of a twelfth of a day, in whole twelfths: every step's cost lands on it
+/// exactly, so costs that tie by the rules tie in the searches though a third isn't exact in binary.
+pub fn grid(c: f64) -> i64 {
+    (c * 12.0 / DAY).round() as i64
+}
+
+struct Entry(i64, usize);
 
 impl PartialEq for Entry {
     fn eq(&self, o: &Self) -> bool {
@@ -100,7 +106,7 @@ impl PartialOrd for Entry {
 impl Ord for Entry {
     /// Reversed, so the heap pops the cheapest, then the lowest tile.
     fn cmp(&self, o: &Self) -> Ordering {
-        o.0.total_cmp(&self.0).then(o.1.cmp(&self.1))
+        o.0.cmp(&self.0).then(o.1.cmp(&self.1))
     }
 }
 
@@ -118,27 +124,30 @@ pub fn cost_map_by(
     allowed: impl Fn(usize) -> bool,
     cost: impl Fn(usize, usize) -> Option<f64>,
 ) -> BTreeMap<usize, f64> {
-    let mut best: BTreeMap<usize, f64> = BTreeMap::new();
+    let limit = grid(max);
+    let mut best: BTreeMap<usize, (i64, f64)> = BTreeMap::new();
     let mut heap = BinaryHeap::new();
     for &s in from {
-        best.insert(s, 0.0);
-        heap.push(Entry(0.0, s));
+        best.insert(s, (0, 0.0));
+        heap.push(Entry(0, s));
     }
-    while let Some(Entry(c, i)) = heap.pop() {
-        if best.get(&i).is_some_and(|&b| c > b) {
+    while let Some(Entry(g, i)) = heap.pop() {
+        let (bg, c) = best[&i];
+        if g > bg {
             continue;
         }
         for j in neighbours(w, i) {
             let Some(step) = cost(i, j) else { continue };
             let nc = c + step;
-            if nc > max || !allowed(j) || best.get(&j).is_some_and(|&b| b <= nc) {
+            let ng = grid(nc);
+            if ng > limit || !allowed(j) || best.get(&j).is_some_and(|&(b, _)| b <= ng) {
                 continue;
             }
-            best.insert(j, nc);
-            heap.push(Entry(nc, j));
+            best.insert(j, (ng, nc));
+            heap.push(Entry(ng, j));
         }
     }
-    best
+    best.into_iter().map(|(i, (_, c))| (i, c)).collect()
 }
 
 /// The cheapest path from `from` to `to` by `step_cost`, over `allowed` tiles: the tiles after
@@ -160,13 +169,14 @@ pub fn path_by(
     if from == to {
         return Some((Vec::new(), 0.0));
     }
-    let mut best: BTreeMap<usize, f64> = BTreeMap::new();
+    let mut best: BTreeMap<usize, (i64, f64)> = BTreeMap::new();
     let mut before: BTreeMap<usize, usize> = BTreeMap::new();
     let mut heap = BinaryHeap::new();
-    best.insert(from, 0.0);
-    heap.push(Entry(0.0, from));
-    while let Some(Entry(c, i)) = heap.pop() {
-        if best.get(&i).is_some_and(|&b| c > b) {
+    best.insert(from, (0, 0.0));
+    heap.push(Entry(0, from));
+    while let Some(Entry(g, i)) = heap.pop() {
+        let (bg, c) = best[&i];
+        if g > bg {
             continue;
         }
         if i == to {
@@ -175,15 +185,16 @@ pub fn path_by(
         for j in neighbours(w, i) {
             let Some(step) = cost(i, j) else { continue };
             let nc = c + step;
-            if best.get(&j).is_some_and(|&b| b <= nc) {
+            let ng = grid(nc);
+            if best.get(&j).is_some_and(|&(b, _)| b <= ng) {
                 continue;
             }
-            best.insert(j, nc);
+            best.insert(j, (ng, nc));
             before.insert(j, i);
-            heap.push(Entry(nc, j));
+            heap.push(Entry(ng, j));
         }
     }
-    let cost = *best.get(&to)?;
+    let cost = best.get(&to)?.1;
     let mut tiles = vec![to];
     while let Some(&p) = before.get(tiles.last()?) {
         if p == from {

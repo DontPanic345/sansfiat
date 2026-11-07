@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::data::*;
-use crate::land::{neighbours, passable, step_cost, steps};
+use crate::land::{grid, neighbours, passable, step_cost, steps};
 use crate::market::{take, total, Basket};
 use crate::world::World;
 
@@ -81,7 +81,7 @@ pub fn stride(w: &World, from: usize, path: &[usize], labour: f64, slack: f64) -
     let mut taken = 0;
     for &next in path {
         let Some(cost) = step_cost(w, at, next) else { break };
-        if cost > left + slack {
+        if cost > left + slack + 1e-9 {
             break;
         }
         left -= cost;
@@ -125,7 +125,7 @@ impl Walks {
             // Territories are small: a scan beats a heap.
             let mut next: Option<usize> = None;
             for k in 0..n {
-                if !done[k] && cost[k].is_finite() && next.is_none_or(|b| cost[k] < cost[b]) {
+                if !done[k] && cost[k].is_finite() && next.is_none_or(|b| grid(cost[k]) < grid(cost[b])) {
                     next = Some(k);
                 }
             }
@@ -137,7 +137,7 @@ impl Walks {
                     continue;
                 }
                 let Some(step) = step_cost(w, territory[k], j) else { continue };
-                if cost[k] + step < cost[m] {
+                if !cost[m].is_finite() || grid(cost[k] + step) < grid(cost[m]) {
                     cost[m] = cost[k] + step;
                     before[m] = Some(k);
                 }

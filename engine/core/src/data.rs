@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 // A day is one person's labour for one day; a turn is a year of `CLAN.work` days, the days a person
 // gives (`labour.md`). Every number's doc says its unit.
 
-/// The days a bare plains step takes: 1 until the day becomes the step's unit.
-pub const DAY: f64 = 1.0;
+/// The days a bare plains step takes, so a trail on flat land (`TRAIL.flat` of it) takes one day.
+/// Every cost and labour is written as its old number times `DAY`, every food a day over `DAY`.
+pub const DAY: f64 = 4.0 / 3.0;
 
 /// The foods. Only food exists for now; the market library trades these.
 pub const GOODS: [&str; 5] = ["game", "grain", "fruit", "fish", "shellfish"];
@@ -41,13 +42,43 @@ pub const MARSH: usize = 7;
 /// is barren and costs 2 to enter: clans route round it, not through it (owner note 1).
 pub const TERRAIN: [Terrain; 8] = [
     Terrain { name: "sea", color: "#2b5d8a", land: false, move_cost: None, food: [0.0; N] },
-    Terrain { name: "coast", color: "#c9b77a", land: true, move_cost: Some(1.0), food: [1.0, 0.0, 0.0, 4.0, 3.0] },
-    Terrain { name: "plains", color: "#9cbf5a", land: true, move_cost: Some(1.0), food: [3.0, 4.0, 0.0, 0.0, 0.0] },
-    Terrain { name: "forest", color: "#3f7a3a", land: true, move_cost: Some(2.0), food: [3.0, 0.0, 4.0, 0.0, 0.0] },
-    Terrain { name: "hills", color: "#8a7a5c", land: true, move_cost: Some(2.0), food: [2.0, 0.0, 1.0, 0.0, 0.0] },
+    Terrain {
+        name: "coast",
+        color: "#c9b77a",
+        land: true,
+        move_cost: Some(1.0 * DAY),
+        food: [1.0, 0.0, 0.0, 4.0, 3.0],
+    },
+    Terrain {
+        name: "plains",
+        color: "#9cbf5a",
+        land: true,
+        move_cost: Some(1.0 * DAY),
+        food: [3.0, 4.0, 0.0, 0.0, 0.0],
+    },
+    Terrain {
+        name: "forest",
+        color: "#3f7a3a",
+        land: true,
+        move_cost: Some(2.0 * DAY),
+        food: [3.0, 0.0, 4.0, 0.0, 0.0],
+    },
+    Terrain {
+        name: "hills",
+        color: "#8a7a5c",
+        land: true,
+        move_cost: Some(2.0 * DAY),
+        food: [2.0, 0.0, 1.0, 0.0, 0.0],
+    },
     Terrain { name: "mountain", color: "#6e6a73", land: false, move_cost: None, food: [0.0; N] },
-    Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(2.0), food: [0.0; N] },
-    Terrain { name: "marsh", color: "#5b8c78", land: true, move_cost: Some(3.0), food: [2.0, 2.0, 0.0, 4.0, 3.0] },
+    Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(2.0 * DAY), food: [0.0; N] },
+    Terrain {
+        name: "marsh",
+        color: "#5b8c78",
+        land: true,
+        move_cost: Some(3.0 * DAY),
+        food: [2.0, 2.0, 0.0, 4.0, 3.0],
+    },
 ];
 
 /// The map sizes, by name: the radius of the hex.
@@ -81,9 +112,9 @@ pub struct MapRules {
     pub shadow_reach: i32,
     pub shadow_weight: f64,
     /// Hidden trail costs, as `(value, weight)`: forest, hills, the mountain's cost (days a step), and its bridge span (hex steps).
-    pub forest_cost: [(u8, u32); 2],
-    pub hills_cost: [(u8, u32); 2],
-    pub mountain_cost: u8,
+    pub forest_cost: [(f64, u32); 2],
+    pub hills_cost: [(f64, u32); 2],
+    pub mountain_cost: f64,
     pub mountain_span: [(Option<u8>, u32); 3],
     /// River sources tried (per small map, never below `rivers_floor`), the steps of land a
     /// source must be from water (fewer where the map's land isn't that deep: one less than its
@@ -141,9 +172,9 @@ pub const MAP: MapRules = MapRules {
     desert_share: 0.2,
     shadow_reach: 5,
     shadow_weight: 0.25,
-    forest_cost: [(1, 1), (2, 1)],
-    hills_cost: [(1, 1), (2, 2)],
-    mountain_cost: 3,
+    forest_cost: [(1.0 * DAY, 1), (2.0 * DAY, 1)],
+    hills_cost: [(1.0 * DAY, 1), (2.0 * DAY, 2)],
+    mountain_cost: 3.0 * DAY,
     mountain_span: [(Some(1), 1), (Some(2), 1), (None, 8)],
     rivers: 16,
     rivers_floor: 3,
@@ -184,7 +215,7 @@ pub struct RiverRules {
     pub cross: f64,
 }
 
-pub const RIVER: RiverRules = RiverRules { cross: 2.0 };
+pub const RIVER: RiverRules = RiverRules { cross: 2.0 * DAY };
 
 /// `per_small` features per `SMALL_TILES` tiles, for a map of `tiles`, rounded.
 pub fn scaled(per_small: usize, tiles: usize) -> usize {
@@ -230,8 +261,13 @@ pub struct TrailRules {
 /// share ~225, while a worked tile carries ~70 (a quarter over ~110): `on` 110 trails most homes
 /// and shared routes and under a third of the worked tiles; `off` 90 lets a trail ride out a dip
 /// without keeping the ones once worn.
-pub const TRAIL: TrailRules =
-    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)], flat: 0.75 };
+pub const TRAIL: TrailRules = TrailRules {
+    keep: 0.9,
+    on: 110.0,
+    off: 90.0,
+    work: [(FOREST, 2.0 * DAY), (HILLS, 3.0 * DAY), (MOUNTAIN, 6.0 * DAY)],
+    flat: 0.75,
+};
 
 pub struct DepletionRules {
     /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
@@ -300,19 +336,19 @@ pub struct MarketRules {
 pub const MARKET: MarketRules = MarketRules {
     form_after: 20,
     spacing: 6,
-    reach: 3.0,
-    reach_walk: 14.0,
+    reach: 3.0 * DAY,
+    reach_walk: 14.0 * DAY,
     fade: 0.9,
     min_attendance: 0.5,
     carry: 0.2,
     shed: 1.0,
-    gather_bonus: 8.0,
-    desire: 3.0,
-    company: 1.0,
+    gather_bonus: 8.0 * DAY,
+    desire: 3.0 * DAY,
+    company: 1.0 * DAY,
     company_cap: 6,
-    switch_margin: 1.0,
+    switch_margin: 1.0 * DAY,
     keep_turns: 5,
-    stay_margin: 3.0,
+    stay_margin: 3.0 * DAY,
     surplus_at: 0.1,
 };
 
@@ -410,8 +446,8 @@ pub const CLAN: ClanRules = ClanRules {
     seeds: 3,
     start_pop: 6.0,
     min_landmass: 30,
-    work: 3.5,
-    harvest_labour: 1.0,
+    work: 3.5 * DAY,
+    harvest_labour: 1.0 * DAY,
     take_rate: 0.5,
     surplus_target: 2.0,
     diet_share: 0.4,
@@ -455,7 +491,7 @@ pub struct CivRules {
 }
 
 pub const CIV: CivRules =
-    CivRules { endowment: [0.0, 20.0, 0.0, 0.0, 0.0], bridge_span: 1, levy: 0.2, store_cap: 60.0, pull: 3.0 };
+    CivRules { endowment: [0.0, 20.0, 0.0, 0.0, 0.0], bridge_span: 1, levy: 0.2, store_cap: 60.0, pull: 3.0 * DAY };
 
 pub struct ScoutRules {
     /// People a scout is made with, from the civ's clans, one each.
@@ -485,7 +521,8 @@ pub struct ScoutRules {
 // AI's idle scouts loses a person on medium 9). Rich 1.5 passed over ground that only just fed a scout, and it
 // starved beside it; 1.2 takes it. Low 1.5 and fed 2.5 leave the errand later and come back sooner than 2 and 4:
 // the same lives for a third fewer turns off the errand. Two people: one lost 2 to 8 of 28 at every setting.
-pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 1.2 };
+pub const SCOUT: ScoutRules =
+    ScoutRules { people: 2, reveal: 1.0 * DAY, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 1.2 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's
@@ -548,7 +585,7 @@ pub struct ClaimRules {
 // The floor 0.05 lets three guards hold the ring around the clans' homes near the capital; 0.1 held 13 tiles a
 // civ, 0.05 holds 16 and wins 14 of 21 solo gains (canvas.md). Ring 1 and reach 4 keep the
 // stand-in near; ring 2 or reach 6 claimed more than the guard holds and the solo gain fell.
-pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05, ai_ring: 1, ai_reach: 4 };
+pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05 * DAY, ai_ring: 1, ai_reach: 4 };
 
 /// The guard: the people a civ keeps on its claim at its capital (`units/guard.rs`, `claim.rs`).
 pub struct GuardRules {
@@ -569,7 +606,7 @@ pub struct GuardRules {
 }
 
 // Inside 0.02 (a tenth of a camp's) and keep_turns 1, so the store still gives (canvas.md).
-pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5, inside: 0.02, keep_turns: 1.0 };
+pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5 * DAY, inside: 0.02, keep_turns: 1.0 };
 
 pub struct UnitRules {
     /// Days a person a turn: one person's work: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
@@ -610,7 +647,7 @@ pub struct UnitRules {
 }
 
 pub const UNIT: UnitRules = UnitRules {
-    labour: 3.5,
+    labour: 3.5 * DAY,
     food: 1.0,
     hungry_turns: 3,
     min_clan: 2.0,
@@ -618,12 +655,12 @@ pub const UNIT: UnitRules = UnitRules {
     first: 3,
     pack: 5.0,
     carry: 3.0,
-    forage: 0.5,
-    pillage: 1.0,
+    forage: 0.5 / DAY,
+    pillage: 1.0 / DAY,
     fallow: 5,
     post: 3,
-    guarding: 1.0,
-    guard: 0.1,
+    guarding: 1.0 * DAY,
+    guard: 0.1 * DAY,
     inside: 0.2,
     zone: 2,
 };

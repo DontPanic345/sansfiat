@@ -129,18 +129,20 @@ fn hidden_costs_follow_the_terrain() {
     for seed in SEEDS {
         for t in made(33, seed) {
             match t.terrain {
-                FOREST => assert!(matches!(t.trail_cost, Some(c) if c == 1.0 || c == 2.0) && t.span.is_none()),
+                FOREST => {
+                    assert!(matches!(t.trail_cost, Some(c) if c == 1.0 * DAY || c == 2.0 * DAY) && t.span.is_none())
+                }
                 HILLS => {
-                    assert!(matches!(t.trail_cost, Some(c) if c == 1.0 || c == 2.0) && t.span.is_none());
+                    assert!(matches!(t.trail_cost, Some(c) if c == 1.0 * DAY || c == 2.0 * DAY) && t.span.is_none());
                     hills += 1;
-                    easy += (t.trail_cost == Some(1.0)) as usize;
+                    easy += (t.trail_cost == Some(1.0 * DAY)) as usize;
                 }
                 MOUNTAIN => {
                     mountains += 1;
                     match t.span {
                         Some(s) => {
                             assert!(s == 1 || s == 2);
-                            assert_eq!(t.trail_cost, Some(3.0));
+                            assert_eq!(t.trail_cost, Some(3.0 * DAY));
                             crossable += 1;
                         }
                         None => assert_eq!(t.trail_cost, None),
@@ -180,8 +182,8 @@ fn step_cost_ignores_the_hidden_rolls() {
     let (from, i) = (common::at(1, 0), common::at(1, 1));
     w.tiles[i].terrain = FOREST;
     let base = step_cost(&w, from, i);
-    assert_eq!(base, Some(2.0));
-    for (cost, span) in [(Some(1.0), None), (Some(3.0), Some(2)), (None, Some(1))] {
+    assert_eq!(base, Some(2.0 * DAY));
+    for (cost, span) in [(Some(1.0 * DAY), None), (Some(3.0 * DAY), Some(2)), (None, Some(1))] {
         w.tiles[i].trail_cost = cost;
         w.tiles[i].span = span;
         assert_eq!(step_cost(&w, from, i), base);
@@ -189,17 +191,17 @@ fn step_cost_ignores_the_hidden_rolls() {
     // Worn trails still bring forest and hills down to their hidden cost.
     for terrain in [FOREST, HILLS] {
         w.tiles[i].terrain = terrain;
-        w.tiles[i].trail_cost = Some(1.0);
+        w.tiles[i].trail_cost = Some(1.0 * DAY);
         w.tiles[i].trail = true;
-        assert_eq!(step_cost(&w, from, i), Some(1.0));
+        assert_eq!(step_cost(&w, from, i), Some(1.0 * DAY));
     }
 }
 
 #[test]
 fn mountains_are_not_land_and_split_landmasses() {
     assert!(!TERRAIN[MOUNTAIN].land && TERRAIN[MOUNTAIN].move_cost.is_none());
-    assert!(TERRAIN[DESERT].land && TERRAIN[DESERT].move_cost == Some(2.0));
-    assert!(TERRAIN[MARSH].land && TERRAIN[MARSH].move_cost == Some(3.0));
+    assert!(TERRAIN[DESERT].land && TERRAIN[DESERT].move_cost == Some(2.0 * DAY));
+    assert!(TERRAIN[MARSH].land && TERRAIN[MARSH].move_cost == Some(3.0 * DAY));
     assert_eq!(TERRAIN[DESERT].food, [0.0; N]);
     let tiles = made(16, 1);
     let masses = map::landmasses(&tiles, 16);

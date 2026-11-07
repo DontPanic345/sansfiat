@@ -129,7 +129,7 @@ fn routed() -> (World, u32, usize, usize) {
     let cap = capital(s.world());
     let line = ray(s.world(), cap, 10);
     for (k, &i) in line.iter().enumerate() {
-        s.paint(i, if k % 2 == 0 { FOREST } else { HILLS }, Some(1.0), None);
+        s.paint(i, if k % 2 == 0 { FOREST } else { HILLS }, Some(1.0 * DAY), None);
     }
     let food = line[1];
     s.food(food, GRAIN, 60.0);

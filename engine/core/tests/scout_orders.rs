@@ -135,8 +135,8 @@ fn search_view_names_the_mountain_a_range_leaves_and_what_it_costs_through() {
         .into_iter()
         .find(|&y| y != p && y != a && y != b && y != c && y != target && y != cap && y != q)
         .expect("a tile beside the detour");
-    s.paint(b, MOUNTAIN, Some(MAP.mountain_cost as f64), Some(1));
-    s.paint(off, MOUNTAIN, Some(MAP.mountain_cost as f64), Some(1));
+    s.paint(b, MOUNTAIN, Some(MAP.mountain_cost), Some(1));
+    s.paint(off, MOUNTAIN, Some(MAP.mountain_cost), Some(1));
     for t in [p, q] {
         s.paint(t, HILLS, None, None);
     }
@@ -159,12 +159,23 @@ fn search_view_names_the_mountain_a_range_leaves_and_what_it_costs_through() {
     assert!(view.left.len() <= 10);
 }
 
-/// Small 9 to the rival, the errand the search order is judged on: the search's `next` holds the open
+/// On each retro map to the rival, the errand the search order is judged on (the maps whose search
+/// has open mountains; the pre-game's picks move with every rule, so none is named): the search's `next` holds the open
 /// mountains (cost through below the known route's) in best-case order, and every mountain `left`
 /// costs at least the known route through it. The numbers are what `relay/specs/153/search.md` shows.
 #[test]
-fn search_view_on_small_9_to_the_rival_orders_its_open_mountains_by_best_case() {
-    let mut s = Stage::retro("small", 9).unwrap();
+fn search_view_to_the_rival_orders_its_open_mountains_by_best_case() {
+    let mut tried = 0;
+    for (size, seeds) in engine::stage::RETRO {
+        for &seed in seeds {
+            tried += search_view_on(size, seed) as usize;
+        }
+    }
+    assert!(tried > 0, "some retro map's search has open mountains to try");
+}
+
+fn search_view_on(size: &str, seed: u32) -> bool {
+    let mut s = Stage::retro(size, seed).unwrap();
     let me = *s.world().civs.keys().next().unwrap();
     s.lead(me).unwrap();
     let w0 = s.world();
@@ -192,11 +203,14 @@ fn search_view_on_small_9_to_the_rival_orders_its_open_mountains_by_best_case() 
         through(m).unwrap() + walk
     };
     let open: Vec<usize> = view.next.iter().copied().filter(|&m| w.tiles[m].terrain == MOUNTAIN).collect();
-    assert!(!open.is_empty(), "the search has open mountains to try");
+    if open.is_empty() {
+        return false;
+    }
     assert!(open.iter().all(|&m| through(m).unwrap() < known - 1e-9), "every mountain tried is open");
     let bests: Vec<f64> = open.iter().map(|&m| best(m)).collect();
     assert!(bests.windows(2).all(|p| p[0] <= p[1] + 1e-9), "mountains in best-case order: {bests:?}");
     assert!(view.left.iter().all(|&(m, x)| x >= known - 1e-9 && (x - through(m).unwrap()).abs() < 1e-9));
+    true
 }
 
 #[test]

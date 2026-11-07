@@ -48,9 +48,9 @@ pub(super) fn tile_cost(w: &World, civ: u32, j: usize, possible: bool) -> Option
     let hidden = match t.terrain {
         FOREST | HILLS => {
             let pairs = if t.terrain == FOREST { MAP.forest_cost } else { MAP.hills_cost };
-            Some(pairs.iter().map(|p| f64::from(p.0)).fold(f64::INFINITY, f64::min))
+            Some(pairs.iter().map(|p| p.0).fold(f64::INFINITY, f64::min))
         }
-        MOUNTAIN if mountain_may_bridge() => Some(MAP.mountain_cost as f64),
+        MOUNTAIN if mountain_may_bridge() => Some(MAP.mountain_cost),
         _ => None,
     };
     match hidden {

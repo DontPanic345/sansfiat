@@ -260,7 +260,7 @@ fn a_camp_of_six_marches_as_far_in_a_turn_as_a_camp_of_two() {
     assert_eq!(steps(&w2, a, at_big(-4, 3)), 3, "three plains steps on 3.5 labour");
     // A march that isn't done leaves nothing: neither forages nor supplies.
     assert_eq!(w2.civs[&red].army.resupplied, 0.0);
-    assert_eq!(units::camp(&w6, red).unwrap().banked, 0.5);
+    assert!((units::camp(&w6, red).unwrap().banked - 0.5 * DAY).abs() < 1e-9);
 }
 
 #[test]
@@ -275,7 +275,7 @@ fn a_far_camps_line_costs_more_and_carries_less() {
         let (path, cost, carry) = units::line(&w, id).unwrap();
         assert_eq!(path.len() as i32, k);
         assert_eq!(*path.last().unwrap(), cap);
-        assert_eq!(cost, 2.0 * f64::from(k));
+        assert!((cost - 2.0 * f64::from(k) * DAY).abs() < 1e-9);
         assert!((carry - 3.0 * UNIT.labour * UNIT.carry / cost).abs() < 1e-9);
         seen.push((cost, carry, units::cut_off(&w, id)));
     }
@@ -400,9 +400,9 @@ fn pillage_yields_more_than_forage() {
         (a.foraged, a.pillaged, w.tiles[t].fallow)
     };
     let (forage, none, fallow) = take(false);
-    assert!((forage - 3.5 * 3.0 * UNIT.forage).abs() < 1e-9 && none == 0.0 && fallow > 0);
+    assert!((forage - 3.5 * 3.0 * UNIT.forage * DAY).abs() < 1e-9 && none == 0.0 && fallow > 0);
     let (none, pillage, fallow) = take(true);
-    assert!((pillage - 3.5 * 3.0 * UNIT.pillage).abs() < 1e-9 && none == 0.0 && fallow > 0);
+    assert!((pillage - 3.5 * 3.0 * UNIT.pillage * DAY).abs() < 1e-9 && none == 0.0 && fallow > 0);
     assert!(pillage > forage);
 }
 
@@ -765,7 +765,7 @@ fn guarding_costs_labour_only_when_deployed() {
         w.civs[&ids[0]].army.resupplied
     };
     let (off, on) = (supplied(false), supplied(true));
-    let (cost, need) = (2.0 * 3.0, 3.0 * UNIT.food);
+    let (cost, need) = (2.0 * 3.0 * DAY, 3.0 * UNIT.food);
     assert!((off - (3.0 * UNIT.labour * UNIT.carry / cost).min(pack_total(3.0))).abs() < 1e-9, "{off}");
     assert!((on - (3.0 * (UNIT.labour - UNIT.guarding) * UNIT.carry / cost)).abs() < 1e-9, "{on}");
     assert!(on < off && on + 1e-9 >= need, "guarding leaves less, but enough to eat: {on} {off}");

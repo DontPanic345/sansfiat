@@ -37,7 +37,7 @@ async function selectKey(page, key, i) {
 }
 
 // The seed the page's checks run on, and the seed the hold runs on.
-const SEED = 6;
+const SEED = 3;
 // The hold's map: seed 4. On seed 7 the camp's march starves ten warriors down to four, too few to hold the
 // ring (the zone holds one tile a warrior), so the cut never comes; seed 4 is where it does.
 const HOLD_SEED = hs >= 0 ? Number(args[hs + 1]) : 4;
