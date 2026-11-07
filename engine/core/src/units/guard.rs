@@ -5,10 +5,9 @@
 //! warriors do.
 
 use super::{disband, take_people, Unit, UnitState, EPS};
-use crate::actors::Actor;
+use crate::actors::{self, Actor};
 use crate::claim;
 use crate::data::*;
-use crate::market::{take, total};
 use crate::world::World;
 
 /// Raises up to `n` of the guard's people for `civ`: one person from each of the `n` biggest clans
@@ -47,18 +46,10 @@ pub(super) fn turn(w: &mut World, id: u32) {
         let u = &w.units[&id];
         (u.civ, u.people * UNIT.food)
     };
-    let mut got = total(&take(&mut w.civs.get_mut(&civ).unwrap().store, need));
     // What the store lacks, the civ's clans give from their own stores, biggest first: the guard
     // are their people.
-    let mut kin: Vec<(f64, u32)> =
-        w.clans.values().filter(|c| c.civ == Some(civ)).map(|c| (total(&c.actor.store), c.id)).collect();
-    kin.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
-    for (_, cid) in kin {
-        if got + EPS >= need {
-            break;
-        }
-        got += total(&take(&mut w.clans.get_mut(&cid).unwrap().actor.store, need - got));
-    }
+    let kin = w.clans.values_mut().filter(|c| c.civ == Some(civ)).map(|c| (c.id, &mut c.actor.store));
+    let got = actors::meal(need, &mut w.civs.get_mut(&civ).unwrap().store, kin);
     let fed = got + EPS >= need;
     let u = w.units.get_mut(&id).unwrap();
     u.hungry = if fed { 0 } else { u.hungry + 1 };

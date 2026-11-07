@@ -5,8 +5,9 @@
 
 use std::collections::BTreeMap;
 
+use super::forage::Ladder;
 use super::line::{cut_by, cut_by_rival, cut_off, cutter, line, route, walkable};
-use super::{disband, name_of, rival_of, room, strip, supply, surrender, Unit, EPS};
+use super::{disband, name_of, rival_of, room, surrender, Unit, EPS};
 use crate::actors::{connected, divide, stride, Route, Walks};
 use crate::data::*;
 use crate::events::{Event, EventKind};
@@ -207,7 +208,7 @@ pub(super) fn hold(w: &mut World) -> BTreeMap<u32, f64> {
 /// eat.
 pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
     let (civ, people) = (w.units[&id].civ, w.units[&id].people);
-    let mut left = left;
+    let mut ladder = Ladder::new(left);
 
     // The zone held, and when it is first all held.
     let tile = w.units[&id].home;
@@ -276,8 +277,7 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
     }
     if (once_forage && !rival) || (once_pillage && rival) {
         let rate = if rival { UNIT.pillage } else { UNIT.forage };
-        let (used, food) = strip(w, id, left, room(&w.units[&id]), rate);
-        left -= used;
+        let food = ladder.strip(w, id, room(&w.units[&id]), rate);
         if rival {
             pillaged += food;
         } else {
@@ -285,16 +285,13 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
         }
     }
     if once_supply {
-        let (used, food) = supply(w, id, left, room(&w.units[&id]));
-        left -= used;
-        brought += food;
+        brought += ladder.supply(w, id, room(&w.units[&id]));
     }
     // Auto-forage covers what eating needs this turn that the pack doesn't.
     if cs(w, id).auto_forage {
         let short = (need - total(&w.units[&id].store)).max(0.0);
         let rate = if rival { UNIT.pillage } else { UNIT.forage };
-        let (used, food) = strip(w, id, left, short.min(room(&w.units[&id])), rate);
-        left -= used;
+        let food = ladder.strip(w, id, short.min(room(&w.units[&id])), rate);
         if rival {
             pillaged += food;
         } else {
@@ -303,11 +300,8 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
     }
     // Auto-supply covers what eating needs that foraging didn't, then fills the pack.
     if cs(w, id).auto_supply {
-        let (used, food) = supply(w, id, left, room(&w.units[&id]));
-        left -= used;
-        brought += food;
+        brought += ladder.supply(w, id, room(&w.units[&id]));
     }
-    let _ = left;
 
     {
         let a = &mut w.civs.get_mut(&civ).unwrap().army;

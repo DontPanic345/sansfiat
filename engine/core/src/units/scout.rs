@@ -3,9 +3,10 @@
 //! building the trails the route needs. Its labour is its people's, spent on steps, reveals and
 //! trails, after it has fed itself.
 
+use super::forage::Ladder;
 use super::line::{line, walkable};
 use super::search::{route_plan, search, walk_costs};
-use super::{graze_at, pack_cap, rival_of, room, supply, EPS};
+use super::{pack_cap, rival_of, room, EPS};
 use crate::actors::{stride, walk_cost, Route};
 use crate::claim;
 use crate::data::*;
@@ -96,14 +97,14 @@ pub(super) fn sc_mut(w: &mut World, id: u32) -> &mut ScoutState {
 /// Puts a scout's walk on `path` into its labour `left`: steps taken while each costs no more than
 /// what is left. A step part-paid carries to next turn as `banked`. Returns whether it reached the
 /// end of the path.
-pub(super) fn march(w: &mut World, id: u32, path: &[usize], left: &mut f64, banked: &mut f64) -> bool {
-    let (taken, rest) = stride(w, w.units[&id].home, path, *left, EPS);
+pub(super) fn march(w: &mut World, id: u32, path: &[usize], ladder: &mut Ladder, banked: &mut f64) -> bool {
+    let (taken, rest) = stride(w, w.units[&id].home, path, ladder.left, EPS);
     let people = w.units[&id].people;
     for &t in &path[..taken] {
         w.tiles[t].traffic += people;
         w.tiles[t].used = true;
     }
-    *left = rest;
+    ladder.left = rest;
     let u = w.units.get_mut(&id).unwrap();
     if taken > 0 {
         let at = path[taken - 1];
@@ -114,8 +115,8 @@ pub(super) fn march(w: &mut World, id: u32, path: &[usize], left: &mut f64, bank
     if done {
         *banked = 0.0;
     } else {
-        *banked = *left;
-        *left = 0.0;
+        *banked = ladder.left;
+        ladder.left = 0.0;
     }
     done
 }
@@ -252,17 +253,13 @@ fn round_plan(w: &World, id: u32, at: usize, labour: f64, want: f64, line_price:
 /// steps for up to `want` of food, richest spare first, paying each walk there and back from its
 /// labour `left`, and taking only what each tile spares. A tile that costs more labour a unit of food
 /// than the line does is left while the store has food to bring. Returns the food taken.
-fn forage_round(w: &mut World, id: u32, left: &mut f64, want: f64) -> f64 {
+fn forage_round(w: &mut World, id: u32, ladder: &mut Ladder, want: f64) -> f64 {
     let home = w.units[&id].home;
     let line_price = if sc(w, id).auto_supply { line_price(w, id) } else { None };
     let want = want.min(room(&w.units[&id]));
     let mut got = 0.0;
-    for Take { tile, walk, food, rate } in round_plan(w, id, home, *left, want, line_price) {
-        let (used, taken) = graze_at(w, id, tile, food / rate, food, rate);
-        if taken > 0.0 {
-            *left -= walk + used;
-            got += taken;
-        }
+    for Take { tile, walk, food, rate } in round_plan(w, id, home, ladder.left, want, line_price) {
+        got += ladder.graze_walked(w, id, tile, walk, food, rate);
     }
     got
 }
@@ -298,9 +295,8 @@ pub fn rich_ground(w: &World, id: u32) -> Option<usize> {
 
 /// Brings up to `want` of food along the line into the pack on `left` labour, the line's tiles
 /// counting as walked.
-fn bring(w: &mut World, id: u32, left: &mut f64, want: f64) -> f64 {
-    let (used, food) = supply(w, id, *left, want);
-    *left -= used;
+fn bring(w: &mut World, id: u32, ladder: &mut Ladder, want: f64) -> f64 {
+    let food = ladder.supply(w, id, want);
     if food > 0.0 {
         let people = w.units[&id].people;
         for &t in line(w, id).iter().flat_map(|(p, _, _)| p) {
@@ -391,7 +387,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     w.units.get_mut(&id).unwrap().spoil();
     let people = w.units[&id].people;
     let need = people * UNIT.food;
-    let mut left = people * UNIT.labour + w.units[&id].banked;
+    let mut ladder = Ladder::new(people * UNIT.labour + w.units[&id].banked);
     let mut banked = 0.0;
     w.units.get_mut(&id).unwrap().banked = 0.0;
     let (mut by_forage, mut by_line) = (0.0, 0.0);
@@ -407,12 +403,10 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     if (once_forage && !here) || (once_pillage && here) {
         let rate = if here { UNIT.pillage } else { UNIT.forage };
         let home = w.units[&id].home;
-        let (used, food) = graze_at(w, id, home, left, room(&w.units[&id]), rate);
-        left -= used;
-        by_forage += food;
+        by_forage += ladder.graze(w, id, home, room(&w.units[&id]), rate);
     }
     if once_supply {
-        by_line += bring(w, id, &mut left, room(&w.units[&id]));
+        by_line += bring(w, id, &mut ladder, room(&w.units[&id]));
     }
 
     choose_ground(w, id);
@@ -423,7 +417,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
         let home = w.units[&id].home;
         if home != g {
             if let Some((p, _)) = super::line::path_between(w, home, g) {
-                march(w, id, &p, &mut left, &mut banked);
+                march(w, id, &p, &mut ladder, &mut banked);
             }
         }
     }
@@ -433,11 +427,11 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     let short = |w: &World| (need - total(&w.units[&id].store)).max(0.0).min(room(&w.units[&id]));
     if sc(w, id).auto_forage {
         let want = if wandering { room(&w.units[&id]) } else { short(w) };
-        by_forage += forage_round(w, id, &mut left, want);
+        by_forage += forage_round(w, id, &mut ladder, want);
     }
     if sc(w, id).auto_supply {
         let want = short(w);
-        by_line += bring(w, id, &mut left, want);
+        by_line += bring(w, id, &mut ladder, want);
     }
 
     // A routed scout fed to `SCOUT.fed` turns goes back to its errand next turn.
@@ -460,14 +454,14 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
 
     // Searches on what labour is left, or without a route marches to its destination; a wanderer does
     // neither.
-    let start = left;
+    let start = ladder.left;
     if wandering {
         if sc(w, id).route.is_some() {
             keep_route(w, id);
         }
         banked = banked.max(0.0);
     } else if sc(w, id).route.is_some() {
-        banked = search(w, id, &mut left, start);
+        banked = search(w, id, &mut ladder, start);
         keep_route(w, id);
     } else if let Some(dest) = sc(w, id).dest {
         // It walks to its destination and stays there: the destination is its errand until another
@@ -475,7 +469,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
         let home = w.units[&id].home;
         if home != dest {
             if let Some((p, _)) = super::line::path_between(w, home, dest) {
-                if march(w, id, &p, &mut left, &mut banked) {
+                if march(w, id, &p, &mut ladder, &mut banked) {
                     let at = w.at(dest);
                     w.note(id, format!("at {at}, foraging"));
                 }
@@ -484,7 +478,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     }
     // Auto-supply refills the pack to full on what the search left.
     if sc(w, id).auto_supply {
-        by_line += bring(w, id, &mut left, room(&w.units[&id]));
+        by_line += bring(w, id, &mut ladder, room(&w.units[&id]));
     }
     w.units.get_mut(&id).unwrap().banked = banked;
 
