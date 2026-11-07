@@ -460,9 +460,20 @@ pub struct ScoutRules {
     /// there and back paid from its labour. A scout on a long errand has no line to live off, and
     /// the tile it stands on is soon bare; one step more finds a tile that isn't.
     pub reach: usize,
+    /// Steps from its tile a scout looks for rich ground when it runs low: ground it can walk to where
+    /// a turn's foraging brings the most, so a scout far from its line finds a meal, not a march.
+    pub wander: usize,
+    /// Turns of eating in the pack under which a routed scout leaves its errand for rich ground.
+    pub low: f64,
+    /// Turns of eating in the pack at which a wandering scout is fed and goes back to its errand: the
+    /// gap between `low` and `fed` stops it leaving again the turn after it returns.
+    pub fed: f64,
+    /// Turns of eating a turn's foraging must bring for ground to count as rich: ground that only just
+    /// feeds a scout is left again as soon as it takes from it.
+    pub rich: f64,
 }
 
-pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1 };
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0, reach: 1, wander: 4, low: 2.0, fed: 4.0, rich: 1.5 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's

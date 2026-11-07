@@ -13,6 +13,7 @@
 mod ai;
 mod camp;
 pub mod fight;
+mod forage;
 pub mod guard;
 mod line;
 mod scout;
@@ -35,10 +36,11 @@ pub use ai::{ai, guard_order, post};
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
 pub use line::{cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, route, turns};
-pub use scout::ScoutState;
+pub use scout::{ground_worth, rich_ground, Hunger, ScoutState};
 pub use search::{route_plan, search_view, Plan, SearchView};
 
 use camp::{camp_march, camp_turn, hold};
+use forage::{graze_at, room, strip, supply};
 use scout::scout_turn;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -166,6 +168,8 @@ struct UnitFlat {
     still: u32,
     #[serde(default)]
     bows: bool,
+    #[serde(default)]
+    wander: Option<usize>,
 }
 
 impl From<Unit> for UnitFlat {
@@ -218,6 +222,7 @@ impl From<Unit> for UnitFlat {
             stack: camp.stack,
             still: camp.still,
             bows: camp.bows,
+            wander: scout.wander,
         }
     }
 }
@@ -255,6 +260,8 @@ impl From<UnitFlat> for Unit {
                 resupply: f.resupply,
                 forage: f.forage,
                 pillage: f.pillage,
+                wander: f.wander,
+                hunger: None,
             }),
             UnitKind::Guard => UnitState::Guard,
         };
@@ -705,61 +712,6 @@ pub fn disband_kind(w: &mut World, id: u32, n: Option<u32>, fighter: Option<Figh
 /// The civ whose land the camp stands on, if it isn't its own.
 pub(crate) fn rival_of(w: &World, u: &Unit) -> bool {
     claim::tile_civ(w, u.home).is_some_and(|c| c != u.civ)
-}
-
-/// Strips the unit's tile for up to `labour` of work, taking at most `room` of food into the
-/// pack at `rate` a unit of labour. Returns the labour used and the food taken; nothing when the
-/// tile is fallow or bare.
-fn strip(w: &mut World, id: u32, labour: f64, room: f64, rate: f64) -> (f64, f64) {
-    let tile = w.units[&id].home;
-    strip_at(w, id, tile, labour, room, rate)
-}
-
-/// As `strip`, of tile `tile`. It takes only the food it takes: each stock drops in proportion to
-/// what was taken, and the tile rests `ceil(UNIT.fallow × taken / held)` turns.
-fn strip_at(w: &mut World, id: u32, tile: usize, labour: f64, room: f64, rate: f64) -> (f64, f64) {
-    let t = &mut w.tiles[tile];
-    let held = total(&t.stock);
-    if t.fallow > 0 || held <= 0.0 || labour <= 0.0 || room <= 0.0 {
-        return (0.0, 0.0);
-    }
-    let food = (labour * rate).min(held).min(room);
-    if food <= EPS {
-        return (0.0, 0.0);
-    }
-    let share = food / held;
-    let got = t.stock.map(|s| s * share);
-    for (s, g) in t.stock.iter_mut().zip(got) {
-        *s = (*s - g).max(0.0);
-    }
-    t.fallow = (f64::from(UNIT.fallow) * share).ceil() as u32;
-    add(&mut w.units.get_mut(&id).unwrap().store, &got);
-    (food / rate, food)
-}
-
-/// Puts up to `labour` on the line for up to `want` of food from the store into the pack. Returns
-/// the labour used and the food brought.
-fn supply(w: &mut World, id: u32, labour: f64, want: f64) -> (f64, f64) {
-    let civ = w.units[&id].civ;
-    let Some((_, cost, _)) = line(w, id) else { return (0.0, 0.0) };
-    let held = total(&w.civs[&civ].store);
-    let mut food = want.min(held);
-    let mut used = 0.0;
-    if cost > 0.0 {
-        food = food.min(labour * UNIT.carry / cost);
-        used = food * cost / UNIT.carry;
-    }
-    if food <= EPS {
-        return (0.0, 0.0);
-    }
-    let got = take(&mut w.civs.get_mut(&civ).unwrap().store, food);
-    add(&mut w.units.get_mut(&id).unwrap().store, &got);
-    (used, food)
-}
-
-/// The room left in the camp's pack.
-fn room(u: &Unit) -> f64 {
-    (pack_cap(u.people) - total(&u.store)).max(0.0)
 }
 
 /// The `units` step, after `civs`: fallow tiles count down, each camp in id order spoils and

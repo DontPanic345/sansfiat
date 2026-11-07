@@ -357,6 +357,7 @@ fn order_move(w: &mut World, unit: u32, to: usize) {
     }
     if let Some(s) = u.scout_mut() {
         s.dest = dest;
+        s.wander = None;
         s.route = None;
         s.heard = false;
         s.blocked = false;
@@ -428,6 +429,7 @@ fn order_route(w: &mut World, unit: u32, route: Option<(usize, usize)>) {
     let Some(s) = w.units.get_mut(&unit).and_then(|u| u.scout_mut()) else { return };
     s.route = route;
     s.dest = None;
+    s.wander = None;
     s.heard = false;
     s.blocked = false;
     s.built = false;

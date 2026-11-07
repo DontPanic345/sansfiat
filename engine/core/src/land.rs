@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BinaryHeap};
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::map::{self, Tile};
+use crate::market::Basket;
 use crate::world::World;
 
 /// On-map neighbours of tile `i`, in `DIRS` order.
@@ -248,6 +249,31 @@ fn settle_caps(t: &mut Tile) {
     }
 }
 
+/// The yield a tile's food `f` sustains a turn: what it regrows, whatever its stock. A food that
+/// breeds regrows a quarter of its rate and restocks.
+pub fn yield_of(t: &Tile, f: usize) -> f64 {
+    let food = &FOOD[f];
+    let cap = t.cap[f];
+    if food.breeds {
+        (food.regen / 4.0 + food.restock) * cap
+    } else {
+        food.regen * cap
+    }
+}
+
+/// What a scout may take from a tile this turn: per food, the stock up to what the yield leaves after
+/// this turn's take. Nothing on a fallow tile.
+pub fn spare(t: &Tile) -> Basket {
+    let mut b = [0.0; N];
+    if t.fallow > 0 {
+        return b;
+    }
+    for (f, s) in b.iter_mut().enumerate() {
+        *s = t.stock[f].min((yield_of(t, f) - t.take[f]).max(0.0));
+    }
+    b
+}
+
 /// The `wear` step, after eating: each food on each tile takes its wear from this turn's take
 /// against its sustainable yield at its cap, the yield `regen × cap` (game breeds, so its most,
 /// `(regen / 4 + restock) × cap`). A take above the yield wears the food by `DEPLETION.rate` times
@@ -255,10 +281,10 @@ fn settle_caps(t: &mut Tile) {
 /// `DEPLETION.recover`. Wear stays in `0..=DEPLETION.max`, and the caps follow it.
 pub fn wear(w: &mut World) {
     for t in &mut w.tiles {
-        for (f, food) in FOOD.iter().enumerate() {
+        for f in 0..FOOD.len() {
             let cap = t.cap[f];
             let take = t.take[f];
-            let yielded = if food.breeds { (food.regen / 4.0 + food.restock) * cap } else { food.regen * cap };
+            let yielded = yield_of(t, f);
             let wear = if cap > 0.0 && take > yielded {
                 t.wear[f] + DEPLETION.rate * (take - yielded) / cap
             } else {

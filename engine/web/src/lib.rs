@@ -205,6 +205,12 @@ impl Sim {
                     row["plan"] = serde_json::json!({ "known": way(&plan.known), "possible": way(&plan.possible), "candidates": plan.candidates });
                 }
                 if u.kind() == UnitKind::Scout {
+                    let sc = u.scout();
+                    row["wander"] = sc.and_then(|s| s.wander).into();
+                    row["hunger"] = sc
+                        .and_then(|s| s.hunger)
+                        .map(|h| serde_json::json!({ "forage": h.forage, "line": h.line, "eats": h.eats, "cost": h.cost, "carry": h.carry }))
+                        .into();
                     row["search"] = units::search_view(w, u.id)
                         .map(|v| {
                             let left: Vec<_> = v.left.iter().map(|&(tile, through)| serde_json::json!({ "tile": tile, "through": through })).collect();

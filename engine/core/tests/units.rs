@@ -893,8 +893,8 @@ fn a_camp_cut_by_an_army_eats_its_pack_then_forages() {
 }
 
 #[test]
-fn a_unit_serialises_its_31_flat_fields_in_the_old_order_whatever_its_kind() {
-    const KEYS: [&str; 31] = [
+fn a_unit_serialises_its_32_flat_fields_in_the_old_order_whatever_its_kind() {
+    const KEYS: [&str; 32] = [
         "id",
         "civ",
         "kind",
@@ -926,6 +926,7 @@ fn a_unit_serialises_its_31_flat_fields_in_the_old_order_whatever_its_kind() {
         "stack",
         "still",
         "bows",
+        "wander",
     ];
     let (w, ids, _) = three();
     let camp = units::camp(&w, ids[0]).expect("a camp");

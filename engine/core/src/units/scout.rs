@@ -3,9 +3,9 @@
 //! building the trails the route needs. Its labour is its people's, spent on steps, reveals and
 //! trails, after it has fed itself.
 
-use super::line::{line, path_between, walkable};
-use super::search::{route_plan, search};
-use super::{rival_of, room, strip, strip_at, supply, EPS};
+use super::line::{line, walkable};
+use super::search::{route_plan, search, walk_costs};
+use super::{graze_at, pack_cap, rival_of, room, supply, EPS};
 use crate::actors::{stride, walk_cost, Route};
 use crate::claim;
 use crate::data::*;
@@ -13,6 +13,21 @@ use crate::events::{Event, EventKind};
 use crate::land;
 use crate::market::total;
 use crate::world::World;
+use std::collections::BTreeMap;
+
+/// What a scout's last turn brought against what it eats, when it went hungry: derived, rebuilt each turn
+/// and not saved.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Hunger {
+    /// Food its foraging brought, and its line.
+    pub forage: f64,
+    pub line: f64,
+    /// What it eats a turn.
+    pub eats: f64,
+    /// The line from where it stands: its cost and what it carries a turn, if one reaches it.
+    pub cost: Option<f64>,
+    pub carry: Option<f64>,
+}
 
 /// A scout's own state: its route (the tile it searches from and the tile it searches for), and what
 /// it has said about it.
@@ -36,6 +51,11 @@ pub struct ScoutState {
     pub resupply: bool,
     pub forage: bool,
     pub pillage: bool,
+    /// The tile it is going to forage at: rich ground. A routed scout leaves its errand for it while
+    /// it runs low; an idle scout waits there.
+    pub wander: Option<usize>,
+    /// Why it went hungry this turn (not saved).
+    pub hunger: Option<Hunger>,
 }
 
 impl ScoutState {
@@ -52,6 +72,8 @@ impl ScoutState {
             resupply: false,
             forage: false,
             pillage: false,
+            wander: None,
+            hunger: None,
         }
     }
 }
@@ -171,35 +193,43 @@ fn line_price(w: &World, id: u32) -> Option<f64> {
     (total(&w.civs[&civ].store) > EPS).then_some(cost / UNIT.carry)
 }
 
-/// The scout forages (pillages, on a rival's land) its own tile and the tiles within `SCOUT.reach`
-/// steps for up to `want` of food, richest first, paying each walk there and back from its labour
-/// `left`. A tile that costs more labour a unit of food than the line does is left while the store
-/// has food to bring. Returns the food taken.
-fn forage_round(w: &mut World, id: u32, left: &mut f64, want: f64) -> f64 {
-    let home = w.units[&id].home;
-    let line_price = if sc(w, id).auto_supply { line_price(w, id) } else { None };
-    let mut tiles: Vec<(f64, usize)> = near(w, home, SCOUT.reach)
+/// One tile's take in a foraging round: the walk to it and back, the food, and the rate it comes at.
+struct Take {
+    tile: usize,
+    walk: f64,
+    food: f64,
+    rate: f64,
+}
+
+/// The foraging round a scout standing on `at` would make with `labour`: its own tile and the tiles
+/// within `SCOUT.reach` steps it can walk to, richest spare first, up to `want` of food, each walk
+/// there and back paid from the labour. A tile that costs more labour a unit of food than
+/// `line_price` is left. The one costing `forage_round` takes and `rich_ground` values.
+fn round_plan(w: &World, id: u32, at: usize, labour: f64, want: f64, line_price: Option<f64>) -> Vec<Take> {
+    let costs = walk_costs(w, at);
+    let mut tiles: Vec<(f64, usize)> = near(w, at, SCOUT.reach)
         .into_iter()
-        .filter(|&t| t == home || walkable(w, t))
-        .map(|t| (total(&w.tiles[t].stock), t))
-        .filter(|&(held, t)| held > 0.0 && w.tiles[t].fallow == 0)
+        .filter(|&t| t == at || walkable(w, t))
+        .map(|t| (total(&land::spare(&w.tiles[t])), t))
+        .filter(|&(held, _)| held > 0.0)
         .collect();
     tiles.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
-    let mut got = 0.0;
+    let (mut left, mut got) = (labour, 0.0);
+    let mut plan = Vec::new();
     for (held, t) in tiles {
         let need = want - got;
-        if need <= EPS || *left <= EPS {
+        if need <= EPS || left <= EPS {
             break;
         }
-        let walk = if t == home {
+        let walk = if t == at {
             0.0
         } else {
-            match path_between(w, home, t) {
-                Some((_, cost)) => walk_cost(cost, 1.0),
+            match costs.get(&t) {
+                Some(&cost) => walk_cost(cost, 1.0),
                 None => continue,
             }
         };
-        if walk >= *left {
+        if walk >= left {
             continue;
         }
         let rate = if rival_tile(w, id, t) { UNIT.pillage } else { UNIT.forage };
@@ -207,18 +237,68 @@ fn forage_round(w: &mut World, id: u32, left: &mut f64, want: f64) -> f64 {
         if line_price.is_some_and(|p| price > p + EPS) {
             continue;
         }
-        let (used, food) = strip_at(w, id, t, *left - walk, need.min(room(&w.units[&id])), rate);
-        if food > 0.0 {
+        let food = ((left - walk) * rate).min(held).min(need);
+        if food <= EPS {
+            continue;
+        }
+        left -= walk + food / rate;
+        got += food;
+        plan.push(Take { tile: t, walk, food, rate });
+    }
+    plan
+}
+
+/// The scout forages (pillages, on a rival's land) its own tile and the tiles within `SCOUT.reach`
+/// steps for up to `want` of food, richest spare first, paying each walk there and back from its
+/// labour `left`, and taking only what each tile spares. A tile that costs more labour a unit of food
+/// than the line does is left while the store has food to bring. Returns the food taken.
+fn forage_round(w: &mut World, id: u32, left: &mut f64, want: f64) -> f64 {
+    let home = w.units[&id].home;
+    let line_price = if sc(w, id).auto_supply { line_price(w, id) } else { None };
+    let want = want.min(room(&w.units[&id]));
+    let mut got = 0.0;
+    for Take { tile, walk, food, rate } in round_plan(w, id, home, *left, want, line_price) {
+        let (used, taken) = graze_at(w, id, tile, food / rate, food, rate);
+        if taken > 0.0 {
             *left -= walk + used;
-            got += food;
+            got += taken;
         }
     }
     got
 }
 
+/// What a turn's foraging brings a scout standing on `at`: its whole labour on a round that fills its
+/// pack. The worth of ground.
+pub fn ground_worth(w: &World, id: u32, at: usize) -> f64 {
+    let u = &w.units[&id];
+    round_plan(w, id, at, u.people * UNIT.labour, pack_cap(u.people), None).iter().map(|t| t.food).sum()
+}
+
+/// The ground a scout would go to feed: among the tiles within `SCOUT.wander` steps that it can walk
+/// to, the nearest by walk cost where a turn's foraging brings at least `SCOUT.rich` turns of its
+/// eating, else the one that brings the most. `None` when nothing in range brings anything.
+pub fn rich_ground(w: &World, id: u32) -> Option<usize> {
+    let u = &w.units[&id];
+    let home = u.home;
+    let costs: BTreeMap<usize, f64> = walk_costs(w, home);
+    let rich = SCOUT.rich * u.people * UNIT.food;
+    let worth: Vec<(f64, usize, f64)> = near(w, home, SCOUT.wander)
+        .into_iter()
+        .filter(|&t| t == home || land::steps(w, home, t) as usize <= SCOUT.wander)
+        .filter_map(|t| {
+            let cost = if t == home { 0.0 } else { *costs.get(&t)? };
+            Some((cost, t, ground_worth(w, id, t)))
+        })
+        .collect();
+    let near_rich =
+        worth.iter().filter(|&&(_, _, v)| v + EPS >= rich).min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+    let best = worth.iter().filter(|&&(_, _, v)| v > EPS).max_by(|a, b| a.2.total_cmp(&b.2).then(b.1.cmp(&a.1)));
+    near_rich.or(best).map(|&(_, t, _)| t)
+}
+
 /// Brings up to `want` of food along the line into the pack on `left` labour, the line's tiles
 /// counting as walked.
-fn bring(w: &mut World, id: u32, left: &mut f64, want: f64) {
+fn bring(w: &mut World, id: u32, left: &mut f64, want: f64) -> f64 {
     let (used, food) = supply(w, id, *left, want);
     *left -= used;
     if food > 0.0 {
@@ -228,6 +308,7 @@ fn bring(w: &mut World, id: u32, left: &mut f64, want: f64) {
             w.tiles[t].used = true;
         }
     }
+    food
 }
 
 /// While a scout's route is settled (its trails built, or none needed), the tiles of the path it
@@ -243,10 +324,68 @@ fn keep_route(w: &mut World, id: u32) {
     }
 }
 
-/// One scout's turn: it spoils, walks home if it has no route, feeds itself (its one-shot orders,
-/// then foraging round it for what its pack lacks, then the line to fill the pack), searches on the
-/// labour left, and eats. Its people go hungry as a camp's do; a scout that starves to nothing is
-/// gone.
+/// Sets where a scout wanders to feed, and says so when it is somewhere new.
+fn wander_to(w: &mut World, id: u32, to: usize, text: impl Fn(&str, i32) -> String) {
+    sc_mut(w, id).wander = Some(to);
+    let n = land::steps(w, w.units[&id].home, to);
+    let at = w.at(to);
+    w.note(id, text(&at, n));
+}
+
+/// The start of a scout's feeding: whether it goes to rich ground, stays there or picks again.
+/// Ground is read before the scout forages, as the scout's own take lowers what it spares.
+fn choose_ground(w: &mut World, id: u32) {
+    let u = &w.units[&id];
+    let (people, home, hungry) = (u.people, u.home, u.hungry);
+    let eats = people * UNIT.food;
+    let pack = total(&u.store);
+    let s = sc(w, id);
+    let errand = s.route.is_some() || s.dest.is_some();
+    let (wander, dest) = (s.wander, s.dest);
+    let goal = match (s.route, dest) {
+        (Some((_, to)), _) => Some(to),
+        (None, d) => d,
+    };
+    let leaves = |at: &str, n: i32| match goal {
+        Some(_) if dest.is_none() => format!("leaves its route to forage at {at}, {n} steps away"),
+        _ => format!("leaves for {at}, {n} steps away"),
+    };
+    match (errand, wander) {
+        (true, None) => {
+            if pack < SCOUT.low * eats || hungry > 0 {
+                if let Some(g) = rich_ground(w, id) {
+                    wander_to(w, id, g, leaves);
+                }
+            }
+        }
+        (true, Some(g)) => {
+            if g == home && ground_worth(w, id, home) + EPS < SCOUT.rich * eats {
+                match rich_ground(w, id) {
+                    Some(n) if n != g => wander_to(w, id, n, leaves),
+                    _ => {}
+                }
+            }
+        }
+        (false, None) => {
+            if let Some(g) = rich_ground(w, id) {
+                wander_to(w, id, g, |at, _| format!("waits on rich ground at {at}"));
+            }
+        }
+        (false, Some(g)) => {
+            if g == home && ground_worth(w, id, home) + EPS < eats {
+                match rich_ground(w, id) {
+                    Some(n) if n != g => wander_to(w, id, n, |at, _| format!("waits on rich ground at {at}")),
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+/// One scout's turn: it spoils, feeds itself (its one-shot orders, then foraging round it for what its
+/// pack lacks, then the line to fill the pack), searches on the labour left, and eats. A scout that
+/// runs low leaves its errand for rich ground and comes back fed; an idle one waits on rich ground.
+/// Its people go hungry as a camp's do; a scout that starves to nothing is gone.
 pub(super) fn scout_turn(w: &mut World, id: u32) {
     let civ = w.units[&id].civ;
     w.units.get_mut(&id).unwrap().spoil();
@@ -255,6 +394,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     let mut left = people * UNIT.labour + w.units[&id].banked;
     let mut banked = 0.0;
     w.units.get_mut(&id).unwrap().banked = 0.0;
+    let (mut by_forage, mut by_line) = (0.0, 0.0);
 
     // One-shot orders, on this turn's labour.
     let (once_forage, once_pillage, once_supply) = {
@@ -266,32 +406,72 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     let here = rival_of(w, &w.units[&id]);
     if (once_forage && !here) || (once_pillage && here) {
         let rate = if here { UNIT.pillage } else { UNIT.forage };
-        let (used, _) = strip(w, id, left, room(&w.units[&id]), rate);
+        let home = w.units[&id].home;
+        let (used, food) = graze_at(w, id, home, left, room(&w.units[&id]), rate);
         left -= used;
+        by_forage += food;
     }
     if once_supply {
-        bring(w, id, &mut left, room(&w.units[&id]));
+        by_line += bring(w, id, &mut left, room(&w.units[&id]));
     }
+
+    choose_ground(w, id);
+    let wander = sc(w, id).wander;
+    let wandering = wander.is_some();
+    if let Some(g) = wander {
+        // It marches to rich ground first.
+        let home = w.units[&id].home;
+        if home != g {
+            if let Some((p, _)) = super::line::path_between(w, home, g) {
+                march(w, id, &p, &mut left, &mut banked);
+            }
+        }
+    }
+
     // It feeds itself first: auto-forage covers what eating needs that the pack doesn't, round the
-    // scout's tile, and auto-supply the rest of it along the line.
+    // scout's tile (a wanderer fills its pack), and auto-supply the rest of it along the line.
     let short = |w: &World| (need - total(&w.units[&id].store)).max(0.0).min(room(&w.units[&id]));
     if sc(w, id).auto_forage {
-        let want = short(w);
-        forage_round(w, id, &mut left, want);
+        let want = if wandering { room(&w.units[&id]) } else { short(w) };
+        by_forage += forage_round(w, id, &mut left, want);
     }
     if sc(w, id).auto_supply {
         let want = short(w);
-        bring(w, id, &mut left, want);
+        by_line += bring(w, id, &mut left, want);
     }
 
-    // Searches on what labour is left, or without a route marches to its destination.
+    // A routed scout fed to `SCOUT.fed` turns goes back to its errand next turn.
+    let errand = sc(w, id).route.is_some() || sc(w, id).dest.is_some();
+    if wandering && errand && total(&w.units[&id].store) + EPS >= SCOUT.fed * need {
+        let s = sc_mut(w, id);
+        s.wander = None;
+        let back = match (s.route, s.dest) {
+            (_, Some(d)) => Some(d),
+            _ => None,
+        };
+        match back {
+            Some(d) => {
+                let at = w.at(d);
+                w.note(id, format!("fed: back to {at}"));
+            }
+            None => w.note(id, "fed: back to its route".to_string()),
+        }
+    }
+
+    // Searches on what labour is left, or without a route marches to its destination; a wanderer does
+    // neither.
     let start = left;
-    if sc(w, id).route.is_some() {
+    if wandering {
+        if sc(w, id).route.is_some() {
+            keep_route(w, id);
+        }
+        banked = banked.max(0.0);
+    } else if sc(w, id).route.is_some() {
         banked = search(w, id, &mut left, start);
         keep_route(w, id);
     } else if let Some(dest) = sc(w, id).dest {
         let home = w.units[&id].home;
-        if let Some((p, _)) = path_between(w, home, dest) {
+        if let Some((p, _)) = super::line::path_between(w, home, dest) {
             if march(w, id, &p, &mut left, &mut banked) {
                 sc_mut(w, id).dest = None;
                 let at = w.at(dest);
@@ -301,13 +481,14 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     }
     // Auto-supply refills the pack to full on what the search left.
     if sc(w, id).auto_supply {
-        bring(w, id, &mut left, room(&w.units[&id]));
+        by_line += bring(w, id, &mut left, room(&w.units[&id]));
     }
     w.units.get_mut(&id).unwrap().banked = banked;
 
     // The line, for the page.
-    let routes = match line(w, id) {
-        Some((p, cost, _)) if !p.is_empty() => vec![Route { to: w.civs[&civ].capital, path: p, cost }],
+    let line_now = line(w, id);
+    let routes = match &line_now {
+        Some((p, cost, _)) if !p.is_empty() => vec![Route { to: w.civs[&civ].capital, path: p.clone(), cost: *cost }],
         _ => Vec::new(),
     };
     w.units.get_mut(&id).unwrap().actor.routes = routes;
@@ -318,8 +499,30 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     let fed = total(&eaten) + EPS >= need;
     u.hungry = if fed { 0 } else { u.hungry + 1 };
     let (hungry, tile) = (u.hungry, u.home);
+    let reason = (!fed).then(|| Hunger {
+        forage: by_forage,
+        line: by_line,
+        eats: need,
+        cost: line_now.as_ref().map(|l| l.1),
+        carry: line_now.as_ref().map(|l| l.2),
+    });
+    sc_mut(w, id).hunger = reason;
     if hungry == 1 {
         scout_event(w, EventKind::ScoutHungry, tile, civ, id, None);
+    }
+    if let Some(h) = reason {
+        let at = w.at(tile);
+        let tail = match (h.cost, h.carry) {
+            (Some(c), Some(k)) => format!("its line costs {c:.1} and carries {k:.1} a turn from here"),
+            _ => "no line reaches it".to_string(),
+        };
+        w.note(
+            id,
+            format!(
+                "goes hungry at {at}: foraging brought {:.1} and its line {:.1} of the {:.0} it eats; {tail}",
+                h.forage, h.line, h.eats
+            ),
+        );
     }
     if hungry >= UNIT.hungry_turns {
         let u = w.units.get_mut(&id).unwrap();

@@ -45,7 +45,7 @@ fn a_led_scouts_reasons_follow_its_route() {
         .expect("a forest or hills tile seven steps out");
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to })).unwrap();
     // Fed each turn. The scout's notes go with it, so they are read each turn it lives: on this map
-    // (the flat trail's, `flat.md`) the route is set and found, and then the scout starves on its ground.
+    // the route is set, and the scout leaves it for rich ground to feed (`feeding.md`).
     let scout = units::scout(&w, red).expect("a scout").id;
     let mut texts: Vec<String> = Vec::new();
     for _ in 0..60 {
@@ -55,7 +55,12 @@ fn a_led_scouts_reasons_follow_its_route() {
     }
     let texts: Vec<&str> = texts.iter().map(String::as_str).collect();
     assert!(texts.iter().any(|t| t.starts_with("route set from")), "the route is set: {texts:?}");
-    assert!(texts.iter().any(|t| t.starts_with("has its route") || t.starts_with("builds a trail")), "{texts:?}");
+    assert!(
+        texts.iter().any(|t| t.starts_with("has its route")
+            || t.starts_with("builds a trail")
+            || t.starts_with("leaves its route")),
+        "{texts:?}"
+    );
 }
 
 #[test]
