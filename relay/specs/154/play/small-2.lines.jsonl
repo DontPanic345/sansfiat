@@ -1,0 +1,33 @@
+{"turn":262,"line":"note meant: grow standing, start with a guard on claimed land did: raise a guard of 2 to hold land surprised: held 1 of 56 claimed tiles","result":"noted"}
+{"turn":262,"line":"{\"type\":\"raise\",\"n\":2,\"kind\":\"guard\"}","result":"ok"}
+{"turn":262,"line":"note meant: send scout out did: route scout to 475 surprised: nothing","result":"noted"}
+{"turn":262,"line":"{\"type\":\"route\",\"unit\":427,\"from\":506,\"to\":475}","result":"ok"}
+{"turn":262,"line":"note meant: gift to draw clans did: set gift 4 surprised: nothing","result":"noted"}
+{"turn":262,"line":"{\"type\":\"setGift\",\"food\":4}","result":"ok"}
+{"turn":262,"line":"note meant: pass time did: end 5 surprised: nothing","result":"noted"}
+{"turn":267,"line":"end 5","result":"ok"}
+{"turn":267,"line":"note meant: try an army did: raise 2 warriors surprised: nothing","result":"noted"}
+{"turn":267,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":267,"line":"view","result":"ok"}
+{"turn":267,"line":"note meant: watch army and standing did: end 20 surprised: no move order offered for the army at the capital","result":"noted"}
+{"turn":287,"line":"end 20","result":"ok"}
+{"turn":287,"line":"note meant: continue did: end 20 surprised: nothing","result":"noted"}
+{"turn":307,"line":"end 20","result":"ok"}
+{"turn":307,"line":"note meant: use army to forage and zone did: forage surprised: standing slipped to rank 2","result":"noted"}
+{"turn":307,"line":"{\"type\":\"forage\",\"unit\":439}","result":"ok"}
+{"turn":317,"line":"end 10","result":"ok"}
+{"turn":317,"line":"note meant: zone onto a held tile did: zone 535 surprised: nothing","result":"noted"}
+{"turn":317,"line":"{\"type\":\"zone\",\"unit\":439,\"tiles\":[535]}","result":"ok"}
+{"turn":327,"line":"end 10","result":"ok"}
+{"turn":327,"line":"note meant: finish did: end 10 surprised: nothing","result":"noted"}
+{"turn":337,"line":"end 10","result":"ok"}
+{"turn":337,"line":"view","result":"ok"}
+{"turn":337,"line":"note meant: push gift up to win clans back did: gift 8 surprised: Blue took the lead","result":"noted"}
+{"turn":337,"line":"{\"type\":\"setGift\",\"food\":8}","result":"ok"}
+{"turn":362,"line":"end 25","result":"ok"}
+{"turn":362,"line":"note could not tell: gift: which clans my gift reaches and why most unaligned clans trade at other markets","result":"noted"}
+{"turn":362,"line":"note could not tell: guard: how many people hold 40 tiles safely; thinnest share showed 0.07 with no meaning","result":"noted"}
+{"turn":362,"line":"note could not tell: army: what forage does at the capital and what keeps the pack at 8 of 10","result":"noted"}
+{"turn":362,"line":"note could not tell: scout: why the route cost 1.0 day for one hop and what it gains me","result":"noted"}
+{"turn":362,"line":"note could not tell: land: what claiming more tiles would cost","result":"noted"}
+{"turn":362,"line":"view","result":"ok"}
