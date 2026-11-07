@@ -5,7 +5,7 @@ use common::made;
 
 use engine::data::*;
 use engine::hex::Hex;
-use engine::land::step_cost;
+use engine::land::{self, step_cost};
 use engine::map::{self, generate_with, index, Country, Tile};
 use engine::{Config, World};
 
@@ -146,6 +146,8 @@ fn hidden_costs_follow_the_terrain() {
                         None => assert_eq!(t.trail_cost, None),
                     }
                 }
+                // Plains and coast carry the flat trail cost (`land::flat_cost`), and nothing else does.
+                PLAINS | COAST => assert!(t.trail_cost == land::flat_cost(t.terrain) && t.span.is_none()),
                 _ => assert!(t.trail_cost.is_none() && t.span.is_none(), "terrain {}", t.terrain),
             }
         }

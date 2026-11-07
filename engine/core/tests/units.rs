@@ -649,7 +649,9 @@ fn the_control_run_has_no_army_and_never_levies() {
     let mut w = World::new(Config { seed: 2, radius: 16, army: false, gifts: true, zone: true, ..Config::default() });
     w.run(400);
     assert!(w.phase == Phase::Main && w.turn > w.end.as_ref().unwrap().turn + 50);
-    assert!(w.units.is_empty());
+    // Founding raises a scout with or without an army, and on this map it lives on (it did not on
+    // main): what is checked is that no camp or guard is raised.
+    assert!(w.units.values().all(|u| u.kind() == UnitKind::Scout), "only scouts, which founding raises either way");
     for c in w.civs.values() {
         assert_eq!(c.army.raised, 0);
         assert!(total(&c.store) <= total(&CIV.endowment), "only spoiling: nothing came in");

@@ -27,11 +27,14 @@ pub fn steps(w: &World, a: usize, b: usize) -> i32 {
     w.tiles[a].hex().distance(w.tiles[b].hex())
 }
 
-/// Whether a trail can be built on tile `i`: it has a hidden trail cost, and a mountain's span is
-/// one `CIV.bridge_span` can bridge.
+/// Whether a trail can be built on tile `i`: it is rough ground or a mountain (`TRAIL.work`) with a
+/// hidden trail cost, and a mountain's span is one `CIV.bridge_span` can bridge. A flat tile's
+/// trail is never built by labour (it comes of traffic alone).
 pub fn trailable(w: &World, i: usize) -> bool {
     let t = &w.tiles[i];
-    t.trail_cost.is_some() && (t.terrain != MOUNTAIN || t.span.is_some_and(|s| s <= CIV.bridge_span))
+    t.trail_cost.is_some()
+        && TRAIL.work.iter().any(|&(k, _)| k == t.terrain)
+        && (t.terrain != MOUNTAIN || t.span.is_some_and(|s| s <= CIV.bridge_span))
 }
 
 /// Labour to step from tile `from` into tile `to`; `None` is impassable. A tile with a trail costs
@@ -48,6 +51,15 @@ pub fn step_cost(w: &World, from: usize, to: usize) -> Option<f64> {
         _ => terrain?,
     };
     Some(cost + cross)
+}
+
+/// The hidden trail cost of a flat tile of `terrain`: `TRAIL.flat` of its bare cost on plains and
+/// coast, and `None` on any other terrain (rough ground and mountains have their own).
+pub fn flat_cost(terrain: usize) -> Option<f64> {
+    match terrain {
+        PLAINS | COAST => TERRAIN[terrain].move_cost.map(|c| c * TRAIL.flat),
+        _ => None,
+    }
 }
 
 /// Puts `labour` into a trail on tile `i`, which must be `trailable`. It is finished when its work

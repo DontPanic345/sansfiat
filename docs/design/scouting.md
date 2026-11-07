@@ -22,8 +22,8 @@ and costs work to build, more on rougher ground. A mountain keeps a high cost ev
 trail, and takes the most work.
 
 A mountain can be crossed only where a bridge would span it, and only a few can. Bridge span
-is a technology later; for now every civ has the shortest span. Flat land gains nothing from
-a trail.
+is a technology later; for now every civ has the shortest span. A trail brings flat land down a
+little; walking wears one there, and a scout builds trails only on rough ground and mountains.
 
 ## Trails
 

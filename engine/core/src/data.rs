@@ -214,6 +214,9 @@ pub struct TrailRules {
     /// Labour to finish a built trail, by the terrain it goes on (`scout`'s work: forest, hills, a
     /// mountain pass). A trail brings a tile to its hidden `trail_cost`, not to a flat cost.
     pub work: [(usize, f64); 3],
+    /// The share of its bare cost that a trail brings plains and coast to (M4 answer 4). It is the
+    /// same on every flat tile, so nothing about it is hidden, and the scout builds none there.
+    pub flat: f64,
 }
 
 /// Traffic is people-walks, so a tile's steady traffic is ten times a turn's. On the retro maps at
@@ -222,7 +225,7 @@ pub struct TrailRules {
 /// and shared routes and under a third of the worked tiles; `off` 90 lets a trail ride out a dip
 /// without keeping the ones once worn.
 pub const TRAIL: TrailRules =
-    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)] };
+    TrailRules { keep: 0.9, on: 110.0, off: 90.0, work: [(FOREST, 2.0), (HILLS, 3.0), (MOUNTAIN, 6.0)], flat: 0.75 };
 
 pub struct DepletionRules {
     /// Wear a food gains a turn for each share of its cap taken past its sustainable yield.
