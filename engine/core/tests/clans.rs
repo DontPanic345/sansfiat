@@ -91,7 +91,8 @@ fn walking_comes_off_each_tiles_share_first() {
     let pop = 1.0;
     let takes = reaped(&w, &[i, j], pop);
     let share = pop * CLAN.work / 2.0;
-    let walk = 2.0 * 2.0 * DAY * CLAN.inside;
+    // One person over two tiles: half a person walks each.
+    let walk = 2.0 * 2.0 * DAY * CLAN.inside * pop / 2.0;
     let at = |t: usize| takes.iter().find(|x| x.0 == t).unwrap().1[GRAIN];
     // Both scaled to the target by one factor: in proportion to their work.
     assert!((at(j) / at(i) - (share - walk) / share).abs() < EPS);
@@ -161,7 +162,8 @@ fn a_far_tile_costs_its_walk_and_its_tiles_are_walked() {
     assert_eq!((w.tiles[o].traffic, w.tiles[a].traffic, w.tiles[b].traffic), (2.0, 2.0, 1.0));
     let got = total(&c.harvest);
     let share = CLAN.work / 3.0;
-    let want = (share + (share - 2.0 * CLAN.inside * 2.0 * DAY)) / CLAN.harvest_labour;
+    // One person over three tiles: a third of a person walks each.
+    let want = (share + (share - 2.0 * CLAN.inside * 2.0 * DAY / 3.0)) / CLAN.harvest_labour;
     assert!((got - want).abs() < EPS, "{got} vs {want}");
 }
 
