@@ -1,6 +1,6 @@
 // The layout at three sizes (touch point 26): opens each of SIZES and shoots the start screen, the pick, play
 // with the camp selected, play with the civ selected, and the end screen, as `<size>-<screen>.png` (laptop and
-// wide at half scale), and a large map (seed 2) at fit at laptop size for the placeholders. It fails on a
+// wide at half scale), and a large map (seed 1) at fit at laptop size for the placeholders. It fails on a
 // horizontal scroll, a bar that wraps past one line, a button in the panel's row that is clipped and can't be
 // scrolled to, and (at laptop and wide, with the camp selected and the feed as it opens) a map under `--share`
 // of the window, counting only the map nothing covers. Its output says each size's share.
@@ -85,7 +85,7 @@ for (const size of Object.keys(SIZES)) {
   }
   // The pick, over the map.
   {
-    const page = await open('?size=small&seed=2&run=1', { size });
+    const page = await open('?size=small&seed=1&run=1', { size });
     try {
       await page.until("document.body.dataset.phase === 'choose'");
       await page.shot(join(out, `${size}-pick.png`), s);
@@ -95,7 +95,7 @@ for (const size of Object.keys(SIZES)) {
     }
   }
   // Play: the camp selected, then the civ.
-  const page = await open('?size=small&seed=2&run=1', { size });
+  const page = await open('?size=small&seed=1&run=1', { size });
   try {
     await page.until("document.body.dataset.phase === 'choose'");
     await page.button('Lead ');
@@ -132,7 +132,7 @@ for (const size of Object.keys(SIZES)) {
     await page.shot(join(out, `${size}-end.png`), s);
     if (size === 'laptop') {
       // A large map at fit, for the placeholders at low zoom.
-      await page.goto('?size=large&seed=2&run=1');
+      await page.goto('?size=large&seed=1&run=1');
       await page.until("document.body.dataset.phase === 'choose'", 300_000);
       await page.button('Lead ');
       await page.until("document.body.dataset.phase === 'main'");

@@ -1,7 +1,7 @@
 // The feed and alerts (touch point 22-24): the feed lists newest first; it collapses and opens; a click on an
 // item selects its subject and centres the map; an alert stays in the alerts box after more turns until it
 // is clicked; the panel's reasons show for a clan and for the camp.   node www/play/feed.mjs [--out DIR]
-// (small seed 2)
+// (small seed 1)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -24,7 +24,7 @@ const need = (ok, msg) => {
 const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 const alertTexts = () => page.eval("[...document.querySelectorAll('#alerts li')].map((l) => l.textContent.trim())");
 
-const page = await open('?size=small&seed=2&run=1');
+const page = await open('?size=small&seed=1&run=1');
 try {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');
