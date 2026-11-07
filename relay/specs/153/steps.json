@@ -1,0 +1,54 @@
+[
+ {
+  "id": "build-1",
+  "title": "Easel: the flat trail (TRAIL.flat 0.75, map::flat_cost in the map, parse and plain, the stage test, the fallout on the retro maps and the red cases' texts, scouting.md's line, flat.md)",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "medium",
+  "points": 3,
+  "why": "Open 0, New 0, Miss 1, Reach 2 = 3: haiku medium. Open 0: the value is settled by the spec probe (probe.md: 0.75 holds both bounds and moves trade and Standing), and the rule is one helper called in three places. New 0: hidden trail costs are the pattern. Miss 1: a stage test it writes, and the fallout the suite shows. Reach 2: every walk and line on flat land. I expect Haiku medium to land it, with most of its time on the fallout: pins, map-pinned asserts and the two red cases' texts, which the brief says how to move without changing a rule. About 10 files, 250 lines plus flat.md. Part and score agree."
+ },
+ {
+  "id": "build-2",
+  "title": "Easel: the search and the orders (scout.rs split into units/search.rs, best-case order, search_view's reasons, the scout's Move and dest, line_from and past_reach, the notes, Sim fields, search.md)",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 4,
+  "why": "Open 0, New 1, Miss 1, Reach 2 = 4: haiku high. Open 0: the order key is the owner's test's best_case exactly, and search_view, Move, line_from and the notes are named to the field in spec items 7-13. New 1: Move is the camp's adapted, and the order comes from the test. Miss 1: cases.rs flips green, and it writes the stage tests. Reach 2: the scout's turn runs every turn for every civ, and the walk home goes. I expect Haiku high to land it, with a retry on making the engine's walk price match the test's to EPS. About 10 files, 750 lines (the move is about 400 of them). Part and score agree."
+ },
+ {
+  "id": "build-3",
+  "title": "Easel: the scout's feeding (spare and graze_at, rich ground, the wander, the idle scout, the hunger reason, SCOUT's starting numbers, scout_errand on the stage with 28 errands, feeding.md)",
+  "part": "easel",
+  "model": "sonnet",
+  "effort": "medium",
+  "points": 6,
+  "why": "Open 2, New 1, Miss 1, Reach 2 = 6: sonnet medium. Open 2: the rule is settled in spec items 14-22, but its numbers are starting values, and the errand test may have to land ignored. New 1: forage_round and strip_at are the pattern, and the wander is a small state machine on the scout. Miss 1: the stage tests it writes; the real-map proof is the canvas's. Reach 2: every scout's turn, the AI's idle scouts included. I expect Sonnet medium to land it, keeping the wander's states (errand, wandering, idle) straight across turns and saves. About 8 files, 550 lines. An easel at 6, as the shape expects for its hardest easel. Part and score agree."
+ },
+ {
+  "id": "build-4",
+  "title": "Easel: the page (the scout's row Move to/Route from/Route to, the start ring, the doing line and Hunger row, the Unrevealed list, Disband all for every unit, the reach warning, scout.mjs and buttons.mjs, page.md and screenshots)",
+  "part": "easel",
+  "model": "haiku",
+  "effort": "high",
+  "points": 5,
+  "why": "Open 2, New 1, Miss 1, Reach 1 = 5: haiku high. Open 2: the wording and the buttons are in spec items 23-28, but whether each result is visible is judged on screenshots. New 1: the camp's march path, the panel lists and the staged scripts are adapted. Miss 1: scout.mjs, buttons.mjs and check-stage.mjs check each press against the world. Reach 1: the panel and the play screen's clicks. I expect Haiku high to land it, with retries on the scripts' timing (a scout walking to its dest over turns). About 9 files, 450 lines plus screenshots. Part and score agree."
+ },
+ {
+  "id": "build-5",
+  "title": "Canvas: the scout lives through every errand (SCOUT's numbers against the 28 errands and the AI's scouts) and the flat trail re-measured against main (errand.md, trail.md)",
+  "part": "canvas",
+  "model": "sonnet",
+  "effort": "high",
+  "points": 10,
+  "why": "Open 4, New 1, Miss 3, Reach 2 = 10: opus low on the ladder, run a rung below as Sonnet high, as each piece runs its canvas. Open 4: a search over wander range, the hunger and fed thresholds, reach, people and a scout's pack, judged by 28 errands and the fewest turns off its errand. New 1: the errand test and the sweep exist. Miss 3: only the retro maps show a scout living. Reach 2: every scout's turn. I expect Sonnet high to find a setting that keeps all 28 alive (rich ground two to four steps out, and a scout that no longer fallows its ground, should do most of it), possibly with a bigger scout pack for the long errands to a rival capital, and to keep the flat trail at 0.75 (probe.md). About 4 files, 200 lines plus two records. Part and score agree."
+ },
+ {
+  "id": "review",
+  "title": "Review the piece",
+  "model": "opus",
+  "effort": "medium",
+  "why": "The goal is judged by play and by runs against main: the three buttons' visible results, 28 errands alive, and the flat trail's trade and Standing past the floor with the AI's orders not halved. Four easels, three of them Haiku, feed one canvas that may change them, and the flat trail moves every digest and the maps under the red cases: the review reads what each step left half-done and checks the canvas's answer. It writes the answer and the evidence into the PR and adds the decisions to scouting.md's, supply.md's, page.md's and map.md's ledgers."
+ }
+]
