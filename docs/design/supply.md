@@ -74,3 +74,5 @@ first, so there's no reserve to set.
 - A civ can raise people into an army only while that army's line is open, so a cut-off army can't be reinforced. (#104)
 - A scout forages only what a tile regrows after the clans' harvest, and never leaves a tile fallow; armies forage as before. (#153)
 - A hungry scout's reasons say what foraging and its line brought against what it eats, and what its line costs from there. Move to… and Route to… warn when the line there can't carry what the scout eats. (#153)
+- The ring is every tile from which a civ's line feeds an army with days to spare. It is the same for every army and scout of the civ, and a rival's held ground is past it. (#154)
+- The page draws the ring when an army or its civ is selected: the tiles inside are tinted in the civ's colour, deeper where the line takes less of an army's days, with a solid line along the edge and nothing past it. A tile's tooltip gives the share of an army's days its line takes there. (#154)

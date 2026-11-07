@@ -62,3 +62,11 @@ the move cost of a tile, the labour of a person and the food of a load are read 
 - Not a calendar. There are no seasons, and no turn is longer or shorter than another.
 - Not a speed stat. Nothing moves faster than a person except what carries him (`animals.md`).
 - Not a hard limit on reach. Reach runs out because days do.
+
+## Decided
+
+- A trail on flat land costs one day's walk; bare plains cost a day and a third, forest and hills two and two thirds, marsh and a pass four. No reach changed with the unit. (#154)
+- The page, its tooltips and the text view give labour in days. (#154)
+- A walk is paid by every person who walks it. A clan's festival walk takes one walker for each 2 food it carries there, and at least one, so a clan of twenty carrying its fill pays more than a clan of two. (#154)
+- A load of 2 food is about nine days' eating. Clans on the maps carry less than a load, so nearly every clan sends one walker. (#154)
+- A clan's walk to each of its tiles is paid by the people who work that tile, and so is the guard's walk over the claim. (#154)
