@@ -16,6 +16,7 @@ pub mod fight;
 pub mod guard;
 mod line;
 mod scout;
+mod search;
 
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
@@ -34,7 +35,8 @@ pub use ai::{ai, guard_order, post};
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
 pub use line::{cut_at, cut_by_rival, cut_off, line, path_between, route, turns};
-pub use scout::{route_plan, Plan, ScoutState};
+pub use scout::ScoutState;
+pub use search::{route_plan, Plan};
 
 use camp::{camp_march, camp_turn, hold};
 use scout::scout_turn;
