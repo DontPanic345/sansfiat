@@ -1,0 +1,239 @@
+diff --git a/engine/core/src/clans.rs b/engine/core/src/clans.rs
+index 8a31b32..20d090a 100644
+--- a/engine/core/src/clans.rs
++++ b/engine/core/src/clans.rs
+@@ -51,6 +51,8 @@ pub struct Clan {
+     /// The clan it divided from or sent out as a daughter; its daughters leave with it.
+     #[serde(default)]
+     pub parent: Option<u32>,
++    #[serde(default)]
++    pub fields: f64,
+ }
+ 
+ impl Deref for Clan {
+@@ -126,6 +128,7 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
+         market_turns: 0,
+         drawn: 0,
+         parent: None,
++        fields: 0.0,
+     }
+ }
+ 
+@@ -150,9 +153,49 @@ pub fn walks(w: &World, home: usize, territory: &[usize]) -> (Walks, Vec<f64>) {
+ /// tile's take scaled by one factor so the whole comes to at most `surplus_target × people` less
+ /// the store.
+ pub fn reap(w: &World, people: f64, store: &Basket, routes: &[Route], tiles: &[usize], yearly: &[f64]) -> Vec<Basket> {
+-    let work = actors::split(people, people * CLAN.work, routes, &[1.0], &[yearly.to_vec()]).swap_remove(0);
+-    let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
++    let (g, f) = reap_f(w, people, store, routes, tiles, yearly, 0.0);
++    g.iter().zip(&f).map(|(b, &x)| { let mut b = *b; b[GRAIN] += x; b }).collect()
++}
++
++pub fn knob(name: &str, d: f64) -> f64 {
++    std::env::var(name).ok().and_then(|s| s.parse().ok()).unwrap_or(d)
++}
++
++pub fn fields_on(w: &World) -> bool {
++    !w.civs.is_empty() && knob("F_ON", 1.0) > 0.0
++}
++
++/// Days of fields a tile takes.
++pub fn ground(w: &World, i: usize) -> f64 {
++    let t = &w.tiles[i];
++    if !TERRAIN[t.terrain].land { return 0.0; }
++    let mut g = 0.0;
++    if t.flood { g += knob("F_FLOOD", 20.0); }
++    if t.river > 0 { g += knob("F_RIVER", 10.0) * (t.river as f64 / 8.0).min(1.0); }
++    g
++}
++
++/// Grain a day of fields yields.
++pub fn field_yield(w: &World, i: usize) -> f64 {
++    let t = &w.tiles[i];
++    knob("F_YIELD", 0.4) * t.fertility * (crate::land::domestic(t.tame) - 1.0).max(0.0)
++}
++
++pub fn reap_f(w: &World, people: f64, store: &Basket, routes: &[Route], tiles: &[usize], yearly: &[f64], fields: f64) -> (Vec<Basket>, Vec<f64>) {
++    let fk: Vec<usize> = if fields > 0.0 { (0..tiles.len()).filter(|&k| ground(w, tiles[k]) > 0.0).collect() } else { vec![] };
++    let fy: Vec<f64> = fk.iter().map(|&k| yearly[k]).collect();
++    let mut parts = actors::split(people, people * CLAN.work, routes, &[1.0 - fields, fields], &[yearly.to_vec(), fy]);
++    let fwork = parts.pop().unwrap();
++    let work = parts.pop().unwrap();
++    let mut grown = vec![0.0; tiles.len()];
+     let mut total = 0.0;
++    for (j, &k) in fk.iter().enumerate() {
++        let t = tiles[k];
++        let g = fwork[j].min(ground(w, t)) * field_yield(w, t);
++        grown[k] = g;
++        total += g;
++    }
++    let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
+     for (&t, &labour) in tiles.iter().zip(&work) {
+         let stock = &w.tiles[t].stock;
+         let held: f64 = stock.iter().sum();
+@@ -170,8 +213,9 @@ pub fn reap(w: &World, people: f64, store: &Basket, routes: &[Route], tiles: &[u
+         for t in &mut takes {
+             *t = t.map(|x| x * scale);
+         }
++        for g in &mut grown { *g *= scale; }
+     }
+-    takes
++    (takes, grown)
+ }
+ 
+ /// Whether `territory` would harvest the clan's whole target this turn (`reap` scaled down to
+@@ -179,22 +223,27 @@ pub fn reap(w: &World, people: f64, store: &Basket, routes: &[Route], tiles: &[u
+ pub fn at_target(w: &World, clan: &Clan, territory: &[usize]) -> bool {
+     let budget = (CLAN.surplus_target * clan.people - clan.store.iter().sum::<f64>()).max(0.0);
+     let (_, yearly) = walks(w, clan.home, territory);
+-    let food = sum(&reap(w, clan.people, &clan.store, &clan.routes, territory, &yearly));
+-    food.iter().sum::<f64>() >= budget - 1e-9
++    let (g, f) = reap_f(w, clan.people, &clan.store, &clan.routes, territory, &yearly, clan.fields);
++    sum(&g).iter().sum::<f64>() + f.iter().sum::<f64>() >= budget - 1e-9
+ }
+ 
+ /// How well `territory` (sorted) from `home` would feed `people` with `store`, paying `routes`,
+ /// this turn from the current stock: the nutrition per person of the store and the harvest.
+ fn worth(w: &World, people: f64, store: &Basket, routes: &[Route], home: usize, territory: &[usize]) -> f64 {
++    worth_f(w, people, store, routes, home, territory, 0.0)
++}
++pub fn worth_f(w: &World, people: f64, store: &Basket, routes: &[Route], home: usize, territory: &[usize], fields: f64) -> f64 {
+     let (_, yearly) = walks(w, home, territory);
+-    let food = sum(&reap(w, people, store, routes, territory, &yearly));
++    let (g, f) = reap_f(w, people, store, routes, territory, &yearly, fields);
++    let mut food = sum(&g);
++    food[GRAIN] += f.iter().sum::<f64>();
+     nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) / people
+ }
+ 
+ /// How well `territory` would feed the clan this turn. Walking counts against food, so a tile is
+ /// worth adding only if its food pays for the walk to it and the labour it takes from the others.
+ pub fn value(w: &World, clan: &Clan, territory: &[usize]) -> f64 {
+-    worth(w, clan.people, &clan.store, &clan.routes, clan.home, territory)
++    worth_f(w, clan.people, &clan.store, &clan.routes, clan.home, territory, clan.fields)
+ }
+ 
+ /// The value of territory `[site]` for `people` people with `store`, with no route.
+@@ -217,10 +266,10 @@ pub fn harvest(w: &mut World) {
+         let (walks, yearly) = walks(w, c.home, &c.territory);
+         // A civ besieged at its capital: its own clans there harvest nothing (`fight::posture`).
+         let besieged = c.civ.and_then(|k| w.civs.get(&k)).is_some_and(|k| k.besieged && k.capital == c.home);
+-        let takes = if besieged {
+-            vec![[0.0; N]; walks.tiles.len()]
++        let (takes, grown) = if besieged {
++            (vec![[0.0; N]; walks.tiles.len()], vec![0.0; walks.tiles.len()])
+         } else {
+-            reap(w, c.people, &c.store, &c.routes, &c.territory, &yearly)
++            reap_f(w, c.people, &c.store, &c.routes, &c.territory, &yearly, c.fields)
+         };
+         let (routes, home, people) = (c.routes.clone(), c.home, c.people);
+         for (&i, t) in walks.tiles.iter().zip(&takes) {
+@@ -231,7 +280,8 @@ pub fn harvest(w: &mut World) {
+             }
+         }
+         actors::add_traffic(w, home, people, &walks, &routes);
+-        let food = sum(&takes);
++        let mut food = sum(&takes);
++        food[GRAIN] += grown.iter().sum::<f64>();
+         let c = w.clans.get_mut(&id).unwrap();
+         c.walk = yearly.iter().sum();
+         c.harvest = food;
+@@ -401,6 +451,14 @@ pub fn adjust(w: &mut World) {
+         // The civ's own clan stays on the capital: it adjusts its land around it.
+         let (home, territory) = if pinned {
+             (c.home, actors::trim(w, c.home, &changed, CLAN.territory_radius))
++        } else if c.fields > 0.0 && knob("F_HOME", 1.0) > 0.0 && changed.iter().any(|&t| ground(w, t) > 0.0) {
++            let m = changed.iter().copied().filter(|&t| ground(w, t) > 0.0).max_by(|&a, &b| (ground(w, a) * field_yield(w, a)).total_cmp(&(ground(w, b) * field_yield(w, b))).then(b.cmp(&a))).unwrap();
++            let mut home = c.home;
++            if m != home {
++                let d = steps(w, home, m);
++                if let Some(n) = neighbours(w, home).filter(|&n| changed.binary_search(&n).is_ok() && steps(w, n, m) < d).min() { home = n; }
++            }
++            (home, actors::trim(w, home, &changed, CLAN.territory_radius))
+         } else {
+             actors::recentre(w, c.home, &changed, CLAN.territory_radius)
+         };
+@@ -419,6 +477,21 @@ pub fn adjust(w: &mut World) {
+         let m = w.clans.get_mut(&id).unwrap();
+         m.home = home;
+         m.territory = territory;
++        if fields_on(w) {
++            let c = w.clans[&id].clone();
++            let n = knob("F_NOTCH", 0.1);
++            let f = if c.starving && c.fields > 0.0 {
++                (c.fields - n).max(0.0)
++            } else {
++                let v = |f: f64| worth_f(w, c.people, &c.store, &c.routes, c.home, &c.territory, f);
++                let now = v(c.fields);
++                let up = if c.fields + n <= 1.0 + 1e-9 { v((c.fields + n).min(1.0)) } else { f64::NEG_INFINITY };
++                let down = if c.fields > 1e-9 { v((c.fields - n).max(0.0)) } else { f64::NEG_INFINITY };
++                let margin = knob("F_MARGIN", 0.01);
++                if up > now + margin && up >= down { (c.fields + n).min(1.0) } else if down > now + margin { (c.fields - n).max(0.0) } else { c.fields }
++            };
++            w.clans.get_mut(&id).unwrap().fields = f;
++        }
+     }
+ }
+ 
+diff --git a/engine/core/src/judge.rs b/engine/core/src/judge.rs
+index 5c3873d..70a6790 100644
+--- a/engine/core/src/judge.rs
++++ b/engine/core/src/judge.rs
+@@ -131,8 +131,13 @@ pub struct Watch {
+     economy: Economy,
+     /// The ring and the units inside and outside it (`judge_ring`).
+     supply: Supply,
++    probe: Probe,
+ }
+ 
++#[derive(Default, Clone, Debug)]
++struct Probe { flow: BTreeMap<u32,[f64;4]>, pack: BTreeMap<u32,u32>, homes: BTreeMap<u32,usize>, moves: [u32;2], turns: [u32;2], farm200: BTreeMap<u32,(f64,f64)>, starve: [u32;2], ftiles200: usize, fdays_people: f64 }
++
++
+ impl Watch {
+     /// Watches from the world as it is now, the pick: its civs' Standing and leader are the start.
+     pub fn new(w: &World) -> Watch {
+@@ -163,6 +168,7 @@ impl Watch {
+             civs_200: Vec::new(),
+             economy: Economy::default(),
+             supply: Supply::pick(w),
++            probe: Probe::default(),
+         }
+     }
+ 
+@@ -210,6 +216,20 @@ impl Watch {
+         self.event_mark = w.events.len();
+ 
+         let pack = units::pack_cap(UNIT.first as f64);
++        for c in alive(w) {
++            *self.probe.pack.entry(c.id).or_default() += (c.store.iter().sum::<f64>() >= pack) as u32;
++            let f = self.probe.flow.entry(c.id).or_default(); f[0] += c.levied; f[1] += c.given; f[2] += c.posted; f[3] += crate::claim::guard_people(w, c.id);
++        }
++        for (&id, c) in &w.clans {
++            let k = (c.fields >= 0.2) as usize;
++            if let Some(&h) = self.probe.homes.get(&id) { self.probe.turns[k] += 1; self.probe.moves[k] += (h != c.home) as u32; self.probe.starve[k] += c.starving as u32; }
++            self.probe.homes.insert(id, c.home);
++        }
++        if self.turns() == 200 {
++            for c in w.clans.values() { if let Some(k) = c.civ { let e = self.probe.farm200.entry(k).or_default(); e.0 += c.people * c.fields; e.1 += c.people; } }
++            self.probe.ftiles200 = w.clans.values().map(|c| if c.fields > 0.0 { c.territory.iter().filter(|&&t| crate::clans::ground(w, t) > 0.0).count() } else { 0 }).sum();
++            self.probe.fdays_people = w.clans.values().map(|c| c.people * c.fields).sum::<f64>() / w.clans.values().map(|c| c.people).sum::<f64>().max(1.0);
++        }
+         for c in alive(w) {
+             let store: f64 = c.store.iter().sum();
+             let e = &mut self.economy;
+@@ -327,6 +347,14 @@ impl Watch {
+     /// The watch's scores for one game. `civs` are the civs whose orders are counted in
+     /// `decisions`: every civ for a sweep, the led civ for a played game.
+     pub fn scores(&self, w: &World, civs: &[u32]) -> Scores {
++        if w.config.army && w.config.fight && w.config.claims == crate::data::Claims::All {
++            let st = self.standing_at(200);
++            for (&id, &p) in &self.probe.pack {
++                let (fp, pp) = self.probe.farm200.get(&id).copied().unwrap_or((0.0, 0.0));
++                eprintln!("PROBE seed {} r {} civ {} pack {} st200 {:.4} farm {:.3} flow {:?}", w.config.seed, w.config.radius, id, p, st.and_then(|m| m.get(&id).copied()).unwrap_or(0.0), if pp > 0.0 { fp / pp } else { 0.0 }, self.probe.flow.get(&id).map(|f| f.map(|x| (x / self.turns() as f64 * 100.0).round() / 100.0)));
++            }
++            eprintln!("PROBEW seed {} r {} moves_g {}/{} moves_f {}/{} starve_g {} starve_f {} ftiles {} farmshare {:.3}", w.config.seed, w.config.radius, self.probe.moves[0], self.probe.turns[0], self.probe.moves[1], self.probe.turns[1], self.probe.starve[0], self.probe.starve[1], self.probe.ftiles200, self.probe.fdays_people);
++        }
+         let at = |offset: u32| self.standing_at(offset);
+         let share = |offset: u32| at(offset).map(|s| s.values().sum::<f64>());
+         let top = |offset: u32| at(offset).map(|s| s.values().copied().fold(0.0, f64::max));
