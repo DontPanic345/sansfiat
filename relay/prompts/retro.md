@@ -8,7 +8,7 @@ its files go in `relay/retro/<m>/`.
 | Step | Writes | Reads |
 |---|---|---|
 | `check` | `play.md` | The milestone play check: `main` played and judged as a play step does, on as many retro maps as fit, small ones first, with its files here rather than in a spec folder. Its findings are all `ask` |
-| `ladder` | `ladder.md` | Every step's model, effort, points, list $, minutes and usage from the step blocks; the specs, briefs and `steps.json` against what the builds did. Did the ladder predict? Drafts the ladder's next text |
+| `ladder` | `ladder.md` | Every step's model, effort, points, list $, minutes and usage from the step blocks; the specs, briefs and `steps.json` against what the builds did; each piece's twin, its two versions' cost beside what pick compared and chose (`pick.md`). Did the ladder predict? Drafts the ladder's next text |
 | `architecture` | `architecture.md` | The code's shape against `docs/architecture.md`: what grew where, and what the next milestone needs first |
 | `relay` | `relay.md` | The crew's log, the workflows, the waits and the transcripts: pacing, stops, failures, merges, each prompt line against what it changed, and what could come out |
 | `game` | `owner.md`, `game.md`, `players.md` | The owner's notes as they came, written to `owner.md`. Then two angles: each piece's question measured on `main`, the decisions by design file and the ledger lines to promote or strike (`game.md`); the play notes, the check and the judge's sweeps, what a player meets and what the AI does (`players.md`) |
