@@ -32,10 +32,14 @@ and in total), `cli/src/sweep_judge.rs` (`judge_map` and its runs; 588 lines), `
    - per civ, Standing at +200 less the control's, and whether the civ farms (`farming_share_200 ≥ 0.1`);
    - farming civs' mean gain, how many of them gain, and the non-farming civs' mean;
    - the civ that farms most, and whether it held a pack on at least half its turns;
-   - starving share against the control's.
+   - starving share against the control's, as a ratio (`starving_ratio`), and settled farmers' and gatherers'
+     starving shares.
    Then the totals over the maps, in the JSON as `total.fields_vs_control`, so `judge --compare` lists every
-   number. `sweep_text.rs` prints a `fields` block: a line per map with each civ's share, gain and store turns,
-   then the totals with the spec's bounds beside them, marked pass or miss.
+   number. Every ratio is a number in the report, so `--floor` gives it a floor as it does every path: the null
+   plays its own no-fields control. The spec's starving bound reads each ratio less its floor (`spec-review.md`:
+   one map's starving differs by up to 1.6 times between the sweep and its null). `sweep_text.rs` prints a `fields` block: a line per map with each civ's share, gain and store turns,
+   then the totals with the spec's bounds beside them, marked pass or miss. With `--floor`, a bound is read on the
+   number less its floor where the spec says so, and the text prints the floor beside it.
 3. **`judge FILE`** (`game_judge.rs`) prints the led civ's fields line: farming share, field tiles, store turns
    at a pack.
 4. **The feed.** `www/feed.js` `KINDS.clanFarming` ({ icon: '≡', color: '#d9c45a', label: 'Fields' }).
@@ -66,9 +70,11 @@ and in total), `cli/src/sweep_judge.rs` (`judge_map` and its runs; 588 lines), `
 - `engine/check.sh` green.
 - `sansfiat sweep --judge --json --floor` on the branch, with the text. Write the `fields` block and the JSON's
   `total.fields_vs_control` to `relay/specs/155/judge.md`. These are build-4's starting numbers. With build-1's
-  rules and numbers they should sit near `probe.md`'s y8 table: farming civs gain about +0.03 to +0.04, 2 of 21
-  civs never hold a pack. A count far from it is a bug in the count. Say which.
-- The sweep takes a sixth more time than before. Give both times.
+  rules and numbers they should sit near `spec-review.md`'s "y8, tame 1" rows: farming civs gain about +0.038
+  with 12 of 13 gaining, 1 or 2 of 21 civs never hold a pack, starving about 1.3 times the control, settled
+  farmers' home moves near 0.02 per 100 clan-turns against gatherers' 0.2. A count far from it is a bug in the
+  count. Say which.
+- The sweep takes a fifth more time than before (a sixth run on five). Give both times.
 
 ## What later steps rely on
 

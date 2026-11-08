@@ -13,7 +13,8 @@ The code: `core/src/actors.rs` (`split`, `recentre`, `middle`, `trim`), `core/sr
 
 ## What to build
 
-1. **`FIELD` in `data.rs`** (`FieldRules`), each number with its unit and a `note`:
+1. **`FIELD` in `data.rs`** (`FieldRules`), each number with its unit and a `note`. `data.rs` is over 600 lines
+   and stays whole: every number lives there (`CLAUDE.md`).
    - `flood: 15.0 * DAY`: days of fields a floodplain takes a turn;
    - `river: 7.5 * DAY`: days of fields a river tile of `MAP.big_river` or more takes, in proportion below it;
    - `grain: 0.8`: food a field day yields, per unit of fertility and of tame past wild (`domestic − 1`);
@@ -86,7 +87,8 @@ target.
 - **Fields on runs.** `sansfiat sweep --judge --json --floor` with the defaults, then `judge --compare` against
   the base. Aligned Standing at +200 rises past the floor and pre-games by centres stay 7 of 7. Every map has
   clans with fields at +200 (count them with a scratch print, or `stats`). The probe's y8 came out at aligned
-  0.253 → 0.312, and the build lacks only tame under fields, so a large miss is a bug. Write the compare and the
+  0.253 → 0.312. The spec-review ran it with tame under fields (`spec-review.md`, "y8, tame 1"): farming civs
+  +0.038, 12 of 13 gaining, 1 civ never at a pack. A large miss from those is a bug. Write the compare and the
   counts to `relay/specs/155/field-job.md`.
 
 ## What later steps rely on

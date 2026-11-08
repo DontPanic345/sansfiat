@@ -35,20 +35,31 @@ spec's table gives the measure and the probe's number:
    Settled farmers move on no more than gatherers.
 5. People, land and clans changed hands: no fewer than the control, less the floor.
 6. Starving clan-turns over the seven maps at most 1.25 times the control's share, and on no map over 1.6
-   times. Settled farmers starve at a lower rate than gatherers.
+   times, each read on the ratio less its floor. Settled farmers starve at a lower rate than gatherers. Aim for
+   room: build-1's numbers sit on the line read that way, and one map's ratio moves by up to 1.6 times between
+   the sweep and its null.
 7. Pre-games by centres 7 of 7. Panics 0. AI orders a hundred turns at least half the control's.
 8. `sansfiat bench --size large 8 --after 50` within 1.25 times the branch's base.
 9. `engine/check.sh` green, `www/play/fields.mjs` passing.
 
 The probe at y8, the starting numbers, met 1, 2, 3, 5 and 7, missed 6 overall (1.29 times), and didn't
-measure 4. Bound 6 is the work. It is where the probe's starving fell: gatherers squeezed beside farmers, most
-on large 8 and medium 9. Bound 3 passed at y8 with nothing to spare. On the two civs that never hold a pack,
+measure 4. The spec-review's runs (`spec-review.md`) add tame under fields and settled farmers. Bound 4 passes
+with room: settled farmers move 0.017 times per 100 clan-turns, gatherers 0.232. Bound 6 is the work. Settled
+farmers starve on 0.23% of clan-turns, gatherers on 2.9%, where the control's clans starve on 1.77%: the
+starving is the gatherers'. What has been tried, on the mean of the sweep and its null:
+
+- `margin` 0.03, no home rule, `flood` 10 days: starving 1.30–1.34 times, no better than y8's 1.34.
+- `grain` 0.6: 1.22 times; `grain` 0.4: 1.16 times. Both fail bound 2, which needs `grain` at least 0.75.
+
+So the yield is the only number that moved it, and bound 2 holds the yield up. Don't rerun these. Find who
+the starving gatherers are (unaligned or a civ's, beside farmers or not, soon after the pick or late, starving
+once or for many turns) and change the field rule that causes it, within the piece's Decided. Bound 3 passed at y8 with nothing to spare. On the two civs that never hold a pack,
 the guard eats the levy (`probe.md`, the store flow).
 
 ## How
 
-Each sweep takes about three minutes with the sixth run. Run settings in a worktree a time, or change a number
-and rerun. Start from y8 and move what the bound that misses points at. A higher `margin` or a smaller `notch`
+A sweep with `--floor` takes about 5 minutes when two run side by side on the runner's four cores; build-2's sixth run adds a fifth. Run settings in pairs, each from its own build (a worktree, or
+`CARGO_TARGET_DIR`), so a rebuild never lands under a running sweep. Start from y8 and move what the bound that misses points at. A higher `margin` or a smaller `notch`
 slows the rush to fields. A higher `farmer` line keeps a clan's home on its land until it farms a real share.
 Less `flood` ground leaves more of a river's food to its gatherers. Keep a table of every setting you run, with
 each bound's number.

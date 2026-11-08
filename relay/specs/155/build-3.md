@@ -8,7 +8,7 @@ the look under "What I settled", and decision 12. `docs/design/farming.md`, What
 
 The code: `web/src/lib.rs` (`layout`, `view`), `www/model.js`, `www/panels.js` (569 lines), `www/map/view.js`
 (the layer list and the View toggles), `www/map/layers/floodplains.js` and `hearths.js` (static and turn layers
-to follow), `www/bar.js` (the View menu), `cli/src/view.rs` (the text view, under 80 lines),
+to follow), `www/bar.js` (the View menu), `cli/src/view.rs` (the text view, 374 lines),
 `www/check-stage.mjs` and `www/check-ctx.mjs` (panel shapes as data), `www/play/` and `www/play.mjs`.
 
 ## What to build
@@ -35,9 +35,9 @@ to follow), `www/bar.js` (the View menu), `cli/src/view.rs` (the text view, unde
    `overlay.fields` cell in `atlas.json` with the same brief. Draw the strokes until the cell is drawn, as
    `floodplains.js` falls back.
 6. **The text view** (`cli/src/view.rs`): a selected or listed clan with fields prints "fields 3 tiles, 9.4
-   days, 6.1 grain". Stay under 80 lines.
+   days, 6.1 grain", one line beside its other numbers.
 7. **`www/play/fields.mjs`**, added to `all.mjs`. Lead a civ on small seed 9 with `play.mjs`'s `lead` (`{ seed: 9 }`, the
-   first civ). Play turns until some clan of the led civ has `fields > 0`, at most 40. Then:
+   first civ). Play turns until some clan of the led civ has `fields > 0`, at most 40 (raise the cap if the first civ farms later, and say by how much). Then:
    - the feed holds a `clanFarming` item, and clicking it selects that clan;
    - that clan's panel has a Fields row, and its first tile is a tile with `ground > 0`;
    - the civ's panel has a Living row whose farming part is above 0 and whose three parts sum to its people,
