@@ -68,9 +68,9 @@ pub fn sow(w: &World, tiles: &[usize], work: &[f64]) -> Vec<f64> {
 
 /// The two jobs of a clan's labour over `tiles` (its territory, with `yearly` walks): gathering over
 /// every tile at `1 − fields`, and the field job at `fields` over the tiles with ground, each tile
-/// paying its walk. Returns each tile's gathering work, the field job's work on each field tile, and
-/// the field tiles' indices into `tiles`. With no field tile, `fields` gives nothing and all labour
-/// gathers.
+/// paying its walk. A field tile is a tile with ground that yields: days are not sown on grain still
+/// wild. Returns each tile's gathering work, the field job's work on each field tile, and the field
+/// tiles' indices into `tiles`. With no field tile, `fields` gives nothing and all labour gathers.
 pub fn jobs(
     w: &World,
     people: f64,
@@ -79,7 +79,8 @@ pub fn jobs(
     yearly: &[f64],
     fields: f64,
 ) -> (Vec<f64>, Vec<f64>, Vec<usize>) {
-    let fk: Vec<usize> = (0..tiles.len()).filter(|&k| ground(w, tiles[k]) > 0.0).collect();
+    let fk: Vec<usize> =
+        (0..tiles.len()).filter(|&k| ground(w, tiles[k]) > 0.0 && yield_a_day(w, tiles[k]) > 0.0).collect();
     let share = if fk.is_empty() { 0.0 } else { fields };
     let fy: Vec<f64> = fk.iter().map(|&k| yearly[k]).collect();
     let mut parts = actors::split(people, people * CLAN.work, routes, &[1.0 - share, share], &[yearly.to_vec(), fy]);

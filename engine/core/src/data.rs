@@ -313,7 +313,7 @@ pub struct FieldRules {
     pub farmer: f64,
     /// Steps of tame a turn a field adds to its tile, on top of the one a held tile gains.
     pub tame: u32,
-    /// Why these numbers: the probe's starting values (relay/specs/155/probe.md), not yet tuned.
+    /// Why these numbers: where they came from, and what tuning them did (relay/specs/155/canvas.md).
     pub note: &'static str,
 }
 
@@ -323,10 +323,13 @@ pub const FIELD: FieldRules = FieldRules {
     grain: 0.8,
     notch: 0.1,
     margin: 0.01,
-    farmer: 0.1,
+    farmer: 0.2,
     tame: 1,
-    note: "The probe's y8 values (relay/specs/155/probe.md): a floodplain feeds a small clan's days, a field day \
-           yields 1.2 food at a hearth against a gathering day's 0.75, and a split moves a tenth at a time.",
+    note: "Tuned on the retro maps (relay/specs/155/canvas.md), from the probe's y8 values: a floodplain feeds a \
+           small clan's days, a field day yields 1.2 food at a hearth against a gathering day's 0.75, a split \
+           moves a tenth at a time, and a clan is a farmer, its home following its fields, from a fifth of its \
+           days: at a tenth it read starving 1.30 against the control's, at a fifth 1.22, with the store held \
+           on 5 of 7 maps.",
 };
 
 /// What a person carries on a route: a walk beyond the territory is paid by every person carrying
