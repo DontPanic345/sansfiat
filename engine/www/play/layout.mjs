@@ -95,7 +95,7 @@ for (const size of Object.keys(SIZES)) {
     }
   }
   // Play: the camp selected, then the civ.
-  const page = await open('?size=small&seed=1&run=1', { size });
+  const page = await open('?size=small&seed=2&run=1', { size });
   try {
     await page.until("document.body.dataset.phase === 'choose'");
     await page.button('Lead ');

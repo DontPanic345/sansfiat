@@ -33,7 +33,7 @@ async function selectKey(page, key, i) {
   return false;
 }
 
-const page = await open('?size=small&seed=1&run=1');
+const page = await open('?size=small&seed=2&run=1');
 try {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');
