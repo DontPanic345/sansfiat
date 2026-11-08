@@ -122,7 +122,11 @@ week today. It runs in the days Relay sat idle.
 - 6–8 points runs Sonnet medium; 9–10 Sonnet high; `canvas`, `glaze` and `clay` run Opus low
   from 8 to 10.
 - The rung below is the canvas, glaze or clay on Sonnet high in place of Opus low, and its `why`
-  says what it expects; a Henry Ford piece runs its largest ford a rung below.
+  says what it expects; a Henry Ford piece runs its largest ford a rung below. From #155 on, the
+  twin replaces it: the rung below ran every M4 painter on Sonnet with no Opus run to compare
+  against. Each piece twins one build step, which runs on its ladder rung and again from the same
+  commit on a rung the spec chooses, and a blind `pick` step measures both and lands one or parts
+  of both (`relay/prompts/spec.md`, The twin; `relay/prompts/pick.md`).
 - A `ford`, `easel` or `kiln` step with Open 2 and Miss 3, or at 9 or more, holds unsettled work:
   move it to the canvas or glaze, or settle it by running.
 - The review runs Sonnet high, or Opus medium when `main` has moved under the piece or the goal

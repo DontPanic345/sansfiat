@@ -169,18 +169,61 @@ export const stepRank = (id) => {
     if (id === "spec-review") return 1;
     if (id === "play") return 999;
     if (id === "review") return 1000;
-    const m = /^build-(\d+)$/.exec(id);
-    return m ? 1 + Number(m[1]) : 500;
+    const m = /^build-(\d+)(?:-(twin|pick))?$/.exec(id);
+    return m ? 1 + Number(m[1]) + ({ twin: 0.25, pick: 0.5 }[m[2]] ?? 0) : 500;
 };
 export const stepKind = (id) => {
     if (id === "wait") return "wait";
     if (RETRO_IDS.includes(id)) return "retro";
+    if (/^build-\d+-pick$/.test(id)) return "pick";
     return ["spec", "spec-review", "play", "review"].includes(id) ? id : "build";
 };
 const sortSteps = (steps) => [...steps].sort((a, b) => stepRank(a.meta.id) - stepRank(b.meta.id));
 
 export const branchOf = (piece) => `relay/${piece.number}`;
 export const specDir = (piece) => `relay/specs/${piece.number}`;
+
+// The twinned step runs twice from the same commit, once on each of these branches, and its
+// pick lands one version, or parts of both, on the piece's branch. `-a` and `-b` are all the
+// pick sees.
+export const pairBranches = (piece, id) => [`${branchOf(piece)}-${id}-a`, `${branchOf(piece)}-${id}-b`];
+export const sideOf = (branch) => (branch.endsWith("-a") ? "A" : "B");
+
+// The twinned step, its twin and its pick, found by any of their ids.
+export const pairSteps = (steps, id) => {
+    const base = /^build-\d+/.exec(id)?.[0];
+    const find = (want) => steps.find((s) => s.meta.id === want);
+    const twin = base && find(`${base}-twin`);
+    if (!twin) return null;
+    return { ladder: find(base), twin, pick: find(`${base}-pick`) };
+};
+
+// What the pick's `chose` (A, B or both) means: which run won, and how much of each landed.
+export const pickOutcome = (pair, chose) => {
+    if (chose === "both") return { chose: "both", ladder: "part", twin: "part" };
+    const ladder = sideOf(pair.ladder.meta.branch) === chose;
+    return { chose: ladder ? "ladder" : "twin", ladder: ladder ? "all" : "none", twin: ladder ? "none" : "all" };
+};
+
+// steps.json's steps as the crew makes them: the twin and the pick after the twinned step,
+// and the play step before the review. `coin` puts the twinned step on `-a` or `-b`.
+export const planSteps = (piece, steps, play, coin = Math.random) => {
+    const out = [];
+    for (const s of steps) {
+        const { twin, ...step } = s;
+        if (!twin) {
+            out.push(step);
+            continue;
+        }
+        const [a, b] = pairBranches(piece, s.id);
+        const [mine, its] = coin() < 0.5 ? [a, b] : [b, a];
+        out.push({ ...step, branch: mine });
+        out.push({ ...step, id: `${s.id}-twin`, title: `${s.title} (twin)`, model: twin.model, effort: twin.effort, of: s.id, branch: its, why: `The twin of ${s.id}: ${twin.why}` });
+        out.push({ id: `${s.id}-pick`, title: `Pick between ${s.id}'s two versions`, model: "opus", effort: "medium", of: s.id, why: "Compares the two versions blind and lands one, or parts of both." });
+    }
+    if (!play) return out;
+    return [...out.slice(0, -1), { id: "play", title: "Play the branch", model: play.model, effort: play.effort, why: `The piece's Play line: ${play.why}` }, out.at(-1)];
+};
 // `M4` → `m4`, from the milestone's title; null without one.
 export const milestoneTag = (milestone) => {
     const m = /^M(\d+)\b/i.exec(milestone?.title ?? "");
@@ -214,7 +257,15 @@ export const checkSteps = (text) => {
         if (s.id !== "review" && !PARTS.includes(s.part)) return { error: `${s.id}: part must be one of ${PARTS.join(", ")}` };
         if (!s.title) return { error: `${s.id}: no title` };
         if (!s.why) return { error: `${s.id}: no why for its model and effort` };
+        if (s.twin != null) {
+            const t = s.twin;
+            if (s.id === "review") return { error: "review: only a build step has a twin" };
+            if (!MODELS.includes(t.model) || !EFFORTS.includes(t.effort)) return { error: `${s.id}: its twin needs a model and an effort` };
+            if (t.model === s.model && t.effort === s.effort) return { error: `${s.id}: its twin runs on its own rung` };
+            if (!t.why) return { error: `${s.id}: no why for its twin` };
+        }
     }
+    if (steps.filter((s) => s.twin != null).length > 1) return { error: "only one build step has a twin" };
     return { steps };
 };
 
@@ -314,6 +365,7 @@ export const PROMPTS_FOR = {
     spec: ["spec"],
     "spec-review": ["spec-review", "spec"],
     build: ["build"],
+    pick: ["pick"],
     play: ["play", "players/player", "players/judge"],
     review: ["review", "players/judge"],
     retro: ["retro"],
@@ -329,10 +381,13 @@ export const promptPath = (name) => (name.includes("/") ? `relay/${name}.md` : `
 // (path → text, null for a named file that doesn't exist), `designFiles` (every path in
 // docs/design/), `diffStat` (review only), `lastSpec` (spec only: the folder of the latest
 // other piece's spec, or null), `notes` (the retro's game step: the owner's notes, or null),
-// and `started` and `cap` (when the session started, and the minutes it may run).
+// `started` and `cap` (when the session started, and the minutes it may run), and `sides`
+// (pick only: A's and B's diff stats against the piece's branch).
 export const sessionPrompt = (piece, step, files) => {
     const kind = stepKind(step.meta.id);
     const retro = kind === "retro";
+    // A twin is told it's the step it twins, so the two versions can't be told apart.
+    const id = kind === "build" ? step.meta.of ?? step.meta.id : step.meta.id;
     const where = retro ? `the milestone's retro files live in \`${retroDir(piece)}/\`` : `its spec lives in \`${specDir(piece)}/\``;
     const clock = files.started
         ? ` The session started at ${files.started}, and the crew stops it after ${files.cap} minutes: check the clock (\`date -u\`) before giving up on time.`
@@ -340,11 +395,28 @@ export const sessionPrompt = (piece, step, files) => {
     const parts = [
         `You are a Relay session for Sans Fiat, in GitHub Actions with no other context: one cold session ` +
             `doing one step of ${retro ? "retro" : "piece"} #${piece.number}, "${piece.title}". You are on its branch, ` +
-            `\`${branchOf(piece)}\`, and ${where}. This prompt holds how Relay works; the design and the code hold the rest.${clock}`,
+            `\`${step.meta.branch ?? branchOf(piece)}\`, and ${where}. This prompt holds how Relay works; the design and the code hold the rest.${clock}`,
     ];
     if (kind === "build") {
-        if (!files.brief) throw new Error(`${specDir(piece)}/${step.meta.id}.md is missing`);
+        if (!files.brief) throw new Error(`${specDir(piece)}/${id}.md is missing`);
         parts.push(atLevel(files.brief.trim(), 1));
+    } else if (kind === "pick") {
+        const pair = pairSteps(piece.steps, step.meta.id);
+        const [a, b] = pairBranches(piece, step.meta.of);
+        parts.push(
+            `# Your step: #${piece.number} ${step.meta.id}\n\nTwo sessions built \`${step.meta.of}\` from the same commit: version A on \`${a}\` and ` +
+                `version B on \`${b}\`. Pick between them, as \`pick.md\` says, and land the result on \`${branchOf(piece)}\`.`,
+        );
+        if (files.brief) parts.push(`# The brief both versions built\n\n${atLevel(files.brief.trim(), 2)}`);
+        for (const s of [pair.ladder, pair.twin].sort((x, y) => sideOf(x.meta.branch).localeCompare(sideOf(y.meta.branch)))) {
+            const side = sideOf(s.meta.branch);
+            const decided = (s.meta.decisions ?? []).map((d) => `\n- Decided: ${d.decision}${d.why ? ` (${d.why})` : ""}`).join("");
+            const ideas = ideaList(s.meta.ideas);
+            parts.push(
+                `# Version ${side}\n\n${s.meta.summary ?? "No summary."}${decided}${ideas ? `\n\nIdeas, not built:\n${ideas}` : ""}\n\n` +
+                    `\`\`\`\n${(files.sides?.[side] ?? "").trim()}\n\`\`\``,
+            );
+        }
     } else if (retro) {
         const s = RETRO_STEPS.find((r) => r.id === step.meta.id);
         parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${s.title}, as \`retro.md\` says for the \`${s.id}\` step. The retro:`);
@@ -371,10 +443,10 @@ export const sessionPrompt = (piece, step, files) => {
     if (step.meta.reply) {
         parts.push(
             `# The owner's reply to this step's blocker\n\nThe earlier attempt's commits are on the branch. Act on the reply for this step, ` +
-                `\`${step.meta.id}\`, only: a later step is another session's, even if the reply says to carry on.\n\n"""${step.meta.reply}"""`,
+                `\`${id}\`, only: a later step is another session's, even if the reply says to carry on.\n\n"""${step.meta.reply}"""`,
         );
     }
-    if (!["build", "play", "retro"].includes(kind)) {
+    if (!["build", "pick", "play", "retro"].includes(kind)) {
         const named = Object.entries(files.design ?? {});
         const builds = named.length
             ? named.map(([f, text]) => `## \`${f}\`\n\n${text ? atLevel(text.trim(), 3) : "That file doesn't exist yet."}`).join("\n\n")
@@ -388,7 +460,8 @@ export const sessionPrompt = (piece, step, files) => {
         if (files.spec) parts.push(`# The whole spec\n\n${atLevel(files.spec.trim())}`);
         parts.push(`# The steps\n\nPut this table at the top of the PR description, under "Closes #${piece.number}". The crew rewrites it with your own row after you finish:\n\n${stepsTable(piece.steps)}`);
     }
-    const done = sortSteps(piece.steps).filter((s) => s.state === "closed" && s.meta.summary);
+    // The two versions of the twinned step stay apart; the pick's summary says what landed.
+    const done = sortSteps(piece.steps).filter((s) => s.state === "closed" && s.meta.summary && !s.meta.branch);
     if (done.length) parts.push(`# This piece so far\n\n${done.map(soFar).join("\n")}`);
     for (const name of [...promptsFor(step.meta.id), "session"]) {
         if (files.prompts[name]) parts.push(atLevel(files.prompts[name].trim(), 1));
@@ -454,7 +527,7 @@ export const withStatus = (body, line) => (STATUS.test(body ?? "") ? body.replac
 export const stepBody = (piece, s, { brief, pr } = {}) => {
     const blob = `https://github.com/${GH_REPO}/blob/${branchOf(piece)}/${specDir(piece)}`;
     const on = `**${s.model} ${s.effort}**${s.points != null ? `, ${s.points} points` : ""}${s.part ? `, ${s.part}` : ""}`;
-    const links = [`Piece #${piece.number}`, ...(pr ? [`PR #${pr}`] : []), `[spec.md](${blob}/spec.md)`, ...(brief ? [`[the brief](${blob}/${s.id}.md)`] : [])];
+    const links = [`Piece #${piece.number}`, ...(pr ? [`PR #${pr}`] : []), `[spec.md](${blob}/spec.md)`, ...(brief ? [`[the brief](${blob}/${s.of ?? s.id}.md)`] : [])];
     const parts = [`**Status:** ready`, `Step \`${s.id}\` on ${on}. ${s.why ?? ""}`.trim(), links.join(" · ")];
     if (brief) {
         const text = brief.trim();
@@ -608,7 +681,8 @@ export const stepsTable = (steps) => {
         "|---|---|---|---|---|---|---|---|---|---|---|",
         ...sorted.map((s) => {
             const m = s.meta;
-            const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : "done") : m.status ?? "pending";
+            const landed = m.chose ? `, chose ${m.chose}` : m.picked ? `, ${m.picked} landed` : "";
+            const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : `done${landed}`) : m.status ?? "pending";
             return `| #${s.number} ${m.id} | ${state} | ${m.part ?? ""} | ${m.model} | ${m.effort} | ${num(m.points)} | ${m.sessions ?? m.attempts ?? 0} | ${num(m.cost, dollars)} | ${num(m.minutes, Math.round)} | ${num(m.fiveHour)} | ${num(m.weekly)} |`;
         }),
         "",
@@ -858,6 +932,25 @@ const checkoutPiece = (piece) => {
     return branch;
 };
 
+// Checks out the branch a step runs on. The first of the twinned step's two runs makes both
+// its branches from the piece's branch, so both start from the same commit.
+const checkoutStep = (piece, step) => {
+    const branch = checkoutPiece(piece);
+    const own = step.meta.branch;
+    if (!own) return branch;
+    for (const b of pairBranches(piece, step.meta.of ?? step.meta.id)) {
+        try {
+            git("fetch", "-q", "origin", b);
+        } catch {
+            git("push", "-q", "origin", `origin/${branch}:refs/heads/${b}`);
+            git("fetch", "-q", "origin", b);
+        }
+    }
+    git("checkout", "-q", "-B", own, `origin/${own}`);
+    git("branch", "-q", "-u", `origin/${own}`);
+    return own;
+};
+
 // Whatever the session left behind: unpushed commits are pushed if they rebase cleanly,
 // anything uncommitted is dropped. The runner is thrown away at the end of the job.
 const tidyUp = (branch) => {
@@ -992,7 +1085,7 @@ const stepPrompt = (piece, step) => {
     const designDir = path.join(REPO, "docs/design");
     const files = {
         prompts,
-        brief: readRepo(`${specDir(piece)}/${step.meta.id}.md`),
+        brief: readRepo(`${specDir(piece)}/${step.meta.of ?? step.meta.id}.md`),
         spec: readRepo(`${specDir(piece)}/spec.md`),
         design: Object.fromEntries(designPaths(piece.body).map((f) => [f, readRepo(f)])),
         designFiles: fs.existsSync(designDir) ? fs.readdirSync(designDir).map((f) => `docs/design/${f}`) : [],
@@ -1002,6 +1095,13 @@ const stepPrompt = (piece, step) => {
         started: new Date().toISOString(),
         cap: SESSION_TIMEOUT_MS / 60_000,
     };
+    if (kind === "pick") {
+        files.sides = {};
+        for (const b of pairBranches(piece, step.meta.of)) {
+            git("fetch", "-q", "origin", b);
+            files.sides[sideOf(b)] = git("diff", "--stat=120", `HEAD...origin/${b}`);
+        }
+    }
     return sessionPrompt(piece, step, files);
 };
 
@@ -1015,8 +1115,8 @@ const findPr = async (piece) => {
 // A step's issue, with its brief as it is on the branch now.
 const createStep = async (piece, s) => {
     const meta = { id: s.id, model: s.model, effort: s.effort, why: s.why ?? "", attempts: 0, status: "pending" };
-    for (const k of ["points", "part"]) if (s[k] != null) meta[k] = s[k];
-    const brief = stepKind(s.id) === "build" ? readRepo(`${specDir(piece)}/${s.id}.md`) : null;
+    for (const k of ["points", "part", "of", "branch"]) if (s[k] != null) meta[k] = s[k];
+    const brief = stepKind(s.id) === "build" ? readRepo(`${specDir(piece)}/${s.of ?? s.id}.md`) : null;
     const pr = (await findPr(piece))?.number;
     const issue = await github("POST", "/issues", {
         title: `#${piece.number} ${s.id}: ${s.title}`,
@@ -1062,15 +1162,27 @@ const plan = async (piece) => {
         log(`#${piece.number}: ${error}; spec-review runs again`);
         return;
     }
-    const play = playChoice(piece.body);
-    const all = play
-        ? [...steps.slice(0, -1), { id: "play", title: "Play the branch", model: play.model, effort: play.effort, why: `The piece's Play line: ${play.why}` }, steps.at(-1)]
-        : steps;
-    for (const s of all) await createStep(piece, s);
+    for (const s of planSteps(piece, steps, playChoice(piece.body))) await createStep(piece, s);
     await setStatus(piece, "Building");
 };
 
+// The other run of the twinned step, when `step` is one of its two.
+const partnerOf = (piece, step) => {
+    const pair = step.meta.branch && pairSteps(piece.steps, step.meta.id);
+    if (!pair) return null;
+    return [pair.ladder, pair.twin].find((s) => s && s.number !== step.number) ?? null;
+};
+
+// A blocker on either run of the twinned step blocks both, so the owner's reply reaches both.
 const blockStep = async (piece, step, why) => {
+    const partner = partnerOf(piece, step);
+    if (partner && partner.meta.status !== "blocked") {
+        if (partner.state === "closed") await github("PATCH", `/issues/${partner.number}`, { state: "open" });
+        partner.state = "open";
+        partner.body = withStatus(partner.body, `blocked with ${step.meta.id}: ${why}`);
+        await saveMeta(partner, { ...partner.meta, status: "blocked" });
+        await setBoard(partner.nodeId, { Status: "Waiting" });
+    }
     await addLabel(piece.number, "waiting");
     await comment(
         piece.number,
@@ -1109,7 +1221,16 @@ const autoMerge = async (piece, pr, result) => {
 // The PR comment for a finished step: its summary, decisions and ideas, with what it took.
 export const stepComment = (step, result) => {
     const m = step.meta;
-    const took = [`${m.model} ${m.effort}`, ...(m.part ? [m.part] : []), ...(m.points != null ? [`${m.points} points`] : []), dollars(m.cost), `${Math.round(m.minutes ?? 0)} min`, `#${step.number}`];
+    const took = [
+        `${m.model} ${m.effort}`,
+        ...(m.part ? [m.part] : []),
+        ...(m.points != null ? [`${m.points} points`] : []),
+        ...(m.branch ? [`version ${sideOf(m.branch)}, ${m.picked ?? "none"} landed`] : []),
+        ...(m.chose ? [`chose ${m.chose}`] : []),
+        dollars(m.cost),
+        `${Math.round(m.minutes ?? 0)} min`,
+        `#${step.number}`,
+    ];
     const decided = m.decisions?.length ? `\n\n🧭 Decided:\n${m.decisions.map((d) => `- ${d.decision}${d.why ? `: ${d.why}` : ""}`).join("\n")}` : "";
     const list = ideaList(result.ideas);
     const ideas = list ? `\n\n💡 Ideas, not built:\n${list}` : "";
@@ -1129,8 +1250,12 @@ const afterStep = async (piece, step, result) => {
         const tree = `https://github.com/${GH_REPO}/tree/${branchOf(piece)}/${specDir(piece)}`;
         await comment(piece.number, `📎 The PR is #${pr.number}, and the spec is in [\`${specDir(piece)}/\`](${tree}).`);
     }
-    if (pr && result.summary) await comment(pr.number, stepComment(step, result));
-    await fileFindings(piece, step, result);
+    // The two runs of the twinned step stay off the PR until the pick, which reads them blind.
+    if (!step.meta.branch) {
+        if (pr && result.summary) await comment(pr.number, stepComment(step, result));
+        await fileFindings(piece, step, result);
+    }
+    if (kind === "pick") await afterPick(piece, step, result, pr);
     if (kind === "spec" || kind === "spec-review") await plan(await loadPiece(piece.number));
     else if (step.meta.id === "proposal") {
         await comment(piece.number, `📝 The proposal is on ${pr?.html_url ?? "the branch"}. Correct it there and merge it: the crew then opens its pieces.`);
@@ -1150,6 +1275,20 @@ const afterStep = async (piece, step, result) => {
             );
             await setStatus(piece, "Review", "your merge");
         }
+    }
+};
+
+// After the pick: each run of the twinned step records how much of it landed, posts on the PR,
+// and files its ideas if any of it landed.
+const afterPick = async (piece, pick, result, pr) => {
+    const fresh = await loadPiece(piece.number);
+    const pair = pairSteps(fresh.steps, pick.meta.id);
+    const outcome = pickOutcome(pair, result.chose);
+    for (const which of ["ladder", "twin"]) {
+        const s = pair[which];
+        await saveMeta(s, { ...s.meta, picked: outcome[which] });
+        if (pr && s.meta.summary) await comment(pr.number, stepComment(s, s.meta));
+        if (outcome[which] !== "none") await fileFindings(piece, s, { ideas: s.meta.ideas });
     }
 };
 
@@ -1261,7 +1400,7 @@ const endWait = async (piece, step) => {
 // `refused` when the session couldn't start as asked.
 // `before` is the usage the crew paced on, so the step's points are the rise from it.
 const runStep = async (piece, step, before) => {
-    const branch = checkoutPiece(piece);
+    const branch = checkoutStep(piece, step);
     const tracked = git("ls-files", "relay/runs");
     if (tracked) {
         throw Object.assign(new Error(`#${piece.number}'s branch tracks ${tracked.split("\n").join(", ")}; \`git rm --cached\` it before a session runs`), { refused: true });
@@ -1297,6 +1436,9 @@ const runStep = async (piece, step, before) => {
     if (kind === "review" && result?.status === "done" && typeof result.merge !== "boolean") {
         result = { status: "pending", note: "You reported done without `merge`: result.json needs `\"merge\": true` or `false`." };
     }
+    if (kind === "pick" && result?.status === "done" && !["A", "B", "both"].includes(result.chose)) {
+        result = { status: "pending", note: "You reported done without `chose`: result.json needs `\"chose\": \"A\"`, `\"B\"` or `\"both\"`." };
+    }
     let after = null;
     try {
         after = await usage();
@@ -1319,6 +1461,11 @@ const runStep = async (piece, step, before) => {
     meta.context = stats.context;
     meta.compactions = (step.meta.compactions ?? 0) + stats.compactions;
     meta.cli = cliVersion();
+    if (outcome === "done" && meta.branch) {
+        // Filed after the pick, for the versions that landed.
+        meta.ideas = [...(Array.isArray(result.ideas) ? result.ideas : []), ...(Array.isArray(result.findings) ? result.findings : [])].filter((i) => i?.title);
+    }
+    if (outcome === "done" && kind === "pick") meta.chose = pickOutcome(pairSteps(piece.steps, meta.id), result.chose).chose;
     step.body = withStatus(step.body, statusLine(meta, outcome, outcome === "blocked" ? `${why} (see #${piece.number})` : meta.note));
     await saveMeta(step, meta);
     await setBoard(step.nodeId, {
@@ -1451,13 +1598,18 @@ const report = async () => comment(await logIssue(), `⚠️ ${process.argv.slic
 const findStep = (piece, id) => piece.steps.find((s) => s.meta.id === id && s.state === "open");
 
 // The owner's reply on a piece with a blocked step goes to that step's next session.
+// Both runs of the twinned step were blocked together, so both get it.
 const unblock = async (piece, step, reply) => {
-    const meta = { ...step.meta, status: "pending", attempts: 0 };
-    if (reply) meta.reply = reply;
-    delete meta.note;
-    step.body = withStatus(step.body, reply ? "ready, with your reply" : "ready, retrying");
-    await saveMeta(step, meta);
-    if (!piece.steps.some((s) => s !== step && s.state === "open" && s.meta.status === "blocked")) await removeLabel(piece.number, "waiting");
+    const partner = partnerOf(piece, step);
+    const both = [step, ...(partner?.state === "open" && partner.meta.status === "blocked" ? [partner] : [])];
+    for (const s of both) {
+        const meta = { ...s.meta, status: "pending", attempts: 0 };
+        if (reply) meta.reply = reply;
+        delete meta.note;
+        s.body = withStatus(s.body, reply ? "ready, with your reply" : "ready, retrying");
+        await saveMeta(s, meta);
+    }
+    if (!piece.steps.some((s) => !both.includes(s) && s.state === "open" && s.meta.status === "blocked")) await removeLabel(piece.number, "waiting");
     await setStatus(piece, "Building");
 };
 

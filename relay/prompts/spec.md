@@ -106,18 +106,18 @@ Easel and Canvas. Underneath, a shape the others build on: Clay and Kiln.
 
 Score each build step on four things:
 
-| | Low | Middle | High |
-|---|---|---|---|
-| **Open**: can the brief say what done is? | 0: exactly | 2: in part | 4: judged by eye, or by searching for what works |
-| **New**: is there a pattern for it? | 0: in the code, or a port | 1: adapted from one | 3: nothing like it here |
-| **Miss**: what catches a mistake? | 0: the checks | 1: a test it has to write | 3: only play, or a run on real maps |
-| **Reach**: what does it change? | 0: a module on its own | 1: a few callers | 2: what every turn runs |
+|                                           | Low                       | Middle                    | High                                             |
+| ----------------------------------------- | ------------------------- | ------------------------- | ------------------------------------------------ |
+| **Open**: can the brief say what done is? | 0: exactly                | 2: in part                | 4: judged by eye, or by searching for what works |
+| **New**: is there a pattern for it?       | 0: in the code, or a port | 1: adapted from one       | 3: nothing like it here                          |
+| **Miss**: what catches a mistake?         | 0: the checks             | 1: a test it has to write | 3: only play, or a run on real maps              |
+| **Reach**: what does it change?           | 0: a module on its own    | 1: a few callers          | 2: what every turn runs                          |
 
 The points add up, and the sum climbs the ladder:
 
-| Points | 0–1 | 2–3 | 4–5 | 6–8 | 9–10 | 11–12 |
-|---|---|---|---|---|---|---|
-| Step | haiku low | haiku medium | haiku high | sonnet medium | sonnet high | opus medium |
+| Points | 0–1       | 2–3          | 4–5        | 6–8           | 9–10        | 11–12       |
+| ------ | --------- | ------------ | ---------- | ------------- | ----------- | ----------- |
+| Step   | haiku low | haiku medium | haiku high | sonnet medium | sonnet high | opus medium |
 
 `canvas`, `glaze` and `clay` run Opus low from 8 to 10.
 
@@ -138,10 +138,6 @@ disagree, the cut is usually wrong:
 
 Re-cut or re-score, and write which in the step's `why`.
 
-Each piece runs its `canvas`, `glaze` or `clay` a rung below, Sonnet high in place of Opus
-low, and its `why` says what it expects to see. A Henry Ford piece runs its largest ford a rung
-below.
-
 A brief that adds to a file over 600 lines names the file to split it into.
 
 The review isn't scored. It runs Sonnet high, or Opus medium when `main` has moved under the
@@ -149,6 +145,19 @@ piece or the goal is judged by play. Nothing that judges runs at low effort.
 
 The crew adds a `play` step before the review when the piece's `Play:` line names a model; it
 isn't in `steps.json`.
+
+## The twin
+
+Each piece twins one build step to test the ladder. The crew runs it twice from the same commit,
+on its ladder rung and on a rung you choose, each on its own branch. Then a `pick` step measures
+both versions blind and lands one, or parts of both, before the next step runs.
+
+Twin the step whose rung you doubt most, usually the `canvas`, `glaze` or `clay`. The twin's
+rung is the question: a rung below asks whether the step needs its rung, and a rung above asks
+whether more would have paid. Its `why` says what you expect each version to do.
+
+The twinned step's brief serves both versions as written. Its proof is runs the pick can repeat
+on each branch and read side by side in the scores.
 
 ## steps.json
 
@@ -159,6 +168,7 @@ counting tests, pins and `engine/CLAUDE.md`), so the retro can read cost against
 ```json
 [
   { "id": "build-1", "title": "…", "part": "easel", "model": "…", "effort": "…", "points": 7, "why": "Open 2, New 1, Miss 1, Reach 2; about 4 files, 300 lines: …" },
+  { "id": "build-2", "title": "…", "part": "canvas", "model": "opus", "effort": "low", "points": 10, "why": "…", "twin": { "model": "…", "effort": "…", "why": "…" } },
   { "id": "review", "title": "Review the piece", "model": "sonnet", "effort": "high", "why": "…" }
 ]
 ```

@@ -43,20 +43,24 @@ step was made; the brief on the branch is the one builds keep up. A hidden
 `<!-- relay {...} -->` block carries its attempts, cost, minutes, usage, summary and
 decisions. Step issues get no comments: the status line says how the step stands. The spec,
 the briefs and `steps.json` live on the piece's branch, `relay/<number>`, in
-`relay/specs/<number>/`.
+`relay/specs/<number>/`. The twinned step's two runs each carry their `branch`, and the pick
+records what it `chose` and each run how much of it was `picked`.
 
 | Step | What it does |
 |---|---|
 | `spec` | The designer settles what it can, picks a shape, and writes the spec, a brief per build, and `steps.json` with each build's part and each step's model, effort, points and why (`prompts/spec.md` has the shapes and the ladder). Runs on the model the piece's `Spec` line names |
 | `spec-review` | Reads the code each settled rule touches, runs the sweep or a play script where minutes settle a number, and fixes the plan where the run disagrees with the reading. Runs on the model the piece's `Spec-review` line names, never at low effort |
 | `build-N` | Builds what its brief says |
+| `build-N-twin` | The one step `steps.json` gives a `twin` runs twice from the same commit: `build-N` on its ladder rung and `build-N-twin` on the rung the spec chose, on branches `relay/<number>-build-N-a` and `-b`, a coin deciding which run takes which. Neither sees the other's summary, and the twin is told it is `build-N`. A blocker on either blocks both, and the owner's reply goes to both |
+| `build-N-pick` | Runs the brief's proof on both branches, writes `pick.md` with every run side by side, and merges A, B or parts of both into the piece's branch. It sees the versions only as A and B. Its `result.json` must say `"chose": "A"`, `"B"` or `"both"`. The crew then records which run won and how much of each landed, posts both runs' comments on the PR, and files the ideas of each run that landed. Runs Opus medium |
 | `play` | Plays the branch through `sansfiat play` for 100 turns from the pick (`relay/players/player.md`), judges the game (`relay/players/judge.md`), and writes `play.md` with each finding classed `fix` or `ask`. The crew adds it before the review when the piece's `Play` line names a model |
 | `review` | Merges `main` in, judges the change against `main` with the rubric in `relay/players/judge.md`, reviews the whole piece against the piece and its design, fixes what is small, appends the piece's decisions to each design file's `## Decided` ledger, writes the PR description for the owner to read on a phone (the judge's verdict, the steps table, the answer in the scores, the ledger lines, screenshots and a merge verdict), and waits for CI on its own head commit. Its `result.json` must say `"merge": true` or `false`. The crew then rewrites the steps table with the review's row, and on a merge verdict waits up to ten minutes for CI to go green and merges the PR |
 
 The crew makes spec-review once the spec closes, and the builds and the review once
 spec-review closes, from `steps.json` as spec-review left it. Spec-review isn't done until
 `steps.json` reads cleanly. Then the crew carries on, with no stop for the owner. Every step's
-prompt carries every earlier step's summary and decisions.
+prompt carries every earlier step's summary and decisions, with the pick's in place of the
+twinned step's two runs.
 
 Otherwise it's the owner's turn: merge the PR, which closes the piece, or close the piece,
 which tags the branch head `proof/<number>` and closes the PR. Closing a piece closes its open
@@ -129,7 +133,8 @@ On a piece's or a retro's issue, from the owner only (`relay-events.yml`):
 The crew writes each session's whole prompt and saves it beside the transcript in `runs/`.
 Spec and spec-review sessions get the piece and its design files; build sessions get only
 their brief, which carries all the design it needs; the review gets no brief, but the piece,
-the design files, the diff, the whole spec and the steps table. The play step gets the piece,
+the design files, the diff, the whole spec and the steps table. The pick gets the brief and
+each version's summary, decisions, ideas and diff stat, as A and B. The play step gets the piece,
 `prompts/play.md` and both of `players/`. A retro step gets the retro issue and `prompts/retro.md`,
 and the game step the owner's notes. Every session gets when it started and its cap, the earlier
 steps' summaries and decisions, `prompts/session.md` and its kind's prompt.
@@ -145,7 +150,8 @@ Each step records its cost at list price (the CLI's `total_cost_usd`, summed acr
 attempts), its minutes, the 5-hour and weekly usage before and after each attempt and the
 points it rose by, the context its last turn held as a share of the window, and how many
 times it compacted. On a subscription the cost isn't money spent; it makes steps, models and
-pieces comparable. The usage probe reads the whole account, so the owner's own sessions in
+pieces comparable. Both runs of a twinned step record their own spend, so the steps table
+puts their costs side by side, with how much of each landed. The usage probe reads the whole account, so the owner's own sessions in
 the same hours land on Relay's steps. A crashed attempt has no result frame and records no
 cost. Usage is read once at each step boundary and rounded.
 

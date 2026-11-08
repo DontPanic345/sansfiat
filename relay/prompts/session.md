@@ -8,7 +8,8 @@ Relay builds it as a run of steps, each a cold session like you, on the piece's 
 1. **spec**: the designer plans the piece: a spec, a brief for each build, and `steps.json`.
 2. **spec-review** checks the plan against the code and the maps by running things, and fixes
    it. The crew then makes the steps from `steps.json`.
-3. **build-1** to **build-n** each build what their brief says.
+3. **build-1** to **build-n** each build what their brief says. One is twinned: it runs twice
+   from the same commit on two branches, and **pick** lands one version or parts of both.
 4. **play**, when the piece's `Play:` line names a model, plays the branch and judges the game.
 5. **review** reviews the whole piece, fixes it, and adds its decisions to the design's ledger.
 

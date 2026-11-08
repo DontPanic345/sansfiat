@@ -49,6 +49,11 @@ import {
     promptPath,
     withStatus,
     writeMeta,
+    pairBranches,
+    pairSteps,
+    pickOutcome,
+    planSteps,
+    sideOf,
 } from "./relay.mjs";
 
 const resets = new Date("2026-10-17T09:00:00Z");
@@ -126,6 +131,12 @@ test("checkSteps wants builds in order, then the review, each with points and a 
     assert.match(checkSteps(ok("build-1", s("review", { effort: "low" }))).error, /low effort/);
     assert.ok(checkSteps(ok(s("build-1", { part: "glaze", model: "opus", effort: "low" }), "review")).steps);
     assert.match(checkSteps(ok(s("build-1", { why: "" }), "review")).error, /no why/);
+    const twin = { model: "sonnet", effort: "high", why: "w" };
+    assert.ok(checkSteps(ok(s("build-1", { model: "opus", effort: "low", twin }), "review")).steps);
+    assert.match(checkSteps(ok(s("build-1", { twin: { ...twin, model: "gpt" } }), "review")).error, /twin needs/);
+    assert.match(checkSteps(ok(s("build-1", { effort: "high", twin }), "review")).error, /own rung/);
+    assert.match(checkSteps(ok(s("build-1", { model: "opus", twin: { ...twin, why: "" } }), "review")).error, /why for its twin/);
+    assert.match(checkSteps(ok(s("build-1", { model: "opus", twin }), s("build-2", { model: "opus", twin }), "review")).error, /only one/);
 });
 
 const step = (id, state = "open", meta = {}) => ({ number: 100, state, meta: { id, model: "sonnet", effort: "medium", ...meta } });
@@ -467,4 +478,86 @@ test("ideaList lists a session's ideas and skips any without a title", () => {
     assert.equal(ideaList([{ title: "Rivers", body: "carry goods" }, { title: "" }, null, { title: "Ports" }]), "- **Rivers**: carry goods\n- **Ports**");
     assert.equal(ideaList(undefined), "");
     assert.equal(ideaList("rivers"), "");
+});
+
+const twinned = [
+    { id: "build-1", title: "Easel", part: "easel", model: "haiku", effort: "high", points: 5, why: "w1" },
+    { id: "build-2", title: "Canvas", part: "canvas", model: "opus", effort: "low", points: 10, why: "w2", twin: { model: "sonnet", effort: "high", why: "does Sonnet paint it?" } },
+    { id: "review", title: "Review the piece", model: "sonnet", effort: "high", why: "w3" },
+];
+
+test("the crew twins one step from steps.json and adds its pick, then play before the review", () => {
+    const p = piece(9, []);
+    const made = planSteps(p, twinned, { model: "sonnet", effort: "medium", why: "sonnet" }, () => 0.9);
+    assert.deepEqual(made.map((s) => s.id), ["build-1", "build-2", "build-2-twin", "build-2-pick", "play", "review"]);
+    const [, ladder, twin, pick] = made;
+    assert.deepEqual(pairBranches(p, "build-2"), ["relay/9-build-2-a", "relay/9-build-2-b"]);
+    assert.equal(ladder.branch, "relay/9-build-2-b");
+    assert.equal(ladder.twin, undefined);
+    assert.deepEqual([twin.model, twin.effort, twin.branch, twin.of, twin.part, twin.points], ["sonnet", "high", "relay/9-build-2-a", "build-2", "canvas", 10]);
+    assert.match(twin.why, /does Sonnet paint it/);
+    assert.deepEqual([pick.model, pick.effort, pick.of, pick.branch], ["opus", "medium", "build-2", undefined]);
+    assert.equal(planSteps(p, twinned, null, () => 0.1)[1].branch, "relay/9-build-2-a");
+    assert.deepEqual(made.map((s) => s.id).sort((a, b) => stepRank(a) - stepRank(b)), made.map((s) => s.id));
+    assert.deepEqual(["build-2-twin", "build-2-pick"].map(stepKind), ["build", "pick"]);
+});
+
+test("the pick's choice reads back as which run won and how much of each landed", () => {
+    const steps = [step("build-2", "closed", { branch: "relay/9-build-2-b" }), step("build-2-twin", "closed", { branch: "relay/9-build-2-a", of: "build-2" }), step("build-2-pick")];
+    const pair = pairSteps(steps, "build-2-pick");
+    assert.equal(pair.ladder.meta.id, "build-2");
+    assert.equal(pairSteps(steps, "build-2").twin.meta.id, "build-2-twin");
+    assert.equal(pairSteps(steps, "build-1"), null);
+    assert.equal(sideOf("relay/9-build-2-a"), "A");
+    assert.deepEqual(pickOutcome(pair, "A"), { chose: "twin", ladder: "none", twin: "all" });
+    assert.deepEqual(pickOutcome(pair, "B"), { chose: "ladder", ladder: "all", twin: "none" });
+    assert.deepEqual(pickOutcome(pair, "both"), { chose: "both", ladder: "part", twin: "part" });
+});
+
+test("a twin is told it's the step it twins, on its own branch, and sees neither run's summary", () => {
+    const p = piece(9, [], [
+        step("build-1", "closed", { summary: "Built the easel." }),
+        step("build-2", "closed", { summary: "Painted on Opus.", branch: "relay/9-build-2-b" }),
+    ]);
+    const twin = step("build-2-twin", "open", { of: "build-2", branch: "relay/9-build-2-a", reply: "Use 0.5" });
+    const text = sessionPrompt(p, twin, files({ brief: "# build-2: Canvas\n\nPaint." }));
+    assert.match(text, /on its branch, `relay\/9-build-2-a`/);
+    assert.match(text, /# build-2: Canvas/);
+    assert.match(text, /this step, `build-2`, only/);
+    assert.doesNotMatch(text, /twin/);
+    assert.match(text, /Built the easel/);
+    assert.doesNotMatch(text, /Painted on Opus/);
+});
+
+test("a pick session gets the brief and both versions as A and B, and no design", () => {
+    const p = piece(9, [], [
+        step("build-1", "closed", { summary: "Built the easel." }),
+        step("build-2", "closed", { model: "opus", summary: "Painted it one way.", branch: "relay/9-build-2-b", decisions: [{ decision: "Rivers flow east", why: "" }] }),
+        step("build-2-twin", "closed", { summary: "Painted it another.", branch: "relay/9-build-2-a", of: "build-2", ideas: [{ title: "Ports" }] }),
+    ]);
+    const prompts = { ...files().prompts, pick: "# Pick step" };
+    const text = sessionPrompt(p, step("build-2-pick", "open", { of: "build-2" }), files({ prompts, brief: "# build-2: Canvas\n\nPaint.", sides: { A: " a.rs | 3 +", B: " b.rs | 9 +" } }));
+    assert.match(text, /version A on `relay\/9-build-2-a` and version B on `relay\/9-build-2-b`/);
+    assert.match(text, /land the result on `relay\/9`/);
+    assert.match(text, /# The brief both versions built\n\n## build-2: Canvas/);
+    assert.match(text, /# Version A\n\nPainted it another\.\n\nIdeas, not built:\n- \*\*Ports\*\*\n\n```\na\.rs \| 3 \+/);
+    assert.match(text, /# Version B\n\nPainted it one way\.\n- Decided: Rivers flow east\n\n```\nb\.rs \| 9 \+/);
+    assert.ok(text.indexOf("# Version A") < text.indexOf("# Version B"));
+    assert.doesNotMatch(text, /opus|twin|Rivers run downhill/);
+    assert.match(text, /Built the easel/);
+    assert.match(text, /# Pick step/);
+});
+
+test("the steps table and the PR comments say what each run landed and what the pick chose", () => {
+    const table = stepsTable([
+        { ...step("build-2", "closed", { branch: "relay/9-build-2-b", picked: "none", cost: 2 }), stateReason: "completed" },
+        { ...step("build-2-twin", "closed", { branch: "relay/9-build-2-a", picked: "all", cost: 1 }), stateReason: "completed" },
+        { ...step("build-2-pick", "closed", { chose: "twin", cost: 1 }), stateReason: "completed" },
+    ]);
+    assert.match(table, /\| #100 build-2 \| done, none landed \|/);
+    assert.match(table, /\| #100 build-2-twin \| done, all landed \|/);
+    assert.match(table, /\| #100 build-2-pick \| done, chose twin \|/);
+    assert.match(table, /\$4\.00 at list price so far\./);
+    const twin = step("build-2-twin", "closed", { branch: "relay/9-build-2-a", picked: "all", cost: 1, summary: "Painted." });
+    assert.match(stepComment(twin, twin.meta), /\(sonnet medium, version A, all landed, \$1\.00/);
 });
