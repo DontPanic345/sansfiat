@@ -92,20 +92,23 @@ Every map has clans with fields at +200.
   The compare shows turns at a pack rising from 426 to 508 in total and the store mean from 25.9 to 29.4.
 - The motion bound for settled farmers: needs the farmer's home counts from build-2's judge group.
 
-## Scout errand: a failing test
+## Scout errand: the test runs on the control
 
-`cargo test --no-fail-fast` on the branch has one failure this build causes: `every_scouts_first_errand_is_survived`
-(`engine/core/tests/scout_errand.rs`). Its bound is at most 4 of 28 scouts lost by 50 turns with no refill, all on
-medium 9. With fields on, 6 are lost: small 3 (route to the rival, idle) and small 6 (move to Lead's target) as well
-as medium 9 (route to the rival, move to Lead's target, idle). Its scout starves on small 3 and small 6, where the
-pick's ground feeds it on main. Its pack runs dry while it wanders (a probe on small 3's idle scout: store empty on
-turns 261, 271 and 283, then dead at 286). I have not identified the mechanism. Reading the code, I expected fields to
-help the scout (the levy takes a share of a clan's basket, which now holds field grain; a field draws on no stock,
-so the spare on it is larger), but that is a reading, not a test, and the scouts starve anyway. Open.
+`every_scouts_first_errand_is_survived` (`engine/core/tests/scout_errand.rs`) bounds the led civ's scout on its first
+errand: at most 4 of 28 lost by 50 turns with no refill, all on medium 9. With fields on, 6 are lost: small 3 (route to
+the rival, idle), small 6 (move to Lead's target) and medium 9 (route to the rival, move to Lead's target, idle). The
+owner's reply to the blocker was "fix or remove the test". The test now runs its errands with `Config.fields` false,
+the control, where it passes as on main: the bound is the scout's rules on the ground they were measured on.
 
-The bound is the test's, from `relay/specs/153` and `154`. It is not moved here: a bound a design step set does not
-move because a later rule makes it fail. The owner decides whether the scout's survival on small maps is a bound
-the field job must keep, or one that moves with it.
+Why that and not a new bound with fields on: the bound is a snapshot of one float path. The test's own comment says
+main with `CLAN.work` nudged by one part in 10^12 loses 5 of the 28 on other maps. A probe of small 3's idle scout
+shows the paths match until turn 13 past the pick, when fields on sends the scout to other ground (the clans' takes
+around it differ), and from there it starves at turn 47 with the civ's store at 49 food. Fields change every clan's
+take from the pick, so a bound with fields on would move with every tuning of `FIELD` (build-4's).
+
+The ignored report beside it, `the_ais_scouts_live_to_200` (every civ on the AI to +200, asserting no AI scout lost),
+already fails on the base: with fields off 2 of 21 scouts are gone and 9 people starved; with fields on, 4 gone and 10
+starved. By map, fields off / on, scouts gone: small 3 1/1, small 9 0/1, medium 9 1/2, the rest 0/0.
 
 ## Gift-reach test: seed changed
 

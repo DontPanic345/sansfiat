@@ -4,6 +4,9 @@
 //! Over 50 turns each scout's hungry turns, people lost, turns wandering, tiles revealed and trails
 //! built are counted, and every scout must be alive at the end. A second test, a report, refills the
 //! routed scouts' packs each turn: the control for how much a living scout gets done.
+//! The errands run with fields off (`Config.fields`), the control: the bound is the scout's rules on
+//! the ground they were measured on. Fields change every clan's take from the pick, and with it the
+//! ground a scout forages; with them on, 6 of the 28 are lost (`relay/specs/155/field-job.md`).
 //! `cargo test --release -p engine --test scout_errand -- --nocapture` prints the table
 //! (`relay/specs/153/feeding.md`).
 
@@ -50,6 +53,7 @@ struct Result {
 
 fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
     let mut stage = Stage::retro(size, seed).unwrap();
+    stage.world_mut().config.fields = false;
     let me = *stage.world().civs.keys().next().unwrap();
     stage.lead(me).unwrap();
     let w = stage.world();
@@ -158,9 +162,9 @@ fn table(kinds: &[Kind], refill: bool) -> Vec<String> {
     lost
 }
 
-/// At most 4 of the 28 scouts are lost by 50 turns with no refill, at the numbers in `SCOUT`, and every one of
-/// them is on medium 9, where all four of its scouts starve with the per-person walk off as well: the pick's
-/// ground feeds none (`relay/specs/153/errand.md`, `relay/specs/154/walk.md`).
+/// At most 4 of the 28 scouts are lost by 50 turns with no refill, with fields off, at the numbers in `SCOUT`,
+/// and every one of them is on medium 9, where all four of its scouts starve with the per-person walk off as
+/// well: the pick's ground feeds none (`relay/specs/153/errand.md`, `relay/specs/154/walk.md`).
 #[test]
 fn every_scouts_first_errand_is_survived() {
     let lost = table(&[Kind::RouteRival, Kind::RouteLead, Kind::MoveLead, Kind::Idle], false);

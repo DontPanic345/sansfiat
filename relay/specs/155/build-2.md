@@ -45,6 +45,8 @@ and in total), `cli/src/sweep_judge.rs` (`judge_map` and its runs; 588 lines), `
 4. **The feed.** `www/feed.js` `KINDS.clanFarming` ({ icon: '≡', color: '#d9c45a', label: 'Fields' }).
    `check.mjs`'s `KINDS` gains it. `sounds.json` gains `"clanFarming": "clan-farming.ogg"`, silent until the
    file exists. A click on it selects the clan, as `clanMoved` does.
+   Build-1 added the `KINDS` entry and the `sounds.json` line already, since `art.mjs` fails on a heard kind
+   that is not a feed kind; the click is this step's.
 5. **The design edits**, word for word:
    - `docs/design/clans.md`, Taming: "- Farming and irrigation tame it further, later." becomes "- Fields tame it
      further (`farming.md`); irrigation later."
