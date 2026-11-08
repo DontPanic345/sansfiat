@@ -12,6 +12,10 @@ const pct = (x) => `${(Math.round(x * 1000) / 10).toFixed(1)}%`;
 const ORD = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const sum = (xs) => xs.reduce((a, b) => a + b, 0);
+const f1 = (x) => x.toFixed(1);
+const TENTHS = ['none', 'a tenth', 'a fifth', 'three tenths', 'two fifths', 'half', 'three fifths', 'seven tenths', 'four fifths', 'nine tenths', 'all'];
+/** A share of days as words: 'a fifth' for 0.2, 'three tenths' for 0.3, 'all' for 1. */
+export const shareWords = (x) => TENTHS[Math.round(Math.min(1, Math.max(0, x)) * 10)];
 
 /** An order for unit `u` (its civ gives the order), in the wire form `Sim.act` takes. */
 export const unitOrder = (u, order) => ({ type: 'order', civ: u.civ, order: { ...order, unit: u.id } });
@@ -97,6 +101,9 @@ export function tileKind(ctx, i) {
   const bits = [terrainLabel(ctx, i)];
   if (l.river[i] > 0) bits.push(`river (${l.river[i]} upstream)`);
   if (l.flood[i]) bits.push('floodplain');
+  if (l.ground?.[i] > 0) bits.push(`field ground ${f2(l.ground[i])} days`);
+  const field = ctx.model?.fieldAt(i);
+  if (field) bits.push(`fields ${f1(field.days)} days (clan ${field.clan})`);
   if (l.pass[i]) bits.push('pass');
   if (l.zone[i] && ctx.country) bits.push(ZONES[l.zone[i]]);
   return bits.join(', ');
@@ -410,7 +417,12 @@ function civShape(ctx, c) {
   const stored = goods.map((g, f) => (c.store[f] > 0.005 ? `${g} ${f2(c.store[f])}` : null)).filter(Boolean);
   const numbers = [
     { label: 'Standing', value: pct(s.total), tip: `Clans and units ${pct(s.clans)}, unaligned clans on its land ${pct(s.land)}` },
-    { label: 'People', value: f2(c.people), tip: 'The people in its clans and its units' },
+    { label: 'People', value: f2(c.people), tip: 'The people in its clans' },
+    {
+      label: 'Living',
+      value: `gathering ${Math.round(c.living.gathering)} · farming ${Math.round(c.living.farming)} · in the army ${Math.round(c.living.army)}`,
+      tip: 'Its people by what they do: gathering over their land, working fields, or in its units',
+    },
     { label: 'Clans', value: c.clans, tip: 'Clans it holds' },
     {
       label: 'Store',
@@ -471,11 +483,13 @@ function clanShape(ctx, k) {
   const { v, rules } = ctx;
   const civ = k.civ != null ? v.civs[k.civ] : null;
   const cost = k.routes.reduce((a, r) => a + r.cost, 0);
-  const doing = k.starving
+  const now = k.starving
     ? 'Starving'
     : k.market != null
       ? `Walks to festival ${k.market}`
       : 'No festival in reach';
+  const farmer = k.fields >= rules.field.farmer - 1e-9;
+  const doing = farmer ? `Farms ${shareWords(k.fields)} of its days; ${now.charAt(0).toLowerCase()}${now.slice(1)}` : now;
   const leans = Object.entries(k.leaning)
     .sort(([, a], [, b]) => b - a)
     .map(([civ, x]) => `${civName(ctx, +civ)} ${Math.round((100 * x) / rules.join)}%`);
@@ -484,6 +498,16 @@ function clanShape(ctx, k) {
     { label: 'Fed', value: `${Math.round(100 * k.fed_ratio)}%`, tip: 'The share of its food need the clan met last turn' },
     { label: 'Territory', value: `${k.territory.length} tiles`, tip: 'Tiles of the clan’s territory' },
   ];
+  if (k.fields > 0) {
+    const days = sum(k.plots.map((p) => p[1]));
+    const grain = sum(k.plots.map((p) => p[2]));
+    const each = k.plots.map(([t, d, g]) => `(${hex(ctx, t).replace('-', '−')}): ${f1(d)} days, ${f1(g)} grain`);
+    numbers.push({
+      label: 'Fields',
+      value: `${plural(k.plots.length, 'tile')} · ${f1(days)} days · ${f1(grain)} grain`,
+      tip: `Days a turn on fields, and the grain they yielded${each.length ? `: ${each.join('; ')}` : ''}`,
+    });
+  }
   if (k.market != null) numbers.push({ label: 'Route', value: `${f2(cost)} days a turn`, tip: `Days a turn to walk to festival ${k.market}` });
   numbers.push({ label: 'Leanings', value: leans.length ? leans.join(', ') : 'none', tip: `Shares of the joining line (${rules.join}) for each civ` });
   return {

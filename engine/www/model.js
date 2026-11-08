@@ -53,6 +53,9 @@ export function build(sim, layout, rules) {
   const mine = v.player != null ? Object.values(v.units).filter((u) => u.civ === v.player) : [];
 
   const claimOf = new Map(v.claims);
+  // Each tile a clan works as fields this turn: its clan, field days and grain.
+  const fieldOf = new Map();
+  for (const k of Object.values(v.clans)) for (const [t, days, grain] of k.plots) fieldOf.set(t, { clan: k.id, days, grain });
   return {
     v,
     layout,
@@ -68,6 +71,8 @@ export function build(sim, layout, rules) {
     mine,
     /** The clan whose territory holds tile `i`, or null. */
     clanAt: (i) => claimOf.get(i) || null,
+    /** The field work on tile `i` this turn, `{clan, days, grain}`, or null. */
+    fieldAt: (i) => fieldOf.get(i) ?? null,
     /** The civ an unaligned clan leans to most, with the tint it draws: its colour, the more opaque the
      *  nearer its leaning is to the join line. Null for a clan with a civ, or leaning to none. */
     tintOf(c) {

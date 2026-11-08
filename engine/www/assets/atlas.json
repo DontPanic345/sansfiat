@@ -206,6 +206,13 @@
    "h": 148,
    "note": "desert stipple, translucent, drawn over a desert tile: pointy-top hex, circumradius 74, centred, transparent outside"
   },
+  "overlay.fields": {
+   "x": 256,
+   "y": 592,
+   "w": 128,
+   "h": 148,
+   "note": "field furrows: three short dark ochre strokes in the lower half, translucent, drawn over a tile with fields: pointy-top hex, circumradius 74, centred, transparent outside"
+  },
   "unit.camp": {
    "x": 0,
    "y": 740,

@@ -129,4 +129,56 @@ for (const kind of ['camp', 'scout', 'guard']) pressAll(kind);
   assert.ok(army, 'the army is still on the map');
 }
 
+// The clan's fields and the civ's Living row, as data. A staged game has no ground for a clan to farm, so the
+// view is given the share and plots a farmer's view would hold, and describe reads them as the page does.
+{
+  const sim = staged();
+  const view = JSON.parse(sim.view());
+  const led = view.player;
+  const clan = Object.values(view.clans).find((c) => c.civ === led);
+  const sel = { kind: 'clan', id: clan.id };
+  const plain = describe(ctxOf(sim)(view), sel);
+  assert.ok(!plain.numbers.some((n) => n.label === 'Fields'), 'a clan with no share has no Fields row');
+  assert.ok(plain.doing && !plain.doing.startsWith('Farms'), 'a clan with no share does not farm');
+  const farmed = JSON.parse(JSON.stringify(view));
+  farmed.clans[clan.id].fields = 0.2;
+  farmed.clans[clan.id].plots = [[clan.home, 4, 2.6], [clan.territory.find((t) => t !== clan.home) ?? clan.home, 5.4, 3.5]];
+  const shape = describe(ctxOf(sim)(farmed), sel);
+  const row = shape.numbers.find((n) => n.label === 'Fields');
+  assert.ok(row, 'a clan with a share has a Fields row');
+  assert.equal(row.value, '2 tiles · 9.4 days · 6.1 grain', 'the Fields row gives the tiles, days and grain');
+  assert.ok(row.tip.startsWith('Days a turn on fields, and the grain they yielded'), 'the Fields tooltip says what the days and grain are');
+  const lay = JSON.parse(sim.layout());
+  assert.ok(row.tip.includes(`(${lay.q[clan.home]}, ${lay.r[clan.home]}): 4.0 days, 2.6 grain`.replace('-', '−')), 'the Fields tooltip lists each tile by its hex');
+  assert.ok(row.tip.includes('4.0 days, 2.6 grain'), 'the Fields tooltip gives each tile\'s days and grain');
+  assert.ok(shape.doing.startsWith('Farms a fifth of its days; '), `a farmer's doing line leads with its share: ${shape.doing}`);
+  const now = plain.doing.charAt(0).toLowerCase() + plain.doing.slice(1);
+  assert.equal(shape.doing.slice('Farms a fifth of its days; '.length), now, 'and then says what the clan says now');
+  // The civ's Living row: its three parts, in whole people, with the army counted on top of the clans' people.
+  const civ = describe(ctxOf(sim)(view), { kind: 'civ', civ: led });
+  const living = civ.numbers.find((n) => n.label === 'Living');
+  assert.ok(living, 'the civ panel has a Living row');
+  const people = civ.numbers.findIndex((n) => n.label === 'People');
+  assert.equal(civ.numbers.findIndex((n) => n.label === 'Living'), people + 1, 'Living comes after People');
+  assert.match(living.value, /^gathering \d+ · farming \d+ · in the army \d+$/, 'Living reads gathering, farming and in the army, in whole people');
+  const L = view.civs[led].living;
+  assert.equal(living.value, `gathering ${Math.round(L.gathering)} · farming ${Math.round(L.farming)} · in the army ${Math.round(L.army)}`, 'Living is the view\'s parts');
+  assert.ok(Math.abs(L.gathering + L.farming - view.civs[led].people) < 1e-9, 'the clans\' people are gathering or farming');
+  const units = Object.values(view.units).filter((u) => u.civ === led).reduce((a, u) => a + u.people, 0);
+  assert.ok(Math.abs(L.army - units) < 1e-9 && L.army >= 4.6, 'the army is the people of all its units, the camp of 4.6 among them');
+  assert.ok(L.gathering + L.farming + L.army > view.civs[led].people, 'the army\'s people are on top of the clans\' people (People counts the clans)');
+}
+
+// A tile's name says its field ground and its fields: a floodplain tile with ground 20 days, worked by clan 140 for 9.4
+// days, and a tile with ground but no work (the view's model gives no field there).
+{
+  const { tileKind } = await import(pathToFileURL(`${here}panels.js`).href);
+  const layout = { terrain: [0, 1, 1], river: [0, 0, 0], flood: [0, 1, 1], pass: [0, 0, 0], zone: [0, 0, 0], lake: [0, 0, 0], ground: [0, 20, 20] };
+  const terrain = [{ name: 'ocean', land: false }, { name: 'plains', land: true }];
+  const model = { fieldAt: (i) => (i === 1 ? { clan: 140, days: 9.4, grain: 6.1 } : null) };
+  const ctx = { layout, terrain, country: false, model };
+  assert.equal(tileKind(ctx, 1), 'plains, floodplain, field ground 20 days, fields 9.4 days (clan 140)', 'a tile with fields says its ground and its fields');
+  assert.equal(tileKind(ctx, 2), 'plains, floodplain, field ground 20 days', 'a tile with ground and no fields says its ground');
+}
+
 console.log('ok: staged arm (shapes, digest, Disband all) and the end');

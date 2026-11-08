@@ -10,6 +10,7 @@ export function panelCtxFor(sim, { rules, terrain, goods }) {
       standing: new Map(Object.values(view.civs).map((c) => [c.id, { total: 0, clans: 0, land: 0, rank: 1 }])),
       holders: () => [],
       clanAt: () => null,
+      fieldAt: () => null,
     },
     layout,
     terrain,
