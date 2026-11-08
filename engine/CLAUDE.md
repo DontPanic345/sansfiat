@@ -28,7 +28,8 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/map.rs` | Map generation: terrain, water, closed country, rivers, foods, hidden trail costs and the flat trail cost. |
 | `core/src/land.rs` | Neighbours, move costs, `path`, `steps`, and the `regrow`, `wear` and `tend` steps. |
 | `core/src/actors.rs` | What every actor does: spoil, eat, `meal` (from kin's stores), `stride`, `walk_cost`, `carriers`, traffic, `divide` and `split` (over jobs; a tile pays its walk for each person walking it), `change`. |
-| `core/src/clans.rs` | Clans: seeding, `reap`, `value`, and the `move`, `harvest` and `eat` steps. |
+| `core/src/clans.rs` | Clans: seeding, `reap` (its split between gathering and fields), `value`, and the `move`, `harvest` and `eat` steps. |
+| `core/src/fields.rs` | The field job: `ground`, `yield_a_day`, `open`, `sow`, the split's `notch`, a farmer's `home_toward`, `plots`. |
 | `core/src/market.rs`, `markets.rs` | Barter clearing; festivals: reach, the `go` step, trading, forming, fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
 | `core/src/claim.rs` | A civ's claim, its guard's division, `held`, `tile_civ` and the `claim` step. |

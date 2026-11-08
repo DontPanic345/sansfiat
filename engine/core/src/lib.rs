@@ -8,6 +8,7 @@ pub mod claim;
 pub mod clans;
 pub mod data;
 pub mod events;
+pub mod fields;
 pub mod hex;
 pub mod judge;
 pub mod judge_ring;

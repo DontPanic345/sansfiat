@@ -63,7 +63,7 @@ fn reaped(w: &World, territory: &[usize], pop: f64) -> Vec<(usize, Basket)> {
     let mut t = territory.to_vec();
     t.sort_unstable();
     let (_, yearly) = walks(w, territory[0], &t);
-    t.iter().copied().zip(reap(w, pop, &[0.0; N], &[], &t, &yearly)).collect()
+    t.iter().copied().zip(reap(w, pop, &[0.0; N], &[], &t, &yearly, 0.0).takes).collect()
 }
 
 #[test]
@@ -107,7 +107,7 @@ fn reaping_keeps_to_labour_stock_and_target_on_real_maps() {
         for c in w.clans.values() {
             let (_, yearly) = walks(&w, c.home, &c.territory);
             for (pop, store) in [(c.people, c.store), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0])] {
-                let takes = reap(&w, pop, &store, &c.routes, &c.territory, &yearly);
+                let takes = reap(&w, pop, &store, &c.routes, &c.territory, &yearly, 0.0).takes;
                 let food = total(&std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum()));
                 let labour = (pop * CLAN.work - c.trip()).max(0.0);
                 assert!(CLAN.harvest_labour * food <= labour + EPS);

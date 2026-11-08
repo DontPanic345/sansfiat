@@ -296,6 +296,39 @@ pub struct TendingRules {
 
 pub const TENDING: TendingRules = TendingRules { after: 15, tame_turns: 120, domestic: 2.5, beyond: 0.1 };
 
+/// The field job (`fields.rs`): where a clan's fields lie, what a field day yields, and how its
+/// split between gathering and fields moves. Build-4 tunes these against the retro maps.
+pub struct FieldRules {
+    /// Days of fields a floodplain takes a turn.
+    pub flood: f64,
+    /// Days of fields a river tile takes a turn, at `MAP.big_river` or more; in proportion below it.
+    pub river: f64,
+    /// Food a field day yields, per unit of the tile's fertility and of its tame past wild (`domestic − 1`).
+    pub grain: f64,
+    /// The share of its days a clan's split moves a turn.
+    pub notch: f64,
+    /// Food a person a turn by which the better split must beat the current one.
+    pub margin: f64,
+    /// The share from which a clan is a farmer, whose home follows its fields.
+    pub farmer: f64,
+    /// Steps of tame a turn a field adds to its tile, on top of the one a held tile gains.
+    pub tame: u32,
+    /// Why these numbers: the probe's starting values (relay/specs/155/probe.md), not yet tuned.
+    pub note: &'static str,
+}
+
+pub const FIELD: FieldRules = FieldRules {
+    flood: 15.0 * DAY,
+    river: 7.5 * DAY,
+    grain: 0.8,
+    notch: 0.1,
+    margin: 0.01,
+    farmer: 0.1,
+    tame: 1,
+    note: "The probe's y8 values (relay/specs/155/probe.md): a floodplain feeds a small clan's days, a field day \
+           yields 1.2 food at a hearth against a gathering day's 0.75, and a split moves a tenth at a time.",
+};
+
 /// What a person carries on a route: a walk beyond the territory is paid by every person carrying
 /// what the actor brings (`actors::carriers`).
 pub struct CarryRules {
@@ -814,6 +847,10 @@ pub struct Config {
     /// A stage, a test or a script sets a short one. Old saves load with `None`.
     #[serde(default)]
     pub limit: Option<u32>,
+    /// Whether clans farm, once civs are founded (`fields.rs`): off is the control, in which no clan
+    /// farms. Old saves load with it on.
+    #[serde(default = "yes")]
+    pub fields: bool,
 }
 
 fn yes() -> bool {
@@ -832,6 +869,7 @@ impl Default for Config {
             claims: Claims::All,
             fight: true,
             limit: None,
+            fields: true,
         }
     }
 }

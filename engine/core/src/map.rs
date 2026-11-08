@@ -37,6 +37,10 @@ pub struct Tile {
     pub wear: Basket,
     /// What clans took of each food this turn: set in the harvest step, read by `wear`.
     pub take: Basket,
+    /// Days of fields worked on the tile this turn: set in the harvest step, read by `tend`, never
+    /// above the tile's ground (`fields::ground`).
+    #[serde(default)]
+    pub field: f64,
     /// The grain cap before taming.
     pub wild_grain: f64,
     pub tame: u32,
@@ -332,6 +336,7 @@ fn finish(
             unworn: [0.0; N],
             wear: [0.0; N],
             take: [0.0; N],
+            field: 0.0,
             wild_grain: 0.0,
             tame: 0,
             claim: None,
