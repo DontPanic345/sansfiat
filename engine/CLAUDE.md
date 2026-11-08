@@ -6,7 +6,7 @@ actions, with a CLI and a wasm page as its two front ends. Build what `docs/desi
 ```
 ./check.sh                                   # every check CI runs, in order
 cargo run -p sansfiat -- map | run | sweep | play | story | judge | replay | bench | digest   # USAGE in cli/src/main.rs
-cargo run -p sansfiat -- sweep --judge [--json [--floor]] [--solo]   # the retro maps scored beside their controls: a report
+cargo run -p sansfiat -- sweep --judge [--json] [--floor] [--solo]   # the retro maps beside no-army, no-claims, no-fight and no-fields controls: a report
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a line at a time; g.lines.jsonl records it
 cargo run -p sansfiat -- judge g.json [--json]   # a played game beside the same map on the AI
 cargo run -p sansfiat -- judge --compare a.json b.json [--all]   # two sweep reports: each metric's change against its noise floor
@@ -42,8 +42,9 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
 | `core/src/judge.rs` | `Watch`: a game scored from its pick in the score groups, the end group included. Reads the world only. |
 | `core/src/judge_ring.rs` | The `supply` group: each civ's ring at the pick and +200, the armies and scouts inside the ring and outside it, hungry turns, clan territory. |
+| `core/src/judge_fields.rs` | The `fields` group: field tiles, farming share, farmers, store turns at a pack, and settled farmers' and gatherers' moves and starving. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
-| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view, under 80 lines), `story.rs` (the scripted stories of war: skirmish, stack, surrender, conquest). |
+| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields against the no-fields control), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view, under 80 lines), `story.rs` (the scripted stories of war: skirmish, stack, surrender, conquest). |
 | `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the order form; `Sim.stage` builds a staged game (`staged()` says so). |
 | `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js` and `panels.js` (a selection's shape and its buttons), `model.js` (the view model), `map/` (`MapView` and one file per layer, `ring.js` among them), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |

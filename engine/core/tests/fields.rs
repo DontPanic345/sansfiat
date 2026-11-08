@@ -365,3 +365,59 @@ fn ground_is_a_pure_function_of_the_map() {
     let _ = (ground(w, at(-2, 0)), fields::open(w));
     assert_eq!(w.rng, before);
 }
+
+/// The judge's fields group over 15 turns the test plays by hand: a farmer from turn 1 on (in the
+/// civ), and an unaligned gatherer. Turn `t` is scored after the world is set for it.
+#[test]
+fn the_judge_counts_settled_farmers_and_gatherers_apart() {
+    use engine::events::Event;
+    use engine::judge::Watch;
+    use engine::judge_fields::FIELD_SETTLED;
+    let mut s = founded();
+    let w = s.world_mut();
+    let civ = *w.civs.keys().next().unwrap();
+    let (f, f2, g, g2) = (at(-2, 0), at(-2, 1), at(2, 2), at(3, 2));
+    farm_tile(w, f);
+    let farmer = hold(w, &[f, f2], 10.0, 0.0);
+    w.clans.get_mut(&farmer).unwrap().civ = Some(civ);
+    let gatherer = hold(w, &[g], 10.0, 0.0);
+    let pack = engine::units::pack_cap(UNIT.first as f64);
+    let mut watch = Watch::new(w);
+    for t in 1..=15u32 {
+        w.turn += 1;
+        let c = w.clans.get_mut(&farmer).unwrap();
+        c.fields = 0.5;
+        c.starving = t == 12 || t == 14;
+        if t == 13 {
+            c.home = f2;
+        }
+        let c = w.clans.get_mut(&gatherer).unwrap();
+        c.starving = (3..=5).contains(&t);
+        if t == 6 {
+            c.home = g2;
+            w.emit(Event::new(EventKind::ClanMoved, g2).clan(gatherer));
+        }
+        let store = if t % 3 == 0 { pack } else { 0.0 };
+        w.civs.get_mut(&civ).unwrap().store = [0.0; N];
+        w.civs.get_mut(&civ).unwrap().store[GRAIN] = store;
+        watch.turn(w);
+    }
+    let scores = watch.scores(w, &[civ]);
+    let mine = &scores.fields.civs[&civ];
+    let total = &scores.fields.total;
+    assert_eq!(FIELD_SETTLED, 10);
+    assert_eq!(mine.settled_turns, 5, "settled from its eleventh farming turn: turns 11 to 15");
+    assert_eq!(mine.settled_home_moves, 1, "its move at turn 13, once");
+    assert_eq!(mine.settled_moved_on, 0);
+    assert_eq!(mine.settled_starving, 2, "turns 12 and 14");
+    assert_eq!(total.settled_turns, 5);
+    assert_eq!(total.gatherer_starving, 3, "the gatherer's turns 3 to 5, apart from the farmer's");
+    assert_eq!(total.gatherer_moved_on, 1);
+    assert_eq!(total.gatherer_home_moves, 1);
+    assert_eq!(total.starving, 5);
+    assert_eq!(mine.store_turns_at_pack, 5);
+    assert_eq!(mine.turns, 15);
+    let per_civ: u32 = scores.fields.civs.values().map(|c| c.store_turns_at_pack).sum();
+    assert_eq!(per_civ, scores.economy.turns_at_pack, "the per-civ split sums to the economy's");
+    assert_eq!(scores.fields.civs_never_at_pack, 0);
+}

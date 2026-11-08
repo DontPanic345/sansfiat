@@ -1,5 +1,5 @@
-//! `sweep --judge`: the retro maps played with the army twice, the `--no-army` control, the no-claims
-//! control and, with `--solo`, each civ claiming alone; every civ on the AI, scored by `engine::judge`:
+//! `sweep --judge`: the retro maps played with the army twice, the `--no-army` control, the no-claims,
+//! no-fight and no-fields controls and, with `--solo`, each civ claiming alone; every civ on the AI, scored by `engine::judge`:
 //! a report, with no verdict.
 
 use std::any::Any;
@@ -17,6 +17,7 @@ use serde::Serialize;
 
 use crate::compare::flatten;
 use crate::retro::{kept_camp, retro_maps, to_pick};
+use crate::sweep_fields::{map_fields, total_fields, MapFields, TotalFields};
 use crate::sweep_text::print_text;
 
 /// The turns past the pick each map is run for, at least; a run goes on until it has ended.
@@ -73,6 +74,9 @@ pub(crate) struct MapJudged {
     pub(crate) no_claims: Scores,
     /// The same map with `Config.fight` off: the control the fight group is read against.
     pub(crate) no_fight: Scores,
+    /// The same map with `Config.fields` off, and the run read against it (`sweep_fields`).
+    pub(crate) no_fields: Scores,
+    pub(crate) fields_vs_control: MapFields,
     /// Each civ's name, for the text (the ids are not the names' places in `CIVS`).
     #[serde(skip)]
     pub(crate) names: BTreeMap<u32, String>,
@@ -105,6 +109,7 @@ pub(crate) struct Total {
     pub(crate) fight: TotalFight,
     pub(crate) end: TotalEnd,
     pub(crate) health: TotalHealth,
+    pub(crate) fields_vs_control: TotalFields,
 }
 
 /// The end group over the maps: how many games ended before the limit, the mean turns to the end and
@@ -309,7 +314,7 @@ fn at_200(s: &Scores, civ: u32) -> (f64, f64, f64) {
 }
 
 /// Judges one map: the army run twice (their digests must agree), the `--no-army` control, the
-/// no-claims control, the no-fight control and, with `solo`, each civ claiming alone (civ `k` in id
+/// no-claims control, the no-fight control, the no-fields control and, with `solo`, each civ claiming alone (civ `k` in id
 /// order, `Only(k)`). Every run takes `draws` extra rolls after the pick.
 fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJudged {
     let base = Config { seed, radius, ..Config::default() };
@@ -319,6 +324,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
         Config { army: false, ..base },
         Config { claims: Claims::None, ..base },
         Config { fight: false, ..base },
+        Config { fields: false, ..base },
     ];
     let mut runs = played_all(&configs, draws).into_iter();
     let (w, watch) = runs.next().expect("the army run");
@@ -326,6 +332,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
     let (control, _) = runs.next().expect("the control with no armies");
     let (none, none_watch) = runs.next().expect("the control with no claims");
     let (calm, calm_watch) = runs.next().expect("the control with no fighting");
+    let (bare, bare_watch) = runs.next().expect("the control with no fields");
     let civs: Vec<u32> = w.civs.keys().copied().collect();
     let kept = civs.iter().filter(|&&c| kept_camp(&w, c)).count() as u32;
     let people = |w: &World| stats::summary(w).people;
@@ -353,13 +360,16 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
             })
             .collect()
     });
+    let (scores, no_fields) = (watch.scores(&w, &civs), bare_watch.scores(&bare, &civs));
     MapJudged {
         size: name.to_string(),
         seed,
         pick: watch.pick(),
-        scores: watch.scores(&w, &civs),
+        fields_vs_control: map_fields(&scores, &no_fields),
+        scores,
         no_claims,
         no_fight: calm_watch.scores(&calm, &civs),
+        no_fields,
         names: w.civs.iter().map(|(&id, c)| (id, c.name.clone())).collect(),
         solo,
         armies,
@@ -527,6 +537,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             panics: panics as u32,
             digest_mismatches: sum(|m| m.health.digest_mismatches),
         },
+        fields_vs_control: total_fields(maps),
     }
 }
 

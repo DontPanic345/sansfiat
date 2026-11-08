@@ -509,7 +509,7 @@ assert.throws(() => Sim.load(JSON.stringify({ ...save, version: 1 })), /version 
 
 
 // The panels (build-4): a fallen civ reads its fall with no buttons, and an army's shape names its fighters.
-const { describe } = await import(pathToFileURL(`${here}panels.js`).href);
+const { describe, subjectOf } = await import(pathToFileURL(`${here}panels.js`).href);
 const { panelCtxFor } = await import(pathToFileURL(`${here}check-ctx.mjs`).href);
 const panelCtx = panelCtxFor(sim, { rules: RULES, terrain: TERRAIN, goods: GOODS });
 const fallenView = { ...v, civs: { ...v.civs } };
@@ -531,6 +531,11 @@ assert.deepEqual(raise.stepper.options.map((o) => o.label), ['warriors', 'archer
 const civShp = describe(panelCtx(ledView), { kind: 'civ', civ: ledId });
 const civRaise = civShp.buttons.find((b) => b.stepper && b.label === 'Raise…');
 assert.deepEqual(civRaise.stepper.options.map((o) => o.label), ['warriors', 'archers', 'a guard', 'a scout'], 'a civ raises warriors, archers, a guard or a scout');
+// A feed item of a clan's fields selects the clan, as a clan's move does.
+const someClan = Object.values(v.clans)[0];
+for (const kind of ['clanMoved', 'clanFarming']) {
+  assert.deepEqual(subjectOf({ v }, { kind, clan: someClan.id, tile: someClan.home }), { kind: 'clan', id: someClan.id }, `a ${kind} item selects its clan`);
+}
 
 await import('./check-stage.mjs');
 

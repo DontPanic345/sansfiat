@@ -47,10 +47,10 @@ territory the player has fixed; the actor divides its labour around it as any ac
 
 ## Later actors
 
-- **The farmer.** A farmer's territory is its fields, worked from home and traded from home.
-  It may be one tile or many: the same rule for adding a tile decides how many, and
-  intensive farming makes the territory small. Farmed land doesn't deplete as gathered land
-  does.
+- **The farmer** is a clan with a second job: fields on the river-side and floodplain ground of
+  its tiles, worked from home and traded from home. Its days split between gathering and fields
+  before each job divides over its tiles, and farmed land doesn't deplete as gathered land does
+  (`farming.md`).
 - **The steward**, whose territory is the land he taxes, and a guard over the same land.
 
 ## Decided

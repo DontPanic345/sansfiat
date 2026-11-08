@@ -196,9 +196,6 @@ pub(crate) fn sweep(args: &[String]) -> Result<(), String> {
                 "--judge runs the retro maps, all on the AI: it takes only --json, --solo, --floor and --nulls\n{USAGE}"
             ));
         }
-        if floor && !json {
-            return Err(format!("--floor needs --json\n{USAGE}"));
-        }
         if nulls.is_some() && !floor {
             return Err(format!("--nulls needs --floor\n{USAGE}"));
         }

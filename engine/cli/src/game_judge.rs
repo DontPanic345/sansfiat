@@ -298,6 +298,19 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
         gf.fallen, cf.fallen, gf.taken, cf.taken, gf.surrendered, cf.surrendered
     );
     println!("fight by civ (game): {}", civs.join("; "));
+    let field = |s: &Scores| s.fields.civs.get(&j.led).cloned().unwrap_or_default();
+    let (gl, cl) = (field(&j.game), field(&j.control));
+    let at_200 = |v: String| if j.turns >= 200 { v } else { "-".to_string() };
+    println!(
+        "fields (game / control): farming share at +200 {} / {}, field tiles at +200 {} / {}, store turns at a pack {} / {} of {}",
+        at_200(format!("{:.3}", gl.farming_share_200)),
+        at_200(format!("{:.3}", cl.farming_share_200)),
+        at_200(gl.field_tiles_200.to_string()),
+        at_200(cl.field_tiles_200.to_string()),
+        gl.store_turns_at_pack,
+        cl.store_turns_at_pack,
+        j.turns
+    );
     let p = &j.player;
     let kinds: Vec<String> = p.orders_by_kind.iter().map(|(k, v)| format!("{k} {v}")).collect();
     println!(
