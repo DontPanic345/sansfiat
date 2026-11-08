@@ -320,13 +320,15 @@ pub struct FieldRules {
 pub const FIELD: FieldRules = FieldRules {
     flood: 15.0 * DAY,
     river: 7.5 * DAY,
-    grain: 0.8,
-    notch: 0.1,
-    margin: 0.01,
+    grain: 0.9,
+    notch: 0.05,
+    margin: 0.02,
     farmer: 0.1,
     tame: 1,
-    note: "The probe's y8 values (relay/specs/155/probe.md): a floodplain feeds a small clan's days, a field day \
-           yields 1.2 food at a hearth against a gathering day's 0.75, and a split moves a tenth at a time.",
+    note: "Tuned on the seven retro maps against the no-fields control (relay/specs/155/canvas.md): a floodplain \
+           feeds a small clan's days, a field day yields 1.35 food at a hearth against a gathering day's 0.75, and \
+           a split moves a twentieth at a time, only for a gain over 0.02, so the guard's richer civs still fill \
+           their store and the rush to fields leaves no more gatherers starving than the control's.",
 };
 
 /// What a person carries on a route: a walk beyond the territory is paid by every person carrying

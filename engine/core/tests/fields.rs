@@ -170,12 +170,13 @@ fn the_split_rises_a_notch_a_turn_from_zero_while_fields_feed_better() {
 fn a_starving_clan_with_fields_drops_a_notch_a_turn() {
     let (mut s, id, _) = floodplain_clan();
     let w = s.world_mut();
-    w.clans.get_mut(&id).unwrap().fields = 0.3;
+    let n = FIELD.notch;
+    w.clans.get_mut(&id).unwrap().fields = 3.0 * n;
     w.clans.get_mut(&id).unwrap().starving = true;
     notch(w, id);
-    assert!((w.clans[&id].fields - 0.2).abs() < EPS);
+    assert!((w.clans[&id].fields - 2.0 * n).abs() < EPS);
     notch(w, id);
-    assert!((w.clans[&id].fields - 0.1).abs() < EPS);
+    assert!((w.clans[&id].fields - n).abs() < EPS);
     notch(w, id);
     assert!(w.clans[&id].fields.abs() < EPS);
 }
