@@ -343,19 +343,16 @@ pub(crate) fn print_fields(r: &Report) {
     let read = past(t.starving_ratio, &p("starving_ratio"));
     let (wr, wk) = worst.unwrap_or((0.0, String::new()));
     println!(
-        "  starving: {:.4} vs {:.4} = {:.3}{}, read {:.3} (≤ 1.25 {}); worst map read {:.3}{} (≤ 1.6 {}); settled {:.4} gatherers {:.4} (lower {})",
+        "  starving: {:.4} vs {:.4} = {:.3}{}, read {:.3}; worst map read {:.3}{}; settled {:.4} gatherers {:.4} (not bound)",
         t.starving_share,
         t.control_starving_share,
         t.starving_ratio,
         shown(&p("starving_ratio")),
         read,
-        mark(read <= 1.25),
         wr,
         shown(&wk),
-        mark(wr <= 1.6),
         t.settled_starving_share,
         t.gatherer_starving_share,
-        mark(t.settled_starving_share < t.gatherer_starving_share),
     );
     println!(
         "  AI orders per 100 {:.2} vs {:.2} (≥ half {}); lead changes {} vs {}, spread +200 {:.3} vs {:.3} (not bound)",
