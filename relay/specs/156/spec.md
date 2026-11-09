@@ -102,7 +102,7 @@ A **farmer** is `fields::farmer`. The **festival walk** is a clan's route cost o
 | Motion | **They trade more**: over the same clan-turns, town clans bring at least 1.1 times the food per person to their festival that farmers outside towns do. Brought per person over all clans is no lower than the control's, less the floor. | Farmers outside towns; no-towns control | not measured |
 | Motion | People, land and clans change hands no less than in the control, less the floor. | No-towns control | 1420, 2353, 285 against 953, 1150, 177 |
 | Standing | Aligned Standing at +200 no lower than the control's, less the floor. Reported per civ. Not a goal. | No-towns control | 0.341 against 0.318 |
-| Health | **Towns feed**: starving clan-turns over the seven maps at most 1.25 times the control's share, and on no map over 1.6 times, read on the ratio less its floor. Town clans starve at a rate no higher than farmers outside towns. | No-towns control | 3.2 times main's share (3.97 against 1.22, each against no-fields) |
+| Health | **No town starves by mistake**: canvas.md names who starves round a town and why, and no clan starves for a reason the rules don't intend (ground counted twice, days on ground that yields nothing, a home step that misjudges what a town feeds). How many starve is not bound (`process.md`, Health); the starving shares, town clans' beside farmers outside towns, are reported against the control. | No-towns control, reported | 3.2 times main's share (3.97 against 1.22, each against no-fields); settled farmers 6.9% against 0.13% |
 | Health | **Settled farmers stay**: settled farmers' home moves per 100 clan-turns under half the gatherers' rate, as #155 holds it. A farmer's move into a town counts. | Gatherers, same runs | 7.8 against 0.21 |
 | Health | The store: the maps where the civ that farms most holds a pack half its turns, and the civs never at a pack, each no worse than the control's by more than 1. | No-towns control | 3 against 5; 4 against 1 |
 | Health | **Scale**: `sansfiat bench --size large 8 --after 50` at most **0.45 times main's** ms a turn, measured on the same machine in the same session. Build-2 alone, with no towns, reaches 0.35 times. | Main | main 54.8 ms here; sketch 75.2 |
@@ -146,10 +146,11 @@ All in build-4, the canvas:
   after the field step, and the two pull against each other (7.8 home moves per 100 settled clan-turns). The
   canvas settles how the festival pull and the field pull make one step a turn. Proof: the "settled farmers
   stay" bound.
-- **Why town clans starve, and the rule that stops it.** The sketch's starving (3.2 times main's) comes partly
-  from gathering shared home tiles twice, which build-1 removes. The canvas measures what's left first, then
-  finds who starves (town clans, their neighbours squeezed for land, daughters) and changes the rule that causes
-  it, within the piece's Decided. Proof: the "towns feed" bound.
+- **Why town clans starve.** The sketch's starving (3.2 times main's) comes partly from gathering shared home
+  tiles twice, which build-1 removes. The canvas measures what's left first, then finds who starves (town
+  clans, their neighbours squeezed for land, daughters) and why. Where a rule starves them other than as the
+  design means, it changes that rule, within the piece's Decided. Starving that follows from growth and crowding
+  is the world's, and no number is tuned to lower it. Proof: the "no town starves by mistake" row.
 - **Which numbers, if any, move**: `TOWN`'s margin and any new number, `FIELD.farmer` if the town pull needs a
   line, and the territory radius only for a farmer living in a town, if that is what feeds it. `TOWN.homes`
   stays 3: it is the reading, not a rule.

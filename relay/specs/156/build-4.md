@@ -4,7 +4,8 @@ Give a farmer's home the step that takes it to its festival when living there fe
 towns that follow feed their clans, trade more and walk less, on the retro maps against the no-towns control,
 with a large map's turn under its bound. Read `spec.md` in full: its table holds every bound, and its
 "Unsettled" says what you may change. `probe.md` is the spec step's sketch of this rule (`probe.diff`) and what
-it did on the maps: towns formed, and starving ran at three times main's.
+it did on the maps: towns formed, and starving ran at three times main's, part of it from gathering shared
+homes twice.
 
 What the easels give you:
 - build-1's homes (`core/src/homes.rs`): a home in `territory` that may stand on a tile another clan claims,
@@ -41,11 +42,13 @@ In `homes.rs`, called from `clans::adjust` where the farmer's home step is now, 
 Run the sweep and read the towns block. The sketch's flaws that build-1 removed (gathering a shared home twice)
 were part of its starving, so measure first before changing anything else. Then, until every bound holds:
 
-- **Towns feed.** Find who starves: town clans, the clans round a town squeezed for land, daughters of town
-  clans, unaligned or a civ's, soon after a town forms or late. Change the rule that causes it, within the
-  piece's Decided: a home is not a claim, gathering stays exclusive, ground is shared by area, a town has no
-  rule of its own. For example, a town clan's territory radius, how a crowded home tile's ground is shared, or
-  what the farmer weighs before stepping in. Record each change to a rule as a decision.
+- **No town starves by mistake.** Find who starves: town clans, the clans round a town squeezed for land,
+  daughters of town clans, unaligned or a civ's, soon after a town forms or late. Where a rule starves them
+  other than as the design means, change it, within the piece's Decided: a home is not a claim, gathering stays
+  exclusive, ground is shared by area, a town has no rule of its own. For example, how a crowded home tile's
+  ground is shared, or what the farmer weighs before stepping in. Record each change to a rule as a decision.
+  Starving from growth and crowding is the world's consequence (`docs/process.md`, Health): don't tune a number
+  to lower it.
 - **Settled farmers stay.** Settled farmers' home moves stay under half the gatherers'.
 - **They walk less, they trade more.** These should follow from homes at the market. If town clans don't
   bring more, find out why (the cap at `MARKET.carry`, or a town clan's smaller harvest) and say so.
@@ -67,8 +70,9 @@ From one `sweep --judge --json --floor` against the no-towns control in the same
    over all clans is no lower than the control's, less the floor.
 5. People, land and clans change hands no less than in the control, less the floor.
 6. Aligned Standing at +200 no lower than the control's, less the floor.
-7. Starving clan-turns at most 1.25 times the control's over the seven maps and 1.6 times on any map, each
-   read on the ratio less its floor. Town clans starve at no higher a rate than farmers outside towns.
+7. `canvas.md` names who starves round a town and why, and no clan starves for a reason the rules don't
+   intend. The starving shares, town clans' beside farmers outside towns, are reported against the control,
+   not bound.
 8. Settled farmers' home moves per 100 clan-turns under half the gatherers'.
 9. The store: maps with the top farmer at a pack half its turns, and civs never at a pack, each no worse than
    the control's by more than 1.
@@ -86,7 +90,7 @@ and the bench, in `relay/specs/156/canvas.md`, and end it with the setting you l
 ## If a bound can't be met
 
 Stop when the nearest setting misses only on a bound that the piece's Decided stops you meeting (for example,
-the starving if only a rule outside the piece would feed a town). Land that setting, and send an `ask` that
+a town whose clans starve by mistake if only a rule outside the piece would fix it). Land that setting, and send an `ask` that
 names the bound, the nearest numbers, and the rule that would meet it.
 
 ## The twin
