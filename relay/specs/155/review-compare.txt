@@ -1,0 +1,128 @@
+metric                                                             A           B      change       floor
+standing
+  total.standing.aligned_200                                  0.2525      0.3183      0.0658      0.0048 *
+  total.standing.on_land_200                                  0.0003      0.0000     -0.0003      0.0000 *
+  total.standing.top_200                                      0.1069      0.1619      0.0550      0.0018 *
+doubt
+  total.doubt.lead_changes                                    9.0000      4.0000     -5.0000      6.0000
+  total.doubt.maps_with_lead_change                           4.0000      4.0000      0.0000      1.0000
+  total.doubt.no_claims_lead_changes                          6.0000      3.0000     -3.0000      1.0000 *
+  total.doubt.no_claims_maps_with_lead_change                 4.0000      3.0000     -1.0000      1.0000
+  total.doubt.spread_100                                      0.0551      0.1016      0.0465      0.0008 *
+  total.doubt.spread_200                                      0.0497      0.1051      0.0554      0.0071 *
+  total.doubt.swings                                          7.0000      3.0000     -4.0000      4.0000
+decisions
+  total.decisions.ai_orders_per_100                           6.9111      8.2603      1.3492      1.1937 *
+  total.decisions.by_kind.claim                               4.3222      4.3159     -0.0063      1.0524
+  total.decisions.by_kind.disband                             0.3063      0.3095      0.0032      0.0603
+  total.decisions.by_kind.raise                               2.2825      3.6349      1.3524      0.0810 *
+  total.decisions.levers_repeated                             1.5238      1.7143      0.1905      0.0476 *
+motion
+  total.motion.claim_taken                                    0.0000      0.0000      0.0000      0.0000
+  total.motion.clans_changed                                127.0000    177.0000     50.0000     24.0000 *
+  total.motion.clans_joined                                 125.0000    177.0000     52.0000     25.0000 *
+  total.motion.clans_left                                     2.0000      1.0000     -1.0000      1.0000
+  total.motion.land_changed                                1022.0000   1150.0000    128.0000     79.0000 *
+  total.motion.people_changed                               629.3674    953.3499    323.9824     89.1467 *
+land
+  total.land.claimed_200                                     35.9524     36.6667      0.7143      1.0952
+  total.land.festival_changes_per_100                         0.3071      0.4988      0.1917      0.0277 *
+  total.land.flips_per_100                                    0.0347      0.0871      0.0524      0.0105 *
+  total.land.guard_200                                        4.4762      7.3810      2.9048      0.1429 *
+  total.land.held_200                                        33.2857     34.0000      0.7143      1.5714
+  total.land.homes_trailed.0                                  0.8785      0.8785      0.0000      0.0000
+  total.land.homes_trailed.1                                  0.8693      0.8163     -0.0530      0.0060 *
+  total.land.markets_200                                    211.0000    212.0000      1.0000      1.0000
+  total.land.markets_pick                                   217.0000    217.0000      0.0000      0.0000
+  total.land.route_trailed.0                                  0.9904      0.9904      0.0000      0.0000
+  total.land.route_trailed.1                                  0.9951      0.9991      0.0040      0.0029 *
+  total.land.trading_200                                      0.9334      0.9172     -0.0162      0.0042 *
+  total.land.trading_pick                                     0.9377      0.9377      0.0000      0.0000
+  total.land.worked_trailed.0                                 0.3084      0.3084      0.0000      0.0000
+  total.land.worked_trailed.1                                 0.3093      0.3122      0.0029      0.0051
+economy
+  total.economy.guard_mean                                    4.0548      7.2543      3.1994      0.1216 *
+  total.economy.largest_army                                  0.0000      0.0000      0.0000      0.0000
+  total.economy.levy_per_turn                                 9.1784     12.6959      3.5175      0.1188 *
+  total.economy.store_max                                    52.1718     52.1897      0.0180      0.0818
+  total.economy.store_mean                                   25.8845     29.1273      3.2428      1.9396 *
+  total.economy.turns_at_pack                               425.5714    524.0000     98.4286      7.5714 *
+armies
+  total.armies.camps_kept                                    21.0000     21.0000      0.0000      0.0000
+  total.armies.camps_lost                                     0.0000      0.0000      0.0000      0.0000
+  total.armies.camps_of                                      21.0000     21.0000      0.0000      0.0000
+  total.armies.people_vs_control                              0.9883      0.9672     -0.0211      0.0086 *
+  total.armies.warriors_starved                               0.0000      0.0000      0.0000      0.0000
+fight
+  total.fight.control_fallen                                  0.0000      0.0000      0.0000      0.0000
+  total.fight.control_surrendered                             0.0000      0.0000      0.0000      0.0000
+  total.fight.control_taken                                   0.0000      0.0000      0.0000      0.0000
+  total.fight.fallen                                          0.0000      0.0000      0.0000      0.0000
+  total.fight.surrendered                                     0.0000      0.0000      0.0000      0.0000
+  total.fight.taken                                           0.0000      0.0000      0.0000      0.0000
+end
+  total.end.capitals_fallen                                   0.0000      0.0000      0.0000      0.0000
+  total.end.early                                             0.0000      0.0000      0.0000      0.0000
+  total.end.no_fight_capitals_fallen                          0.0000      0.0000      0.0000      0.0000
+  total.end.no_fight_early                                    0.0000      0.0000      0.0000      0.0000
+  total.end.no_fight_turns_mean                             228.5714    228.5714      0.0000      0.0000
+  total.end.of                                                7.0000      7.0000      0.0000      0.0000
+  total.end.turns_mean                                      228.5714    228.5714      0.0000      0.0000
+health
+  total.health.digest_mismatches                              0.0000      0.0000      0.0000      0.0000
+  total.health.panics                                         0.0000      0.0000      0.0000      0.0000
+  total.health.pregame_by_centres                             7.0000      7.0000      0.0000      0.0000
+fields_vs_control
+  total.fields_vs_control.ai_orders_per_100                        -      8.2603   only in B      1.0508
+  total.fields_vs_control.aligned_200                              -      0.3183   only in B      0.0005
+  total.fields_vs_control.aligned_gain                             -      0.0658   only in B      0.0042
+  total.fields_vs_control.civs                                     -     21.0000   only in B      0.0000
+  total.fields_vs_control.civs_never_at_pack                       -      1.0000   only in B      1.0000
+  total.fields_vs_control.clans_changed                            -    177.0000   only in B     24.0000
+  total.fields_vs_control.clans_joined                             -    177.0000   only in B     25.0000
+  total.fields_vs_control.control_ai_orders_per_100                -      6.9111   only in B      1.1937
+  total.fields_vs_control.control_aligned_200                      -      0.2525   only in B      0.0048
+  total.fields_vs_control.control_civs_never_at_pack               -      4.0000   only in B      1.0000
+  total.fields_vs_control.control_clans_changed                    -    127.0000   only in B     17.0000
+  total.fields_vs_control.control_clans_joined                     -    125.0000   only in B     16.0000
+  total.fields_vs_control.control_land_changed                     -   1022.0000   only in B     28.0000
+  total.fields_vs_control.control_lead_changes                     -      9.0000   only in B      6.0000
+  total.fields_vs_control.control_people_changed                   -    629.3674   only in B     48.9407
+  total.fields_vs_control.control_spread_200                       -      0.0497   only in B      0.0071
+  total.fields_vs_control.control_starving_share                   -      0.0178   only in B      0.0005
+  total.fields_vs_control.farming_civs                             -     13.0000   only in B      0.0000
+  total.fields_vs_control.farming_gain                             -      0.0407   only in B      0.0024
+  total.fields_vs_control.farming_gaining                          -     12.0000   only in B      1.0000
+  total.fields_vs_control.farming_over_others                      -      0.0493   only in B      0.0025
+  total.fields_vs_control.gatherer_home_moves_per_100              -      0.1221   only in B      0.0027
+  total.fields_vs_control.gatherer_moved_on_per_100                -      0.0511   only in B      0.0025
+  total.fields_vs_control.gatherer_starving_share                  -      0.0226   only in B      0.0032
+  total.fields_vs_control.land_changed                             -   1150.0000   only in B     79.0000
+  total.fields_vs_control.lead_changes                             -      4.0000   only in B      1.0000
+  total.fields_vs_control.maps_top_farmer_at_pack                  -      5.0000   only in B      1.0000
+  total.fields_vs_control.maps_with_top_farmer                     -      7.0000   only in B      0.0000
+  total.fields_vs_control.others_gain                              -     -0.0086   only in B      0.0002
+  total.fields_vs_control.people_changed                           -    953.3499   only in B     89.1467
+  total.fields_vs_control.settled_home_moves_per_100               -      0.0307   only in B      0.0031
+  total.fields_vs_control.settled_moved_on_per_100                 -      0.0000   only in B      0.0000
+  total.fields_vs_control.settled_starving_share                   -      0.0013   only in B      0.0006
+  total.fields_vs_control.spread_200                               -      0.1051   only in B      0.0014
+  total.fields_vs_control.starving_ratio                           -      1.2221   only in B      0.1865
+  total.fields_vs_control.starving_share                           -      0.0217   only in B      0.0026
+  total.fields_vs_control.worst_map_starving_ratio                 -      1.7419   only in B      0.8492
+supply
+  total.supply.clan_territory_200                             3.2752      2.9469     -0.3284      0.0075 *
+  total.supply.clan_territory_pick                            3.2887      3.2887      0.0000      0.0000
+  total.supply.counts.army_inside                             0.0000      0.0000      0.0000      0.0000
+  total.supply.counts.army_inside_hungry                      0.0000      0.0000      0.0000      0.0000
+  total.supply.counts.army_outside                            0.0000      0.0000      0.0000      0.0000
+  total.supply.counts.army_outside_hungry                     0.0000      0.0000      0.0000      0.0000
+  total.supply.counts.held_ring_200                         585.0000    580.0000     -5.0000     35.0000
+  total.supply.counts.held_ring_pick                         21.0000     21.0000      0.0000      0.0000
+  total.supply.counts.ring_200                              737.0000    752.0000     15.0000     17.0000
+  total.supply.counts.ring_pick                             705.0000    705.0000      0.0000      0.0000
+  total.supply.counts.scout_inside                         2811.0000   2488.0000   -323.0000     56.0000 *
+  total.supply.counts.scout_inside_hungry                     3.0000      4.0000      1.0000      2.0000
+  total.supply.counts.scout_outside                        1555.0000   1416.0000   -139.0000    182.0000
+  total.supply.counts.scout_outside_hungry                   23.0000     36.0000     13.0000     10.0000 *
+listed 114, changed 42, flagged 27, only in A 0, only in B 37

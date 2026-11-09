@@ -13,7 +13,6 @@ const REACH_NAMED: usize = 8;
 /// The events about the led civ the feed shows, the newest first.
 const FEED_SHOWN: usize = 12;
 
-/// A tile as the view names it: its id and its hex.
 /// A clan's fields this turn for its line, `, fields 3 tiles, 9.4 days, 6.1 grain`; empty for a clan with no share.
 fn fields_text(w: &World, k: &Clan) -> String {
     if k.fields <= 0.0 {
@@ -26,6 +25,7 @@ fn fields_text(w: &World, k: &Clan) -> String {
     format!(", fields {} {tiles}, {days:.1} days, {grain:.1} grain", plots.len())
 }
 
+/// A tile as the view names it: its id and its hex.
 fn tile(w: &World, i: usize) -> String {
     format!("{i} {}", w.at(i))
 }

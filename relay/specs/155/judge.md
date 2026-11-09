@@ -105,3 +105,36 @@ small 9 farms most (or second most) and never holds a pack, and Red on small 6 h
 HEAD) and 88.2 s with the sixth, the no-fields control: 1.10 times, under the fifth more the brief expected, because the runs go side by side on four cores. With
 `--floor` the whole command takes 2 min 42 s on six runs a map, against 2 min 20 s on five at build-1's HEAD
 (during that run a test build used the cores for about half a minute).
+
+## Review (#255): the landed engine against main
+
+`sweep --judge --json --floor` on the branch (5e3922a) and on main (origin/main, a worktree), then
+`judge --compare main.json branch.json`: `review-compare.txt`. The branch's fields block reproduces
+`canvas.md`'s B run to the digit. Main's army run equals the branch's no-fields control on every total read
+(aligned 0.2525, clans changed 127, people changed 629.37, AI orders 6.911), so fields off is main.
+
+| Score | Main (control) | Branch | Floor | |
+|---|---|---|---|---|
+| Aligned Standing at +200 | 0.2525 | 0.3183 | 0.0048 | past |
+| Top civ's Standing at +200 | 0.1069 | 0.1619 | 0.0018 | past |
+| Farming civs' gain against the no-fields control | | +0.0407, 13 civs, 12 gaining | 0.0024 | past |
+| Others' gain | | −0.0086 | 0.0002 | |
+| Spread at +200 (doubt) | 0.0497 | 0.1051 | 0.0071 | wider |
+| Lead changes (doubt) | 9 | 4 | 6 | within |
+| AI orders per 100 (decisions) | 6.91 | 8.26 | 1.19 | past (raise 2.28 → 3.63) |
+| Clans / people / land changed hands | 127 / 629 / 1022 | 177 / 953 / 1150 | 24 / 89 / 79 | past |
+| Levy per turn | 9.18 | 12.70 | 0.12 | past |
+| Store turns at a pack (sum) | 426 | 524 | 7.6 | past |
+| Civs never at a pack | 4 | 1 | 1 | |
+| Guard mean | 4.05 | 7.25 | 0.12 | past |
+| Clan territory at +200 | 3.28 | 2.95 | 0.008 | past (less land a clan) |
+| Starving share of clan-turns | 0.0178 | 0.0217 (1.222×) | 0.187 on the ratio | read 1.036 |
+| Worst map starving, raw | | 1.74 (medium 9) | 0.85 | read 1.21 (large 8) |
+| Settled farmers' home moves / gatherers', per 100 | | 0.031 / 0.122 | 0.003 | |
+| Pre-games by centres, panics, mismatches | 7, 0, 0 | 7, 0, 0 | | |
+
+`bench --size large 8 --after 50`: 54.8 ms a turn against main's 123.0 (same runner, one after the other).
+
+A played check (small seed 9, Blue, 60 turns past the pick, no orders): five of Blue's clans farm by +60, the
+feed reads "Clan 75 takes up fields at (0, 2)" at +9, and clan 67 grows from 7.5 to 16.8 people on one field tile
+of 7.5 days and 21.8 grain.

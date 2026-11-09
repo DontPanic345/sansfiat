@@ -69,3 +69,14 @@ clans on one tile without the per-turn cost growing with them (`clans.md`, Scale
 - No crops but grain yet. Herds are `animals.md`; beer is `goods.md`.
 - No irrigation, canals or walls: M10.
 - No good and bad years. Every year is the same.
+
+## Decided
+
+- Clans farm from the pick: before founding no clan farms, and after it every clan may, unaligned ones included. (#155)
+- Field ground is the days a tile's fields take a turn: a floodplain takes 15, a river tile up to 7.5 by the river's size, both add, on any land; lakes and the coast take none. It comes from the map's rivers and floodplains, with no roll of its own. (#155)
+- A field day yields grain by the tile's fertility and its tame past wild: nothing on wild grain, 1.2 food at a hearth of fertility 1, against a gathering day's 0.75. A clan sows only fields that yield. (#155)
+- A clan's share of days on fields moves a tenth a turn toward the share that feeds it better, when the gain is worth it; a starving farmer drops a tenth a turn. A daughter starts at her mother's share, and a clan that moves on starts at none. (#155)
+- A clan with a fifth of its days or more on fields is a farmer, and its home steps a tile a turn toward its busiest field; the civ's own clan stays on the capital. (#155)
+- The harvest target caps fields and gathering together: a farmer that meets it from its fields gathers less land. (#155)
+- A field tames its tile a step a turn faster, past the hearth too. (#155)
+- The civ panel's Living row counts its clans' people as gathering or farming by their share of days, and every unit's people as in the army. (#155)
