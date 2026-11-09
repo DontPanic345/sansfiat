@@ -1,0 +1,64 @@
+use engine::stage::Stage;
+use engine::{Action, Config};
+use engine::fields;
+use engine::land::steps;
+
+#[test]
+fn probe() {
+    for (size, seeds) in engine::stage::RETRO {
+        for &seed in seeds.iter() {
+            let mut w = Stage::retro(size, seed).unwrap().into_world();
+            w.config.army = true; w.config.gifts = true; w.config.zone = true;
+            w.act(Action::ChooseCiv { civ: None }).unwrap();
+            w.run(200);
+            let n = w.clans.len();
+            let farmers: Vec<_> = w.clans.values().filter(|c| fields::farmer(c)).collect();
+            let mut d = [0usize; 5];
+            let mut route_share = 0.0f64; let mut rs_n = 0.0f64;
+            for c in &farmers {
+                match c.market { Some(m) => { let t = w.markets[&m].tile; let s = steps(&w, c.home, t).min(3) as usize; d[s] += 1; } None => d[4] += 1 }
+                let r: f64 = c.routes.iter().map(|r| r.cost).sum();
+                route_share += r / (c.people * engine::data::CLAN.work); rs_n += 1.0;
+            }
+            let mut gr = 0.0; let mut grn = 0;
+            for m in w.markets.values() { if fields::ground(&w, m.tile) > 0.0 { grn += 1; } gr += fields::ground(&w, m.tile); }
+            let gatherers: Vec<_> = w.clans.values().filter(|c| c.fields <= 0.0).collect();
+            let gshare: f64 = gatherers.iter().map(|c| c.routes.iter().map(|r| r.cost).sum::<f64>() / (c.people * engine::data::CLAN.work)).sum::<f64>() / gatherers.len().max(1) as f64;
+            println!("PROBE {size} {seed}: clans {n} farmers {} at-market-dist[0,1,2,3+,none] {:?} farmer-route-share {:.3} gatherer-route-share {:.3} markets {} with-ground {} mean-ground {:.1}",
+                farmers.len(), d, route_share / rs_n.max(1.0), gshare, w.markets.len(), grn, gr / w.markets.len().max(1) as f64);
+        }
+    }
+}
+
+#[test]
+fn towns() {
+    for (size, seeds) in engine::stage::RETRO {
+        for &seed in seeds.iter() {
+            let mut w = Stage::retro(size, seed).unwrap().into_world();
+            w.config.army = true; w.config.gifts = true; w.config.zone = true;
+            w.act(Action::ChooseCiv { civ: None }).unwrap();
+            let mut first = None;
+            for k in 0..200 {
+                w.run(1);
+                let mut homes = std::collections::BTreeMap::<usize, u32>::new();
+                for c in w.clans.values() { *homes.entry(c.home).or_default() += 1; }
+                let towns = w.markets.values().filter(|m| homes.get(&m.tile).copied().unwrap_or(0) >= 3).count();
+                if towns > 0 && first.is_none() { first = Some(k); }
+            }
+            let mut homes = std::collections::BTreeMap::<usize, Vec<u32>>::new();
+            for c in w.clans.values() { homes.entry(c.home).or_default().push(c.id); }
+            let towns: Vec<_> = w.markets.values().filter(|m| homes.get(&m.tile).map_or(0, |v| v.len()) >= 3).collect();
+            let shared = homes.values().filter(|v| v.len() >= 2).count();
+            let in_town: Vec<u32> = towns.iter().flat_map(|m| homes[&m.tile].clone()).collect();
+            let rs = |ids: &mut dyn Iterator<Item=&engine::clans::Clan>| { let v: Vec<f64> = ids.map(|c| c.routes.iter().map(|r| r.cost).sum::<f64>() / (c.people * engine::data::CLAN.work)).collect(); (v.iter().sum::<f64>() / v.len().max(1) as f64, v.len()) };
+            let (tin, nin) = rs(&mut w.clans.values().filter(|c| in_town.contains(&c.id)));
+            let (tout, nout) = rs(&mut w.clans.values().filter(|c| !in_town.contains(&c.id) && fields::farmer(c)));
+            let starving = w.clans.values().filter(|c| c.starving).count();
+            let tstarve = w.clans.values().filter(|c| c.starving && in_town.contains(&c.id)).count();
+            let maxh = homes.values().map(|v| v.len()).max().unwrap_or(0);
+            let people: f64 = w.clans.values().map(|c| c.people).sum();
+            println!("TOWNS {size} {seed}: clans {} people {people:.0} towns {} first {:?} shared-homes {shared} max-homes {maxh} town-clans {nin} route-share town {tin:.3} other-farmers {tout:.3} ({nout}) starving {starving} in-town {tstarve} farmers {}",
+                w.clans.len(), towns.len(), first, w.clans.values().filter(|c| fields::farmer(c)).count());
+        }
+    }
+}
