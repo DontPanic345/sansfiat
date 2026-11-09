@@ -27,6 +27,7 @@ fn every_kind_fires_in_real_runs() {
         ClanDivided,
         ClanStarving,
         ClanMoved,
+        ClanFarming,
         MarketFormed,
         MarketFaded,
         HearthTamed,
@@ -64,7 +65,9 @@ fn events_are_in_turn_order_with_valid_tiles_and_wording() {
         assert!(!e.text(&w).is_empty());
         match e.kind {
             EventKind::ClanDivided => assert!(e.clan.is_some() && e.other.is_some(), "{e:?}"),
-            EventKind::ClanStarving | EventKind::ClanMoved => assert!(e.clan.is_some(), "{e:?}"),
+            EventKind::ClanStarving | EventKind::ClanMoved | EventKind::ClanFarming => {
+                assert!(e.clan.is_some(), "{e:?}")
+            }
             EventKind::MarketFormed | EventKind::MarketFaded => assert!(e.market.is_some(), "{e:?}"),
             EventKind::CentreFormed => assert!(e.clan.is_some() || e.market.is_some(), "{e:?}"),
             _ => {}

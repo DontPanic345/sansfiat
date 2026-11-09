@@ -356,12 +356,19 @@ pub fn middle(w: &World, tiles: &[usize], prefer: usize) -> usize {
 /// tile), then the territory keeps only the tiles within `radius` of home and connected to it.
 /// Returns home and the territory.
 pub fn recentre(w: &World, home: usize, territory: &[usize], radius: i32) -> (usize, Vec<usize>) {
-    let mut home = home;
     let m = middle(w, territory, home);
-    if m != home {
-        let d = steps(w, home, m);
+    step_toward(w, home, m, territory, radius)
+}
+
+/// Home steps one tile toward `target` (a tile of `territory`, sorted): to the lowest neighbouring
+/// territory tile nearer it, if there is one. Then the territory keeps only the tiles within `radius`
+/// of home and connected to it. Returns home and the territory. `recentre` is this with the middle.
+pub fn step_toward(w: &World, home: usize, target: usize, territory: &[usize], radius: i32) -> (usize, Vec<usize>) {
+    let mut home = home;
+    if target != home {
+        let d = steps(w, home, target);
         if let Some(n) =
-            neighbours(w, home).filter(|&n| territory.binary_search(&n).is_ok() && steps(w, n, m) < d).min()
+            neighbours(w, home).filter(|&n| territory.binary_search(&n).is_ok() && steps(w, n, target) < d).min()
         {
             home = n;
         }

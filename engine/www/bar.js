@@ -11,7 +11,7 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const pct = (x) => `${(Math.round(x * 1000) / 10).toFixed(1)}%`;
 const ORD = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
 /** The Game menu's line and the Continue line use the same wording. */
-const LAYER_OF = { 'v-territory': 'territories', 'v-routes': 'festival-routes', 'v-fertility': 'fertility', 'v-hidden': 'hidden-costs', 'v-wear': 'worn' };
+const LAYER_OF = { 'v-fields': 'fields', 'v-territory': 'territories', 'v-routes': 'festival-routes', 'v-fertility': 'fertility', 'v-hidden': 'hidden-costs', 'v-wear': 'worn' };
 
 let H = {};
 let titles = {};

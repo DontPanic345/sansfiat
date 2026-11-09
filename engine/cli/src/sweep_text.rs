@@ -5,6 +5,7 @@ use engine::data::JUDGE;
 
 use engine::judge::EndScores;
 
+use crate::sweep_fields::print_fields;
 use crate::sweep_judge::{civ_means, Report};
 
 /// An end as the text reads it: its why and turn, or "goes on".
@@ -191,5 +192,6 @@ pub(crate) fn print_text(r: &Report) {
         h.panics,
         h.digest_mismatches
     );
+    print_fields(r);
     println!("seconds {:.1}", r.seconds);
 }

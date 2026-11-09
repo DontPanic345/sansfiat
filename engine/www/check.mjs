@@ -60,7 +60,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanFarming', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);
@@ -501,7 +501,7 @@ for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.
 
 // A save carries its version, and one without it is refused with a reason that names the version.
 const save = JSON.parse(sim.save());
-assert.equal(save.version, 14, 'a save carries its version');
+assert.equal(save.version, 16, 'a save carries its version');
 assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
 const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');
@@ -509,7 +509,7 @@ assert.throws(() => Sim.load(JSON.stringify({ ...save, version: 1 })), /version 
 
 
 // The panels (build-4): a fallen civ reads its fall with no buttons, and an army's shape names its fighters.
-const { describe } = await import(pathToFileURL(`${here}panels.js`).href);
+const { describe, subjectOf } = await import(pathToFileURL(`${here}panels.js`).href);
 const { panelCtxFor } = await import(pathToFileURL(`${here}check-ctx.mjs`).href);
 const panelCtx = panelCtxFor(sim, { rules: RULES, terrain: TERRAIN, goods: GOODS });
 const fallenView = { ...v, civs: { ...v.civs } };
@@ -531,6 +531,11 @@ assert.deepEqual(raise.stepper.options.map((o) => o.label), ['warriors', 'archer
 const civShp = describe(panelCtx(ledView), { kind: 'civ', civ: ledId });
 const civRaise = civShp.buttons.find((b) => b.stepper && b.label === 'Raise…');
 assert.deepEqual(civRaise.stepper.options.map((o) => o.label), ['warriors', 'archers', 'a guard', 'a scout'], 'a civ raises warriors, archers, a guard or a scout');
+// A feed item of a clan's fields selects the clan, as a clan's move does.
+const someClan = Object.values(v.clans)[0];
+for (const kind of ['clanMoved', 'clanFarming']) {
+  assert.deepEqual(subjectOf({ v }, { kind, clan: someClan.id, tile: someClan.home }), { kind: 'clan', id: someClan.id }, `a ${kind} item selects its clan`);
+}
 
 await import('./check-stage.mjs');
 

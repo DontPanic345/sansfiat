@@ -1,0 +1,57 @@
+{"turn":262,"line":"note meant: see how fields change my clans did: end 5 turns and watch surprised: no farmers listed yet","result":"noted"}
+{"turn":267,"line":"end 5","result":"ok"}
+{"turn":267,"line":"note meant: claim more land did: claim not tried yet, look at map first surprised: nothing","result":"noted"}
+{"turn":267,"line":"map","result":"ok"}
+{"turn":267,"line":"note meant: raise gift to bring clan 418 (0.74) into my camp did: setGift 8 since store 49 and clan 418 trades at my market surprised: Blue jumped to 15% in 5 turns while I sit at 11%","result":"noted"}
+{"turn":267,"line":"{\"type\":\"setGift\",\"food\":8}","result":"ok"}
+{"turn":267,"line":"note meant: scout the neighbours did: route scout to 535 surprised: nothing","result":"noted"}
+{"turn":267,"line":"{\"type\":\"route\",\"unit\":427,\"from\":506,\"to\":535}","result":"ok"}
+{"turn":267,"line":"note meant: watch gift effect did: end 5 surprised: nothing","result":"noted"}
+{"turn":272,"line":"end 5","result":"ok"}
+{"turn":272,"line":"note meant: gain Standing did: raise 3 warriors to hold land, since an army is also people that count surprised: nothing","result":"noted"}
+{"turn":272,"line":"{\"type\":\"raise\",\"n\":3}","result":"ok"}
+{"turn":272,"line":"note meant: grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":282,"line":"end 10","result":"ok"}
+{"turn":282,"line":"note meant: see where army can go did: view orders surprised: nothing","result":"noted"}
+{"turn":282,"line":"view","result":"ok"}
+{"turn":282,"line":"map","result":"ok"}
+{"turn":282,"line":"note meant: put army on a frontier tile and forage did: move 459 to 535 and set forage on surprised: nothing","result":"noted"}
+{"turn":282,"line":"{\"type\":\"move\",\"unit\":459,\"to\":535}","result":"ok"}
+{"turn":282,"line":"{\"type\":\"switches\",\"unit\":459,\"forage\":true,\"supply\":true}","result":"ok"}
+{"turn":282,"line":"note meant: claim more did: claim tiles 535 505 475 476 507 (already mine?) surprised: nothing","result":"noted"}
+{"turn":282,"line":"{\"type\":\"claim\",\"tiles\":[535,505,475,476,507,477,445]}","result":"ok"}
+{"turn":282,"line":"note meant: Standing check did: end 10 surprised: nothing","result":"noted"}
+{"turn":292,"line":"end 10","result":"ok"}
+{"turn":292,"line":"note meant: undo my mistake, the claim shrank from 56 to 8 tiles did: repaint a wide claim 440-540 surprised: my claim replaces, not adds","result":"noted"}
+{"turn":292,"line":"{\"type\":\"claim\",\"tiles\":[440,441,442,443,444,445,446,447,448,449,450,451,452,453,454,455,456,457,458,459,460,461,462,463,464,465,466,467,468,469,470,471,472,473,474,475,476,477,478,479,480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,495,496,497,498,499,500,501,502,503,504,505,506,507,508,509,510,511,512,513,514,515,516,517,518,519,520,521,522,523,524,525,526,527,528,529,530,531,532,533,534,535,536,537,538,539,540]}","result":"refused: a claim can only cover land"}
+{"turn":292,"line":"view","result":"ok"}
+{"turn":292,"line":"note meant: restore claim over my clans' homes did: claim homes list surprised: only land tiles allowed","result":"noted"}
+{"turn":292,"line":"{\"type\":\"claim\",\"tiles\":[507,535,475,505,503,504,410,506,443,533,446,476,474,565,442,534,444,445,473,477,379,321]}","result":"refused: a claim must be connected to the capital"}
+{"turn":292,"line":"view","result":"ok"}
+{"turn":292,"line":"note meant: restore a connected claim did: claim 18 tiles around the capital surprised: connectivity needed","result":"noted"}
+{"turn":292,"line":"{\"type\":\"claim\",\"tiles\":[506,505,507,475,476,535,534,504,474,444,443,442,533,503,473,477,445,446]}","result":"ok"}
+{"turn":292,"line":"view","result":"ok"}
+{"turn":292,"line":"note meant: hold land with a guard did: raise 2 guard surprised: nothing","result":"noted"}
+{"turn":292,"line":"{\"type\":\"raise\",\"n\":2,\"kind\":\"guard\"}","result":"ok"}
+{"turn":292,"line":"note meant: watch did: end 10 surprised: nothing","result":"noted"}
+{"turn":302,"line":"end 10","result":"ok"}
+{"turn":302,"line":"note meant: continue did: end 10 surprised: nothing","result":"noted"}
+{"turn":312,"line":"end 10","result":"ok"}
+{"turn":312,"line":"note meant: understand why Blue surges did: why on my civ 424 surprised: Blue 29% vs me 16%","result":"noted"}
+{"turn":312,"line":"why 424","result":"ok"}
+{"turn":312,"line":"note meant: grow more did: end 10 surprised: nothing","result":"noted"}
+{"turn":322,"line":"end 10","result":"ok"}
+{"turn":322,"line":"note meant: continue did: end 10 surprised: nothing","result":"noted"}
+{"turn":332,"line":"end 10","result":"ok"}
+{"turn":332,"line":"note meant: continue did: end 10 surprised: nothing","result":"noted"}
+{"turn":342,"line":"end 10","result":"ok"}
+{"turn":342,"line":"note meant: lift Standing in the last stretch did: disband army to send people home to clans, test disband surprised: nothing","result":"noted"}
+{"turn":342,"line":"{\"type\":\"disband\",\"unit\":459}","result":"ok"}
+{"turn":342,"line":"note meant: finish did: end 10 surprised: nothing","result":"noted"}
+{"turn":352,"line":"end 10","result":"ok"}
+{"turn":352,"line":"note meant: finish did: end 10 surprised: nothing","result":"noted"}
+{"turn":362,"line":"end 10","result":"ok"}
+{"turn":362,"line":"note could not tell: gift: whether a gift reaches a clan before its lean passes 1.0, and why Blue gains clans faster","result":"noted"}
+{"turn":362,"line":"note could not tell: land and guard: what a claim replaces (it cut 56 tiles to 8) and what the guard defends against","result":"noted"}
+{"turn":362,"line":"note could not tell: army: what pillage or zone would win, no rival in reach","result":"noted"}
+{"turn":362,"line":"note could not tell: scout: what a route finds","result":"noted"}

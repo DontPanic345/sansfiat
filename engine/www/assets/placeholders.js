@@ -50,6 +50,7 @@ export function layout() {
   row();
   put('overlay.floodplain', 128, 148, hexNote('floodplain wash, translucent, drawn over the tile'));
   put('overlay.desert-dots', 128, 148, hexNote('desert stipple, translucent, drawn over a desert tile'));
+  put('overlay.fields', 128, 148, hexNote('field furrows: three short dark ochre strokes in the lower half, translucent, drawn over a tile with fields'));
   row();
   for (const u of UNITS) {
     put(`unit.${u}`, 64, 64, `${u} figure: dark casing and edge, transparent inside (the civ's colour shows through from the mask)`);
@@ -148,6 +149,16 @@ export function draw(name, ctx, w, h) {
     ctx.fillStyle = 'rgba(96,235,70,0.42)';
     hexPath(ctx, w, h, HEX_R * 1.02);
     ctx.fill();
+  } else if (name === 'overlay.fields') {
+    ctx.strokeStyle = '#7a5a1e';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (const y of [0.18, 0.4, 0.62]) {
+      ctx.moveTo(w / 2 - 0.5 * HEX_R, h / 2 + y * HEX_R);
+      ctx.lineTo(w / 2 + 0.5 * HEX_R, h / 2 + y * HEX_R);
+    }
+    ctx.stroke();
   } else if (name === 'overlay.desert-dots') {
     ctx.fillStyle = '#b39a55';
     let s = 12345;

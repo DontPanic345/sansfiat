@@ -4,7 +4,7 @@
 use engine::data::{Fighter, CIV, LEANING, UNIT};
 use engine::over::{self, Why};
 use engine::units::{self, Unit, UnitKind};
-use engine::{civs, claim, markets, stats, Action, Clan, Event, Order, Phase, World, FOODS};
+use engine::{civs, claim, fields, markets, stats, Action, Clan, Event, Order, Phase, World, FOODS};
 
 /// The largest clans the view names.
 const CLANS_NAMED: usize = 5;
@@ -12,6 +12,18 @@ const CLANS_NAMED: usize = 5;
 const REACH_NAMED: usize = 8;
 /// The events about the led civ the feed shows, the newest first.
 const FEED_SHOWN: usize = 12;
+
+/// A clan's fields this turn for its line, `, fields 3 tiles, 9.4 days, 6.1 grain`; empty for a clan with no share.
+fn fields_text(w: &World, k: &Clan) -> String {
+    if k.fields <= 0.0 {
+        return String::new();
+    }
+    let plots = fields::plots(w, k);
+    let days: f64 = plots.iter().map(|p| p.1).sum();
+    let grain: f64 = plots.iter().map(|p| p.2).sum();
+    let tiles = if plots.len() == 1 { "tile" } else { "tiles" };
+    format!(", fields {} {tiles}, {days:.1} days, {grain:.1} grain", plots.len())
+}
 
 /// A tile as the view names it: its id and its hex.
 fn tile(w: &World, i: usize) -> String {
@@ -107,7 +119,14 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     let people: f64 = clans.iter().map(|k| k.people).sum();
     out += &format!("clans: {} with {people:.1} people; the largest:\n", clans.len());
     for k in clans.iter().take(CLANS_NAMED) {
-        out += &format!("  clan {} at {}: {:.1} people, fed {:.2}\n", k.id, tile(w, k.home), k.people, k.fed_ratio);
+        out += &format!(
+            "  clan {} at {}: {:.1} people, fed {:.2}{}\n",
+            k.id,
+            tile(w, k.home),
+            k.people,
+            k.fed_ratio,
+            fields_text(w, k)
+        );
     }
 
     out += &format!("unaligned clans in reach of your market, leaning to each civ (join at {:.1}; a gift reaches only those that trade there):\n", LEANING.join);
@@ -133,7 +152,13 @@ pub(crate) fn text(w: &World, since: usize) -> String {
             Some(m) => format!("trades at market {m}, so your gift doesn't reach it"),
             None => "trades at no market, so your gift doesn't reach it".to_string(),
         };
-        out += &format!("  clan {id} at {}, {:.1} people: {}; {trades}\n", tile(w, k.home), k.people, legs.join(", "));
+        out += &format!(
+            "  clan {id} at {}, {:.1} people{}: {}; {trades}\n",
+            tile(w, k.home),
+            k.people,
+            fields_text(w, k),
+            legs.join(", ")
+        );
     }
     if loose.len() > REACH_NAMED {
         out += &format!("  and {} more\n", loose.len() - REACH_NAMED);

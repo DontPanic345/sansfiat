@@ -1,10 +1,10 @@
-use engine::data::{CIV, CLAIM, FIGHT, FIGHTERS, GUARD, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{CIV, CLAIM, FIELD, FIGHT, FIGHTERS, GUARD, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::over::{self, Why};
 use engine::script::Lead;
 use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
-use engine::{civs, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
+use engine::{civs, fields, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
 use std::collections::BTreeMap;
 
 use wasm_bindgen::prelude::*;
@@ -62,10 +62,12 @@ impl Sim {
 
     /// What never changes after generation, as columns (one array per field, indexed by tile):
     /// `{radius, q, r, terrain, fertility, river, flow (-1 for none), lake, flood, zone
-    /// (0 open, 1 valley, 2 sealed, 3 neck), pass, wild_grain, trail_cost, span}`. The page asks once per map.
+    /// (0 open, 1 valley, 2 sealed, 3 neck), pass, wild_grain, trail_cost, span, ground (the field days
+    /// the tile takes a turn, `fields::ground`)}`. The page asks once per map.
     pub fn layout(&self) -> String {
         let t = &self.world.tiles;
         let col = |f: &dyn Fn(&Tile) -> serde_json::Value| -> Vec<serde_json::Value> { t.iter().map(f).collect() };
+        let ground: Vec<f64> = (0..t.len()).map(|i| fields::ground(&self.world, i)).collect();
         serde_json::json!({
             "radius": self.world.config.radius,
             "q": col(&|t| t.q.into()),
@@ -81,6 +83,7 @@ impl Sim {
             "wild_grain": col(&|t| t.wild_grain.into()),
             "trail_cost": col(&|t| t.trail_cost.into()),
             "span": col(&|t| t.span.into()),
+            "ground": ground,
         })
         .to_string()
     }
@@ -100,9 +103,14 @@ impl Sim {
     /// army (its `units::Counters`), keep (the food it keeps
     /// in force, `civs::keep`), keep_set (the food the player set it to, null for the default), gift
     /// (the most it gives a turn), posted (food posted to its market last turn), given (food given
-    /// last turn), joined (clans joined since founding), gifted (food given since founding)}}`. Each
-    /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ), and `routes`
-    /// (its festival route: `[{to, path, cost}]`, the path from home, so its walk is home then the path).
+    /// last turn), joined (clans joined since founding), gifted (food given since founding), living
+    /// (`{gathering, farming, army}`: its people by what they do, gathering over their land (Σ people ×
+    /// (1 − fields) over its clans), working fields (Σ people × fields over its clans), or in its units
+    /// (the people of all its units: camps, the guard and scouts))}}`. Each
+    /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ), `routes`
+    /// (its festival route: `[{to, path, cost}]`, the path from home, so its walk is home then the path),
+    /// `fields` (its share of its days on fields) and `plots` (`[[tile, days, grain]]`, its field tiles
+    /// this turn, from `fields::plots`).
     /// `markets` is `{id: market}`, each market with `clans` (the clans whose festival it is).
     /// `rules()` gives `join`, the leaning a clan joins a civ at, for the tints. `units` is the camps,
     /// `{id: camp}`, a camp being its engine fields (`kind`, `people` (warriors), `home`, `store` (the
@@ -147,6 +155,10 @@ impl Sim {
             .map(|c| {
                 let part = parts.get(&c.id).copied().unwrap_or_default();
                 let mine = w.clans.values().filter(|k| k.civ == Some(c.id));
+                let (gathering, farming) = mine
+                    .clone()
+                    .fold((0.0, 0.0), |(g, f), k| (g + k.people * (1.0 - k.fields), f + k.people * k.fields));
+                let army: f64 = w.units.values().filter(|u| u.civ == c.id).map(|u| u.people).sum();
                 let row = serde_json::json!({
                     "id": c.id,
                     "name": c.name,
@@ -175,6 +187,7 @@ impl Sim {
                     "pressed": c.pressed,
                     "besieged": c.besieged,
                     "fallen": c.fallen,
+                    "living": { "gathering": gathering, "farming": farming, "army": army },
                 });
                 (c.id, row)
             })
@@ -249,6 +262,16 @@ impl Sim {
         let standing: Vec<(u32, &BTreeMap<u32, f64>)> =
             w.standing.iter().enumerate().map(|(k, s)| (picked + k as u32, s)).collect();
         let clan_civ: Vec<(u32, u32)> = w.clans.values().filter_map(|c| c.civ.map(|civ| (c.id, civ))).collect();
+        let clans: BTreeMap<u32, serde_json::Value> = w
+            .clans
+            .values()
+            .map(|k| {
+                let mut row = serde_json::to_value(k).unwrap();
+                row["fields"] = k.fields.into();
+                row["plots"] = serde_json::to_value(fields::plots(w, k)).unwrap();
+                (k.id, row)
+            })
+            .collect();
         // Each festival with the clans that go to it.
         let markets: BTreeMap<u32, serde_json::Value> = w
             .markets
@@ -265,7 +288,7 @@ impl Sim {
             "end": w.end,
             "phase": self.phase(),
             "player": w.player,
-            "clans": w.clans,
+            "clans": clans,
             "markets": markets,
             "trails": trails,
             "trail_work": trail_work,
@@ -443,7 +466,8 @@ pub fn goods() -> String {
 /// `notes_shown` is how many reasons the panel shows. `fighters` is `[{name, attack, defence}]` in
 /// `Fighter` order (strength per person attacking and defending); `fight` is `{entrench, entrench_cap,
 /// hungry, surrender}`: a defender's strength gained per turn still and its cap, the factor on an army
-/// hungry last turn, and the hungry turns that surrender it.
+/// hungry last turn, and the hungry turns that surrender it. `field` is `{farmer}`: the share of its days from
+/// which a clan is a farmer (`FIELD.farmer`).
 #[wasm_bindgen]
 pub fn rules() -> String {
     serde_json::json!({
@@ -461,6 +485,7 @@ pub fn rules() -> String {
         "save_version": engine::world::SAVE_VERSION,
         "fighters": FIGHTERS.iter().map(|f| serde_json::json!({ "name": f.name, "attack": f.attack, "defence": f.defence })).collect::<Vec<_>>(),
         "fight": { "entrench": FIGHT.entrench, "entrench_cap": FIGHT.entrench_cap, "hungry": FIGHT.hungry, "surrender": FIGHT.surrender },
+        "field": { "farmer": FIELD.farmer },
     })
     .to_string()
 }

@@ -312,7 +312,8 @@ pub fn wear(w: &mut World) {
 /// trail whose traffic has fallen under `TRAIL.off` wears away, unless a camp's line or a scout's
 /// route was walked on it this turn. Each tile also counts the
 /// turns it has been held, or held by nobody: grain held `TENDING.after` turns tames a step a turn
-/// with no ceiling, unheld it goes wild a step a turn; its unworn grain cap follows `domestic`.
+/// with no ceiling, and `FIELD.tame` more on a tile worked as fields this turn; unheld it goes wild a
+/// step a turn; its unworn grain cap follows `domestic`.
 pub fn tend(w: &mut World) {
     let round1 = |v: f64| (v * 10.0).round() / 10.0;
     let mut tamed = Vec::new();
@@ -336,8 +337,8 @@ pub fn tend(w: &mut World) {
         }
         if held && t.claim_run >= TENDING.after {
             let before = t.tame;
-            t.tame += 1;
-            if before < TENDING.tame_turns && t.tame == TENDING.tame_turns {
+            t.tame += if t.field > 0.0 { 1 + FIELD.tame } else { 1 };
+            if before < TENDING.tame_turns && t.tame >= TENDING.tame_turns {
                 tamed.push(i);
             }
         } else if !held {

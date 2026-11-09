@@ -11,6 +11,7 @@ mod retro;
 mod run;
 mod story;
 mod sweep;
+mod sweep_fields;
 mod sweep_judge;
 mod sweep_text;
 mod view;
@@ -41,7 +42,7 @@ sansfiat judge FILE [--json]   (a played game judged turn by turn, beside the sa
 sansfiat judge --compare A.json B.json [--all]   (two sweep --judge --json reports side by side: each metric's A, B, change and noise floor, flagged with * when the change is past the floor; the totals, or with --all every map's too)
 sansfiat story skirmish|stack|surrender|conquest [--seed N --size NAME --civ K] [--no-fight] [--turns N] --save FILE   (a scripted story of war on a retro map: the led civ K (1-based, id order) gives its orders through the engine's door and the AI plays the rest, until the game ends or N turns pass (0: to the end); the save is a normal save that `judge FILE` scores and `play --game FILE` resumes; --no-fight is the control; --trace prints a line a turn)
 sansfiat sweep [seed ...] [--turns N] [--radius N | --size small|medium|large|all] [--every N]   (seeds default 1..=10, size small; a series line every N turns, default 50)
-sansfiat sweep --judge [--json [--floor [--nulls N]]] [--solo]   (the retro maps, every civ on the AI: the army run twice, the --no-army control and the no-claims control, scored by the judge over 200 turns past the pick; --solo adds each civ claiming alone; --floor (with --json) adds each metric's noise floor: the sweep N more times (default 1), each with one harmless extra roll at the pick, the largest change a metric took; a report, with no verdict)
+sansfiat sweep --judge [--json] [--floor [--nulls N]] [--solo]   (the retro maps, every civ on the AI: the army run twice, the --no-army, no-claims, no-fight and no-fields controls, scored by the judge over 200 turns past the pick; --solo adds each civ claiming alone; --floor adds each metric's noise floor (the text reads the fields bounds less it): the sweep N more times (default 1), each with one harmless extra roll at the pick, the largest change a metric took; a report, with no verdict)
 sansfiat sweep --after N [--maps retro | seed ... [--size NAME]] [--no-army] [--no-gifts] [--no-zone] [--no-claims] [--lever G]   (the camps and the clans: run to the pick, all on the AI, N turns on; per civ its camp, the clans that joined and the totals; --no-army, --no-gifts, --no-zone (AI camps paint no zone) and --no-claims (no civ claims land) are the controls; --lever G leads the lowest civ with gift G, its camp posted where the AI would; --maps retro is the seven maps)
 sansfiat bench [seed ...] [--turns N | --after N] [--radius N | --size NAME]   (--after N runs each seed to the pick, picks no civ and times N turns past it)
 sansfiat digest [--seed N] [--radius N | --size NAME] [--turns N] [--lead] [--state] | --game FILE   (prints turn and digest, from turn 0; --game replays a save and prints its turn and digest; --lead plays the scripted game: picks the first civ and gives orders; --state hashes the world without its log)

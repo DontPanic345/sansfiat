@@ -71,7 +71,7 @@ Clans tame the grain they live with.
 
 - Grain on a tile a clan holds tames a little each turn, and keeps taming through the main
   game; its grain grows with it. Grain on land nobody holds slowly goes wild again.
-- Farming and irrigation tame it further, later.
+- Fields tame it further (`farming.md`); irrigation later.
 
 Tamed grain is what makes a fertile area a centre that can feed a civ.
 
@@ -122,7 +122,8 @@ placing them?
 
 - Good and bad years, and any year-to-year variation.
 - Buildings, materials and crafts. Only food exists.
-- Work besides harvesting: traders, crafters, farmers.
+- Work besides harvesting in the pre-game: traders, crafters, farmers. Clans farm from founding
+  (`farming.md`).
 - More than one festival per clan.
 - Hidden trail costs and scouting (`scouting.md`).
 

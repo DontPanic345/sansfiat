@@ -6,7 +6,7 @@ use std::process::Command;
 use engine::world::SAVE_VERSION;
 
 /// The version these digests are for.
-const VERSION: u32 = 14;
+const VERSION: u32 = 16;
 
 /// `sansfiat digest` for `seed` on the small map, from turn 0 to `turn`, and the digest it prints
 /// for that turn (the last line).
@@ -38,14 +38,14 @@ fn the_save_version_pins_the_rules() {
     assert_eq!(SAVE_VERSION, VERSION, "bump SAVE_VERSION and these digests together");
     // Seeds 1-3 watched from their picks (`play` gives 271, 260, 289) to turns 290, 279, 308, and seed 2
     // led by the scripted game of `digest --lead` to turn 279: the turns stay where the flat trail's picks put them.
-    assert_eq!(digest("1", "290", false), "fc4d47ecda7dbc7f");
-    assert_eq!(digest("2", "279", false), "12293b22fdb8c3b5");
-    assert_eq!(digest("3", "308", false), "064b88bfda0b1ee3");
-    assert_eq!(digest("2", "279", true), "bf4edbd8bacfe734");
+    assert_eq!(digest("1", "290", false), "51330d17c09fea27");
+    assert_eq!(digest("2", "279", false), "3dc731fb44207823");
+    assert_eq!(digest("3", "308", false), "ad62a6f1d9f75274");
+    assert_eq!(digest("2", "279", true), "60ba7faa9e2f09ce");
 }
 
 #[test]
 fn the_led_game_state_digest_is_its_baseline() {
     // The led game's world without its log: the rules' fingerprint, which the log's shape does not move.
-    assert_eq!(digest_with("2", "279", true, true), "6296c475bb969271");
+    assert_eq!(digest_with("2", "279", true, true), "a5526ae59236d6ff");
 }

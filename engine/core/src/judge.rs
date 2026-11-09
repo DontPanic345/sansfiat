@@ -10,6 +10,7 @@ use crate::civs::{alive, tile_civ};
 use crate::claim;
 use crate::data::{JUDGE, TERRAIN, UNIT};
 use crate::events::EventKind;
+use crate::judge_fields::{FieldScores, Fields};
 use crate::judge_ring::{Supply, SupplyScores};
 use crate::over::Why;
 use crate::stats;
@@ -131,6 +132,8 @@ pub struct Watch {
     economy: Economy,
     /// The ring and the units inside and outside it (`judge_ring`).
     supply: Supply,
+    /// Fields, farmers and the store's packs (`judge_fields`).
+    fields: Fields,
 }
 
 impl Watch {
@@ -163,6 +166,7 @@ impl Watch {
             civs_200: Vec::new(),
             economy: Economy::default(),
             supply: Supply::pick(w),
+            fields: Fields::pick(w),
         }
     }
 
@@ -224,6 +228,7 @@ impl Watch {
         self.economy.largest_army = self.economy.largest_army.max(camp);
 
         self.supply.turn(w);
+        self.fields.turn(w);
 
         let now = self.turns();
         let mut festival = BTreeMap::new();
@@ -381,6 +386,7 @@ impl Watch {
             fight: FightScores::of(w),
             economy: self.economy.scores(),
             supply: self.supply.scores(),
+            fields: self.fields.scores(),
             end: self.end_scores(w),
         }
     }
@@ -428,6 +434,8 @@ pub struct Scores {
     pub economy: EconomyScores,
     /// The ring and the units inside and outside it, and the clans' territory.
     pub supply: SupplyScores,
+    /// Fields and farmers, the store's packs, and how settled farmers and gatherers move and starve.
+    pub fields: FieldScores,
     pub end: EndScores,
 }
 

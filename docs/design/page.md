@@ -76,3 +76,5 @@ mechanic; one panel component fed a selection; one play driver for the scripts.
 - Each pick card says "The game ends after N turns, at turn T"; the top bar shows the turn of the limit, and "Game over" once it ends. (#152)
 - Every unit has a Disband all button that sends no count; Disband… keeps the counts, and a scout or guard shows it only from two people. (#153)
 - With Move to… or Route to… armed, the tooltip says when the tile is past the line's reach. (#153)
+- Fields are drawn as furrows on every tile worked this turn, darker with more days, under View → Fields and on by default. The clan panel shows a farmer's fields (tiles, days, grain) and its doing line leads with "Farms a fifth of its days"; the tile tooltip gives its field ground and fields. (#155)
+- The feed tells when a clan takes up fields ("Clan 140 takes up fields at (3, −2)"), and clicking it selects the clan. (#155)
