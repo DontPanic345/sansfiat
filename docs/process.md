@@ -74,8 +74,10 @@ A piece is judged on what moves the game, in this order:
 3. **Decisions.** What the player can do each turn that changes Standing, and what the AI
    does: orders per hundred turns, and levers pulled more than once.
 4. **Motion.** The world keeps moving after the pick: people, land and clans change hands.
-5. **Health.** Nobody starves who shouldn't, the pre-game ends on its own, nothing panics,
-   and a build gives the digest it gave before. Health is a band the judge holds, not a goal.
+5. **Health.** No clan starves for a reason the rules don't intend, such as days spent on
+   work that yields nothing, the pre-game ends on its own, nothing panics, and a build gives
+   the digest it gave before. Health is a band the judge holds, not a goal. How many starve
+   is the world's consequence, and no piece tunes against it.
 
 A piece's question is asked in the first four. Camps kept and clans joined are health: they
 say the machinery runs, not that the game moved. `sansfiat sweep --judge` measures all five

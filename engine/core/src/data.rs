@@ -328,8 +328,8 @@ pub const FIELD: FieldRules = FieldRules {
     note: "Tuned on the retro maps (relay/specs/155/canvas.md), from the probe's y8 values: a floodplain feeds a \
            small clan's days, a field day yields 1.2 food at a hearth against a gathering day's 0.75, a split \
            moves a tenth at a time, and a clan is a farmer, its home following its fields, from a fifth of its \
-           days: at a tenth it read starving 1.30 against the control's, at a fifth 1.22, with the store held \
-           on 5 of 7 maps.",
+           days: settled farmers' home moves are a quarter of gatherers', and the store holds a pack on 5 of 7 \
+           maps.",
 };
 
 /// What a person carries on a route: a walk beyond the territory is paid by every person carrying
