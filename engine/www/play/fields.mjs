@@ -1,4 +1,4 @@
-// Fields, on the page (#155, build-3): lead a civ on small seed 9 and play turns until one of its clans farms. Then
+// Fields, on the page (#155, build-3): lead a civ on small seed 1 and play turns until one of its clans farms. Then
 // the feed holds a clanFarming item and a click selects its clan; the clan's panel has a Fields row over a tile with
 // ground; the civ's panel has a Living row whose farming part is above 0 and whose parts add up to its people and
 // its army; the fields layer draws on the clan's field tile; View → Fields turns it off. Writes fields.png (the
@@ -47,13 +47,14 @@ const numberOf = (panel, label) => panel?.numbers.find((n) => n.label === label)
 
 const page = await open('');
 try {
-  await lead(page, { seed: 9 });
+  await lead(page, { seed: 1 });
   const me = await page.eval('game.view().player');
 
-  // Play until some clan of the led civ has fields.
+  // Play until some clan of the led civ farms: its share at rules().field.farmer, the line its doing line and home read.
+  const farmer = await page.eval("import('./pkg/web.js').then((m) => JSON.parse(m.rules()).field.farmer)");
   let turns = 0;
   const farming = () =>
-    page.eval(`Object.values(game.view().clans).filter((c) => c.civ === ${me} && c.fields > 0).map((c) => c.id)`);
+    page.eval(`Object.values(game.view().clans).filter((c) => c.civ === ${me} && c.fields >= ${farmer} - 1e-9).map((c) => c.id)`);
   const farmers = () => page.eval(`game.view().civs[${me}].living.farming`);
   let clans = await farming();
   while (clans.length === 0 && turns < CAP) {
@@ -90,10 +91,7 @@ try {
   const fieldsRow = numberOf(panel, 'Fields');
   need(fieldsRow && /tiles? · [\d.]+ days · [\d.]+ grain/.test(fieldsRow.value), `the clan's panel has a Fields row (${fieldsRow?.value ?? 'none'})`);
   need(ground > 0, `the clan's first field tile ${tile} has ground (${ground} days)`);
-  // Only a farmer's line leads with how it farms; at seed 9 the led civ's clans stay under `FIELD.farmer` (0.2).
-  if (clanView.fields >= 0.2 - 1e-9) {
-    need(/^Farms .+ of its days/.test(panel?.doing ?? ''), `the clan's doing line leads with how it farms (${panel?.doing})`);
-  }
+  need(/^Farms .+ of its days/.test(panel?.doing ?? ''), `the clan's doing line leads with how it farms (${panel?.doing})`);
 
   // The field layer is on by default, and draws on the clan's field tile.
   need(await page.eval("game.map.on.fields === true && document.getElementById('v-fields').checked"), 'the fields layer is on, and its View box is checked');
@@ -121,7 +119,7 @@ try {
     const [g, f, a] = m.slice(1).map(Number);
     const civ = await page.eval(`(() => { const v = game.view(); const c = v.civs[${me}];
       return { people: c.people, army: c.living.army, farming: c.living.farming }; })()`);
-    // The farming people are read from the view: at seed 9 the led civ's farmers are under half a person, which the row
+    // The farming people are read from the view: the led civ's farmers can be under half a person, which the row
     // rounds to 0 (build-3's decision; the row's whole people are as the brief says).
     need(civ.farming > 0, `the civ's farming people are above 0 (${civ.farming.toFixed(2)}, the row reads ${f})`);
     // Each part rounds to a whole person, so the three add up to the civ's people and its army within 1.5.
