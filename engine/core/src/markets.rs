@@ -12,6 +12,7 @@ use crate::civs;
 use crate::clans::{nutrition, surplus, Clan};
 use crate::data::*;
 use crate::events::{Event, EventKind};
+use crate::homes;
 use crate::land::{cost_map, passable, path};
 use crate::leaning;
 use crate::market::{clear, demand, take, Basket, Params};
@@ -375,13 +376,11 @@ pub fn fade(w: &mut World) {
 }
 
 /// The clans whose route from home to `tile` would cost at most `MARKET.reach_walk`, in id
-/// order, and their people. Paths are found out from `tile`.
+/// order, and their people. Every clan living on a home in reach counts. Paths are found out from `tile`.
 pub fn in_reach(w: &World, tile: usize) -> (Vec<u32>, f64) {
     let near = cost_map(w, &[tile], MARKET.reach_walk / 2.0, |i| passable(w, i));
-    let mut ids: Vec<u32> = near
-        .keys()
-        .filter_map(|&t| w.tiles[t].claim.filter(|id| w.clans.get(id).is_some_and(|c| c.home == t)))
-        .collect();
+    let index = homes::homes(w);
+    let mut ids: Vec<u32> = near.keys().filter_map(|t| index.get(t)).flatten().copied().collect();
     ids.sort_unstable();
     ids.dedup();
     let people = ids.iter().map(|id| w.clans[id].people).sum();

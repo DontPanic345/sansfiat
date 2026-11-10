@@ -63,7 +63,7 @@ fn reaped(w: &World, territory: &[usize], pop: f64) -> Vec<(usize, Basket)> {
     let mut t = territory.to_vec();
     t.sort_unstable();
     let (_, yearly) = walks(w, territory[0], &t);
-    t.iter().copied().zip(reap(w, pop, &[0.0; N], &[], &t, &yearly, 0.0).takes).collect()
+    t.iter().copied().zip(reap(w, 0, pop, &[0.0; N], &[], &t, &yearly, 0.0, &vec![true; t.len()]).takes).collect()
 }
 
 #[test]
@@ -107,7 +107,9 @@ fn reaping_keeps_to_labour_stock_and_target_on_real_maps() {
         for c in w.clans.values() {
             let (_, yearly) = walks(&w, c.home, &c.territory);
             for (pop, store) in [(c.people, c.store), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0])] {
-                let takes = reap(&w, pop, &store, &c.routes, &c.territory, &yearly, 0.0).takes;
+                let takes =
+                    reap(&w, c.id, pop, &store, &c.routes, &c.territory, &yearly, 0.0, &vec![true; c.territory.len()])
+                        .takes;
                 let food = total(&std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum()));
                 let labour = (pop * CLAN.work - c.trip()).max(0.0);
                 assert!(CLAN.harvest_labour * food <= labour + EPS);
@@ -306,7 +308,7 @@ fn a_clan_starving_too_long_moves_on() {
         assert_ne!(after.home, o);
         assert_eq!(after.territory, vec![after.home]);
         assert!(steps(&w, o, after.home) <= CLAN.move_range);
-        assert!(site_value(&w, after.home, c.people, &c.store) > now + CLAN.move_margin);
+        assert!(site_value(&w, c.id, after.home, c.people, &c.store) > now + CLAN.move_margin);
         assert_eq!((after.since, after.hungry), (0, 0));
         assert_eq!(w.tiles[o].claim, None);
         assert_eq!(w.tiles[out(3, 1)].claim, None);
@@ -366,7 +368,7 @@ fn a_starving_clan_sends_a_daughter_only_where_she_would_be_fed() {
         assert!((d.people - pop.min(CLAN.split_at) / 2.0).abs() < EPS);
         assert_eq!(d.territory, vec![d.home]);
         assert!(steps(&w, o, d.home) <= CLAN.scout_range);
-        assert!(site_value(&w, d.home, d.people, &d.store) >= CLAN.settle_fed);
+        assert!(site_value(&w, d.id, d.home, d.people, &d.store) >= CLAN.settle_fed);
         assert_eq!(w.clans[&id].hungry, 0);
         check_territories(&w);
     }

@@ -38,11 +38,11 @@ The code: `core/src/clans.rs` (`seed`, `free`, `sites`, `move_on`, `adjust`, `di
 4. **Fields on the home, whoever claims it.** `fields::jobs` takes the field tiles from every territory tile
    with ground that yields, the home included, as now.
 5. **Shared field ground.**
-   - `fields::room(w, id, t) -> f64`: `ground(w, t)` less the days the other clans sowed on `t` last turn
-     (`Tile.field` less the clan's own entry in `Clan.sown`), at least 0. `sow` caps each tile at its room,
-     not its ground. A tile only one clan sows has room equal to its ground, as now. `harvest` zeroes
-     `Tile.field` at its start today, so move that reset into pass two: pass one's `reap` must read last
-     turn's total, or every room would be the whole ground.
+   - `fields::room(w, id, t) -> f64`: `ground(w, t)` less the days the other clans sowed on `t` last turn,
+     at least 0. Only clans that still have `t` in their territory count (the build-1 correction: `Tile.field`
+     less the clan's own entry let a tile that a clan had let go keep its old days, and the first sweep moved
+     every map). `sow` caps each tile at its room, not its ground. A tile only one clan sows has room equal to
+     its ground, as now. `harvest` still resets `Tile.field` in pass two, where the total is written.
    - `Clan.sown: Vec<(usize, f64)>` (`#[serde(default)]`): the clan's field days per tile this turn, sorted by
      tile, only tiles with days.
    - **The harvest step reaps every clan first, then shares, then takes.** Pass one reaps each clan in the

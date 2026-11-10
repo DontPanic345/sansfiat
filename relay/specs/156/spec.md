@@ -22,7 +22,7 @@ and a large map past the pick runs under a bound.
    `markets::in_reach`, `stats::trails`, the view. It is derived, never saved.
 3. **Shared field ground** (build-1). A tile's ground is shared among the clans sowing it, in proportion to
    the days each sows. A clan plans on the **room** a tile leaves it: its ground less the days the other clans
-   sowed on it last turn (so `harvest` resets `Tile.field` only when it writes this turn's). `sow` caps each tile at that room. The harvest step reaps every clan first, then
+   sowed on it last turn, counting only clans that still hold the tile in their territory (build-1's correction: `Tile.field` kept a let-go tile's old days). `sow` caps each tile at that room. The harvest step reaps every clan first, then
    scales each tile's field days and grain to its ground where the clans together sowed more, each clan by the
    same factor, and then applies the takes. Gathering territories are exclusive, so reaping all clans before
    any take reads the same stock as today's take-as-you-go. `Clan.sown` (`(tile, days)` this turn, sorted) holds

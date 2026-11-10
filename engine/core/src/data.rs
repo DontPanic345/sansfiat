@@ -854,6 +854,11 @@ pub struct Config {
     /// farms. Old saves load with it on.
     #[serde(default = "yes")]
     pub fields: bool,
+    /// Whether a farmer's home may step onto a tile another clan holds, where living feeds it better.
+    /// Off is the control: a farmer's home never steps onto a tile another clan holds, so no two clans
+    /// share a home. Old saves load with it on.
+    #[serde(default = "yes")]
+    pub towns: bool,
 }
 
 fn yes() -> bool {
@@ -873,6 +878,7 @@ impl Default for Config {
             fight: true,
             limit: None,
             fields: true,
+            towns: true,
         }
     }
 }
