@@ -54,7 +54,7 @@ jobs:
       group: relay
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 345
+    timeout-minutes: 355
     environment: relay
     env:
       RELAY_APP_ID: ${{ secrets.RELAY_APP_ID }}

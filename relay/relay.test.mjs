@@ -54,6 +54,10 @@ import {
     pickOutcome,
     planSteps,
     sideOf,
+    wholeChoice,
+    capOf,
+    stopOf,
+    WHOLE_STOP,
 } from "./relay.mjs";
 
 const resets = new Date("2026-10-17T09:00:00Z");
@@ -562,4 +566,37 @@ test("the steps table and the PR comments say what each run landed and what the 
     assert.match(table, /\$4\.00 at list price so far\./);
     const twin = step("build-2-twin", "closed", { branch: "relay/9-build-2-a", picked: "all", cost: 1, summary: "Painted." });
     assert.match(stepComment(twin, twin.meta), /\(sonnet medium, version A, all landed, \$1\.00/);
+});
+
+const WHOLE = ["**Goal:** a rival.", "**Whole:** fable medium: the free reset", "**Design:** docs/design/map.md"].join("\n");
+
+test("a Whole line gives the piece one step, with no spec, that runs and then is finished", () => {
+    assert.deepEqual(wholeChoice(WHOLE), { model: "fable", effort: "medium", why: "fable medium: the free reset" });
+    assert.equal(wholeChoice(piece(1, []).body), null);
+    assert.equal(holdReason(piece(1, [], [], { body: WHOLE })), null);
+    assert.equal(stepKind("whole"), "whole");
+    assert.equal(pieceAction(piece(1, [], [step("whole")], { body: WHOLE })).step.meta.id, "whole");
+    assert.equal(pieceAction(piece(1, [], [step("whole", "closed")], { body: WHOLE })), null);
+});
+
+test("a whole step runs five hours, and starts only on a 5-hour window that is nearly unused", () => {
+    assert.equal(capOf("whole"), 300 * 60_000);
+    assert.equal(capOf("build-1"), 90 * 60_000);
+    assert.equal(stopOf("whole"), WHOLE_STOP);
+    assert.equal(pace({ session: 9, weekly: 0, weeklyResetsAt: resets }, day(1), stopOf("whole")).ok, true);
+    const used = pace({ session: 30, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: resets }, day(1), stopOf("whole"));
+    assert.equal(used.ok, false);
+    assert.equal(used.until, resets);
+    assert.equal(pace({ session: 30, weekly: 0, weeklyResetsAt: resets }, day(1), stopOf("review")).ok, true);
+});
+
+test("a whole session gets the piece, its design, its cap and the whole prompt", () => {
+    const f = files({ prompts: { whole: "# Whole step", session: "# Every session" }, started: "2026-11-10T00:00:00.000Z", cap: 300 });
+    const text = sessionPrompt(piece(4, [], [], { body: WHOLE }), step("whole", "open", { model: "fable" }), f);
+    assert.match(text, /Do this whole piece in this one session/);
+    assert.match(text, /stops it after 300 minutes/);
+    assert.match(text, /a rival/);
+    assert.match(text, /Rivers run downhill/);
+    assert.ok(text.indexOf("# Whole step") < text.indexOf("# Every session"));
+    assert.doesNotMatch(text, /# The diff to review/);
 });

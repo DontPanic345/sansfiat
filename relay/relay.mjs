@@ -38,35 +38,39 @@ const LOG_TITLE = "Relay log";
 const WORKFLOW = "relay.yml";
 const MAX_ATTEMPTS = 2;
 const STARTED = Date.now();
-// The job is killed at 345 minutes. No step starts after the deadline, and none runs past
+// The job is killed at 355 minutes. No step starts after the deadline, and none runs past
 // its timeout, so the crew always gets to record the last one.
 const DEADLINE_MS = Number(process.env.RELAY_DEADLINE_MIN ?? 250) * 60_000;
 const SESSION_TIMEOUT_MS = Number(process.env.RELAY_SESSION_MIN ?? 90) * 60_000;
+// A whole step's session runs as long as a 5-hour usage window.
+const WHOLE_TIMEOUT_MS = Number(process.env.RELAY_WHOLE_MIN ?? 300) * 60_000;
 // Written into transcripts, which become a workflow artifact anyone signed in can read.
 export const SECRETS = ["CLAUDE_CODE_OAUTH_TOKEN", "RELAY_APP_KEY", "DISPATCH_TOKEN", "RELAY_BOARD_TOKEN"];
 
-export const MODELS = ["haiku", "sonnet", "opus"];
+export const MODELS = ["haiku", "sonnet", "opus", "fable"];
 export const EFFORTS = ["low", "medium", "high"];
 // A build step's part in its piece's shape (prompts/spec.md).
 export const PARTS = ["ford", "easel", "canvas", "clay", "kiln", "glaze", "magnum"];// The steps that judge, which never run at low effort.
 const JUDGES = ["spec-review", "review"];
 
 const SESSION_STOP = 75;
+// A whole step starts on a 5-hour window that is all but unused, so the window lasts its session.
+export const WHOLE_STOP = 10;
 // How long a retro waits for the owner's notes.
 export const RETRO_WAIT_MS = 72 * 3600_000;
 
 // ---- Pure logic (covered by relay.test.mjs) ----
 
-// Start a step only while the 5-hour window is under 75%, and the weekly window is under
+// Start a step only while the 5-hour window is under `stop`%, and the weekly window is under
 // day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`, where that's known.
-export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now) => {
+export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now, stop = SESSION_STOP) => {
     const cycleStart = weeklyResetsAt.getTime() - 7 * 86400_000;
     const day = Math.min(7, Math.max(1, Math.floor((now.getTime() - cycleStart) / 86400_000) + 1));
     const weeklyLimit = (day / 7) * 95;
     const [s, w] = [Math.round(session), Math.round(weekly)];
-    if (session >= SESSION_STOP) {
+    if (session >= stop) {
         const resets = sessionResetsAt ? `, resets ${sessionResetsAt.toISOString()}` : "";
-        return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${s}% ≥ ${SESSION_STOP}%${resets}` };
+        return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${s}% ≥ ${stop}%${resets}` };
     }
     if (weekly >= weeklyLimit) {
         const lifts = Math.floor((weekly * 7) / 95) + 1;
@@ -136,6 +140,9 @@ export const playChoice = (body) => {
     return { model, effort: words.find((w) => EFFORTS.includes(w)) ?? "medium", seeds, why: line };
 };
 
+// `**Whole:** fable medium`: one session does the whole piece, on this model and effort.
+export const wholeChoice = (body) => readChoice(pieceField(body, "Whole"));
+
 // `**After:** #31, #32`: the pieces this one waits to see merged.
 export const afterOf = (body) => [...(pieceField(body, "After") ?? "").matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
 
@@ -162,6 +169,7 @@ export const RETRO_STEPS = [
 const RETRO_IDS = RETRO_STEPS.map((s) => s.id);
 
 // Steps run spec, spec-review, build-1 … build-N, play, review; a retro's run in RETRO_STEPS.
+// A whole piece has the one step, `whole`.
 export const stepRank = (id) => {
     if (RETRO_IDS.includes(id)) return 2000 + RETRO_IDS.indexOf(id);
     if (id === "spec") return 0;
@@ -175,8 +183,13 @@ export const stepKind = (id) => {
     if (id === "wait") return "wait";
     if (RETRO_IDS.includes(id)) return "retro";
     if (/^build-\d+-pick$/.test(id)) return "pick";
-    return ["spec", "spec-review", "play", "review"].includes(id) ? id : "build";
+    return ["spec", "spec-review", "play", "review", "whole"].includes(id) ? id : "build";
 };
+// The steps whose `result.json` carries the merge verdict the crew acts on.
+const VERDICTS = ["review", "whole"];
+// How long a step's session may run, and the 5-hour usage it may start at.
+export const capOf = (id) => (stepKind(id) === "whole" ? WHOLE_TIMEOUT_MS : SESSION_TIMEOUT_MS);
+export const stopOf = (id) => (stepKind(id) === "whole" ? WHOLE_STOP : SESSION_STOP);
 const sortSteps = (steps) => [...steps].sort((a, b) => stepRank(a.meta.id) - stepRank(b.meta.id));
 
 export const branchOf = (piece) => `relay/${piece.number}`;
@@ -296,7 +309,7 @@ export const holdReason = (piece) => {
     const unmerged = (piece.after ?? []).filter((a) => !a.merged).map((a) => `#${a.number}`);
     if (unmerged.length) return `after ${unmerged.join(", ")}, not merged yet`;
     if (piece.before?.length) return `after the milestone's other pieces (${piece.before.map((n) => `#${n}`).join(", ")})`;
-    if (piece.steps.length === 0 && !isRetro(piece)) {
+    if (piece.steps.length === 0 && !isRetro(piece) && !wholeChoice(piece.body)) {
         if (!specChoice(piece.body)) return "the body has no `Spec:` model and effort";
         if (!specReviewChoice(piece.body)) return "the body has no `Spec-review:` model and effort";
     }
@@ -367,6 +380,7 @@ export const PROMPTS_FOR = {
     pick: ["pick"],
     play: ["play", "players/player", "players/judge"],
     review: ["review", "players/judge"],
+    whole: ["whole"],
     retro: ["retro"],
 };
 // A step's prompt files: the retro's play check plays as a play step does.
@@ -433,6 +447,7 @@ export const sessionPrompt = (piece, step, files) => {
             "spec-review": "Review the spec, the briefs and steps.json for this piece",
             play: `Play this piece's branch and write its play note, on ${playChoice(piece.body)?.seeds ?? 1} seed${(playChoice(piece.body)?.seeds ?? 1) > 1 ? "s" : ""}`,
             review: "Review this piece as built",
+            whole: "Do this whole piece in this one session, from its plan to its merge verdict",
         }[kind];
         const like = kind === "spec" && files.lastSpec ? ` Write \`spec.md\` and the briefs as \`${files.lastSpec}/\` did.` : "";
         parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what}, as agreed with the owner.${like} The piece:`);
@@ -1028,11 +1043,12 @@ const runSession = (piece, step, prompt) =>
         let result = null;
         let compactions = 0;
         const renew = setInterval(() => writeTokenFile().catch((e) => log(`couldn't renew the token: ${e.message}`)), 5 * 60_000);
+        const cap = capOf(step.meta.id);
         const timer = setTimeout(() => {
             timedOut = true;
-            log(`#${piece.number} ${step.meta.id} ran past ${SESSION_TIMEOUT_MS / 60_000} minutes; stopping it`);
+            log(`#${piece.number} ${step.meta.id} ran past ${cap / 60_000} minutes; stopping it`);
             child.kill();
-        }, SESSION_TIMEOUT_MS);
+        }, cap);
         let buf = "";
         child.stdout.on("data", (chunk) => {
             buf += chunk;
@@ -1094,7 +1110,7 @@ const stepPrompt = (piece, step) => {
         lastSpec: kind === "spec" ? lastSpec(piece) : null,
         notes: piece.steps.find((s) => s.meta.id === "wait")?.meta.notes ?? null,
         started: new Date().toISOString(),
-        cap: SESSION_TIMEOUT_MS / 60_000,
+        cap: capOf(step.meta.id) / 60_000,
     };
     if (kind === "pick") {
         files.sides = {};
@@ -1129,11 +1145,17 @@ const createStep = async (piece, s) => {
     log(`#${piece.number}: made step ${s.id} (#${issue.number})`);
 };
 
-// A new piece gets its spec step, on the model and effort the piece's body chose. A retro gets
-// all its steps at once.
+// A new piece gets its spec step, on the model and effort the piece's body chose, or its whole
+// step when the body has a `Whole:` line. A retro gets all its steps at once.
 const startPiece = async (piece) => {
     if (isRetro(piece)) {
         for (const s of RETRO_STEPS) await createStep(piece, s);
+        await setStatus(piece, "Building");
+        return;
+    }
+    const whole = wholeChoice(piece.body);
+    if (whole) {
+        await createStep(piece, { id: "whole", title: "The whole piece", ...whole });
         await setStatus(piece, "Building");
         return;
     }
@@ -1261,7 +1283,7 @@ const afterStep = async (piece, step, result) => {
     else if (step.meta.id === "proposal") {
         await comment(piece.number, `📝 The proposal is on ${pr?.html_url ?? "the branch"}. Correct it there and merge it: the crew then opens its pieces.`);
         await setStatus(piece, "Review", "your merge");
-    } else if (kind !== "review") await setStatus(piece, "Building");
+    } else if (!VERDICTS.includes(kind)) await setStatus(piece, "Building");
     else {
         if (pr) {
             const fresh = await loadPiece(piece.number);
@@ -1272,7 +1294,7 @@ const afterStep = async (piece, step, result) => {
         if (why) {
             await comment(
                 piece.number,
-                `🔍 The review is done on ${pr?.html_url ?? "the PR"}, but ${why}. Its description ends with the review's verdict. Merge it, which closes this piece, or close this piece to keep the branch as \`proof/${piece.number}\`.`,
+                `🔍 The ${kind === "whole" ? "piece" : "review"} is done on ${pr?.html_url ?? "the PR"}, but ${why}. Its description ends with the verdict. Merge it, which closes this piece, or close this piece to keep the branch as \`proof/${piece.number}\`.`,
             );
             await setStatus(piece, "Review", "your merge");
         }
@@ -1407,7 +1429,7 @@ const runStep = async (piece, step, before) => {
         throw Object.assign(new Error(`#${piece.number}'s branch tracks ${tracked.split("\n").join(", ")}; \`git rm --cached\` it before a session runs`), { refused: true });
     }
     const kind = stepKind(step.meta.id);
-    await setStatus(piece, { review: "Review", build: "Building", play: "Building", retro: "Building" }[kind] ?? "Spec");
+    await setStatus(piece, { review: "Review", build: "Building", play: "Building", retro: "Building", whole: "Building" }[kind] ?? "Spec");
     let prompt;
     try {
         prompt = stepPrompt(piece, step);
@@ -1434,7 +1456,7 @@ const runStep = async (piece, step, before) => {
         const { error } = readSteps(piece);
         if (error) result = { status: "pending", note: `You reported done, but steps.json can't be read: ${error}` };
     }
-    if (kind === "review" && result?.status === "done" && typeof result.merge !== "boolean") {
+    if (VERDICTS.includes(kind) && result?.status === "done" && typeof result.merge !== "boolean") {
         result = { status: "pending", note: "You reported done without `merge`: result.json needs `\"merge\": true` or `false`." };
     }
     if (kind === "pick" && result?.status === "done" && !["A", "B", "both"].includes(result.chose)) {
@@ -1543,9 +1565,14 @@ const runSteps = async (ran) => {
             ran.push(`#${next.piece.number}: the wait is over`);
             continue;
         }
+        const cap = capOf(next.step.meta.id);
+        if (Date.now() - STARTED + cap > DEADLINE_MS + SESSION_TIMEOUT_MS) {
+            await dispatchRun().catch((e) => log(`couldn't start a run: ${e.message}`));
+            return `deadline: #${next.piece.number} ${next.step.meta.id} needs ${cap / 60_000} minutes, so it runs in a job of its own`;
+        }
         const before = reading ?? (await usage());
         reading = null;
-        const verdict = pace(before, new Date());
+        const verdict = pace(before, new Date(), stopOf(next.step.meta.id));
         if (!verdict.ok) {
             await setBoard(next.piece.nodeId, { "Waiting on": waitingOn(verdict) });
             if (verdict.window === "5-hour" && verdict.until) {
@@ -1588,7 +1615,7 @@ const status = async () => {
     for (const p of pieces) console.log(`#${p.number} ${p.title}: ${holdReason(p) ?? JSON.stringify(pieceAction(p)?.action ?? "finished")}`);
     const next = nextWork(pieces);
     console.log(next ? `next: #${next.piece.number} ${next.action}${next.step ? ` ${next.step.meta.id}` : ""}` : "next: nothing");
-    console.log(`pacing: ${JSON.stringify(pace(await usage(), new Date()))}`);
+    console.log(`pacing: ${JSON.stringify(pace(await usage(), new Date(), next?.step ? stopOf(next.step.meta.id) : undefined))}`);
 };
 
 // For the workflow to report a failure the crew couldn't, e.g. the job timing out.

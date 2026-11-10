@@ -13,6 +13,8 @@ Relay builds it as a run of steps, each a cold session like you, on the piece's 
 4. **play**, when the piece's `Play:` line names a model, plays the branch and judges the game.
 5. **review** reviews the whole piece, fixes it, and adds its decisions to the design's ledger.
 
+A piece with a `Whole:` line has one step instead, **whole**: one session does all of it.
+
 When a milestone's pieces are built, a retro runs the same way, as `retro.md` says.
 
 No one watches in between. Each later step sees every earlier step's summary and decisions,
@@ -29,7 +31,7 @@ on the milestone's fixes piece and opens an `ask` for the owner.
 - Stable Rust with the wasm target, rustfmt, clippy, `wasm-bindgen-cli`, Node 24 and Google
   Chrome are installed. `engine/check.sh` runs every check CI runs on the engine.
   `engine/www/play.mjs` drives the page in headless Chrome.
-- The crew stops a session after 90 minutes.
+- The crew stops a session at its cap, which the top of this prompt gives.
 - Anyone signed in to GitHub can read your transcript for two weeks, so keep secrets and the
   environment out of your output.
 
@@ -60,4 +62,4 @@ on the milestone's fixes piece and opens an `ask` for the owner.
      usually has none.
    - `ideas` each have a `title`, a `body` and a `class`; a `fix` also has a `repro`. The play step
      puts its findings under `findings` in the same form.
-   - The review adds `"merge": true` or `false`: a review without it isn't done.
+   - The review, or a whole step, adds `"merge": true` or `false`: without it the step isn't done.
