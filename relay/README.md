@@ -145,7 +145,7 @@ their brief, which carries all the design it needs; the review gets no brief, bu
 the design files, the diff, the whole spec and the steps table. The pick gets the brief and
 each version's summary, decisions, ideas and diff stat, as A and B. The play step gets the piece,
 `prompts/play.md` and both of `players/`. A whole session gets the piece, its design files and
-`prompts/whole.md`, which names the other prompts for it to read. A retro step gets the retro issue and `prompts/retro.md`,
+`prompts/whole.md`. A retro step gets the retro issue and `prompts/retro.md`,
 and the game step the owner's notes. Every session gets when it started and its cap, the earlier
 steps' summaries and decisions, `prompts/session.md` and its kind's prompt.
 

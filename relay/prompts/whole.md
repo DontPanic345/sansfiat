@@ -1,43 +1,31 @@
 # Whole step
 
-This piece is yours from its plan to its merge verdict, in one session. No spec, spec-review,
-build, play or review step runs before or after you, so nothing is checked unless you check it.
+This piece is yours whole: one session takes it from its plan to its merge verdict, and yours is
+the only session it gets. Plan it, build it, play it and judge it the way you think best. The
+piece's `Spec`, `Spec-review`, `Play` and `Shape` lines were written for a run of smaller
+sessions; take from them what helps.
 
-How you do it is your choice. The steps other pieces run are in `relay/prompts/` (`spec.md`,
-`spec-review.md`, `build.md`, `pick.md`, `play.md`, `review.md`), the player and the judge are in
-`relay/players/`, and what those steps left for earlier pieces is in `relay/specs/`. Follow their
-shapes, part of them, or anything else: subagents, your own order, your own proofs. The piece's
-`Spec`, `Spec-review`, `Play` and `Shape` lines say what a run of steps would have used; read
-them as suggestions.
+The cap this prompt starts with is sized for the whole piece, so spend it on the whole piece.
+Keep your plan and your numbers in `relay/specs/<piece>/` and push as each part works: your
+context compacts over a session this long, and the files are what you reread.
 
-## What the piece is owed
+## Done
 
-- Its Goal's question answered in the scores, on the retro maps, beside its control, with the old
-  and new numbers (`review.md`, The judge).
-- The games its Goal or its `Play` line asks for, played as `play.md` and `players/player.md` say,
-  by a player who hasn't read the code.
-- Evidence in files under `relay/specs/<piece>/`.
-- Every check passing after your last edit.
-- Its decisions in each design file's `## Decided` ledger (`review.md`, The design ledger).
-- A PR. Open it once the branch has commits (`gh pr create --base main`, titled as the piece,
-  its body starting `Closes #<piece>.`), and before you finish rewrite its description as
-  `review.md` says. The crew puts the steps table under the Closes line.
-- CI green on your last commit (`review.md`, Finishing).
-- A merge verdict, `"merge": true` or `false` in `result.json`. On `true` the crew merges and
-  later pieces build on it, with no one reading in between. Give the verdict as a reader who
-  didn't build the piece would.
+The piece is done when every line here holds:
 
-## The clock and the window
-
-The session has the cap this prompt starts with, and one 5-hour usage window that was close to
-empty when you started. `node relay/usage.mjs` prints how much of the window is used. The window
-may run out before the clock does; the session then ends where it stands, and a second attempt,
-the last, starts cold from the branch once the window resets.
-
-- Keep `relay/specs/<piece>/progress.md` current: the plan, what is done and proven, what is
-  next, the numbers so far. Your context compacts over a session this long, and a second attempt
-  has only the branch.
-- Commit and push each part as it works.
-- Leave the last of the clock and the window for the proof, the PR and CI.
-- A smaller piece that is proven and says what it left out is worth more than the whole piece
-  unproven. What it left out goes under `ideas`.
+- Every clause of the Goal and every Decided line is in the game, each shown by a test or a
+  number.
+- The Goal's question is answered in the scores: `sansfiat sweep --judge` on the branch and on
+  `main`, the old and new numbers beside the control, in a file under `relay/specs/<piece>/`.
+- The games the Goal asks of a player are played through `sansfiat play` by a player who knows
+  only the text view, and scored with `sansfiat judge`.
+- `engine/check.sh` passes on your last commit, and CI is green on it.
+- Each decision a player would notice is one line in the `## Decided` ledger at the foot of its
+  design file, in the game's words, ending `(#<piece>)`.
+- The PR is open against `main`, titled as the piece, its body starting `Closes #<piece>.` and
+  written for the owner to read once on a phone: the answer in the scores with its control, the
+  ledger lines, what the played games showed, and your verdict last. The crew adds the steps
+  table under the Closes line.
+- `result.json` has `"merge": true` or `false`. On `true` the crew merges the PR unread, so the
+  verdict is the one a cold reviewer gives: the diff against `main`, read by someone who didn't
+  write it.
