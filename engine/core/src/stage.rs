@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::clans::new_clan;
 use crate::data::{size_radius, Config, Fighter, GUARD, N, PLAINS, SEA};
 use crate::hex::Hex;
+use crate::homes;
 use crate::map::{self, Tile};
 use crate::over::Over;
 use crate::pregame::End;
@@ -137,6 +138,11 @@ impl Stage {
             let civ = *ids.get(k).ok_or(format!("lead: there is no civ {k}"))?;
             stage.lead(civ)?;
         }
+        for k in &spec.clans {
+            let home = stage.tile(&k.home)?;
+            let tiles = k.tiles.iter().map(|r| stage.tile(r)).collect::<Result<Vec<_>, _>>()?;
+            stage.living_clan(home, &tiles, k.people);
+        }
         for a in &spec.armies {
             let civ = *ids.get(a.civ).ok_or(format!("armies: there is no civ {}", a.civ))?;
             let tile = stage.tile(&a.at)?;
@@ -241,6 +247,21 @@ impl Stage {
         self.world.tiles[i].claim = Some(id);
         self.world.clans.insert(id, new_clan(id, i, people));
         self.world.clans.get_mut(&id).expect("the clan").territory = vec![i];
+        id
+    }
+
+    /// A clan of `people` living on `home` and claiming `tiles` through `homes::claim_land`, so a tile
+    /// another clan holds keeps its claim: the home may be shared. Returns its id.
+    pub fn living_clan(&mut self, home: usize, tiles: &[usize], people: f64) -> u32 {
+        let id = self.fresh_id();
+        let mut territory = tiles.to_vec();
+        territory.push(home);
+        territory.sort_unstable();
+        territory.dedup();
+        let mut c = new_clan(id, home, people);
+        c.territory = territory.clone();
+        homes::claim_land(&mut self.world, id, &territory);
+        self.world.clans.insert(id, c);
         id
     }
 
@@ -425,6 +446,14 @@ pub enum TileRef {
     Tile { tile: usize },
 }
 
+/// A clan living on `home`, claiming `tiles` (its home too, where no earlier clan claims it).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ClanSpec {
+    pub home: TileRef,
+    pub tiles: Vec<TileRef>,
+    pub people: f64,
+}
+
 /// A retro pick: a size from `RETRO` and a seed.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -485,6 +514,9 @@ pub struct StageSpec {
     pub lead: Option<usize>,
     #[serde(default)]
     pub armies: Vec<ArmySpec>,
+    /// Clans living on a home, placed after the civs: a home may be shared (`towns`).
+    #[serde(default)]
+    pub clans: Vec<ClanSpec>,
     /// The turn limit after the pick, which replaces the size's (`Config.limit`); `None` is the size's.
     #[serde(default)]
     pub limit: Option<u32>,
@@ -504,6 +536,7 @@ pub fn open_market(w: &mut World, tile: usize) -> u32 {
         volume: 0.0,
         traders: 0,
         moved: 0.0,
+        town: false,
     };
     w.markets.insert(id, m);
     id

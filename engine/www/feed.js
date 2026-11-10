@@ -13,6 +13,7 @@ export const KINDS = {
   peopleLeft: { icon: '⇢', color: '#ff9f6e', label: 'People leave clans' },
   marketFormed: { icon: '◉', color: '#ffd479', label: 'Markets formed' },
   marketFaded: { icon: '○', color: '#a8a8a8', label: 'Markets faded' },
+  townFormed: { icon: '⌂', color: '#ffd479', label: 'Towns formed' },
   hearthTamed: { icon: '■', color: '#ffd400', label: 'Hearths' },
   centreFormed: { icon: '★', color: '#ffc800', label: 'Centres' },
   pregameEnded: { icon: '⚑', color: '#ffffff', label: 'End' },

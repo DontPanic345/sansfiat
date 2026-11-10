@@ -3,6 +3,8 @@
 //! its line home. The AI gives its orders through `World::order` (`Claim`, `Raise`, `Disband`, `Move`,
 //! `Zone`), not logged: a replay re-derives them.
 
+use std::collections::BTreeMap;
+
 use super::line::{line_by, path_between};
 use super::{camp, guard_of, zone_cap, zone_of, zone_ok, UnitKind, EPS};
 use crate::civs;
@@ -13,14 +15,28 @@ use crate::market::total;
 use crate::orders::Order;
 use crate::world::World;
 
+/// The paths `post` reads, by their ends, as `path_between` finds them. `ai` keeps one for its turn.
+type Paths = BTreeMap<(usize, usize), Option<Vec<usize>>>;
+
+/// `path_between`'s tiles from `from` to `to`, found once in `paths`.
+fn path_cached(w: &World, paths: &mut Paths, from: usize, to: usize) -> Option<Vec<usize>> {
+    paths.entry((from, to)).or_insert_with(|| path_between(w, from, to).map(|(p, _)| p)).clone()
+}
+
 /// Where the AI posts `civ`'s camp: up to `UNIT.post` steps along the way from the capital to the
 /// nearest rival capital reachable by land, or with none, to its farthest clan, keeping to its
 /// own land and on land (not on a built pass). The capital when there is nowhere to go.
 pub fn post(w: &World, civ: u32) -> usize {
+    post_by(w, civ, &mut Paths::new())
+}
+
+fn post_by(w: &World, civ: u32, paths: &mut Paths) -> usize {
     let c = &w.civs[&civ];
     let to_rival = civs::alive(w)
         .filter(|o| o.id != civ)
-        .filter_map(|o| path_between(w, c.capital, o.capital).map(|(p, _)| ((steps(w, c.capital, o.capital), o.id), p)))
+        .filter_map(|o| {
+            path_cached(w, paths, c.capital, o.capital).map(|p| ((steps(w, c.capital, o.capital), o.id), p))
+        })
         .min_by_key(|(k, _)| *k)
         .map(|(_, p)| p);
     let way = to_rival.or_else(|| {
@@ -29,7 +45,7 @@ pub fn post(w: &World, civ: u32) -> usize {
             .values()
             .filter(|k| k.civ == Some(civ))
             .max_by_key(|k| (steps(w, c.capital, k.home), std::cmp::Reverse(k.id)))?;
-        path_between(w, c.capital, far.home).map(|(p, _)| p)
+        path_cached(w, paths, c.capital, far.home)
     });
     let mut at = c.capital;
     for t in way.unwrap_or_default().into_iter().take(UNIT.post) {
@@ -49,6 +65,9 @@ pub fn ai(w: &mut World) {
     if !w.phase.playing() {
         return;
     }
+    // The paths the posts read are the same all turn (walkable ground does not change in it), so
+    // one turn's map holds them; it is dropped with the turn.
+    let mut paths = Paths::new();
     let ids: Vec<u32> = civs::alive(w).map(|c| c.id).filter(|&c| Some(c) != w.player).collect();
     for civ in ids {
         land(w, civ);
@@ -60,7 +79,7 @@ pub fn ai(w: &mut World) {
             continue;
         }
         let (id, here) = (u.id, u.home);
-        let at = post(w, civ);
+        let at = post_by(w, civ, &mut paths);
         if at != here {
             let text = format!("posted at {}, on the way to its nearest rival or its farthest clan", w.at(at));
             w.note(id, text);

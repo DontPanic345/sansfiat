@@ -4,7 +4,7 @@
 use engine::data::{Fighter, CIV, LEANING, UNIT};
 use engine::over::{self, Why};
 use engine::units::{self, Unit, UnitKind};
-use engine::{civs, claim, fields, markets, stats, Action, Clan, Event, Order, Phase, World, FOODS};
+use engine::{civs, claim, fields, markets, stats, towns, Action, Clan, Event, Order, Phase, World, FOODS};
 
 /// The largest clans the view names.
 const CLANS_NAMED: usize = 5;
@@ -129,6 +129,7 @@ pub(crate) fn text(w: &World, since: usize) -> String {
         );
     }
 
+    out += &town_lines(w, me);
     out += &format!("unaligned clans in reach of your market, leaning to each civ (join at {:.1}; a gift reaches only those that trade there):\n", LEANING.join);
     let reach = w.markets.get(&c.market).map(|m| markets::in_reach(w, m.tile).0).unwrap_or_default();
     let mut loose: Vec<(f64, u32)> = reach
@@ -180,6 +181,22 @@ pub(crate) fn text(w: &World, since: usize) -> String {
 /// The led civ's claim: its tiles, held (the capital and the claimed tiles its guard holds) and paper,
 /// its guard's people and the thinnest share of a held tile besides the capital; and the unaligned
 /// clans whose homes are on its land.
+/// One line per town on the led civ's land, or with one of its clans living on it: the tile, its
+/// clans and how many of them farm.
+fn town_lines(w: &World, me: u32) -> String {
+    let mut out = String::new();
+    for t in towns::towns(w) {
+        let civ_of = |id: u32| w.clans.get(&id).and_then(|c| c.civ);
+        let mine = t.clans.iter().any(|&id| civ_of(id) == Some(me));
+        let claimed = w.tiles[t.tile].claim.and_then(civ_of) == Some(me);
+        if mine || claimed {
+            let farmers = t.clans.iter().filter(|id| fields::farmer(&w.clans[id])).count();
+            out += &format!("town at {}: {} clans, {farmers} farming\n", tile(w, t.tile), t.clans.len());
+        }
+    }
+    out
+}
+
 fn claim_lines(w: &World, me: u32) -> String {
     let c = &w.civs[&me];
     let held = claim::held(w, me);

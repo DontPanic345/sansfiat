@@ -20,6 +20,7 @@ import * as land from './layers/land.js';
 import * as held from './layers/held.js';
 import * as lines from './layers/lines.js';
 import * as clans from './layers/clans.js';
+import * as towns from './layers/towns.js';
 import * as leanings from './layers/leanings.js';
 import * as centres from './layers/centres.js';
 import * as capitals from './layers/capitals.js';
@@ -31,7 +32,7 @@ import * as overlay from './layers/overlay.js';
 import { CORNER, EDGE_DIR } from './geom.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, ring, units, routes, overlay];
+export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, festivalRoutes, festivals, land, held, lines, clans, towns, leanings, centres, capitals, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */

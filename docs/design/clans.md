@@ -142,3 +142,7 @@ placing them?
 - Trails follow traffic. Each walk adds its people to every tile it crosses, home included, and a tile keeps its trail only while enough people walk it. A camp's line and a scout's route keep their trails while they're used. (#102)
 - Every clan leans to civs, a civ's own clans included. A clan whose home is on a civ's land leans to that civ every turn, more under a thicker guard. (#102)
 - A civ's clan that leans to a rival more than to its own civ, and by enough, for five turns in a row leaves for the rival, and its daughters still in the old civ go with it. A civ's own clan never leaves. (#102)
+- A clan's home is where it lives, not land it holds: many clans may live on one tile. A clan gathers only the tiles it claims, and never claims a tile another clan holds. (#156)
+- A clan divides only the land it holds: one that holds fewer than two tiles sends a daughter instead, and the mother keeps its home. (#156)
+- A daughter or a clan moving on never settles on another clan's home. (#156)
+- A clan that isn't a farmer but lives on a shared home moves to the middle of its land only when that feeds it better. (#156)

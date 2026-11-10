@@ -1,0 +1,58 @@
+diff --git a/engine/core/src/clans.rs b/engine/core/src/clans.rs
+index 080c689..8c0f8a5 100644
+--- a/engine/core/src/clans.rs
++++ b/engine/core/src/clans.rs
+@@ -480,6 +480,7 @@ pub fn adjust(w: &mut World) {
+         } else {
+             actors::recentre(w, c.home, &changed, CLAN.territory_radius)
+         };
++        let (home, territory) = if pinned || std::env::var("NOTOWN").is_ok() { (home, territory) } else { town_step(w, &c, home, territory) };
+         let dropped = c.territory.iter().filter(|t| !territory.contains(t)).count();
+         if dropped > 0 {
+             let (was, now) = (value(w, &c, &c.territory), value(w, &c, &territory));
+@@ -490,7 +491,9 @@ pub fn adjust(w: &mut World) {
+         }
+         free(w, id, &c.territory);
+         for &t in &territory {
+-            w.tiles[t].claim = Some(id);
++            if w.tiles[t].claim.is_none() {
++                w.tiles[t].claim = Some(id);
++            }
+         }
+         let m = w.clans.get_mut(&id).unwrap();
+         m.home = home;
+@@ -619,3 +622,34 @@ fn split(w: &mut World, id: u32) {
+     w.note(d.id, format!("set out from clan {id} with {people:.0} people"));
+     w.clans.insert(d.id, d);
+ }
++
++/// SKETCH: a farmer steps its home one tile toward its festival when that feeds it better.
++fn town_step(w: &World, c: &Clan, home: usize, territory: Vec<usize>) -> (usize, Vec<usize>) {
++    if !fields::open(w) || !fields::farmer(c) {
++        return (home, territory);
++    }
++    let Some(t) = c.market.and_then(|m| w.markets.get(&m)).map(|m| m.tile) else { return (home, territory) };
++    if t == home {
++        return (home, territory);
++    }
++    let d = steps(w, home, t);
++    let Some(n) = neighbours(w, home).filter(|&n| TERRAIN[w.tiles[n].terrain].land && passable(w, n) && steps(w, n, t) < d).min() else {
++        return (home, territory);
++    };
++    let mut cand = territory.clone();
++    if let Err(k) = cand.binary_search(&n) {
++        cand.insert(k, n);
++    }
++    let cand = actors::trim(w, n, &cand, CLAN.territory_radius);
++    let walkers = crate::markets::walkers(c);
++    let Some((p, cost)) = crate::land::path(w, n, t, |i| passable(w, i)) else { return (home, territory) };
++    let routes = vec![Route { to: t, path: p, cost: actors::walk_cost(cost, 1.0) * walkers }];
++    let now = worth(w, c.people, &c.store, &c.routes, home, &territory, c.fields);
++    let then = worth(w, c.people, &c.store, &routes, n, &cand, c.fields);
++    let margin: f64 = std::env::var("TOWNM").ok().and_then(|v| v.parse().ok()).unwrap_or(0.01);
++    if then > now + margin {
++        (n, cand)
++    } else {
++        (home, territory)
++    }
++}

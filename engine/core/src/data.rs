@@ -332,6 +332,27 @@ pub const FIELD: FieldRules = FieldRules {
            maps.",
 };
 
+/// Towns: a tile with a festival and this many homes reads as a town (`towns.rs`). It is the reading, not
+/// a rule: nothing acts on it. Build-4 adds its rule's numbers here.
+pub struct TownRules {
+    /// Homes on a festival's tile from which it reads as a town.
+    pub homes: usize,
+    /// Food a person a turn by which a farmer's home step (toward its fields or its festival) must beat
+    /// staying (`homes::step`).
+    pub margin: f64,
+    /// Why this number: where it came from.
+    pub note: &'static str,
+}
+
+pub const TOWN: TownRules = TownRules {
+    homes: 3,
+    margin: 0.01,
+    note: "Three is the least that reads as many hearths on one tile, and two clans side by side are \
+           neighbours (relay/specs/156/spec.md). The sketch's towns at three came out on 5 of 7 maps. \
+           A home step must beat staying by the field split's margin, `FIELD.margin`. Tuned on the retro maps \
+           (relay/specs/156/canvas.md): 0.005 and 0.02 form no more towns.",
+};
+
 /// What a person carries on a route: a walk beyond the territory is paid by every person carrying
 /// what the actor brings (`actors::carriers`).
 pub struct CarryRules {
@@ -854,6 +875,11 @@ pub struct Config {
     /// farms. Old saves load with it on.
     #[serde(default = "yes")]
     pub fields: bool,
+    /// Whether a farmer's home may step onto a tile another clan holds, where living feeds it better.
+    /// Off is the control: a farmer's home never steps onto a tile another clan holds, so no two clans
+    /// share a home. Old saves load with it on.
+    #[serde(default = "yes")]
+    pub towns: bool,
 }
 
 fn yes() -> bool {
@@ -873,6 +899,7 @@ impl Default for Config {
             fight: true,
             limit: None,
             fields: true,
+            towns: true,
         }
     }
 }

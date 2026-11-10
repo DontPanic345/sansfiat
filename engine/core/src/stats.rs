@@ -60,10 +60,15 @@ pub struct Trails {
 /// The trail shares and festival counts of a world; it changes nothing.
 pub fn trails(w: &World) -> Trails {
     let share = |yes: usize, of: usize| if of == 0 { None } else { Some(yes as f64 / of as f64) };
-    let homes: Vec<usize> = w.clans.values().map(|c| c.home).collect();
+    let index = crate::homes::homes(w);
     let big: Vec<usize> = w.clans.values().filter(|c| c.people >= CLAN.split_at / 2.0).map(|c| c.home).collect();
-    let worked: Vec<&crate::map::Tile> =
-        w.tiles.iter().enumerate().filter(|(i, t)| t.claim.is_some() && !homes.contains(i)).map(|(_, t)| t).collect();
+    let worked: Vec<&crate::map::Tile> = w
+        .tiles
+        .iter()
+        .enumerate()
+        .filter(|(i, t)| t.claim.is_some() && !index.contains_key(i))
+        .map(|(_, t)| t)
+        .collect();
     let mut walkers: BTreeMap<usize, usize> = BTreeMap::new();
     for c in w.clans.values() {
         let mut path: Vec<usize> = c.routes.iter().flat_map(|r| r.path.iter().copied()).collect();

@@ -729,6 +729,8 @@ function fillTip(i) {
   }
   const m = marketOn(ctx(), i);
   if (m) lines.push(`Market ${m.id}${v.end && v.end.centres.includes(m.id) ? ' (centre)' : ''}`);
+  const town = v.towns?.find((t) => t.tile === i);
+  if (town) lines.push(`Town: ${town.clans.length} clans at the festival`);
   if (isHearth(i)) lines.push('Hearth');
   const u = selected && selected.kind === 'unit' ? v.units[selected.id] : null;
   lines.push(...orderTip(sim, u, i, v));

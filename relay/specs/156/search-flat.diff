@@ -1,0 +1,70 @@
+diff --git a/engine/core/src/markets.rs b/engine/core/src/markets.rs
+index e2293d7..8c72c54 100644
+--- a/engine/core/src/markets.rs
++++ b/engine/core/src/markets.rs
+@@ -75,7 +75,7 @@ pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
+     if !w.markets.values().any(|m| f64::from(w.tiles[m.tile].hex().distance(home)) <= most / DAY) {
+         return Vec::new();
+     }
+-    let near = cost_map(w, &[clan.home], most, |i| passable(w, i));
++    let near = festival_costs(w, clan.home, most);
+     let b: Basket = std::array::from_fn(|f| clan.store[f] + clan.harvest[f]);
+     let walkers = walkers(clan);
+     let surplus = clan.store.iter().sum::<f64>() >= MARKET.surplus_at * clan.people;
+@@ -426,3 +426,42 @@ pub fn raise(w: &mut World, tile: usize) -> u32 {
+     w.markets.insert(id, m);
+     id
+ }
++
++
++/// Scratch: cost_map from `home` on flat scratch arrays, stopping once every festival that could be in reach is settled.
++pub fn festival_costs(w: &World, home: usize, most: f64) -> BTreeMap<usize, f64> {
++    use std::collections::BinaryHeap;
++    use std::cmp::Reverse;
++    thread_local! { static SCR: std::cell::RefCell<(Vec<(i64, f64)>, Vec<usize>)> = std::cell::RefCell::new((Vec::new(), Vec::new())); }
++    let cheapest = 0.75 * DAY;
++    let h = w.tiles[home].hex();
++    let mut want: Vec<usize> = w.markets.values().map(|m| m.tile)
++        .filter(|&t| f64::from(w.tiles[t].hex().distance(h)) * cheapest <= most + 1e-9).collect();
++    let limit = crate::land::grid(most);
++    let mut out = BTreeMap::new();
++    if want.is_empty() { return out; }
++    SCR.with(|s| {
++        let (best, touched) = &mut *s.borrow_mut();
++        if best.len() != w.tiles.len() { *best = vec![(i64::MAX, 0.0); w.tiles.len()]; }
++        let mut heap = BinaryHeap::new();
++        best[home] = (0, 0.0); touched.push(home);
++        heap.push(Reverse((0i64, home)));
++        while let Some(Reverse((g, i))) = heap.pop() {
++            let (bg, c) = best[i];
++            if g > bg { continue; }
++            if let Some(k) = want.iter().position(|&t| t == i) { want.swap_remove(k); out.insert(i, c); if want.is_empty() { break; } }
++            for j in crate::land::neighbours(w, i) {
++                let Some(step) = crate::land::step_cost(w, i, j) else { continue };
++                let nc = c + step;
++                let ng = crate::land::grid(nc);
++                if ng > limit || !passable(w, j) || best[j].0 <= ng { continue; }
++                if best[j].0 == i64::MAX { touched.push(j); }
++                best[j] = (ng, nc);
++                heap.push(Reverse((ng, j)));
++            }
++        }
++        for &t in touched.iter() { best[t] = (i64::MAX, 0.0); }
++        touched.clear();
++    });
++    out
++}
+diff --git a/engine/core/src/units/scout.rs b/engine/core/src/units/scout.rs
+index b61dc66..7d501ee 100644
+--- a/engine/core/src/units/scout.rs
++++ b/engine/core/src/units/scout.rs
+@@ -208,8 +208,8 @@ struct Take {
+ /// there and back paid from the labour by every one of its people. A tile that costs more labour a unit of food than
+ /// `line_price` is left. The one costing `forage_round` takes and `rich_ground` values.
+ fn round_plan(w: &World, id: u32, at: usize, labour: f64, want: f64, line_price: Option<f64>) -> Vec<Take> {
+-    let costs = walk_costs(w, at);
+     let people = w.units[&id].people;
++    let costs = crate::land::cost_map(w, &[at], labour / (2.0 * people) + 1.0, |i| super::line::walkable(w, i));
+     let mut tiles: Vec<(f64, usize)> = near(w, at, SCOUT.reach)
+         .into_iter()
+         .filter(|&t| t == at || walkable(w, t))

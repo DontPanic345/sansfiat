@@ -16,6 +16,7 @@ pub enum EventKind {
     ClanMerged,
     MarketFormed,
     MarketFaded,
+    TownFormed,
     HearthTamed,
     CentreFormed,
     PregameEnded,
@@ -99,6 +100,9 @@ impl Event {
             EventKind::ClanFarming => format!("Clan {clan} takes up fields at {at}"),
             EventKind::MarketFormed => format!("A market forms at {at}"),
             EventKind::MarketFaded => format!("Market {market} fades"),
+            EventKind::TownFormed => {
+                format!("A town forms at {at}: {} clans live by the festival", self.amount.unwrap_or(0.0) as u32)
+            }
             EventKind::HearthTamed => format!("A hearth is tamed at {at}"),
             EventKind::CentreFormed => match self.clan {
                 Some(c) => format!("Clan {c} becomes a centre"),

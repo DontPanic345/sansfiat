@@ -1,0 +1,50 @@
+[
+  {
+    "id": "build-1",
+    "title": "Homes that don't claim, and shared field ground",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 0, New 1, Miss 1, Reach 2. The rules are settled in the brief down to the harvest's reap-share-take order, and done is exact: every map's scores equal to the base's, and the tests it writes on a staged shared home. Adapted from the claim, sow and harvest code there is. It reaches every turn: the move and harvest steps, reap, in_reach. A slip in who gathers shows as a score that differs from the base on the retro maps, so the checks and its own sweep catch it. About 13 files, 500 lines new and 200 moved: dividing.rs (~200 moved out of clans.rs, 621 lines), homes.rs (~80), clans.rs (~70), fields.rs (~50), markets.rs, stats.rs, data.rs, world.rs, web/src/lib.rs, core/tests/towns.rs (~250), cli/tests/save.rs pins, engine/CLAUDE.md, homes.md. Spec-review: room must read last turn's Tile.field, so the harvest's reset moves into pass two (brief item 5)."
+  },
+  {
+    "id": "build-2",
+    "title": "A turn that scales",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 0, New 1, Miss 0, Reach 2. Re-scored by spec-review: the target is measured and the method found. The scouts' bound (given as a diff) plus the festival search on flat scratch arrays reached 0.34 of main's ms a turn with the digest unchanged (spec-review.md, search-flat.diff), and the digest-safe early exit measured as buying nothing. So done is exact (at most 0.35, every digest equal) and every slip shows in the pins: haiku medium. Four refactors adapted from cost_map_by and path_by, reaching every turn's go, trade and people steps. About 8 files, 300 lines: markets.rs or reach.rs (~100), land.rs (~40), scout.rs (~10), ai.rs (~20), world.rs (the per-turn cache), web/src/lib.rs, core/tests/towns.rs (~80), scale.md."
+  },
+  {
+    "id": "build-3",
+    "title": "The town, the judge and the page",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 2, New 1, Miss 1, Reach 1. The reading, the event, every count, the seventh run, the panels and the script are named in the brief, after judge_fields.rs, sweep_fields.rs and fields.mjs. How the cluster of hearths and the town mark read at a glance is judged by eye from towns.png (Open 2). Its own tests and towns.mjs catch a missing count or mark. It reaches the markets step's end, the judge and the sweep, not the rules. Large but patterned. Spec-review added a StageSpec clans list (stage.rs, ~40) so towns.mjs can stage a town, World.traded written by trade in place of food brought (every clan brings MARKET.carry), and town steps counted apart in the group (~30): about 22 files, 870 lines new and about 450 moved: towns.rs (~80), judge_towns.rs (~200), judge_scores.rs (~220 moved out of judge.rs, 641 lines), sweep_towns.rs (~200), sweep_total.rs (~230 moved out of sweep_judge.rs, 599), sweep_judge.rs, sweep_text.rs, data.rs, events.rs, markets.rs, web/src/lib.rs (~30), clans.js (~40), towns.js (~25), panels-land.js (moved out of panels.js, 593), feed.js, sounds.json, atlas.json, view.rs (~20), towns.mjs (~90), check-stage.mjs (~30), core/tests/towns.rs (~80), clans.md and architecture.md (three lines), engine/CLAUDE.md, judge.md."
+  },
+  {
+    "id": "build-4",
+    "title": "Towns that form and feed",
+    "part": "canvas",
+    "model": "opus",
+    "effort": "low",
+    "points": 10,
+    "why": "Open 4, New 1, Miss 3, Reach 2. The home rule is small and the spec step's sketch shows it forms towns. What it leaves is the work: finding why starving ran at three times main's, settled farmers hopping between their fields and the market, and 37% more turn. Eleven bounds, some pulling against each other (crowds against the bench; spec-review made bound 8 count home moves less town steps, since counted whole it allowed about 32 moves over the seven maps where ten towns take 60 to 100), judged only on the retro maps, and the rules run every turn. Opus low on the canvas rung. I expect it to build the rule, measure what build-1's exclusive gathering already fixed, find who starves, and change one or two rules, in eight to twelve sweeps. About 6 files, 250 lines: homes.rs (~80), clans.rs (~20), data.rs (TOWN numbers), fields.rs perhaps, core/tests/towns.rs (~100), cli/tests/save.rs pins, canvas.md.",
+    "twin": {
+      "model": "opus",
+      "effort": "medium",
+      "why": "A rung above: does a canvas whose hard part (why town clans starve) is a cause to find, not a number to tune, pay for more thinking? I expect Opus low to build the rule, tune the margin and the radius, meet the forming, walking and scale bounds, and name who starves without tracing it to a rule. I expect Opus medium to trace who starves round a town to the rule, if any, that starves them by mistake and change it, in fewer sweeps. Both write canvas.md from the same seven maps, the same no-towns control and the same bench beside main, so the pick reads them side by side."
+    }
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "A rule change at the engine's centre: who lives where, who gathers what, and a turn's cost. The goal is judged on the retro maps against a control and in play, and every later M4 piece stands on it: Opus medium."
+  }
+]

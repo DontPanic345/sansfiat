@@ -296,6 +296,13 @@
    "w": 64,
    "h": 64,
    "note": "pass: a pale dot with a dark edge"
+  },
+  "icon.town": {
+   "x": 384,
+   "y": 804,
+   "w": 64,
+   "h": 64,
+   "note": "town: a white diamond with a dark casing, at the top of a festival tile that several clans live on"
   }
  }
 }

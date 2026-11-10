@@ -60,7 +60,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanFarming', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanFarming', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'townFormed', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);
@@ -501,7 +501,7 @@ for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.
 
 // A save carries its version, and one without it is refused with a reason that names the version.
 const save = JSON.parse(sim.save());
-assert.equal(save.version, 16, 'a save carries its version');
+assert.equal(save.version, 18, 'a save carries its version');
 assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
 const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');

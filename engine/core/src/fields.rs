@@ -18,6 +18,22 @@ pub fn open(w: &World) -> bool {
     w.config.fields && !w.civs.is_empty()
 }
 
+/// The field days clan `id` may sow on tile `t` this turn: the tile's ground less the days the other
+/// clans sowed on it last turn, at least 0. Only the clans that still have `t` in their territory count:
+/// a clan that has since let it go, or died, leaves the ground to whoever holds it now. A tile only one
+/// clan sows has room equal to its ground.
+pub fn room(w: &World, id: u32, t: usize) -> f64 {
+    let others: f64 = w
+        .sowers
+        .iter()
+        .filter(|&&k| k != id)
+        .filter_map(|k| w.clans.get(k))
+        .filter(|k| k.territory.binary_search(&t).is_ok())
+        .filter_map(|k| k.sown.binary_search_by_key(&t, |&(s, _)| s).ok().map(|s| k.sown[s].1))
+        .sum();
+    (ground(w, t) - others).max(0.0)
+}
+
 /// Days of fields tile `i` takes a turn: `FIELD.flood` on a floodplain, and `FIELD.river` in
 /// proportion to its river up to `MAP.big_river` on a river tile; both add. Land only, from no rng.
 pub fn ground(w: &World, i: usize) -> f64 {
@@ -42,23 +58,23 @@ pub fn yield_a_day(w: &World, i: usize) -> f64 {
     (FIELD.grain * t.fertility * (domestic(t.tame) - 1.0)).max(0.0)
 }
 
-/// The field days each of `tiles` works from the labour `work` its even share of the field job gives
-/// it: a tile takes at most its ground. What a tile can't take goes to the job's other tiles below
-/// their ground, evenly, round by round; what none can take stays unworked.
-pub fn sow(w: &World, tiles: &[usize], work: &[f64]) -> Vec<f64> {
-    let ground: Vec<f64> = tiles.iter().map(|&t| ground(w, t)).collect();
-    let mut days: Vec<f64> = work.iter().zip(&ground).map(|(&k, &g)| k.min(g)).collect();
+/// The field days clan `id` works on each of `tiles` from the labour `work` its even share of the field
+/// job gives it: a tile takes at most its room (`room`). What a tile can't take goes to the job's other
+/// tiles below their room, evenly, round by round; what none can take stays unworked.
+pub fn sow(w: &World, id: u32, tiles: &[usize], work: &[f64]) -> Vec<f64> {
+    let cap: Vec<f64> = tiles.iter().map(|&t| room(w, id, t)).collect();
+    let mut days: Vec<f64> = work.iter().zip(&cap).map(|(&k, &g)| k.min(g)).collect();
     let mut spare: f64 = work.iter().zip(&days).map(|(&k, &d)| (k - d).max(0.0)).sum();
     while spare > 1e-12 {
-        let open: Vec<usize> = (0..days.len()).filter(|&k| days[k] < ground[k]).collect();
+        let open: Vec<usize> = (0..days.len()).filter(|&k| days[k] < cap[k]).collect();
         if open.is_empty() {
             break;
         }
         let each = spare / open.len() as f64;
         let mut taken = 0.0;
         for k in open {
-            let add = each.min(ground[k] - days[k]);
-            days[k] = (days[k] + add).min(ground[k]);
+            let add = each.min(cap[k] - days[k]);
+            days[k] = (days[k] + add).min(cap[k]);
             taken += add;
         }
         spare -= taken;
@@ -66,11 +82,12 @@ pub fn sow(w: &World, tiles: &[usize], work: &[f64]) -> Vec<f64> {
     days
 }
 
-/// The two jobs of a clan's labour over `tiles` (its territory, with `yearly` walks): gathering over
-/// every tile at `1 − fields`, and the field job at `fields` over the tiles with ground, each tile
-/// paying its walk. A field tile is a tile with ground that yields: days are not sown on grain still
-/// wild. Returns each tile's gathering work, the field job's work on each field tile, and the field
-/// tiles' indices into `tiles`. With no field tile, `fields` gives nothing and all labour gathers.
+/// The two jobs of a clan's labour over `tiles` (its territory, with `yearly` walks): gathering at
+/// `1 − fields` over the tiles `gathers` marks, and the field job at `fields` over the tiles with
+/// ground, each tile paying its walk. A field tile is a tile with ground that yields: days are not sown
+/// on grain still wild. Returns each tile's gathering work (0 where `gathers` is false), the field job's
+/// work on each field tile, and the field tiles' indices into `tiles`. With no field tile, `fields`
+/// gives nothing and all labour gathers.
 pub fn jobs(
     w: &World,
     people: f64,
@@ -78,14 +95,21 @@ pub fn jobs(
     tiles: &[usize],
     yearly: &[f64],
     fields: f64,
+    gathers: &[bool],
 ) -> (Vec<f64>, Vec<f64>, Vec<usize>) {
     let fk: Vec<usize> =
         (0..tiles.len()).filter(|&k| ground(w, tiles[k]) > 0.0 && yield_a_day(w, tiles[k]) > 0.0).collect();
     let share = if fk.is_empty() { 0.0 } else { fields };
+    let gk: Vec<usize> = (0..tiles.len()).filter(|&k| gathers[k]).collect();
+    let gy: Vec<f64> = gk.iter().map(|&k| yearly[k]).collect();
     let fy: Vec<f64> = fk.iter().map(|&k| yearly[k]).collect();
-    let mut parts = actors::split(people, people * CLAN.work, routes, &[1.0 - share, share], &[yearly.to_vec(), fy]);
+    let mut parts = actors::split(people, people * CLAN.work, routes, &[1.0 - share, share], &[gy, fy]);
     let field = parts.pop().unwrap();
-    let gather = parts.pop().unwrap();
+    let gathered = parts.pop().unwrap();
+    let mut gather = vec![0.0; tiles.len()];
+    for (&k, g) in gk.iter().zip(gathered) {
+        gather[k] = g;
+    }
     (gather, field, fk)
 }
 
@@ -102,9 +126,10 @@ pub fn home_toward(w: &World, c: &Clan, territory: &[usize]) -> Option<usize> {
         return None;
     }
     let (_, yearly) = clans::walks(w, c.home, territory);
-    let (_, field, fk) = jobs(w, c.people, &c.routes, territory, &yearly, c.fields);
+    // The field job's labour does not depend on the gathering tiles: they are not counted here.
+    let (_, field, fk) = jobs(w, c.people, &c.routes, territory, &yearly, c.fields, &vec![true; territory.len()]);
     let fields: Vec<usize> = fk.iter().map(|&k| territory[k]).collect();
-    let days = sow(w, &fields, &field);
+    let days = sow(w, c.id, &fields, &field);
     let mut best: Option<(f64, usize)> = None;
     for (&t, &d) in fields.iter().zip(&days) {
         if d <= 0.0 {
@@ -117,14 +142,10 @@ pub fn home_toward(w: &World, c: &Clan, territory: &[usize]) -> Option<usize> {
     best.map(|(_, t)| t)
 }
 
-/// A clan's fields this turn, as (tile, field days, grain) for each tile of its territory worked: read
-/// from `Tile.field`, which the harvest step set this turn.
+/// A clan's fields this turn, as (tile, its own field days, its grain) for each tile it sowed: read from
+/// `Clan.sown`, which the harvest step set this turn. A shared tile gives each clan its own days.
 pub fn plots(w: &World, c: &Clan) -> Vec<(usize, f64, f64)> {
-    c.territory
-        .iter()
-        .filter(|&&t| w.tiles[t].field > 0.0)
-        .map(|&t| (t, w.tiles[t].field, w.tiles[t].field * yield_a_day(w, t)))
-        .collect()
+    c.sown.iter().map(|&(t, d)| (t, d, d * yield_a_day(w, t))).collect()
 }
 
 /// The `move` step's split for clan `id`, once its territory and home are settled: its share moves one
