@@ -5,9 +5,13 @@ the only session it gets. Plan it, build it, play it and judge it the way you th
 piece's `Spec`, `Spec-review`, `Play` and `Shape` lines were written for a run of smaller
 sessions; take from them what helps.
 
-The cap this prompt starts with is sized for the whole piece, so spend it on the whole piece.
-Keep your plan and your numbers in `relay/specs/<piece>/` and push as each part works: your
-context compacts over a session this long, and the files are what you reread.
+## The window
+
+The session has a 5-hour usage window that was close to empty when you started.
+`node relay/usage.mjs` prints how much of the window is used. The window may run out. 
+
+- Keep `relay/specs/<piece>/progress.md` current: the plan, what is done.
+- Commit and push regularly, a second attempt has only the branch.
 
 ## Done
 
