@@ -1,0 +1,40 @@
+diff --git a/engine/core/src/units/ai.rs b/engine/core/src/units/ai.rs
+index 8acfe15..9d45116 100644
+--- a/engine/core/src/units/ai.rs
++++ b/engine/core/src/units/ai.rs
+@@ -74,6 +74,10 @@ pub fn ai(w: &mut World) {
+         if !w.config.army {
+             continue;
+         }
++        if std::env::var("PROBE").is_ok() {
++            probe(w, civ);
++            continue;
++        }
+         let Some(u) = camp(w, civ) else { continue };
+         if u.camp().is_some_and(|c| c.dest.is_some()) {
+             continue;
+@@ -151,3 +155,24 @@ fn ai_zone(w: &mut World, civ: u32, id: u32) {
+         w.order(civ, Order::Zone { unit: id, tiles }).expect("checked: the zone is one the camp can hold");
+     }
+ }
++
++fn probe(w: &mut World, civ: u32) {
++    use crate::units::{givers, pack_cap};
++    let want: u32 = std::env::var("PROBE").unwrap().parse().unwrap_or(4);
++    w.civs.get_mut(&civ).unwrap().keep = Some(CIV.store_cap);
++    let fillable = |w: &World| ((total(&w.civs[&civ].store) / pack_cap(1.0)).floor() as u32).min(givers(w, civ).len() as u32);
++    if camp(w, civ).is_none() && fillable(w) >= want {
++        let mut into = None;
++        loop {
++            let n = fillable(w);
++            if n == 0 || w.order(civ, Order::Raise { n, kind: UnitKind::Camp, fighter: Fighter::Warriors, into }).is_err() { break; }
++            into = camp(w, civ).map(|u| u.id);
++        }
++        if let Some(id) = into { let _ = w.order(civ, Order::Switches { unit: id, forage: true, supply: true }); }
++    }
++    let cap = w.civs[&civ].capital;
++    let Some(target) = civs::alive(w).filter(|c| c.id != civ).min_by_key(|c| (steps(w, cap, c.capital), c.id)).map(|c| c.capital) else { return };
++    let Some(u) = camp(w, civ) else { return };
++    let (id, home, marching) = (u.id, u.home, u.camp().is_some_and(|c| c.dest.is_some()));
++    if !marching && home != target { let _ = w.order(civ, Order::Move { unit: id, to: target }); }
++}

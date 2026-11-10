@@ -1,0 +1,50 @@
+[
+  {
+    "id": "build-1",
+    "title": "The judge's led games, the idle control, and the fight's panic",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 0, New 1, Miss 1, Reach 1. Done is exact: the led game, the margin on ranks, in doubt, the idle runs and every total are defined in the brief, every existing block and digest equal the base's, and the panic's cause and fix are named with a stage to repeat it (probe.md). Adapted from Watch, game_judge's idle_run and sweep_towns; its own tests on a hand-built watch catch the counts. It reaches the judge and the sweep, and one line of the fight step. About 10 files, 650 lines: judge_led.rs (~180), sweep_led.rs (~200), judge.rs (~20, the fall turns), game_judge.rs (~60), retro.rs (~25 moved), fight.rs (~3), core/tests/judge.rs and fight.rs (~150), engine/CLAUDE.md, judge.md."
+  },
+  {
+    "id": "build-2",
+    "title": "The planner's frame, the land and the gift",
+    "part": "easel",
+    "model": "sonnet",
+    "effort": "medium",
+    "points": 6,
+    "why": "Open 2, New 1, Miss 1, Reach 2. The rules are settled (spec.md: the need order, met as nothing affordable, the patch, widen and shrink, the gift and keep through shared setters), but their starting numbers and the patch's widening are in part the build's (Open 2). Adapted from ai.rs and claim.rs; the stage test per lever it writes catches a slip (Miss 1). It runs every turn for every AI civ and changes founding's claim (Reach 2). No unsettled tuning: the sweep it runs is reported, not bound. About 11 files, 700 lines: plan.rs (~250), ai.rs (~-60), claim.rs (~-30), civs.rs, world.rs (~30, the setters), leaning.rs (~3), data.rs (PLAN ~40), story.rs (~10), core/tests/plan.rs (~250), core/tests/claim.rs, cli/tests/save.rs pins, engine/CLAUDE.md, plan.md."
+  },
+  {
+    "id": "build-3",
+    "title": "The armies",
+    "part": "easel",
+    "model": "sonnet",
+    "effort": "medium",
+    "points": 6,
+    "why": "Open 2, New 1, Miss 1, Reach 2. Each army need's rule is written in the brief, with the outweigh and reach reads settled in spec.md; what is the build's is the starting numbers and how a need picks among its armies (Open 2). Adapted from story.rs's conquest, ai_zone and the line reads; a stage per lever catches each (Miss 1). It runs every turn and starts the AI's first fights (Reach 2). Judging the levers' balance on the maps is the canvas's, so this stays an easel. About 7 files, 800 lines: reads.rs (~180), plan.rs (~250), data.rs (PLAN ~30), core/tests/plan.rs (~300), cli/tests/save.rs pins, engine/CLAUDE.md, armies.md."
+  },
+  {
+    "id": "build-4",
+    "title": "Games in doubt that end",
+    "part": "canvas",
+    "model": "opus",
+    "effort": "low",
+    "points": 10,
+    "why": "Open 4, New 1, Miss 3, Reach 2. Every bound is judged only on the retro maps against the idle control and the stand-in, and they pull against each other: games must end but not by +50, armies must march but not starve, clans must leave but not on noise, and the AI must beat idle while making a player lose. Searching for what works across a dozen PLAN numbers, leaving's numbers and the needs' affordable tests, in every turn's AI. Opus low on the canvas rung: I expect it to read the led block, find why ranks hold (no army outweighs a capital, or armies starve before they arrive), tune outweigh, spare and packs, move leaving, and meet most bounds in eight to twelve sweeps. About 5 files, 300 lines: plan.rs and reads.rs (~120), data.rs, leaning.rs perhaps, core/tests/plan.rs (~80), cli/tests/save.rs pins, canvas.md.",
+    "twin": {
+      "model": "opus",
+      "effort": "medium",
+      "why": "A rung above: does a canvas whose work is judgement (when an AI marches, pulls back, feeds or gives) pay for more thinking? I expect Opus low to tune the numbers until the ends and doubt rows pass, leaving beats-idle or the starving row thin, and name the causes without changing a need's test. I expect Opus medium to trace the AI's losses to the read or test that makes them (marching past reach, raising what can't be fed), change it, and meet beats-idle and losable as well, in fewer sweeps. Both write canvas.md from the same seven maps, the same idle runs, build-1's stand-in numbers and one played game on small seed 2, so the pick reads them side by side."
+    }
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is judged by play and on the retro maps against two controls, and the planner replaces the AI every later piece plays against: Opus medium."
+  }
+]
