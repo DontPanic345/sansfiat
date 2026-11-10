@@ -283,6 +283,11 @@ impl Sim {
                 (m.id, row)
             })
             .collect();
+        // Each town: its festival's tile and market, and the clans living on the tile.
+        let towns: Vec<serde_json::Value> = engine::towns::towns(w)
+            .iter()
+            .map(|t| serde_json::json!({ "tile": t.tile, "market": t.market, "clans": t.clans }))
+            .collect();
         serde_json::json!({
             "turn": w.turn,
             "end": w.end,
@@ -290,6 +295,7 @@ impl Sim {
             "player": w.player,
             "clans": clans,
             "markets": markets,
+            "towns": towns,
             "trails": trails,
             "trail_work": trail_work,
             "revealed": revealed,

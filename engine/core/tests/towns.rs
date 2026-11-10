@@ -2,18 +2,22 @@
 //! it claims, a tile's field ground is shared among the clans that sow it, and `homes` indexes the
 //! clans by home. Staged on bare plains with a civ at the centre, so fields are open.
 
-use engine::actors::walk_cost;
+use engine::actors::{walk_cost, Route};
 use engine::clans::{self, harvest, new_clan, reap, walks, Reaped};
-use engine::data::{Config, CLAN, GRAIN, MAP, TENDING};
+use engine::data::{Config, CLAN, FIELD, GRAIN, MAP, TENDING};
+use engine::events::EventKind;
 use engine::fields;
 use engine::hex::Hex;
 use engine::homes;
+use engine::judge::Watch;
 use engine::land::neighbours;
 use engine::land::{passable, path};
 use engine::map::index;
+use engine::markets::form_and_fade;
 use engine::markets::{by_market, festival_costs, go, in_reach, raise, walkers};
 use engine::reach::Scratch;
 use engine::stage::Stage;
+use engine::towns::towns;
 use engine::World;
 
 const RADIUS: i32 = 4;
@@ -275,4 +279,91 @@ fn by_market_lists_each_markets_clans_in_id_order() {
     assert_eq!(index_by.get(&m2), Some(&vec![ids[0]]));
     let none = raise(&mut w, index(RADIUS, Hex { q: 0, r: 3 }).unwrap());
     assert!(!by_market(&w).contains_key(&none), "a market with no clans is absent");
+}
+
+/// A festival raised two steps east of the centre, where no civ's market stands.
+fn festival(w: &mut World) -> (usize, u32) {
+    let tile = index(RADIUS, Hex { q: 2, r: 0 }).unwrap();
+    (tile, raise(w, tile))
+}
+
+#[test]
+fn a_festival_with_three_homes_on_its_tile_reads_as_a_town() {
+    let (mut w, _) = staged();
+    let (tile, m) = festival(&mut w);
+    clan(&mut w, tile, &[tile], 4.0);
+    clan(&mut w, tile, &[tile], 4.0);
+    assert!(towns(&w).is_empty(), "two clans side by side are neighbours, not a town");
+    let c = clan(&mut w, tile, &[tile], 4.0);
+    let found = towns(&w);
+    assert_eq!(found.len(), 1);
+    assert_eq!((found[0].tile, found[0].market), (tile, m));
+    assert_eq!(found[0].clans.len(), 3);
+    assert!(found[0].clans.contains(&c));
+}
+
+#[test]
+fn a_town_forms_once_as_the_third_clan_arrives_and_its_note_comes_when_one_leaves() {
+    let (mut w, _) = staged();
+    let (tile, m) = festival(&mut w);
+    clan(&mut w, tile, &[tile], 4.0);
+    clan(&mut w, tile, &[tile], 4.0);
+    form_and_fade(&mut w);
+    assert!(!w.markets[&m].town);
+    let third = clan(&mut w, tile, &[tile], 4.0);
+    form_and_fade(&mut w);
+    assert!(w.markets[&m].town);
+    form_and_fade(&mut w);
+    let formed: Vec<String> = w.events.iter().filter(|e| e.kind == EventKind::TownFormed).map(|e| e.text(&w)).collect();
+    assert_eq!(formed.len(), 1, "a town forms once: {formed:?}");
+    assert_eq!(formed[0], "A town forms at (2, 0): 3 clans live by the festival");
+
+    w.clans.remove(&third);
+    form_and_fade(&mut w);
+    assert!(!w.markets[&m].town);
+    assert!(w.notes[&m].iter().any(|n| n.text == "is no longer a town: 2 clans live here"));
+}
+
+#[test]
+fn market_town_serialises_only_when_true() {
+    let (mut w, _) = staged();
+    let (_, m) = festival(&mut w);
+    let json = serde_json::to_value(&w.markets[&m]).unwrap();
+    assert!(json.get("town").is_none(), "no town, no key: the save and the digest see nothing");
+    w.markets.get_mut(&m).unwrap().town = true;
+    let json = serde_json::to_value(&w.markets[&m]).unwrap();
+    assert_eq!(json["town"], true);
+}
+
+#[test]
+fn the_judge_counts_town_clans_their_walk_and_the_farmers_outside_towns() {
+    let (mut w, _) = staged();
+    let (tile, _) = festival(&mut w);
+    let far = index(RADIUS, Hex { q: -3, r: 0 }).unwrap();
+    let a = clan(&mut w, tile, &[tile], 4.0);
+    clan(&mut w, tile, &[tile], 4.0);
+    clan(&mut w, tile, &[tile], 4.0);
+    let farmer = clan(&mut w, far, &[far], 4.0);
+    w.clans.get_mut(&a).unwrap().fields = FIELD.farmer;
+    w.clans.get_mut(&farmer).unwrap().fields = FIELD.farmer;
+    w.clans.get_mut(&farmer).unwrap().routes = vec![Route { to: far, path: vec![far], cost: 3.0 }];
+    let mut watch = Watch::new(&w);
+    for _ in 0..200 {
+        watch.turn(&w);
+    }
+    let s = watch.scores(&w, &[]).towns;
+    let t = &s.total;
+    assert_eq!((t.towns_100, t.towns_200), (1, 1));
+    assert_eq!((t.town_clans_200, t.town_farmers_200), (3, 1));
+    assert_eq!(t.towns_fields_200, 0, "no clan sows: the town works no fields");
+    assert_eq!(s.most_homes_200, 3);
+    assert_eq!(s.first_town, None, "no event, no first town");
+    // Clan-turns after +100: 100 turns, three town clans and one farmer outside.
+    assert_eq!(t.town.clan_turns, 300);
+    assert_eq!(t.farmers_outside.clan_turns, 100);
+    assert_eq!(t.all.clan_turns, 400);
+    assert_eq!(t.town.walk, 0.0, "clans at the market walk nothing");
+    let walk = 100.0 * 3.0 / (4.0 * CLAN.work);
+    assert!((t.farmers_outside.walk - walk).abs() < 1e-9, "the farmer outside walks its route each turn");
+    assert_eq!(t.town.traded, 0.0, "no clearing has traded");
 }

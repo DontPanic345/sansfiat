@@ -14,6 +14,8 @@ mod sweep;
 mod sweep_fields;
 mod sweep_judge;
 mod sweep_text;
+mod sweep_total;
+mod sweep_towns;
 mod view;
 
 use std::{env, process::exit};

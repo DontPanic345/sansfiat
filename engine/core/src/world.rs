@@ -37,6 +37,10 @@ pub struct World {
     /// days of the clans that sowed last turn from here, not from every clan.
     #[serde(skip)]
     pub sowers: Vec<u32>,
+    /// Each clan's food traded per person this turn, as `trade` writes it (`judge_towns` reads it, no rule):
+    /// derived, not saved, and a clan at no market that cleared has none.
+    #[serde(skip)]
+    pub traded: BTreeMap<u32, f64>,
     pub markets: BTreeMap<u32, Market>,
     /// People moved between clans at festivals, over the whole run.
     pub moved: f64,
@@ -187,6 +191,7 @@ impl World {
             tiles,
             clans: BTreeMap::new(),
             sowers: Vec::new(),
+            traded: BTreeMap::new(),
             markets: BTreeMap::new(),
             moved: 0.0,
             people_seen: Vec::new(),

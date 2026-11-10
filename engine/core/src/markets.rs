@@ -37,6 +37,9 @@ pub struct Market {
     pub traders: usize,
     /// People moved between its clans this turn.
     pub moved: f64,
+    /// Whether its tile reads as a town (`towns.rs`): kept by the `markets` step, and read by no rule.
+    #[serde(default, skip_serializing_if = "crate::towns::is_false")]
+    pub town: bool,
 }
 
 /// Path cost from the market's tile over passable tiles, out to `MARKET.reach`: the land around
@@ -216,6 +219,7 @@ pub fn trade(w: &mut World) {
     for c in w.civs.values_mut() {
         c.levied = 0.0;
     }
+    w.traded.clear();
     let index = by_market(w);
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {
@@ -264,6 +268,11 @@ pub fn trade(w: &mut World) {
         if c.cleared {
             m.prices = c.prices;
             m.goods = c.goods.clone();
+            // What the clearing swapped for each clan: half the food that moved, per person.
+            for (i, id) in ids.iter().enumerate() {
+                let moved: f64 = c.after[i].iter().zip(&brought[i]).map(|(a, b)| (a - b).abs()).sum();
+                w.traded.insert(*id, 0.5 * moved / w.clans[id].people);
+            }
         }
         m.volume = c.volume.iter().sum();
         m.traders = ids.len();
@@ -403,6 +412,7 @@ fn merge(w: &mut World, leaving: &mut BTreeMap<u32, f64>) {
 pub fn form_and_fade(w: &mut World) {
     fade(w);
     form(w);
+    crate::towns::check(w);
 }
 
 /// A festival whose activity falls under `min_attendance` goes, and its clans with it. A centre
@@ -478,6 +488,7 @@ pub fn raise(w: &mut World, tile: usize) -> u32 {
         volume: 0.0,
         traders: 0,
         moved: 0.0,
+        town: false,
     };
     w.markets.insert(id, m);
     id

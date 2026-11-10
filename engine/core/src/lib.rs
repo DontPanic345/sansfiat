@@ -15,6 +15,8 @@ pub mod homes;
 pub mod judge;
 pub mod judge_fields;
 pub mod judge_ring;
+pub mod judge_scores;
+pub mod judge_towns;
 pub mod land;
 pub mod leaning;
 pub mod map;
@@ -29,6 +31,7 @@ pub mod rng;
 pub mod script;
 pub mod stage;
 pub mod stats;
+pub mod towns;
 pub mod units;
 pub mod world;
 

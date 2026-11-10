@@ -17,7 +17,7 @@ export const WIDTH = 1024;
 /** The circumradius of a terrain cell's hex, in cell pixels (the cell is 2 × this tall). */
 export const HEX_R = 74;
 /** How many world units (a hex has circumradius 1) a 64 px icon cell spans. */
-export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth': 1.6, 'icon.pass': 1 };
+export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth': 1.6, 'icon.pass': 1, 'icon.town': 1.1 };
 
 const UNITS = ['camp', 'scout', 'guard'];
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
@@ -63,6 +63,7 @@ export function layout() {
   put('icon.centre', 64, 64, 'centre: a gold ring with a dark casing, round the festival that is a centre');
   put('icon.hearth', 64, 64, 'hearth: a small yellow square with a dark edge');
   put('icon.pass', 64, 64, 'pass: a pale dot with a dark edge');
+  put('icon.town', 64, 64, 'town: a white diamond with a dark casing, at the top of a festival tile that several clans live on');
   row();
   return { width: WIDTH, height: y, cells };
 }
@@ -209,6 +210,19 @@ export function draw(name, ctx, w, h) {
     ctx.lineWidth = 2;
     ctx.fillRect(w / 2 - q / 2, h / 2 - q / 2, q, q);
     ctx.strokeRect(w / 2 - q / 2, h / 2 - q / 2, q, q);
+  } else if (name === 'icon.town') {
+    const q = 0.55 * (w / ICON_WORLD[name]);
+    ctx.beginPath();
+    ctx.moveTo(w / 2, h / 2 - q);
+    ctx.lineTo(w / 2 + q, h / 2);
+    ctx.lineTo(w / 2, h / 2 + q);
+    ctx.lineTo(w / 2 - q, h / 2);
+    ctx.closePath();
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 3;
+    ctx.fill();
+    ctx.stroke();
   } else if (name === 'icon.pass') {
     ctx.fillStyle = '#fff2b0';
     ctx.strokeStyle = '#3a2c00';

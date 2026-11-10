@@ -181,4 +181,27 @@ for (const kind of ['camp', 'scout', 'guard']) pressAll(kind);
   assert.equal(tileKind(ctx, 2), 'plains, floodplain, field ground 20 days', 'a tile with ground and no fields says its ground');
 }
 
-console.log('ok: staged arm (shapes, digest, Disband all) and the end');
+// A staged town (#156): two clans living on the capital's tile with the founder make three homes on a festival's
+// tile, so the view names the town and the tile panel lists its clans. Without them there is no town.
+{
+  const town = {
+    ...SPEC,
+    clans: [
+      { home: { mark: 'A' }, tiles: [], people: 3 },
+      { home: { mark: 'A' }, tiles: [], people: 2 },
+    ],
+  };
+  const sim = staged(town);
+  const v = JSON.parse(sim.view());
+  const capital = v.civs[v.player].capital;
+  assert.equal(v.towns.length, 1, 'a festival with three homes on its tile is a town');
+  assert.equal(v.towns[0].tile, capital, 'the town is on the capital');
+  assert.equal(v.towns[0].clans.length, 3, 'three clans live there');
+  assert.equal(v.towns[0].market, v.civs[v.player].market, 'the town is the capital\'s festival');
+  const list = shapeOf(sim, { kind: 'tile', tile: capital }).list;
+  assert.equal(list[0].label, 'Clans living here', 'the tile panel lists the clans living there');
+  assert.equal(list[0].rows.length, 3, 'and its three clans');
+  assert.equal(JSON.parse(staged().view()).towns.length, 0, 'a stage with one home on the tile is no town');
+}
+
+console.log('ok: staged arm (shapes, digest, Disband all), the end and a staged town');

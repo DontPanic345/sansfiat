@@ -60,7 +60,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanFarming', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanFarming', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'townFormed', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);

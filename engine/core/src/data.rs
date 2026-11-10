@@ -332,6 +332,21 @@ pub const FIELD: FieldRules = FieldRules {
            maps.",
 };
 
+/// Towns: a tile with a festival and this many homes reads as a town (`towns.rs`). It is the reading, not
+/// a rule: nothing acts on it. Build-4 adds its rule's numbers here.
+pub struct TownRules {
+    /// Homes on a festival's tile from which it reads as a town.
+    pub homes: usize,
+    /// Why this number: where it came from.
+    pub note: &'static str,
+}
+
+pub const TOWN: TownRules = TownRules {
+    homes: 3,
+    note: "Three is the least that reads as many hearths on one tile, and two clans side by side are \
+           neighbours (relay/specs/156/spec.md). The sketch's towns at three came out on 5 of 7 maps.",
+};
+
 /// What a person carries on a route: a walk beyond the territory is paid by every person carrying
 /// what the actor brings (`actors::carriers`).
 pub struct CarryRules {

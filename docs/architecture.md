@@ -20,7 +20,7 @@ runs the same in native and wasm. That holds, and it stays the first rule.
 | Fighting | A contest rule per tile per turn: losses by strength, entrenchment, retreat, surrender; a siege is a cut line | Holds (`units/fight.rs`); fires only in the stories, since no AI marches | Done in M3 A; exercised by M4 R |
 | Goals | Standing per civ each turn; win and lose rules; a game that ends | Standing and `judge::Watch`; no end | M3 G (the score), M4 E (the end) |
 | AI | A planner per civ giving orders for Standing: claim, guard, raise what it can feed, gift, pillage, cut, answer a cut | A stand-in claim, a guard rule, a post and a zone; worth about as much as no orders | M4 R |
-| Tiles shared | Many clans on one tile, each with its share of the tile's field ground | `Tile.claim` is one clan; no two clans share a home on any retro map | M4 W, after F |
+| Tiles shared | Many clans on one tile, each with its share of the tile's field ground | A home is not a claim: many clans may live on one tile, each gathering its own claim and sharing the tile's field ground (`homes.rs`) | Done in M4 W |
 | Goods | A basket of goods, some of them food, each with weight, spoiling and a use; sources on tiles; crafts as labour | `Basket = [f64; FOODS]`; everything is eaten | M5 |
 | Markets | A clearing that takes any participant's row: clans, the civ, units, traders | Clans, with the civ bolted on as an extra row | M5 |
 | Knowledge | Knacks per civ: level, practice, luck, contact | None | M6 |
