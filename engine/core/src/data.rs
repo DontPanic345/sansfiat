@@ -650,21 +650,86 @@ pub const LEANING: LeaningRules = LeaningRules {
 };
 
 /// The land a civ claims and holds (`claim.rs`). The floor is the guard share a claimed tile must keep
-/// to be held; the AI's stand-in claim is every land tile within `ai_ring` steps of the capital or of
-/// a clan's home within `ai_reach` steps of it.
+/// to be held; a civ's first claim is every land tile within `ring` steps of the capital or of
+/// a clan's home within `reach` steps of it.
 pub struct ClaimRules {
     /// A share (of a person's days a turn).
     pub floor: f64,
     /// Hex steps.
-    pub ai_ring: i32,
+    pub ring: i32,
     /// Hex steps.
-    pub ai_reach: i32,
+    pub reach: i32,
 }
 
 // The floor 0.05 lets three guards hold the ring around the clans' homes near the capital; 0.1 held 13 tiles a
 // civ, 0.05 holds 16 and wins 14 of 21 solo gains (canvas.md). Ring 1 and reach 4 keep the
 // stand-in near; ring 2 or reach 6 claimed more than the guard holds and the solo gain fell.
-pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05 * DAY, ai_ring: 1, ai_reach: 4 };
+pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05 * DAY, ring: 1, reach: 4 };
+
+/// The planner (`units/ai.rs`): what the AI's civs, and the automatic player, weigh each turn.
+pub struct PlanRules {
+    /// A share: the levy a turn must cover the civ's mouths and one more this many times over before
+    /// it raises that one (a warrior, or the guard a wider claim needs).
+    pub feed: f64,
+    /// A share of the store's cap: a store this full has its levy cut to the room left, so the levy
+    /// counts as feeding one more whenever it covers the mouths at all.
+    pub full: f64,
+    /// Turns of its mouths' food the store keeps beyond a new warrior's pack.
+    pub reserve: f64,
+    /// The most of a civ's people its army may be, a share.
+    pub army: f64,
+    /// Food a turn it gives while a clan at its festival is a rival's or leans to one.
+    pub gift_contested: f64,
+    /// Tiles a turn its claim widens by, while all of it is held and it can feed one more guard.
+    pub widen: usize,
+    /// How many floors of guard every held tile must have before an unfed guard sends a person home.
+    pub thick: f64,
+    /// Hex steps: the claim widens only toward a clan's home this near its edge.
+    pub widen_reach: i32,
+    /// How many times a defender's strength an army's must be before it marches onto it.
+    pub edge: f64,
+    /// Turns: a capital the army outweighs falls to it within this many, by the fight's own rule.
+    pub siege: u32,
+    /// The share of its people an army must have left when the capital falls.
+    pub left: f64,
+    /// Turns' walk: the farthest capital an army larger than a party marches on, on its pack.
+    pub march: u32,
+    /// People: the smallest army that leaves its post to pillage or to cut a line.
+    pub raid: f64,
+    /// A share of an army's days: the most its line may take where it pillages (`units::ring`).
+    pub reach: f64,
+    /// The share of its pack an army must hold to leave its own land.
+    pub packed: f64,
+    /// Turns of food in its pack under which an army abroad halts to forage.
+    pub low: f64,
+    /// People: the largest army that goes past its line's reach, living off the land.
+    pub party: f64,
+    /// How many of the nearest rival tiles an army weighs when it picks one to pillage.
+    pub looks: usize,
+    pub note: &'static str,
+}
+
+pub const PLAN: PlanRules = PlanRules {
+    feed: 1.5,
+    full: 0.75,
+    reserve: 2.0,
+    army: 0.25,
+    gift_contested: 4.0,
+    widen: 1,
+    thick: 2.0,
+    widen_reach: 3,
+    edge: 1.5,
+    siege: 8,
+    left: 0.3,
+    march: 3,
+    raid: 3.0,
+    reach: 0.5,
+    packed: 0.8,
+    low: 2.0,
+    party: 4.0,
+    looks: 12,
+    note: "relay/specs/157/canvas.md",
+};
 
 /// The guard: the people a civ keeps on its claim at its capital (`units/guard.rs`, `claim.rs`).
 pub struct GuardRules {

@@ -270,12 +270,23 @@ impl World {
             }
             Action::SetGift { food } => {
                 let civ = self.player.expect("validated: the player leads a civ");
-                self.count(civ, "setGift");
-                self.civs.get_mut(&civ).unwrap().gift = *food;
-                self.note(civ, format!("the player set its gift to {food:.1} food a turn"));
+                self.set_gift(civ, *food).expect("validated: the gift is in range");
             }
         }
         self.log.push(action);
+        Ok(())
+    }
+
+    /// Sets the most food `civ` gives a turn at its festival, between 0 and the store's cap: the
+    /// player's `SetGift` and the planner's gift alike. Nothing is logged here.
+    pub fn set_gift(&mut self, civ: u32, food: f64) -> Result<(), String> {
+        if !food.is_finite() || !(0.0..=CIV.store_cap).contains(&food) {
+            return Err(format!("give between 0 and {} food a turn", CIV.store_cap));
+        }
+        let c = self.civs.get_mut(&civ).filter(|c| !c.is_out()).ok_or("that civ can't give")?;
+        c.gift = food;
+        self.count(civ, "setGift");
+        self.note(civ, format!("set its gift to {food:.1} food a turn"));
         Ok(())
     }
 

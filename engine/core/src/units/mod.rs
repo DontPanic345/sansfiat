@@ -32,7 +32,7 @@ use crate::claim;
 use crate::data::*;
 use crate::world::World;
 
-pub use ai::{ai, guard_order, post};
+pub use ai::{ai, claim_plan, guard_order, outweighs, plan, post, Decision, Give};
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
 pub use line::{cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, route, turns};

@@ -155,19 +155,20 @@ pub fn divide(w: &mut World, civ: u32) {
     }
 }
 
-/// The AI's stand-in claim (`spec.md` item 22): the land tiles within `CLAIM.ai_ring` steps of the
-/// capital or of any clan's home (its own, unaligned or a rival's) within `CLAIM.ai_reach` steps of it, not another civ's capital
-/// and, with `Config.fight` on, not a tile a rival army holds or stands on (else a tile a stack took comes back under it and
-/// is fought for again each turn), kept to the part connected to the capital. Sorted, with the capital.
-pub fn ai_claim(w: &World, civ: u32) -> Vec<usize> {
+/// The claim a civ is founded with: the land tiles within `CLAIM.ring` steps of the capital or of
+/// any clan's home (its own, unaligned or a rival's) within `CLAIM.reach` steps of it, not another
+/// civ's capital and, with `Config.fight` on, not a tile a rival army holds or stands on, kept to the
+/// part connected to the capital. Sorted, with the capital. The planner widens and narrows it from
+/// there (`units::claim_plan`); a led civ's is the player's to repaint.
+pub fn first(w: &World, civ: u32) -> Vec<usize> {
     let c = &w.civs[&civ];
     let seeds: Vec<usize> = std::iter::once(c.capital)
-        .chain(w.clans.values().filter(|k| steps(w, c.capital, k.home) <= CLAIM.ai_reach).map(|k| k.home))
+        .chain(w.clans.values().filter(|k| steps(w, c.capital, k.home) <= CLAIM.reach).map(|k| k.home))
         .collect();
     let mut tiles: Vec<usize> = seeds
         .iter()
         .flat_map(|&s| {
-            w.tiles[s].hex().within(CLAIM.ai_ring).into_iter().filter_map(|h| map::index(w.config.radius, h))
+            w.tiles[s].hex().within(CLAIM.ring).into_iter().filter_map(|h| map::index(w.config.radius, h))
         })
         .filter(|&t| TERRAIN[w.tiles[t].terrain].land && !crate::civs::alive(w).any(|o| o.id != civ && o.capital == t))
         .collect();

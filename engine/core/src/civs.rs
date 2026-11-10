@@ -351,12 +351,12 @@ pub fn found(w: &mut World) {
     // as close to a capital switch to it.
     crate::markets::go(w);
     switch_to_capitals(w);
-    // Each civ claims the stand-in (or its capital alone) and raises its scout, and nothing else: its
+    // Each civ claims its first claim (or its capital alone) and raises its scout, and nothing else: its
     // army and guard are its own to raise (`founding.md`, The start). Its claim is divided at once, so
     // the pick's cards read land.
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     for &id in &ids {
-        let claim = if claim::may_claim(w, id) { claim::ai_claim(w, id) } else { vec![w.civs[&id].capital] };
+        let claim = if claim::may_claim(w, id) { claim::first(w, id) } else { vec![w.civs[&id].capital] };
         w.civs.get_mut(&id).unwrap().claim = claim;
     }
     for id in ids {

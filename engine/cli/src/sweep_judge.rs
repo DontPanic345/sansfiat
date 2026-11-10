@@ -16,6 +16,7 @@ use serde::Serialize;
 use crate::compare::flatten;
 use crate::retro::{kept_camp, retro_maps, to_pick};
 use crate::sweep_fields::{map_fields, total_fields, MapFields};
+use crate::sweep_led::{map_led, total_led, LedGame};
 use crate::sweep_text::print_text;
 use crate::sweep_total::*;
 use crate::sweep_towns::{map_towns, settle, total_towns, MapTowns};
@@ -80,6 +81,8 @@ pub(crate) struct MapJudged {
     /// The same map with `Config.towns` off, and the run read against it (`sweep_towns`).
     pub(crate) no_towns: Scores,
     pub(crate) towns_vs_control: MapTowns,
+    /// Each civ led by the planner and led idle, to the game's end (`sweep_led`).
+    pub(crate) led: Vec<LedGame>,
     /// Each civ's name, for the text (the ids are not the names' places in `CIVS`).
     #[serde(skip)]
     pub(crate) names: BTreeMap<u32, String>,
@@ -198,6 +201,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
     let no_towns = towns_off_watch.scores(&towns_off, &civs);
     let towns_vs_control = map_towns(&scores, &no_towns);
     MapJudged {
+        led: map_led(base, &civs, draws),
         size: name.to_string(),
         seed,
         pick: watch.pick(),
@@ -314,6 +318,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
         },
         fields_vs_control: total_fields(maps),
         towns_vs_control: total_towns(maps),
+        led: total_led(maps),
     }
 }
 
