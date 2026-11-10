@@ -1,0 +1,34 @@
+{"turn":262,"line":"note meant: lift standing via gift did: set gift 6 to draw clans to my festival surprised: store only 10, gift max 60","result":"noted"}
+{"turn":262,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":262,"line":"note meant: use scout did: route to 535 surprised: scout had no route","result":"noted"}
+{"turn":262,"line":"{\"type\":\"route\",\"unit\":427,\"from\":506,\"to\":535}","result":"ok"}
+{"turn":262,"line":"note meant: raise warriors did: raise 2 surprised: nothing","result":"noted"}
+{"turn":262,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":262,"line":"note meant: see map did: map surprised: nothing","result":"noted"}
+{"turn":262,"line":"map","result":"ok"}
+{"turn":262,"line":"note meant: let time pass did: end 10 surprised: nothing","result":"noted"}
+{"turn":272,"line":"end 10","result":"ok"}
+{"turn":272,"line":"note meant: use army did: move army 430 to 535 and forage surprised: nothing","result":"noted"}
+{"turn":272,"line":"note meant: pass did: end 20 surprised: nothing","result":"noted"}
+{"turn":272,"line":"note meant: use army did: move army 430 to 535 surprised: nothing","result":"noted"}
+{"turn":272,"line":"{\"type\":\"move\",\"unit\":430,\"to\":535}","result":"ok"}
+{"turn":272,"line":"note meant: army forage did: forage surprised: nothing","result":"noted"}
+{"turn":272,"line":"{\"type\":\"forage\",\"unit\":430}","result":"ok"}
+{"turn":272,"line":"note meant: guard did: raise guard 1 surprised: nothing","result":"noted"}
+{"turn":272,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":272,"line":"note meant: pass did: end 20 surprised: nothing","result":"noted"}
+{"turn":292,"line":"end 20","result":"ok"}
+{"turn":292,"line":"note meant: pass did: end 20 surprised: nothing","result":"noted"}
+{"turn":312,"line":"end 20","result":"ok"}
+{"turn":312,"line":"note meant: pass did: end 20 surprised: nothing","result":"noted"}
+{"turn":332,"line":"end 20","result":"ok"}
+{"turn":332,"line":"note meant: pass did: end 15 surprised: Blue leads at 31%","result":"noted"}
+{"turn":347,"line":"end 15","result":"ok"}
+{"turn":347,"line":"note meant: finish did: end 15 surprised: nothing","result":"noted"}
+{"turn":362,"line":"end 15","result":"ok"}
+{"turn":362,"line":"note could not tell: gift: whether gift reached clans that trade at other markets","result":"noted"}
+{"turn":362,"line":"note could not tell: army: what an army on my capital changes","result":"noted"}
+{"turn":362,"line":"note could not tell: guard: no held land so guard did nothing visible","result":"noted"}
+{"turn":362,"line":"note could not tell: scout: route was already known, no effect","result":"noted"}
+{"turn":362,"line":"note could not tell: claim: not changed","result":"noted"}
+{"turn":362,"line":"view","result":"ok"}
