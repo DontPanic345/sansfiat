@@ -201,7 +201,25 @@ pub fn reap(
     fields: f64,
     gathers: &[bool],
 ) -> Reaped {
+    let budget = (CLAN.surplus_target * people - store.iter().sum::<f64>()).max(0.0);
     let fields = if fields::open(w) { fields } else { 0.0 };
+    reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget)
+}
+
+/// `reap` within `budget`: gathering and field grain together come to at most `budget`, by one factor
+/// on every tile.
+#[allow(clippy::too_many_arguments)]
+fn reap_within(
+    w: &World,
+    id: u32,
+    people: f64,
+    routes: &[Route],
+    tiles: &[usize],
+    yearly: &[f64],
+    fields: f64,
+    gathers: &[bool],
+    budget: f64,
+) -> Reaped {
     let (work, field, fk) = fields::jobs(w, people, routes, tiles, yearly, fields, gathers);
     let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
     let mut total = 0.0;
@@ -225,7 +243,6 @@ pub fn reap(
         grain[k] = d * fields::yield_a_day(w, t);
     }
     total += grain.iter().sum::<f64>();
-    let budget = (CLAN.surplus_target * people - store.iter().sum::<f64>()).max(0.0);
     if total > budget {
         let scale = budget / total;
         for t in &mut takes {
@@ -258,7 +275,7 @@ fn reckoned(w: &World, id: u32, tiles: &[usize]) -> Vec<bool> {
 /// How well `territory` (sorted) from `home` would feed clan `id` with `people` and `store`, paying
 /// `routes`, this turn from the current stock: the nutrition per person of the store and the harvest.
 #[allow(clippy::too_many_arguments)]
-fn worth(
+pub(crate) fn worth(
     w: &World,
     id: u32,
     people: f64,
@@ -271,6 +288,27 @@ fn worth(
     let (_, yearly) = walks(w, home, territory);
     let gathers = reckoned(w, id, territory);
     let food = reap(w, id, people, store, routes, territory, &yearly, fields, &gathers).food();
+    nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) / people
+}
+
+/// `worth` with nothing held back for the store's cap: what the labour on `territory` from `home`
+/// could reap, so labour a shorter walk frees counts though the clan is at its target. A farmer's
+/// home step weighs this (`homes::step`).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn could_reap(
+    w: &World,
+    id: u32,
+    people: f64,
+    store: &Basket,
+    routes: &[Route],
+    home: usize,
+    territory: &[usize],
+    fields: f64,
+) -> f64 {
+    let (_, yearly) = walks(w, home, territory);
+    let gathers = reckoned(w, id, territory);
+    let fields = if fields::open(w) { fields } else { 0.0 };
+    let food = reap_within(w, id, people, routes, territory, &yearly, fields, &gathers, f64::INFINITY).food();
     nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) / people
 }
 
@@ -418,7 +456,9 @@ pub fn eat(w: &mut World) {
     let ids: Vec<u32> = w.clans.keys().copied().collect();
     for id in ids {
         let c = &w.clans[&id];
-        if c.people >= CLAN.split_at && c.territory.len() >= 2 {
+        // The land it holds: a home another clan holds is not its to divide.
+        let held = c.territory.iter().filter(|&&t| homes::gathers(w, id, t)).count();
+        if c.people >= CLAN.split_at && held >= 2 {
             dividing::divide_land(w, id);
         } else if c.people >= CLAN.split_at || (c.starving && c.people >= CLAN.hungry_split) {
             dividing::split(w, id);
@@ -518,6 +558,7 @@ fn move_on(w: &mut World, c: &Clan, now: f64) -> bool {
 /// then home steps towards the territory's middle and the territory keeps to the radius and to
 /// what's connected.
 pub fn adjust(w: &mut World) {
+    let mut prices = homes::Prices::new(w);
     for id in shuffled(w) {
         let c = w.clans[&id].clone();
         let pinned = civs::is_civ_clan(w, id);
@@ -541,8 +582,14 @@ pub fn adjust(w: &mut World) {
         );
         // The civ's own clan stays on the capital: it adjusts its land around it. A farmer's home
         // steps toward its fields instead of the middle.
-        let toward = if pinned { None } else { fields::home_toward(w, &c, &changed) };
-        let (home, territory) = if pinned {
+        // With towns on, a farmer's home makes one choice a turn: toward its fields, toward its festival,
+        // or staying (`homes::step`).
+        let chosen = if pinned { None } else { homes::step(w, &mut prices, &c, &changed) };
+        let toward = if pinned || chosen.is_some() { None } else { fields::home_toward(w, &c, &changed) };
+        let why = chosen.as_ref().map(|s| s.why);
+        let (home, territory) = if let Some(s) = chosen {
+            (s.home, s.territory)
+        } else if pinned {
             (c.home, actors::trim(w, c.home, &changed, CLAN.territory_radius))
         } else if let Some(target) = toward {
             actors::step_toward(w, c.home, target, &changed, CLAN.territory_radius)
@@ -555,10 +602,11 @@ pub fn adjust(w: &mut World) {
             w.note(id, format!("let go of {dropped} tile(s): land worth {now:.2} now, {was:.2} before"));
         }
         if home != c.home {
-            w.note(id, "moved its home to the middle of its land".to_string());
+            w.note(id, why.unwrap_or("moved its home to the middle of its land").to_string());
         }
         free(w, id, &c.territory);
         homes::claim_land(w, id, &territory);
+        prices.moved(c.home, home);
         let m = w.clans.get_mut(&id).unwrap();
         m.home = home;
         m.territory = territory;

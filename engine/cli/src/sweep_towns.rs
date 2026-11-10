@@ -150,7 +150,7 @@ pub(crate) fn bounds(t: &TotalTowns, floor: &dyn Fn(&str) -> f64) -> Vec<Bound> 
         format!("traded per person a turn {trade_t:.4} vs farmers outside {trade_o:.4} (≥ 1.1 times)"),
         town.clan_turns > 0 && out.clan_turns > 0 && trade_t >= 1.1 * trade_o,
     );
-    let fl = floor("all.traded_per_turn");
+    let fl = floor("run.all.traded_per_turn");
     add(
         "traded over all clans",
         format!(

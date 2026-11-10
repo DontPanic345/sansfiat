@@ -367,3 +367,106 @@ fn the_judge_counts_town_clans_their_walk_and_the_farmers_outside_towns() {
     assert!((t.farmers_outside.walk - walk).abs() < 1e-9, "the farmer outside walks its route each turn");
     assert_eq!(t.town.traded, 0.0, "no clearing has traded");
 }
+
+/// A farmer of `people` carrying `carried` on (−1, 0), its festival raised two steps east at (1, 0)
+/// with another clan's home and claim between, holding its home and a line of two rich tiles north of the held tile, reaching toward the festival. Its route
+/// to the festival is priced as `go` prices it.
+fn farmer_by_festival(people: f64, carried: f64) -> (World, u32, usize, usize) {
+    let (mut w, _) = staged();
+    let home = index(RADIUS, Hex { q: -1, r: 0 }).unwrap();
+    let fest = index(RADIUS, Hex { q: 1, r: 0 }).unwrap();
+    let between = index(RADIUS, Hex { q: 0, r: 0 }).unwrap();
+    let m = raise(&mut w, fest);
+    clan(&mut w, between, &[between], 5.0);
+    let west = index(RADIUS, Hex { q: 0, r: -1 }).unwrap();
+    let north = index(RADIUS, Hex { q: 1, r: -1 }).unwrap();
+    let id = clan(&mut w, home, &[home, west, north], people);
+    for t in [home, west, north] {
+        w.tiles[t].stock = [500.0; engine::data::N];
+    }
+    let c = w.clans.get_mut(&id).unwrap();
+    c.fields = FIELD.farmer;
+    c.basket[GRAIN] = carried;
+    c.market = Some(m);
+    send(&mut w, id);
+    (w, id, home, fest)
+}
+
+/// Prices clan `id`'s route to its market from its home, as `go` prices it.
+fn send(w: &mut World, id: u32) {
+    let c = &w.clans[&id];
+    let m = c.market.unwrap();
+    let f = festival_costs(w, &mut Scratch::new(w), c.home).into_iter().find(|f| f.market == m).unwrap();
+    let route = Route { to: w.markets[&m].tile, path: f.path, cost: walk_cost(f.cost, 1.0) * walkers(c) };
+    w.clans.get_mut(&id).unwrap().routes = vec![route];
+}
+
+fn chosen(w: &World, id: u32) -> usize {
+    let c = &w.clans[&id];
+    let mut prices = homes::Prices::new(w);
+    homes::step(w, &mut prices, c, &c.territory).map_or(c.home, |s| s.home)
+}
+
+#[test]
+fn a_farmer_steps_toward_its_festival_when_its_surplus_makes_the_walk_dear() {
+    let (w, id, home, fest) = farmer_by_festival(150.0, 30.0);
+    assert!(!w.clans[&id].routes.is_empty(), "it walks to the festival");
+    let to = chosen(&w, id);
+    assert_ne!(to, home, "a dear walk moves its home");
+    assert_eq!(engine::land::steps(&w, to, fest), 1, "one tile nearer, onto a tile another clan holds");
+    assert_eq!(w.tiles[to].claim, Some(*w.clans.keys().next().unwrap()));
+    let (cheap, id, home, _) = farmer_by_festival(150.0, 0.0);
+    assert_eq!(chosen(&cheap, id), home, "a cheap walk keeps it home");
+}
+
+#[test]
+fn a_farmer_steps_a_tile_a_turn_at_most_and_claims_no_held_tile() {
+    let (mut w, id, home, fest) = farmer_by_festival(150.0, 30.0);
+    let held = index(RADIUS, Hex { q: 0, r: 0 }).unwrap();
+    let mut at = home;
+    for _ in 0..4 {
+        // The move step's home step alone: the chosen home and territory, claimed as `adjust` claims.
+        let c = w.clans[&id].clone();
+        let s = homes::step(&w, &mut homes::Prices::new(&w), &c, &c.territory).unwrap();
+        assert!(engine::land::steps(&w, at, s.home) <= 1, "never more than a tile a turn");
+        for &t in &c.territory {
+            if w.tiles[t].claim == Some(id) {
+                w.tiles[t].claim = None;
+            }
+        }
+        homes::claim_land(&mut w, id, &s.territory);
+        let m = w.clans.get_mut(&id).unwrap();
+        (m.home, m.territory) = (s.home, s.territory);
+        at = s.home;
+        send(&mut w, id);
+    }
+    assert!(engine::land::steps(&w, at, fest) < engine::land::steps(&w, home, fest), "it lives nearer its festival");
+    assert_ne!(w.tiles[held].claim, Some(id), "it never takes the held tile it crossed");
+}
+
+#[test]
+fn the_civs_own_clan_stays_and_towns_off_never_lands_on_a_held_tile() {
+    let (mut w, id, home, _) = farmer_by_festival(150.0, 30.0);
+    let held = index(RADIUS, Hex { q: 0, r: 0 }).unwrap();
+    w.config.towns = false;
+    let c = w.clans[&id].clone();
+    assert!(homes::step(&w, &mut homes::Prices::new(&w), &c, &c.territory).is_none(), "towns off: no town step");
+    for _ in 0..5 {
+        clans::adjust(&mut w);
+        go(&mut w);
+        assert_ne!(w.clans[&id].home, held, "towns off, it never lives on a held tile");
+    }
+    let _ = home;
+    // The civ's own clan: staged with a civ at the centre, its clan is pinned to the capital.
+    let mut stage = Stage::flat(RADIUS);
+    let centre = index(RADIUS, Hex { q: 0, r: 0 }).unwrap();
+    stage.civs(&[centre], 30.0);
+    let mut w = stage.into_world();
+    let own = w.civs.values().next().unwrap().clan;
+    w.clans.get_mut(&own).unwrap().fields = 1.0;
+    raise(&mut w, index(RADIUS, Hex { q: 2, r: 0 }).unwrap());
+    for _ in 0..5 {
+        clans::adjust(&mut w);
+        assert_eq!(w.clans[&own].home, centre, "the civ's own clan stays on the capital");
+    }
+}

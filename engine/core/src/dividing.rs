@@ -52,13 +52,22 @@ fn halve(w: &World, tiles: &[usize]) -> [Vec<usize>; 2] {
     parts
 }
 
-/// A big clan divides like a cell: the daughter takes the half of the territory away from home,
+/// A big clan divides like a cell: the daughter takes the half of the land it holds away from home,
 /// with half the people and half the store, and settles its middle. Each half keeps only the
 /// tiles connected to its home; the rest are freed.
 pub fn divide_land(w: &mut World, id: u32) {
     let c = w.clans[&id].clone();
-    let [a, b] = halve(w, &c.territory);
-    let (keep, give) = if a.contains(&c.home) { (a, b) } else { (b, a) };
+    // A home another clan holds is not land to divide: the halves are of the land it holds, and the
+    // mother keeps the half nearer home, with the home.
+    let held = homes::gathers(w, id, c.home);
+    let land: Vec<usize> = c.territory.iter().copied().filter(|&t| held || t != c.home).collect();
+    let [a, b] = halve(w, &land);
+    let near = |part: &[usize]| part.iter().map(|&t| (steps(w, c.home, t), t)).min();
+    let (mut keep, give) = if a.contains(&c.home) || (!held && near(&a) <= near(&b)) { (a, b) } else { (b, a) };
+    if !held {
+        keep.push(c.home);
+        keep.sort_unstable();
+    }
     // No preference among ties but the lowest tile.
     let home = actors::middle(w, &give, usize::MAX);
     let mine = actors::trim(w, c.home, &keep, CLAN.territory_radius);

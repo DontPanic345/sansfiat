@@ -29,7 +29,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/land.rs` | Neighbours, move costs, `path`, `steps`, and the `regrow`, `wear` and `tend` steps. |
 | `core/src/actors.rs` | What every actor does: spoil, eat, `meal` (from kin's stores), `stride`, `walk_cost`, `carriers`, traffic, `divide` and `split` (over jobs; a tile pays its walk for each person walking it), `change`. |
 | `core/src/clans.rs` | Clans: seeding, `reap` (its split between gathering and fields; a clan gathers only what it claims), `value`, and the `move`, `harvest` and `eat` steps. |
-| `core/src/homes.rs` | Where clans live: the `homes` index (derived, never saved), `claim_land` (never on a tile another clan holds) and `gathers`. |
+| `core/src/homes.rs` | Where clans live: `homes` (derived, never saved), `claim_land` (never on a held tile), `gathers`, `step` (a farmer's home step, with towns). |
 | `core/src/dividing.rs` | A big clan's `divide_land` and a clan's `split` (a daughter to a site it can settle). |
 | `core/src/fields.rs` | The field job: `ground`, `yield_a_day`, `open`, `sow`, the split's `notch`, a farmer's `home_toward`, `plots`. |
 | `core/src/market.rs`, `markets.rs` | Barter clearing; festivals: reach, the `go` step, trading, forming, fading. |
