@@ -24,9 +24,11 @@ pub fn open(w: &World) -> bool {
 /// clan sows has room equal to its ground.
 pub fn room(w: &World, id: u32, t: usize) -> f64 {
     let others: f64 = w
-        .clans
-        .values()
-        .filter(|k| k.id != id && k.territory.binary_search(&t).is_ok())
+        .sowers
+        .iter()
+        .filter(|&&k| k != id)
+        .filter_map(|k| w.clans.get(k))
+        .filter(|k| k.territory.binary_search(&t).is_ok())
         .filter_map(|k| k.sown.binary_search_by_key(&t, |&(s, _)| s).ok().map(|s| k.sown[s].1))
         .sum();
     (ground(w, t) - others).max(0.0)

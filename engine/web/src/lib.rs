@@ -4,7 +4,7 @@ use engine::over::{self, Why};
 use engine::script::Lead;
 use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
-use engine::{civs, fields, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
+use engine::{civs, fields, markets, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
 use std::collections::BTreeMap;
 
 use wasm_bindgen::prelude::*;
@@ -273,13 +273,13 @@ impl Sim {
             })
             .collect();
         // Each festival with the clans that go to it.
+        let by_market = markets::by_market(w);
         let markets: BTreeMap<u32, serde_json::Value> = w
             .markets
             .values()
             .map(|m| {
                 let mut row = serde_json::to_value(m).unwrap();
-                row["clans"] =
-                    w.clans.values().filter(|k| k.market == Some(m.id)).map(|k| k.id).collect::<Vec<u32>>().into();
+                row["clans"] = by_market.get(&m.id).cloned().unwrap_or_default().into();
                 (m.id, row)
             })
             .collect();

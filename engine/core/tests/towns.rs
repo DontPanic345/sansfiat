@@ -2,14 +2,17 @@
 //! it claims, a tile's field ground is shared among the clans that sow it, and `homes` indexes the
 //! clans by home. Staged on bare plains with a civ at the centre, so fields are open.
 
+use engine::actors::walk_cost;
 use engine::clans::{self, harvest, new_clan, reap, walks, Reaped};
 use engine::data::{Config, CLAN, GRAIN, MAP, TENDING};
 use engine::fields;
 use engine::hex::Hex;
 use engine::homes;
 use engine::land::neighbours;
+use engine::land::{passable, path};
 use engine::map::index;
-use engine::markets::in_reach;
+use engine::markets::{by_market, festival_costs, go, in_reach, raise, walkers};
+use engine::reach::Scratch;
 use engine::stage::Stage;
 use engine::World;
 
@@ -233,4 +236,43 @@ fn plots_give_each_clan_its_own_days_on_a_shared_tile() {
         assert!((plots[0].1 - days).abs() < 1e-12, "a clan's plot is its own days");
         assert!(plots[0].1 < w.tiles[s].field, "not the tile's total");
     }
+}
+
+#[test]
+fn clans_on_one_home_read_one_festival_search_and_walk_the_land_path() {
+    let (mut w, _) = staged();
+    let home = index(RADIUS, Hex { q: -3, r: 0 }).unwrap();
+    let fest = index(RADIUS, Hex { q: -2, r: 0 }).unwrap();
+    let mid = raise(&mut w, fest);
+    let a = clan(&mut w, home, &[home], 5.0);
+    let b = clan(&mut w, home, &[home], 5.0);
+    let mut s = Scratch::new(&w);
+    let festivals = festival_costs(&w, &mut s, home);
+    let want = path(&w, home, fest, |i| passable(&w, i)).unwrap();
+    let f = festivals.iter().find(|f| f.market == mid).expect("the festival is in reach of the home");
+    assert_eq!((f.cost, &f.path), (want.1, &want.0), "the search's route is the land path's");
+    go(&mut w);
+    for id in [a, b] {
+        assert_eq!(w.clans[&id].market, Some(mid), "clan {id} goes to the festival");
+        let r = &w.clans[&id].routes[0];
+        assert_eq!((r.to, &r.path), (fest, &want.0), "clan {id} walks the route land::path gives");
+        assert_eq!(r.cost, walk_cost(want.1, 1.0) * walkers(&w.clans[&id]));
+    }
+}
+
+#[test]
+fn by_market_lists_each_markets_clans_in_id_order() {
+    let (mut w, _) = staged();
+    let m1 = raise(&mut w, index(RADIUS, Hex { q: 2, r: 0 }).unwrap());
+    let m2 = raise(&mut w, index(RADIUS, Hex { q: -2, r: 0 }).unwrap());
+    let ids: Vec<u32> =
+        (0..4).map(|k| clan(&mut w, index(RADIUS, Hex { q: 0, r: k - 2 }).unwrap(), &[], 5.0)).collect();
+    for (id, mid) in [(ids[3], m1), (ids[0], m2), (ids[2], m1), (ids[1], m1)] {
+        w.clans.get_mut(&id).unwrap().market = Some(mid);
+    }
+    let index_by = by_market(&w);
+    assert_eq!(index_by.get(&m1), Some(&vec![ids[1], ids[2], ids[3]]));
+    assert_eq!(index_by.get(&m2), Some(&vec![ids[0]]));
+    let none = raise(&mut w, index(RADIUS, Hex { q: 0, r: 3 }).unwrap());
+    assert!(!by_market(&w).contains_key(&none), "a market with no clans is absent");
 }

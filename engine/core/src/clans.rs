@@ -368,6 +368,7 @@ pub fn harvest(w: &mut World) {
         c.store = [0.0; N];
         c.sown = sown;
     }
+    w.sowers = w.clans.values().filter(|c| !c.sown.is_empty()).map(|c| c.id).collect();
 }
 
 /// What `people` harvested beyond their need this turn, by nutrition.
@@ -444,12 +445,15 @@ pub fn growth(since: u32) -> f64 {
 pub(crate) fn sites(w: &World, clan: &Clan, steps: i32) -> Vec<usize> {
     let passable = |i: usize| TERRAIN[w.tiles[i].terrain].land && passable(w, i);
     let mut seen = vec![clan.home];
+    let mut visited = vec![false; w.tiles.len()];
+    visited[clan.home] = true;
     let mut frontier = vec![clan.home];
     for _ in 0..steps {
         let mut next = Vec::new();
         for &i in &frontier {
             for j in neighbours(w, i) {
-                if passable(j) && !seen.contains(&j) {
+                if passable(j) && !visited[j] {
+                    visited[j] = true;
                     seen.push(j);
                     next.push(j);
                 }
@@ -457,8 +461,12 @@ pub(crate) fn sites(w: &World, clan: &Clan, steps: i32) -> Vec<usize> {
         }
         frontier = next;
     }
-    let index = homes::homes(w);
-    seen.retain(|&i| w.tiles[i].claim.is_none() && !index.contains_key(&i));
+    // A home is a tile some clan lives on, held or not, and a site is never one.
+    let mut homed = vec![false; w.tiles.len()];
+    for c in w.clans.values() {
+        homed[c.home] = true;
+    }
+    seen.retain(|&i| w.tiles[i].claim.is_none() && !homed[i]);
     seen.sort_unstable();
     seen
 }

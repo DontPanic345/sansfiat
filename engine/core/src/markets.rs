@@ -16,6 +16,7 @@ use crate::homes;
 use crate::land::{cost_map, passable, path};
 use crate::leaning;
 use crate::market::{clear, demand, take, Basket, Params};
+use crate::reach::{self, Scratch};
 use crate::world::World;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -66,28 +67,56 @@ pub fn walkers(clan: &Clan) -> f64 {
     carriers(clan.basket.iter().sum::<f64>().min(MARKET.carry * clan.people))
 }
 
+/// A festival in reach of a home: its id, the cheapest route's cost from the home and its tiles
+/// (`land::path`'s, after the home, ending at the festival).
+pub struct Festival {
+    pub market: u32,
+    pub cost: f64,
+    pub path: Vec<usize>,
+}
+
+/// The festivals whose route from `home` costs at most `MARKET.reach_walk / 2`, in id order, with
+/// their routes. Empty unless a festival lies within `most / DAY` steps of `home`: a bare step costs
+/// `DAY`, and a clan's festivals are no further than that. One search serves every clan on `home`.
+pub fn festival_costs(w: &World, s: &mut Scratch, home: usize) -> Vec<Festival> {
+    let most = MARKET.reach_walk / 2.0;
+    let h = w.tiles[home].hex();
+    if !w.markets.values().any(|m| f64::from(w.tiles[m.tile].hex().distance(h)) <= most / DAY) {
+        return Vec::new();
+    }
+    let tiles: Vec<usize> = w.markets.values().map(|m| m.tile).collect();
+    let mut found = reach::settle(w, s, home, most, &tiles);
+    w.markets
+        .values()
+        .filter_map(|m| {
+            let (cost, path) = found.remove(&m.tile)?;
+            Some(Festival { market: m.id, cost, path })
+        })
+        .collect()
+}
+
 /// What `clan` would make of going to each festival whose route from its home costs at most
 /// `MARKET.reach_walk`, in id order: the festival's id, its worth (`gain × harvest_labour +
 /// desire − route cost`) and the route's cost.
 pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
-    let most = MARKET.reach_walk / 2.0;
-    let home = w.tiles[clan.home].hex();
-    // A bare step costs `DAY`, so a festival further than `most / DAY` steps is out of reach.
-    if !w.markets.values().any(|m| f64::from(w.tiles[m.tile].hex().distance(home)) <= most / DAY) {
-        return Vec::new();
-    }
-    let near = cost_map(w, &[clan.home], most, |i| passable(w, i));
+    let festivals = festival_costs(w, &mut Scratch::new(w), clan.home);
+    worths_from(w, clan, &festivals)
+}
+
+/// `worths`, read from the festivals in reach of the clan's home (`festival_costs`).
+fn worths_from(w: &World, clan: &Clan, festivals: &[Festival]) -> Vec<(u32, f64, f64)> {
     let b: Basket = std::array::from_fn(|f| clan.store[f] + clan.harvest[f]);
     let walkers = walkers(clan);
     let surplus = clan.store.iter().sum::<f64>() >= MARKET.surplus_at * clan.people;
     // A civ clan is drawn to its capital's market.
     let capital = clan.civ.and_then(|c| w.civs.get(&c)).map(|c| c.market);
-    w.markets
-        .values()
-        .filter_map(|m| {
-            let cost = walk_cost(*near.get(&m.tile)?, 1.0) * walkers;
+    festivals
+        .iter()
+        .map(|f| {
+            let m = &w.markets[&f.market];
+            let cost = walk_cost(f.cost, 1.0) * walkers;
             let pull = if Some(m.id) == capital { CIV.pull } else { 0.0 };
-            Some((m.id, gain(m, &b, clan.people) * CLAN.harvest_labour + desire(m, surplus) + pull - cost, cost))
+            (m.id, gain(m, &b, clan.people) * CLAN.harvest_labour + desire(m, surplus) + pull - cost, cost)
         })
         .collect()
 }
@@ -113,22 +142,31 @@ pub fn choose(worths: &[(u32, f64, f64)], current: Option<u32>, turns: u32) -> O
 }
 
 /// The `go` step, before harvest: each clan picks the festival worth most to it (`choose`) and
-/// takes the cheapest path there from home as its one route; or stays home.
+/// takes the cheapest path there from home as its one route; or stays home. The festivals a home
+/// reaches are searched once a turn for each home tile, and every clan on it reads them.
 pub fn go(w: &mut World) {
     let ids: Vec<u32> = w.clans.keys().copied().collect();
+    let mut scratch = Scratch::new(w);
+    let mut festivals: BTreeMap<usize, Vec<Festival>> = BTreeMap::new();
     for id in ids {
         let c = &w.clans[&id];
         // A civ's own clan always walks to the capital's market: a route of nothing from its home.
         let civ_market = c.civ.and_then(|civ| w.civs.get(&civ)).filter(|civ| civ.clan == id).map(|civ| civ.market);
         let mut considered = Vec::new();
         let choice = civ_market.or_else(|| {
-            considered = worths(w, c);
+            let found = festivals.entry(c.home).or_insert_with(|| festival_costs(w, &mut scratch, c.home));
+            considered = worths_from(w, c, found);
             choose(&considered, c.market, c.market_turns)
         });
+        // The route is the search's, when the festival is in reach of the home; `path` finds it otherwise.
         let route = choice.and_then(|mid| {
             let to = w.markets[&mid].tile;
-            let (path, cost) = path(w, c.home, to, |i| passable(w, i))?;
-            Some(Route { to, path, cost: walk_cost(cost, 1.0) * walkers(c) })
+            let read = festivals.get(&c.home).and_then(|f| f.iter().find(|f| f.market == mid));
+            let (tiles, cost) = match read {
+                Some(f) => (f.path.clone(), f.cost),
+                None => path(w, c.home, to, |i| passable(w, i))?,
+            };
+            Some(Route { to, path: tiles, cost: walk_cost(cost, 1.0) * walkers(c) })
         });
         let c = w.clans.get_mut(&id).unwrap();
         let was = c.market;
@@ -159,6 +197,18 @@ pub fn go(w: &mut World) {
     }
 }
 
+/// Each market's clans, in id order: the clans whose `market` it is. The steps that act per market
+/// read this once, where they start, rather than scanning every clan for each market.
+pub fn by_market(w: &World) -> BTreeMap<u32, Vec<u32>> {
+    let mut index: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+    for c in w.clans.values() {
+        if let Some(m) = c.market {
+            index.entry(m).or_default().push(c.id);
+        }
+    }
+    index
+}
+
 /// The `trade` step, after harvest: each market clears what its clans brought. A clan brings its
 /// basket scaled evenly down to at most `MARKET.carry × people` of food; the rest stays in its
 /// basket, and the cleared goods come back on top.
@@ -166,10 +216,11 @@ pub fn trade(w: &mut World) {
     for c in w.civs.values_mut() {
         c.levied = 0.0;
     }
+    let index = by_market(w);
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {
         civs::levy(w, mid);
-        let ids: Vec<u32> = w.clans.values().filter(|c| c.market == Some(mid)).map(|c| c.id).collect();
+        let ids: Vec<u32> = index.get(&mid).cloned().unwrap_or_default();
         let (mut brought, mut kept): (Vec<Basket>, Vec<Basket>) = ids
             .iter()
             .map(|id| {
@@ -256,11 +307,12 @@ pub fn people(w: &mut World) {
         m.moved = 0.0;
     }
     let mut leaving: BTreeMap<u32, f64> = BTreeMap::new();
+    let index = by_market(w);
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {
         let mut offers: Vec<(u32, f64)> = Vec::new();
         let mut rooms: Vec<(u32, f64)> = Vec::new();
-        for c in w.clans.values().filter(|c| c.market == Some(mid)) {
+        for c in index.get(&mid).into_iter().flatten().map(|id| &w.clans[id]) {
             if c.starving {
                 let offer = (MARKET.shed * c.people * (1.0 - c.fed_ratio)).min(c.people - 1.0);
                 if offer > 0.0 {
@@ -308,20 +360,25 @@ pub fn people(w: &mut World) {
 /// (ties to the lower id): its people and store go to that clan, its tiles are freed, it goes.
 /// The people a civ's clan brings to a clan not of that civ are added to `leaving`.
 fn merge(w: &mut World, leaving: &mut BTreeMap<u32, f64>) {
+    let mut index = by_market(w);
     let ids: Vec<u32> = w.clans.keys().copied().collect();
     for id in ids {
         let Some(c) = w.clans.get(&id) else { continue };
         let Some(mid) = c.market.filter(|_| c.people < CLAN.min_pop) else { continue };
         let home = w.tiles[c.home].hex();
-        let Some(into) = w
-            .clans
-            .values()
-            .filter(|o| o.id != id && o.market == Some(mid))
-            .min_by_key(|o| (w.tiles[o.home].hex().distance(home), o.id))
-            .map(|o| o.id)
+        let Some(into) = index
+            .get(&mid)
+            .into_iter()
+            .flatten()
+            .filter(|&&o| o != id)
+            .min_by_key(|&&o| (w.tiles[w.clans[&o].home].hex().distance(home), o))
+            .copied()
         else {
             continue;
         };
+        if let Some(members) = index.get_mut(&mid) {
+            members.retain(|&o| o != id);
+        }
         let c = w.clans.remove(&id).unwrap();
         for &t in &c.territory {
             if w.tiles[t].claim == Some(id) {

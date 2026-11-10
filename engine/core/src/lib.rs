@@ -24,6 +24,7 @@ pub mod markets;
 pub mod orders;
 pub mod over;
 pub mod pregame;
+pub mod reach;
 pub mod rng;
 pub mod script;
 pub mod stage;

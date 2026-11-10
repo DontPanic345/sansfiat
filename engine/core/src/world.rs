@@ -32,6 +32,11 @@ pub struct World {
     pub rng: u32,
     pub tiles: Vec<Tile>,
     pub clans: BTreeMap<u32, Clan>,
+    /// The clans whose `sown` is not empty, by id, as the last harvest left them (`clans::harvest`
+    /// sets it, the only writer of `Clan.sown`). Derived, never saved: `fields::room` reads the field
+    /// days of the clans that sowed last turn from here, not from every clan.
+    #[serde(skip)]
+    pub sowers: Vec<u32>,
     pub markets: BTreeMap<u32, Market>,
     /// People moved between clans at festivals, over the whole run.
     pub moved: f64,
@@ -181,6 +186,7 @@ impl World {
             rng,
             tiles,
             clans: BTreeMap::new(),
+            sowers: Vec::new(),
             markets: BTreeMap::new(),
             moved: 0.0,
             people_seen: Vec::new(),
