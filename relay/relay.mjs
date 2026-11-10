@@ -1541,12 +1541,27 @@ const dispatchWait = (until) =>
         process.env.DISPATCH_TOKEN,
     );
 
+// The crew's own code at a ref: the blob of each module it loads.
+const crewCode = (ref) =>
+    git("ls-tree", ref, "relay/")
+        .split("\n")
+        .filter((l) => /\.mjs$/.test(l) && !/\.test\.mjs$/.test(l))
+        .map((l) => l.split(/\s+/)[2])
+        .join(" ");
+
 // Runs steps until something stops it, and says why. The usage read after one step paces the
-// next, so each step boundary costs one probe.
+// next, so each step boundary costs one probe. A crew whose code main has moved past hands
+// over to a fresh run on main.
 const runSteps = async (ran) => {
+    const code = crewCode("HEAD");
     let reading = null;
     for (;;) {
         if (Date.now() - STARTED > DEADLINE_MS) return "deadline: no time for another step in this job";
+        git("fetch", "-q", "origin", "main");
+        if (crewCode("origin/main") !== code) {
+            await dispatchRun();
+            return "the crew changed on main: a fresh run carries on";
+        }
         const pieces = await loadPieces();
         const next = nextWork(pieces);
         if (!next) return "nothing to do: every ready piece is waiting, paused, held or finished";

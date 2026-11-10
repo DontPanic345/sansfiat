@@ -171,6 +171,9 @@ when the window resets and starts a `wait` run, which sleeps until then and star
 run, so a stop costs the window, not the schedule's lateness. The weekly window is the real
 limit on how much Relay gets done. The owner's own sessions share both windows.
 
+Before each piece of work the crew fetches `main`, and once the crew's code there differs from
+the code it is running, it starts a fresh run and stops.
+
 ## The board
 
 The crew updates "Sans Fiat Work", a project on the owner's account, when it can. A GitHub App
