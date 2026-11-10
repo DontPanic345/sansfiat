@@ -281,6 +281,13 @@ pub fn value_at(w: &World, clan: &Clan, territory: &[usize], fields: f64) -> f64
     worth(w, clan.id, clan.people, &clan.store, &clan.routes, clan.home, territory, fields)
 }
 
+/// How well `territory` would feed the clan this turn from `home` with `routes`, at its own split, on
+/// what it gathers and sows alone: its store left out, so a store does not carry it to a home that
+/// feeds it less.
+pub fn value_from(w: &World, clan: &Clan, home: usize, routes: &[Route], territory: &[usize]) -> f64 {
+    worth(w, clan.id, clan.people, &Basket::default(), routes, home, territory, clan.fields)
+}
+
 /// How well `territory` would feed the clan this turn at its own split (`Clan.fields`).
 pub fn value(w: &World, clan: &Clan, territory: &[usize]) -> f64 {
     value_at(w, clan, territory, clan.fields)
@@ -518,6 +525,7 @@ fn move_on(w: &mut World, c: &Clan, now: f64) -> bool {
 /// then home steps towards the territory's middle and the territory keeps to the radius and to
 /// what's connected.
 pub fn adjust(w: &mut World) {
+    let mut scratch = crate::reach::Scratch::new(w);
     for id in shuffled(w) {
         let c = w.clans[&id].clone();
         let pinned = civs::is_civ_clan(w, id);
@@ -544,10 +552,15 @@ pub fn adjust(w: &mut World) {
         let toward = if pinned { None } else { fields::home_toward(w, &c, &changed) };
         let (home, territory) = if pinned {
             (c.home, actors::trim(w, c.home, &changed, CLAN.territory_radius))
-        } else if let Some(target) = toward {
-            actors::step_toward(w, c.home, target, &changed, CLAN.territory_radius)
+        } else if homes::weighs(w, &c) {
+            homes::home_step(w, &mut scratch, &c, &changed, toward)
         } else {
-            actors::recentre(w, c.home, &changed, CLAN.territory_radius)
+            let plain = if let Some(target) = toward {
+                actors::step_toward(w, c.home, target, &changed, CLAN.territory_radius)
+            } else {
+                actors::recentre(w, c.home, &changed, CLAN.territory_radius)
+            };
+            homes::keep(w, &mut scratch, &c, &changed, plain)
         };
         let dropped = c.territory.iter().filter(|t| !territory.contains(t)).count();
         if dropped > 0 {

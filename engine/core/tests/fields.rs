@@ -231,6 +231,8 @@ fn field_grain_leaves_no_stock_and_no_wear_and_days_stay_under_ground() {
 fn a_farmers_home_steps_toward_its_best_field_one_tile_a_turn() {
     let mut s = founded();
     let w = s.world_mut();
+    // With towns on the field step is weighed against staying (`homes::home_step`); off, it is taken.
+    w.config.towns = false;
     let (home, mid, field) = (at(-3, 0), at(-2, 0), at(-1, 0));
     farm_tile(w, field);
     let id = hold(w, &[home, mid, field], 10.0, 0.5);

@@ -22,6 +22,9 @@ use engine::World;
 
 const RADIUS: i32 = 4;
 
+/// Food of each kind on each tile of the farmer's stage.
+const STOCK: f64 = 50.0;
+
 /// Bare plains with a civ founded at the centre, and no clans: the test places its own.
 fn staged() -> (World, usize) {
     let mut stage = Stage::flat(RADIUS);
@@ -366,4 +369,109 @@ fn the_judge_counts_town_clans_their_walk_and_the_farmers_outside_towns() {
     let walk = 100.0 * 3.0 / (4.0 * CLAN.work);
     assert!((t.farmers_outside.walk - walk).abs() < 1e-9, "the farmer outside walks its route each turn");
     assert_eq!(t.town.traded, 0.0, "no clearing has traded");
+}
+
+/// A farmer of `people` two steps from the festival east of the centre, holding its home and the
+/// tiles round it, going to the festival with `basket` food a person: its route priced from home.
+fn farmer_by_festival(w: &mut World, people: f64, basket: f64) -> (u32, usize, usize) {
+    let (fest, mid) = festival(w);
+    for t in &mut w.tiles {
+        t.stock = [STOCK; engine::data::N];
+        t.cap = t.stock;
+    }
+    let home = index(RADIUS, Hex { q: 1, r: -2 }).unwrap();
+    let mut land: Vec<usize> = neighbours(w, home).collect();
+    land.push(home);
+    let id = clan(w, home, &land, people);
+    let (p, cost) = path(w, home, fest, |i| passable(w, i)).unwrap();
+    let c = w.clans.get_mut(&id).unwrap();
+    c.fields = FIELD.farmer;
+    c.market = Some(mid);
+    c.basket = [basket * people / c.basket.len() as f64; engine::data::N];
+    let walk = walk_cost(cost, 1.0) * walkers(c);
+    c.routes = vec![Route { to: fest, path: p, cost: walk }];
+    (id, home, fest)
+}
+
+/// The farmer's step this turn with staying as its field step.
+fn step_of(w: &World, id: u32) -> usize {
+    let c = &w.clans[&id];
+    if !homes::weighs(w, c) {
+        return c.home;
+    }
+    homes::home_step(w, &mut Scratch::new(w), c, &c.territory, None).0
+}
+
+#[test]
+fn a_farmer_steps_toward_its_festival_when_the_walk_is_dear_to_its_labour_and_not_when_cheap() {
+    let (mut w, _) = staged();
+    let (id, home, fest) = farmer_by_festival(&mut w, 5.0, 0.2);
+    let to = step_of(&w, id);
+    assert_eq!(engine::land::steps(&w, home, to), 1);
+    assert_eq!(engine::land::steps(&w, to, fest), engine::land::steps(&w, home, fest) - 1);
+
+    let (mut w, _) = staged();
+    let (id, home, _) = farmer_by_festival(&mut w, 200.0, 0.0);
+    assert_eq!(step_of(&w, id), home);
+}
+
+#[test]
+fn with_towns_off_no_town_step_is_taken() {
+    let (mut w, _) = staged();
+    w.config = Config { towns: false, ..w.config };
+    let (id, home, _) = farmer_by_festival(&mut w, 5.0, 0.2);
+    assert_eq!(step_of(&w, id), home);
+}
+
+#[test]
+fn a_farmer_steps_at_most_a_tile_a_turn_onto_held_land_and_the_civ_clan_stays() {
+    let (mut w, _) = staged();
+    let (id, home, fest) = farmer_by_festival(&mut w, 5.0, 0.2);
+    // A neighbour holds the tile the farmer steps onto.
+    let onto = step_of(&w, id);
+    assert_ne!(onto, home);
+    w.clans.get_mut(&id).unwrap().territory.retain(|&t| t != onto);
+    w.tiles[onto].claim = None;
+    let other = clan(&mut w, onto, &[onto], 20.0);
+    let civ = civ_clan(&mut w, fest);
+    for _ in 0..4 {
+        let was = w.clans[&id].home;
+        let civ_home = w.clans[&civ].home;
+        clans::adjust(&mut w);
+        assert!(engine::land::steps(&w, was, w.clans[&id].home) <= 1);
+        assert_eq!(w.clans[&civ].home, civ_home);
+    }
+    assert_eq!(w.clans[&id].home, onto);
+    assert_eq!(w.tiles[onto].claim, Some(other));
+}
+
+#[test]
+fn with_towns_off_a_home_never_lands_on_a_held_tile() {
+    let (mut w, _) = staged();
+    w.config = Config { towns: false, ..w.config };
+    let (id, _, fest) = farmer_by_festival(&mut w, 5.0, 0.2);
+    clan(&mut w, fest, &[fest], 20.0);
+    for _ in 0..4 {
+        clans::adjust(&mut w);
+        let h = w.clans[&id].home;
+        assert!(w.tiles[h].claim.is_none_or(|c| c == id));
+    }
+}
+
+/// The civ's own clan put back on the capital, made a farmer going to the festival: returns its id.
+fn civ_clan(w: &mut World, fest: usize) -> u32 {
+    let (civ, id, capital) = {
+        let civ = w.civs.values().next().unwrap();
+        (civ.id, civ.clan, civ.capital)
+    };
+    let mut c = new_clan(id, capital, 5.0);
+    c.civ = Some(civ);
+    c.territory = vec![capital];
+    c.fields = FIELD.farmer;
+    c.market = w.clans.values().find_map(|c| c.market);
+    c.basket = [0.2 * 5.0 / c.basket.len() as f64; engine::data::N];
+    homes::claim_land(w, id, &[capital]);
+    w.clans.insert(id, c);
+    let _ = fest;
+    id
 }

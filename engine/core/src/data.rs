@@ -337,13 +337,17 @@ pub const FIELD: FieldRules = FieldRules {
 pub struct TownRules {
     /// Homes on a festival's tile from which it reads as a town.
     pub homes: usize,
-    /// Why this number: where it came from.
+    /// Food a person a farmer's home step toward its festival must add to its value over the better of
+    /// staying and stepping toward its fields.
+    pub margin: f64,
+    /// Why these numbers: where they came from.
     pub note: &'static str,
 }
 
 pub const TOWN: TownRules = TownRules {
     homes: 3,
-    note: "Three is the least that reads as many hearths on one tile, and two clans side by side are \
+    margin: 0.01,
+    note: "The margin is FIELD.margin's: a home step is weighed as a field notch is. Three is the least that reads as many hearths on one tile, and two clans side by side are \
            neighbours (relay/specs/156/spec.md). The sketch's towns at three came out on 5 of 7 maps.",
 };
 
