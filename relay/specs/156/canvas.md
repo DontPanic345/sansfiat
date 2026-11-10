@@ -97,3 +97,97 @@ Starving shares, reported not bound (setting 6): town clans 0.033 of clan-turns,
   fewer, bigger festivals for fewer clans. With a nonzero floor (it is 0 in every sweep here, which looks
   like the floor not being computed for `traded`) the miss would likely be inside it.
 
+## Towns off, health, checks
+
+- With `Config.towns` off the home rule is never read (`homes::weighs` and `homes::keep` return the old
+  step): every map's `no_towns` block in this sweep equals build-3's sweep's, key for key, on all seven.
+- Pre-games by centres 7 of 7, panics 0, digest mismatches 0. `engine/check.sh` passes through
+  `cargo test` (save-version pins at 18 and the four digests moved), clippy, fmt, the web build and
+  `www/check.mjs` and `www/play/all.mjs` (towns.mjs passing).
+- Starving against the no-fields control moved 1.22 → 1.38 (inside its floor 0.19); settled farmers'
+  starving share 0.0013 → 0.0113 is the town clans' crowding.
+
+## judge --compare against main (A = main, B = this, totals; * past the floor)
+
+```
+metric                                                             A           B      change       floor
+standing
+  total.standing.aligned_200                                  0.3183      0.3299      0.0116      0.0086 *
+  total.standing.on_land_200                                  0.0000      0.0000      0.0000      0.0000
+  total.standing.top_200                                      0.1619      0.1662      0.0043      0.0064
+doubt
+  total.doubt.lead_changes                                    4.0000      8.0000      4.0000      4.0000
+  total.doubt.maps_with_lead_change                           4.0000      4.0000      0.0000      1.0000
+  total.doubt.no_claims_lead_changes                          3.0000      7.0000      4.0000      1.0000 *
+  total.doubt.no_claims_maps_with_lead_change                 3.0000      5.0000      2.0000      0.0000 *
+  total.doubt.spread_100                                      0.1016      0.1091      0.0076      0.0052 *
+  total.doubt.spread_200                                      0.1051      0.1080      0.0029      0.0100
+  total.doubt.swings                                          3.0000      7.0000      4.0000      3.0000 *
+decisions
+  total.decisions.ai_orders_per_100                           8.2603     11.6413      3.3810      1.0508 *
+  total.decisions.by_kind.claim                               4.3159      7.7857      3.4698      0.9841 *
+  total.decisions.by_kind.disband                             0.3095      0.0476     -0.2619      0.0000 *
+  total.decisions.by_kind.raise                               3.6349      3.8079      0.1730      0.2159
+  total.decisions.levers_repeated                             1.7143      1.7143      0.0000      0.0476
+motion
+  total.motion.claim_taken                                    0.0000      0.0000      0.0000      0.0000
+  total.motion.clans_changed                                177.0000    201.0000     24.0000     24.0000
+  total.motion.clans_joined                                 177.0000    201.0000     24.0000     25.0000
+  total.motion.clans_left                                     1.0000      2.0000      1.0000      2.0000
+  total.motion.land_changed                                1150.0000   1864.0000    714.0000    348.0000 *
+  total.motion.people_changed                               953.3499   1021.8570     68.5071     89.1467
+land
+  total.land.claimed_200                                     36.6667     34.9524     -1.7143      1.0952 *
+  total.land.festival_changes_per_100                         0.4988      0.6359      0.1371      0.0374 *
+  total.land.flips_per_100                                    0.0871      0.1118      0.0246      0.0196 *
+  total.land.guard_200                                        7.3810      8.5714      1.1905      0.3810 *
+  total.land.held_200                                        34.0000     32.5238     -1.4762      0.4286 *
+  total.land.homes_trailed.0                                  0.8785      0.8785      0.0000      0.0000
+  total.land.homes_trailed.1                                  0.8163      0.8539      0.0376      0.0088 *
+  total.land.markets_200                                    212.0000    214.0000      2.0000      3.0000
+  total.land.markets_pick                                   217.0000    217.0000      0.0000      0.0000
+  total.land.route_trailed.0                                  0.9904      0.9904      0.0000      0.0000
+  total.land.route_trailed.1                                  0.9991      0.9982     -0.0009      0.0008 *
+  total.land.trading_200                                      0.9172      0.9307      0.0134      0.0042 *
+  total.land.trading_pick                                     0.9377      0.9377      0.0000      0.0000
+  total.land.worked_trailed.0                                 0.3084      0.3084      0.0000      0.0000
+  total.land.worked_trailed.1                                 0.3122      0.3124      0.0002      0.0051
+economy
+  total.economy.guard_mean                                    7.2543      7.9333      0.6791      0.2295 *
+  total.economy.largest_army                                  0.0000      0.0000      0.0000      0.0000
+  total.economy.levy_per_turn                                12.6959     13.2751      0.5792      0.2596 *
+  total.economy.store_max                                    52.1897     52.1897      0.0000      0.1386
+  total.economy.store_mean                                   29.1273     30.1466      1.0193      1.9396
+  total.economy.turns_at_pack                               524.0000    533.4286      9.4286      8.0000 *
+armies
+  total.armies.camps_kept                                    21.0000     21.0000      0.0000      0.0000
+  total.armies.camps_lost                                     0.0000      0.0000      0.0000      0.0000
+  total.armies.camps_of                                      21.0000     21.0000      0.0000      0.0000
+  total.armies.people_vs_control                              0.9672      0.9752      0.0080      0.0081
+  total.armies.warriors_starved                               0.0000      0.0000      0.0000      0.0000
+fight
+  total.fight.control_fallen                                  0.0000      0.0000      0.0000      0.0000
+  total.fight.control_surrendered                             0.0000      0.0000      0.0000      0.0000
+  total.fight.control_taken                                   0.0000      0.0000      0.0000      0.0000
+  total.fight.fallen                                          0.0000      0.0000      0.0000      0.0000
+  total.fight.surrendered                                     0.0000      0.0000      0.0000      0.0000
+  total.fight.taken                                           0.0000      0.0000      0.0000      0.0000
+end
+  total.end.capitals_fallen                                   0.0000      0.0000      0.0000      0.0000
+  total.end.early                                             0.0000      0.0000      0.0000      0.0000
+  total.end.no_fight_capitals_fallen                          0.0000      0.0000      0.0000      0.0000
+  total.end.no_fight_early                                    0.0000      0.0000      0.0000      0.0000
+  total.end.no_fight_turns_mean                             228.5714    228.5714      0.0000      0.0000
+  total.end.of                                                7.0000      7.0000      0.0000      0.0000
+  total.end.turns_mean                                      228.5714    228.5714      0.0000      0.0000
+health
+  total.health.digest_mismatches                              0.0000      0.0000      0.0000      0.0000
+  total.health.panics                                         0.0000      0.0000      0.0000      0.0000
+  total.health.pregame_by_centres                             7.0000      7.0000      0.0000      0.0000
+fields_vs_control
+  total.fields_vs_control.ai_orders_per_100                   8.2603     11.6413      3.3810      1.0508 *
+  total.fields_vs_control.aligned_200                         0.3183      0.3299      0.0116      0.0086 *
+  total.fields_vs_control.aligned_gain                        0.0658      0.0774      0.0116      0.0133
+  total.fields_vs_control.civs                               21.0000     21.0000      0.0000      0.0000
+  total.fields_vs_control.civs_never_at_pack                  1.0000      2.0000      1.0000      1.0000
+```
