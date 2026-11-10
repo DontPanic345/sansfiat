@@ -17,13 +17,20 @@ The code: `core/src/markets.rs` (`worths`, `choose`, `go`, `trade`, `people`, `m
    (`worths`' cost map) are worked out once a turn for each home tile, and every clan living there reads them
    (`homes::homes`). The worth itself stays per clan: it reads the clan's basket, walkers and civ. Today no
    home is shared, so the saving has to come from the search too:
-   - **Stop early.** The search may stop once no festival still unsettled could come within `most`. Bound
-     it by the cheapest step any tile can cost (a trail on flat land, or along a river), not by `DAY`:
-     `probe.md` shows a `DAY` bound drops festivals reached along trails and moves the digest. A festival is
-     settled when it is popped at its final cost, as `cost_map_by` settles tiles.
+   - **Flat scratch arrays, not a map.** `cost_map_by` keeps its costs in a `BTreeMap`. Spec-review measured
+     (`spec-review.md`, `search-flat.diff`): the festival search on reused flat arrays (a cost per tile and a
+     list of touched tiles to reset, kept between calls) took the bench from 27.9 to 22.0 ms a turn on top of
+     the scouts' bound, against main's 64.3 in the same session: **0.34 times**, digest equal on large 8 and
+     small 3. That is where this step's saving is. Keep the scratch in a struct the turn owns or passes, not a
+     `thread_local`, and make it `cost_map_by`'s own store if that serves every caller.
+   - **Stop early.** The search may stop once every festival that could be in reach is settled, bounded by the
+     cheapest step any tile can cost (a trail on flat land, `TRAIL.flat × DAY`), not by `DAY`: `probe.md` shows
+     a `DAY` bound moves the digest. A festival is settled when it is popped, as `cost_map_by` settles tiles.
+     Measured, this exit buys nothing on its own (27.9 ms with or without it), since most homes have a candidate
+     festival the search reaches only near `most`. Keep it only if it costs nothing to read.
    - **One search, not two.** The chosen festival's route comes from the same search's predecessors, if they
      give exactly the path and cost `land::path` gives with its tie-breaks. Otherwise keep `path` and say why
-     in `scale.md`.
+     in `scale.md`. `path` was 2.5 of 15.9 ms of `go` in `probe.md`.
    - Whatever structure the search keeps its costs in, the costs and tie-breaks must be `cost_map_by`'s: the
      cheapest grid cost, then the lowest tile, with the first predecessor at an equal grid cost.
 2. **Clans indexed by market once a turn.** `markets::by_market(w) -> BTreeMap<u32, Vec<u32>>`: each market's
@@ -36,7 +43,8 @@ The code: `core/src/markets.rs` (`worths`, `choose`, `go`, `trade`, `people`, `m
    its labour could walk there and back (`labour ÷ (2 × people)`, plus a day of slack), not over the whole map.
    It skips any tile whose walk costs the labour it has, so the plan is the same. `scout-bound.diff` is the
    change as the spec step ran it: 31.5 → 0.3 ms a turn on large 8, digest equal. Build it properly, with a
-   doc line saying why the bound gives the same plan.
+   doc line saying why the bound gives the same plan. Alone it takes the bench to 0.43 of main's
+   (spec-review: 27.9 against 64.3 ms), so the flat search above is what reaches 0.35.
 
 `markets.rs` is 428 lines and `land.rs` 353, so both may grow. If the search grows past about 80 lines, put it
 in `core/src/reach.rs`.
@@ -57,7 +65,8 @@ in `core/src/reach.rs`.
   build-1's at every turn. `sansfiat sweep --judge --json` equal to build-1's in every map's blocks.
 - **The bench.** `sansfiat bench --size large 8 --after 50`, two runs each, on this branch, on build-1's commit
   and on main (a worktree), in the same session. **Done is at most 0.35 times main's ms a turn.** The spec
-  step reached 0.35 with the scouts' bound and a crude exit that moved the digest. Time the steps with a
+  step reached 0.35 with the scouts' bound and a crude exit that moved the digest; spec-review reached 0.34
+  with the scouts' bound and the flat search, digest equal. Time the steps with a
   scratch timer round each `TURN` step (don't commit it) and give the table before and after.
 - Write it all to `relay/specs/156/scale.md`: the step table before and after, the bench, the digests.
 

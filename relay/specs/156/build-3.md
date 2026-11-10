@@ -36,10 +36,17 @@ The code: build-1's `core/src/homes.rs` (`homes`) and `core/tests/towns.rs` (its
    - towns at +100 and +200, town clans at +200, and of them the farmers, and towns whose clans work fields
      (Σ `plots` days > 0); the most homes on one tile at +200; the first turn past the pick a town formed;
    - over the clan-turns after +100, for **town clans**, for **farmers outside towns** and for **all clans**:
-     clan-turns, the festival walk (Σ route cost ÷ `people × CLAN.work`), food brought per person, and
-     starving turns. Brought is what `trade` would carry: the clan's store at the end of the last turn plus
-     this turn's harvest, capped at `MARKET.carry × people`, for a clan with a festival. `Watch` keeps each
-     clan's last store for it.
+     clan-turns, the festival walk (Σ route cost ÷ `people × CLAN.work`), food traded per person, and
+     starving turns. Settled farmers' **town steps** (a home move that brings the home a tile nearer its
+     festival's tile, `hex` distance) apart from their other home moves, and town clans' home moves off their
+     town's tile, each with its clan-turns, counted over every turn past the pick as the fields group counts
+     settled moves (not only after +100), so `sweep_towns.rs` can print bound 8 of `spec.md`'s table.
+     **Traded** is what the clearing swapped for the clan this turn: half of Σ over foods of
+     |after − brought|, per person (0 for a clan with no festival, or at a market that didn't clear). `trade`
+     writes it to `World.traded: BTreeMap<u32, f64>` (clan → traded), `#[serde(skip)]` and derived like
+     `World.standing`, read by the judge and no rule, so the save and the digest don't see it. Not food
+     brought: `trade` caps a clan's load at `MARKET.carry × people`, and spec-review found every clan with a
+     festival at that cap on main, so brought is 0.2 a person for everyone and can't move.
 4. **The no-towns control in the sweep.** `sweep_judge.rs` is 599 lines, so first move the `Total*` structs and
    the `total_*` functions into `cli/src/sweep_total.rs`. Then `sweep --judge` runs `Config { towns: false,
    ..base }` as a seventh run a map (`judge_map`), and `cli/src/sweep_towns.rs` reads the run against it, as
@@ -63,7 +70,10 @@ The code: build-1's `core/src/homes.rs` (`homes`) and `core/tests/towns.rs` (its
 6. **The text view** (`cli/src/view.rs`): one line per town of the led civ's land and in sight: tile, clans,
    farmers. `view.rs` is 399 lines; its own text is held under 80 lines, so put the town lines beside the
    fields lines.
-7. **`www/play/towns.mjs`**: on a staged game (`Sim.stage`) with three clans living on a festival's tile, it
+7. **`www/play/towns.mjs`**: `StageSpec` (what `Sim.stage` reads) can't put clans on one home yet: give it
+   `clans: [{home, tiles, people}]`, each a clan living on `home` and claiming `tiles` (its home too, if no
+   earlier clan claims it), placed after the civs, through build-1's `claim_land`. `stage.rs` is 524 lines,
+   so this goes in under about 40. On a staged game with three clans living on a festival's tile, it
    checks that the cluster draws three hearths on the tile, the town mark is there, the tooltip reads as a
    town, the tile panel lists the three clans, and a turn's feed has the town line. It saves a screenshot to
    `relay/specs/156/towns.png`. `all.mjs` runs it. `check-stage.mjs` checks the staged town's view data.

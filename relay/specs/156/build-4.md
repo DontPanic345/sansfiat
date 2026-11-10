@@ -49,9 +49,11 @@ were part of its starving, so measure first before changing anything else. Then,
   ground is shared, or what the farmer weighs before stepping in. Record each change to a rule as a decision.
   Starving from growth and crowding is the world's consequence (`docs/process.md`, Health): don't tune a number
   to lower it.
-- **Settled farmers stay.** Settled farmers' home moves stay under half the gatherers'.
-- **They walk less, they trade more.** These should follow from homes at the market. If town clans don't
-  bring more, find out why (the cap at `MARKET.carry`, or a town clan's smaller harvest) and say so.
+- **Settled farmers stay.** Settled farmers' home moves, less their town steps, stay under half the gatherers', and
+  town clans don't step off their town at more than that rate: no hopping between the fields and the market.
+- **They walk less, they trade more.** These should follow from homes at the market. Every clan brings
+  `MARKET.carry` a person, so trading more is what the clearing swaps (`World.traded`), which grows with the
+  festival's crowd. If town clans don't trade more, find out why and say so.
 - **Scale.** `sansfiat bench --size large 8 --after 50` at most 0.45 times main's, measured in the same
   session, two runs each. The home rule prices routes for every farmer each turn, so reuse build-2's per-tile
   costs and price only farmers that have a festival and aren't on its tile.
@@ -66,14 +68,16 @@ From one `sweep --judge --json --floor` against the no-towns control in the same
 1. Towns at +200 on at least 5 of 7 maps, and at least 10 over the seven.
 2. At least three quarters of town clans at +200 are farmers, and every town's clans work fields.
 3. Over the clan-turns after +100, town clans' festival walk is under half that of farmers outside towns.
-4. Town clans bring at least 1.1 times the food per person that farmers outside towns do. Brought per person
+4. Town clans trade at least 1.1 times the food per person that farmers outside towns do. Traded per person
    over all clans is no lower than the control's, less the floor.
 5. People, land and clans change hands no less than in the control, less the floor.
 6. Aligned Standing at +200 no lower than the control's, less the floor.
 7. `canvas.md` names who starves round a town and why, and no clan starves for a reason the rules don't
    intend. The starving shares, town clans' beside farmers outside towns, are reported against the control,
    not bound.
-8. Settled farmers' home moves per 100 clan-turns under half the gatherers'.
+8. Settled farmers' home moves per 100 clan-turns, less their town steps (a step a tile nearer the festival's
+   tile), under half the gatherers', and town clans' moves off their town under the same half. Town steps are
+   reported.
 9. The store: maps with the top farmer at a pack half its turns, and civs never at a pack, each no worse than
    the control's by more than 1.
 10. `bench --size large 8 --after 50` at most 0.45 times main's.

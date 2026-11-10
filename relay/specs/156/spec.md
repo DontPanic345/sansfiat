@@ -22,7 +22,7 @@ and a large map past the pick runs under a bound.
    `markets::in_reach`, `stats::trails`, the view. It is derived, never saved.
 3. **Shared field ground** (build-1). A tile's ground is shared among the clans sowing it, in proportion to
    the days each sows. A clan plans on the **room** a tile leaves it: its ground less the days the other clans
-   sowed on it last turn. `sow` caps each tile at that room. The harvest step reaps every clan first, then
+   sowed on it last turn (so `harvest` resets `Tile.field` only when it writes this turn's). `sow` caps each tile at that room. The harvest step reaps every clan first, then
    scales each tile's field days and grain to its ground where the clans together sowed more, each clan by the
    same factor, and then applies the takes. Gathering territories are exclusive, so reaping all clans before
    any take reads the same stock as today's take-as-you-go. `Clan.sown` (`(tile, days)` this turn, sorted) holds
@@ -33,9 +33,10 @@ and a large map past the pick runs under a bound.
 5. **Scale** (build-2, digest-safe against build-1):
    - **The festival search once per home tile.** `markets::go` works out the costs from each home tile to the
      festivals in reach once a turn. The clans living on a tile share the result, and the chosen route's path
-     comes from the same search when it is the path `land::path` gives. The search stops as soon as no
-     festival left in reach can still be settled, bounded by the cheapest step a tile can cost (`probe.md`: a
-     bound of `DAY` a step moved the digest).
+     comes from the same search when it is the path `land::path` gives. The search keeps its costs in flat
+     scratch arrays reused between calls, not a `BTreeMap`: spec-review measured that this, not an early exit,
+     is the saving (`spec-review.md`). An exit bounded by the cheapest step a tile can cost is digest-safe but
+     bought nothing; a bound of `DAY` a step moved the digest (`probe.md`).
    - **Clans indexed by market once a turn.** `trade`, `people`, `merge` and the view read one index of
      market → clans (id order), not a scan of every clan per market.
    - **The AI's paths cached per turn.** `ai::post`'s paths to rival capitals and the farthest clan are cached
@@ -91,21 +92,24 @@ from the pick. A move counts when it is past `sweep --judge --floor`'s floor.
 
 A **town** is a tile with `TOWN.homes` (3) or more homes and a festival on it. A **town clan** lives in a town.
 A **farmer** is `fields::farmer`. The **festival walk** is a clan's route cost over its days (`routes` cost ÷
-`people × CLAN.work`). **Brought** is the food a clan carries to its festival a turn (`basket` capped at
-`MARKET.carry × people`, as `trade` caps it), per person.
+`people × CLAN.work`). **Traded** is the food the clearing swaps for a clan a turn (half of Σ |after −
+brought| over the foods), per person. Not the food brought: every clan with a festival brings `trade`'s cap,
+`MARKET.carry` a person (spec-review, `spec-review.md`), so brought can't move. Traded does: on main it runs
+0.03 a person at festivals of 2–3 clans to 0.075 at 11 or more, farmers 0.042–0.047 and gatherers
+0.065–0.074 (small 9 and medium 8, every clan-turn of play to turn 500).
 
 | Score | Measure | Control | Sketch (`probe.md`) |
 |---|---|---|---|
 | Motion | **Towns form**: a town at +200 on at least 5 of 7 maps, and at least 10 over the seven. | No-towns control: none | 5 of 7; 18 |
 | Motion | **Where farmers and a festival meet**: at +200, at least three quarters of town clans are farmers, and every town's clans work fields. | | not measured |
 | Motion | **They walk less**: over the clan-turns after +100, town clans' festival walk is under half the walk of farmers outside towns. | Farmers outside towns, same runs | 0 against 0.16–0.23 |
-| Motion | **They trade more**: over the same clan-turns, town clans bring at least 1.1 times the food per person to their festival that farmers outside towns do. Brought per person over all clans is no lower than the control's, less the floor. | Farmers outside towns; no-towns control | not measured |
+| Motion | **They trade more**: over the same clan-turns, town clans trade at least 1.1 times the food per person that farmers outside towns do. Traded per person over all clans is no lower than the control's, less the floor. | Farmers outside towns; no-towns control | not measured; main: farmers 0.042–0.047 |
 | Motion | People, land and clans change hands no less than in the control, less the floor. | No-towns control | 1420, 2353, 285 against 953, 1150, 177 |
 | Standing | Aligned Standing at +200 no lower than the control's, less the floor. Reported per civ. Not a goal. | No-towns control | 0.341 against 0.318 |
 | Health | **No town starves by mistake**: canvas.md names who starves round a town and why, and no clan starves for a reason the rules don't intend (ground counted twice, days on ground that yields nothing, a home step that misjudges what a town feeds). How many starve is not bound (`process.md`, Health); the starving shares, town clans' beside farmers outside towns, are reported against the control. | No-towns control, reported | 3.2 times main's share (3.97 against 1.22, each against no-fields); settled farmers 6.9% against 0.13% |
-| Health | **Settled farmers stay**: settled farmers' home moves per 100 clan-turns under half the gatherers' rate, as #155 holds it. A farmer's move into a town counts. | Gatherers, same runs | 7.8 against 0.21 |
+| Health | **Settled farmers stay**: settled farmers' home moves, less their **town steps** (a step that brings the home a tile nearer its festival's tile), per 100 clan-turns under half the gatherers' rate, as #155 holds it; and town clans' moves off their town's tile under the same half. Town steps are reported, not bound: they are the motion the piece asks for. Counted whole, the bound can't hold beside towns forming: on main it allows about 32 settled-farmer moves over the seven maps (52,054 settled clan-turns, gatherers 0.122 per 100), and ten towns of three farmers, most living three or more steps from their festival, take 60 to 100 (spec-review). | Gatherers, same runs | 7.8 against 0.21, town steps counted |
 | Health | The store: the maps where the civ that farms most holds a pack half its turns, and the civs never at a pack, each no worse than the control's by more than 1. | No-towns control | 3 against 5; 4 against 1 |
-| Health | **Scale**: `sansfiat bench --size large 8 --after 50` at most **0.45 times main's** ms a turn, measured on the same machine in the same session. Build-2 alone, with no towns, reaches 0.35 times. | Main | main 54.8 ms here; sketch 75.2 |
+| Health | **Scale**: `sansfiat bench --size large 8 --after 50` at most **0.45 times main's** ms a turn, measured on the same machine in the same session. Build-2 alone, with no towns, reaches 0.35 times (spec-review: 0.34 with the scouts' bound and the flat search, digest equal; 0.43 with the scouts' bound alone). | Main | main 54.8 ms in the spec step, 64.3 in spec-review's session; sketch 75.2 |
 | Health | Pre-games by centres 7 of 7. Panics 0. Digest mismatches 0. With towns off, every map's `standing`, `motion`, `economy`, `land` and `fields` blocks equal main's. | Main | 7, 0, 0 |
 | Doubt | Lead changes and the spread at +200, against the control. Reported, not bound. | No-towns control | swings 3 → 31 |
 | | `engine/check.sh` green at every step. `www/play/towns.mjs` passes. | | |
@@ -122,7 +126,7 @@ A **farmer** is `fields::farmer`. The **festival walk** is a clan's route cost o
 - **The scale bound** (the designer settles): `bench --size large 8 --after 50` at most 0.45 times main's in
   the same session. A ratio, because this runner is 2.4 times slower than the one `architecture.md`'s 23 ms
   came from. 0.45 because the probe found 0.35 within reach with no towns (scouts' bound and a crude search
-  exit: 19.4 of 54.8 ms), and towns add clans: the sketch added 15% more clans and 37% more turn. Main is 55 ms
+  exit: 19.4 of 54.8 ms; spec-review reached 0.34 digest-safe, 22.0 of 64.3 ms), and towns add clans: the sketch added 15% more clans and 37% more turn. Main is 55 ms
   on this runner, and 0.45 of it is about 25 ms, about 10 ms on `architecture.md`'s machine, which is its
   target. The review writes the measured ms into the Scale row.
 - **Whether a staged change keeps every digest** (the designer settles): no, not through build-1. Build-1
