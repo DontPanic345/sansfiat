@@ -28,7 +28,7 @@ runs the same in native and wasm. That holds, and it stays the first rule.
 | Events and reasons | One constructor in `events.rs`; a reason beside the rule that acts | Holds | Done in M3 H |
 | Save | Config plus the order log, versioned; an old save fails with its version | Holds (`SAVE_VERSION` 7) | Keep |
 | Stage | A known map, units placed, orders given, outcomes asserted, with the real engine | Holds: `Stage` and `StageSpec`, `map::parse`, the retro cache; `tests/common` is built on it | Done in M4 S |
-| Scale | Per-clan work flat in the number of clans; a large map under 10 ms a turn past the pick, measured by `bench --after` | 23 ms a turn past the pick on large 8 (`bench --size large --after 50 8`, release build: 22.8 ms a turn in each of two runs); the 61% festival share was measured on the old 50 ms and is not re-measured | W (the search per tile, before towns) |
+| Scale | Per-clan work flat in the number of clans; a large map under 10 ms a turn past the pick, measured by `bench --after` | Large 8 past the pick (`bench --size large 8 --after 50`) is 0.40 of the turn before #156 in the same session: 25.5 and 25.8 ms against 65.3 and 65.2 on the Relay runner, about 2.4 times slower than the machine of the old 23 ms, so about 10 ms there. The festival search runs once per home tile on flat arrays, clans are indexed by market, the AI's paths are cached per turn and the scouts' search is bounded by their labour. The bound is at most 0.45 of the turn before #156, measured in one session | Holds, with towns (#156) |
 
 ## The front ends
 

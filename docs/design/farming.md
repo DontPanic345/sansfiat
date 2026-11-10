@@ -80,3 +80,6 @@ clans on one tile without the per-turn cost growing with them (`clans.md`, Scale
 - The harvest target caps fields and gathering together: a farmer that meets it from its fields gathers less land. (#155)
 - A field tames its tile a step a turn faster, past the hearth too. (#155)
 - The civ panel's Living row counts its clans' people as gathering or farming by their share of days, and every unit's people as in the army. (#155)
+- A clan's fields may be on its home tile, whoever holds it, and on the tiles it claims. A tile's field ground is shared among the clans sowing it, by the days each sows; each plans on what the others sowed there last turn. (#156)
+- A farmer's home makes one choice a turn: stay, step toward its busiest field, or step a tile toward its festival onto any land, whoever holds it. It steps when that feeds it better by 0.01 food a person, counting what its labour could reap past the store's cap. (#156)
+- A tile reads as a town once three clans live on it and a festival stands there. The feed tells when one forms ("A town forms at (3, −2): 4 clans live by the festival"). (#156)
