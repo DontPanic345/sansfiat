@@ -29,7 +29,8 @@ these lines from its body, in any order:
 **After:** #31
 ```
 
-`Spec` and `Spec-review` are required, each on its own line: a piece without them is held.
+`Spec` and `Spec-review` are required, each on its own line: a piece without them is held,
+unless it has a `Whole` line (below).
 `Play` names the play step's model (medium unless it names an effort, and "three seeds" plays
 three maps), or `none`.
 `Shape` is a suggestion the designer may change. A
@@ -55,6 +56,14 @@ records what it `chose` and each run how much of it was `picked`.
 | `build-N-pick` | Reads each version's evidence, runs the brief's proof only for a number a version lacks, writes `pick.md` with every number side by side, and merges A, B or parts of both into the piece's branch. It sees the versions only as A and B. Its `result.json` must say `"chose": "A"`, `"B"` or `"both"`. The crew then records which run won and how much of each landed, posts both runs' comments on the PR, and files the ideas of each run that landed. Runs Opus medium |
 | `play` | Plays the branch through `sansfiat play` for 100 turns from the pick (`relay/players/player.md`), judges the game (`relay/players/judge.md`), and writes `play.md` with each finding classed `fix` or `ask`. The crew adds it before the review when the piece's `Play` line names a model |
 | `review` | Merges `main` in, judges the change against `main` with the rubric in `relay/players/judge.md`, reviews the whole piece against the piece and its design, fixes what is small, appends the piece's decisions to each design file's `## Decided` ledger, writes the PR description for the owner to read on a phone (the judge's verdict, the steps table, the answer in the scores, the ledger lines, screenshots and a merge verdict), and waits for CI on its own head commit. Its `result.json` must say `"merge": true` or `false`. The crew then rewrites the steps table with the review's row, and on a merge verdict waits up to ten minutes for CI to go green and merges the PR |
+
+A piece whose body has `**Whole:** fable medium` gets none of these. It gets one step, `whole`,
+on the model and effort the line names: one session of up to five hours that plans, builds,
+plays and reviews the piece however it chooses (`prompts/whole.md`), and ends as a review does,
+with `"merge": true` or `false`. It starts only while the 5-hour window is under 10%, so the
+window lasts the session, and only in a job with five hours left, so a run that has already
+spent its time starts a fresh one. If the window runs out first, the session ends unfinished
+and the second attempt waits for the reset.
 
 The crew makes spec-review once the spec closes, and the builds and the review once
 spec-review closes, from `steps.json` as spec-review left it. Spec-review isn't done until
@@ -135,12 +144,13 @@ Spec and spec-review sessions get the piece and its design files; build sessions
 their brief, which carries all the design it needs; the review gets no brief, but the piece,
 the design files, the diff, the whole spec and the steps table. The pick gets the brief and
 each version's summary, decisions, ideas and diff stat, as A and B. The play step gets the piece,
-`prompts/play.md` and both of `players/`. A retro step gets the retro issue and `prompts/retro.md`,
+`prompts/play.md` and both of `players/`. A whole session gets the piece, its design files and
+`prompts/whole.md`, which names the other prompts for it to read. A retro step gets the retro issue and `prompts/retro.md`,
 and the game step the owner's notes. Every session gets when it started and its cap, the earlier
 steps' summaries and decisions, `prompts/session.md` and its kind's prompt.
 
 Sessions never see the App's key. The crew keeps a fresh installation token in a file that
-git's credential helper and a `gh` wrapper read, so a 90-minute session never outlives its
+git's credential helper and a `gh` wrapper read, so a session never outlives its
 token. Transcripts are redacted of the crew's secrets and of anything shaped like a GitHub
 token before they're written.
 
@@ -155,8 +165,8 @@ puts their costs side by side, with how much of each landed. The usage probe rea
 the same hours land on Relay's steps. A crashed attempt has no result frame and records no
 cost. Usage is read once at each step boundary and rounded.
 
-A step starts only while the 5-hour window is under 75%, and the weekly window under its share
-of the week. A 5-hour stop logs
+A step starts only while the 5-hour window is under 75% (10% for a whole step), and the weekly
+window under its share of the week. A 5-hour stop logs
 when the window resets and starts a `wait` run, which sleeps until then and starts a crew
 run, so a stop costs the window, not the schedule's lateness. The weekly window is the real
 limit on how much Relay gets done. The owner's own sessions share both windows.
@@ -175,8 +185,8 @@ with Status first, so one that fails doesn't stop the rest:
 | Field | Type | Options |
 |---|---|---|
 | Status | Single select | Ready, Spec, Building, Waiting, Review, Done |
-| Step | Single select | spec, spec-review, build, play, review, retro |
-| Model | Single select | haiku, sonnet, opus |
+| Step | Single select | spec, spec-review, build, play, review, whole, retro |
+| Model | Single select | haiku, sonnet, opus, fable |
 | Effort | Single select | low, medium, high |
 | Attempts (sessions run), List $, Minutes, Points, 5-hour points, Weekly points | Number | |
 | Waiting on | Text | Set on a piece: "5-hour usage, until 14:20", "weekly usage, until Thu 09:00", "your answer", "your merge" |
