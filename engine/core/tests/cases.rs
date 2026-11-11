@@ -33,6 +33,9 @@ struct Errand {
     to: usize,
 }
 
+/// The turns a settled route has to build a trail the land wore away in its settling turn.
+const GRACE: u32 = 3;
+
 fn errand(size: &str, seed: u32, rival: bool) -> Errand {
     let mut stage = Stage::retro(size, seed).unwrap();
     let me = *stage.world().civs.keys().next().unwrap();
@@ -236,22 +239,33 @@ fn a_scouts_search_on_small_9_to_the_forest_is_in_order() {
     check_search_order(&mut errand("small", 9, false));
 }
 
-/// Red on main, and not T's: the scout builds trails only on its known path, so a bridge on a revealed
-/// river tile that would cut the route is never built. With the flat trail, small 2 to the rival now
-/// settles with nothing cheaper; small 3 to Lead's target settles on turn 52 at 18.8 known against
-/// 17.8 possible, the step into tile 436 costing 2.0 where known it costs 4.0. The expected text is
-/// the map's number at the failure, which moves with the map.
+/// A settled route has no cheaper trail: the scout builds trails on the possible path too, once no
+/// reveal is left, so a bridge on a revealed river tile that would cut the route is built. On main,
+/// small 7 to the rival settles on turn 26 at 20.0 known against 19.67 possible, and it stays so;
+/// medium 8 to the rival settles on turn 14 at 26.33 against 26.0. The land's trails wear after the
+/// scout settles in the same turn (`tend`), so a route that is cheaper at settle gets the turns it takes
+/// to build the trail (`GRACE`) before it fails.
 #[test]
-#[should_panic(expected = "small 3 to Lead's target turn 25: the settled route costs 18.8 known and 17.8 possible")]
-#[ignore = "red on main's picks only; the pre-game's picks moved with the day's scale (relay/specs/154/day.md)"]
 fn a_settled_route_has_no_cheaper_trail() {
-    for (size, seed, rival) in [("small", 2, true), ("small", 3, false)] {
+    for (size, seed, rival) in [("small", 7, true), ("medium", 8, true)] {
         let mut e = errand(size, seed, rival);
         let t = settle(&mut e);
-        let plan = e.stage.route(e.civ, e.cap, e.to);
-        let known = plan.known.as_ref().map_or(f64::INFINITY, |k| k.1);
-        let possible = plan.possible.as_ref().map_or(f64::INFINITY, |p| p.1);
-        if possible < known - EPS {
+        let cheaper = |e: &Errand| {
+            let plan = e.stage.route(e.civ, e.cap, e.to);
+            let known = plan.known.as_ref().map_or(f64::INFINITY, |k| k.1);
+            let possible = plan.possible.as_ref().map_or(f64::INFINITY, |p| p.1);
+            (plan, known, possible, possible < known - EPS)
+        };
+        let (mut plan, mut known, mut possible, mut red) = cheaper(&e);
+        for _ in 0..GRACE {
+            if !red {
+                break;
+            }
+            refill(&mut e);
+            e.stage.turn(1).unwrap();
+            (plan, known, possible, red) = cheaper(&e);
+        }
+        if red {
             // The first step of the possible path that is dearer known: its two costs, from the tile before.
             let (path, _) = plan.possible.as_ref().unwrap();
             let mut prev = e.cap;

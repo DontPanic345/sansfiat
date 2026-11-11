@@ -1,0 +1,167 @@
+# #162 build-1 sweep
+
+`sansfiat sweep --judge`: main and branch differ only in the `seconds` line (105.7 vs 106.6). No score, army or health number moved: the retro maps' scouts settle on the same routes, and the 0-steps note is text only.
+
+## main
+```
+small  seed   2 pick 262  standing +200 top 0.311 aligned 0.653  lead changes 0  spread +100 0.219 +200 0.247 swings 8  orders/100 54.33 levers 5.3  motion: clans changed 68 people 365.4 land 149  armies: camps kept 3/3 starved 13 lost 0 people vs control 0.89  land: markets 19/17 trading 0.96/0.96 homes 0.83/0.90 worked 0.37/0.35 route 0.98/1.00 changes 1.35 flips 0.08  fight (control): fallen 11.34 (0.00) taken 3 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +200, winner Red; no fight: limit +200; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 48.0, held 48.0, guard 13.9; no claims: lead changes 0, spread +200 0.212
+small  seed   3 pick 238  standing +200 top 0.159 aligned 0.350  lead changes 1  spread +100 0.088 +200 0.087 swings 3  orders/100 30.17 levers 4.7  motion: clans changed 14 people 67.9 land 114  armies: camps kept 3/3 starved 0 lost 0 people vs control 0.95  land: markets 16/15 trading 0.96/0.94 homes 0.92/0.83 worked 0.29/0.31 route 1.00/1.00 changes 0.39 flips 0.04  fight (control): fallen 22.70 (0.00) taken 11 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +200, winner Blue; no fight: limit +200; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 26.3, held 26.3, guard 1.7; no claims: lead changes 0, spread +200 0.026
+small  seed   6 pick 274  standing +200 top 0.161 aligned 0.427  lead changes 4  spread +100 0.043 +200 0.044 swings 2  orders/100 104.00 levers 4.7  motion: clans changed 26 people 117.9 land 127  armies: camps kept 3/3 starved 5 lost 0 people vs control 0.96  land: markets 20/19 trading 0.97/0.98 homes 0.95/0.90 worked 0.29/0.31 route 0.98/1.00 changes 0.63 flips 0.01  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +200, winner Red; no fight: limit +200; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 37.3, held 37.3, guard 7.7; no claims: lead changes 0, spread +200 0.062
+small  seed   9 pick 261  standing +200 top 0.199 aligned 0.465  lead changes 1  spread +100 0.077 +200 0.103 swings 2  orders/100 29.17 levers 4.3  motion: clans changed 41 people 230.1 land 102  armies: camps kept 3/3 starved 6 lost 0 people vs control 1.01  land: markets 19/18 trading 0.91/0.90 homes 0.85/0.82 worked 0.25/0.31 route 1.00/1.00 changes 1.22 flips 0.29  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +200, winner Red; no fight: limit +200; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 32.3, held 32.3, guard 8.0; no claims: lead changes 0, spread +200 0.035
+medium seed   8 pick 293  standing +200 top 0.112 aligned 0.251  lead changes 1  spread +100 0.049 +200 0.056 swings 1  orders/100 76.00 levers 6.0  motion: clans changed 41 people 210.3 land 116  armies: camps kept 3/3 starved 30 lost 0 people vs control 0.95  land: markets 33/31 trading 0.96/0.95 homes 0.87/0.86 worked 0.33/0.35 route 0.97/0.99 changes 0.64 flips 0.19  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +250, winner Red; no fight: limit +250; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 39.0, held 39.0, guard 11.7; no claims: lead changes 1, spread +200 0.063
+medium seed   9 pick 427  standing +200 top 0.139 aligned 0.182  lead changes 1  spread +100 0.127 +200 0.123 swings 0  orders/100 67.60 levers 2.7  motion: clans changed 14 people 86.0 land 45  armies: camps kept 3/3 starved 32 lost 0 people vs control 0.95  land: markets 37/38 trading 0.87/0.86 homes 0.93/0.92 worked 0.32/0.31 route 1.00/0.99 changes 0.72 flips 0.04  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +250, winner Red; no fight: limit +250; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 16.3, held 16.0, guard 3.3; no claims: lead changes 1, spread +200 0.031
+large  seed   8 pick 346  standing +200 top 0.063 aligned 0.140  lead changes 0  spread +100 0.022 +200 0.024 swings 1  orders/100 61.44 levers 4.3  motion: clans changed 74 people 362.1 land 144  armies: camps kept 3/3 starved 4 lost 0 people vs control 0.98  land: markets 73/72 trading 0.94/0.93 homes 0.80/0.84 worked 0.31/0.31 route 1.00/1.00 changes 0.48 flips 0.11  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +300, winner Gold; no fight: limit +300; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 47.3, held 47.3, guard 12.0; no claims: lead changes 0, spread +200 0.007
+total standing: top at +200 0.163, aligned at +200 0.353, on land at +200 0.000
+total doubt: lead changes 8 on 5 maps, spread +100 0.089 +200 0.098, swings 17; no claims: lead changes 2 on 2 maps
+total decisions: AI orders per 100 turns 60.39 (claim 6.05, disband 2.93, forage 8.62, move 29.98, pillage 0.07, raise 10.26, setGift 1.99, zone 0.49), levers repeated 4.57
+total motion: clans changed 278, people 1439.6, land tiles 797; clans left 6, joined 273; claimed tiles taken 0
+total land: markets 217 at the pick, 210 at +200; trading 0.94/0.93; homes trailed 0.88/0.87; worked trailed 0.31/0.32; route trailed 0.99/1.00 (pick/+200); festival changes 0.65 and flips 0.11 per 100 clan-turns; per civ at +200 claimed 35.24, held 35.19, guard 8.33
+total economy: store mean 18.88, store max 49.91, at pack 384.3 civ-turns a map, levy per turn 15.73, largest army 14.1, guard mean 7.56
+total supply: ring tiles 705 at the pick (21 held), 757 at +200 (596 held); army-turns inside 3476 (266 hungry), outside 1243 (363 hungry); scout-turns inside 2864 (3 hungry), outside 1278 (24 hungry); clan territory 3.29 at the pick, 2.93 at +200
+total armies: camps kept 21 of 21, warriors starved 90, camps lost 0, people vs control 0.960
+total fight (control, fighting off): people fallen 34.04 (0.00), tiles taken 14 (0), armies surrendered 0 (0)
+total end: games ended before the limit 0 of 7 (no fight 0 of 7), turns to the end 228.6 (228.6), capitals fallen 0 (0)
+total health: pre-games by centres 7 of 7, panics 0, digest mismatches 0
+fields (against the no-fields control):
+  small  seed   2  civs (share, gain, store turns at a pack): Red 0.13 +0.070 192/200; Blue 0.11 +0.141 155/200; Gold 0.00 -0.029 192/200  starving 0.0419 vs 0.0333 = 1.26  settled 0.0090 gatherers 0.0439
+  small  seed   3  civs (share, gain, store turns at a pack): Red 0.00 -0.008 0/200; Blue 0.15 +0.038 49/200; Gold 0.00 +0.010 48/200  starving 0.0219 vs 0.0220 = 1.00  settled 0.0140 gatherers 0.0208
+  small  seed   6  civs (share, gain, store turns at a pack): Red 0.17 +0.041 193/200; Blue 0.15 +0.056 195/200; Gold 0.03 +0.002 44/200  starving 0.0428 vs 0.0343 = 1.25  settled 0.0119 gatherers 0.0417
+  small  seed   9  civs (share, gain, store turns at a pack): Red 0.14 +0.105 71/200; Blue 0.11 +0.058 0/200; Gold 0.16 +0.025 29/200  starving 0.0426 vs 0.0249 = 1.71  settled 0.0042 gatherers 0.0528
+  medium seed   8  civs (share, gain, store turns at a pack): Red 0.12 +0.026 219/250; Blue 0.15 +0.072 235/250; Gold 0.00 -0.006 244/250  starving 0.0265 vs 0.0123 = 2.16  settled 0.0079 gatherers 0.0263
+  medium seed   9  civs (share, gain, store turns at a pack): Red 0.20 +0.074 232/250; Blue 0.00 -0.014 0/250; Gold 0.00 -0.008 0/250  starving 0.0362 vs 0.0189 = 1.92  settled 0.0032 gatherers 0.0364
+  large  seed   8  civs (share, gain, store turns at a pack): Red 0.15 +0.011 0/300; Blue 0.11 +0.007 300/300; Gold 0.10 +0.006 292/300  starving 0.0255 vs 0.0236 = 1.08  settled 0.0035 gatherers 0.0294
+  standing: farming civs 14 of 21, gain +0.0521 (14 gaining), others -0.0076, over others +0.0597: gain ≥ +0.01 pass, ¾ gaining pass, over others ≥ 0.01 pass
+  aligned at +200 0.3526 vs 0.2559, gain +0.0967: past the floor pass
+  store: top farmer at a pack on half its turns on 4 of 7 maps (≥ 5 MISS); civs never at a pack 5 (control 9) (≤ 2 MISS)
+  motion: home moves per 100 settled 0.332 gatherers 0.183 (under half MISS); moves on settled 0.002 gatherers 0.066 (no more pass)
+  changed hands: clans 278 vs 189 pass, people 1439.6 vs 854.0 pass, land 797 vs 950 MISS; joined 273 vs 189
+  starving: 0.0299 vs 0.0223 = 1.339, read 1.339; worst map read 2.162; settled 0.0052 gatherers 0.0320 (not bound)
+  AI orders per 100 60.39 vs 32.98 (≥ half pass); lead changes 8 vs 3, spread +200 0.098 vs 0.057 (not bound)
+towns (against the no-towns control, Config.towns off):
+  small  seed   2  towns at +200 1 (clans 9, farmers 6, fields 1), formed 1, most homes 9; walk 0.000 vs farmers 0.260; traded 0.0476 vs 0.0451; starving 0.0302 vs control 0.0150
+  small  seed   3  towns at +200 0 (clans 0, farmers 0, fields 0), formed 0, most homes 2; walk 0.000 vs farmers 0.208; traded 0.0000 vs 0.0525; starving 0.0099 vs control 0.0127
+  small  seed   6  towns at +200 1 (clans 4, farmers 3, fields 1), formed 1, most homes 4; walk 0.000 vs farmers 0.271; traded 0.0418 vs 0.0452; starving 0.0265 vs control 0.0234
+  small  seed   9  towns at +200 0 (clans 0, farmers 0, fields 0), formed 0, most homes 3; walk 0.000 vs farmers 0.189; traded 0.0000 vs 0.0399; starving 0.0412 vs control 0.0278
+  medium seed   8  towns at +200 0 (clans 0, farmers 0, fields 0), formed 0, most homes 3; walk 0.000 vs farmers 0.236; traded 0.0000 vs 0.0427; starving 0.0205 vs control 0.0195
+  medium seed   9  towns at +200 2 (clans 15, farmers 13, fields 2), formed 2, most homes 9; walk 0.000 vs farmers 0.155; traded 0.0511 vs 0.0293; starving 0.0291 vs control 0.0437
+  large  seed   8  towns at +200 9 (clans 41, farmers 30, fields 9), formed 20, most homes 9; walk 0.001 vs farmers 0.152; traded 0.0399 vs 0.0316; starving 0.0184 vs control 0.0190
+  towns form: 13 towns at +200 over the seven (≥ 10), on 4 of 7 maps (≥ 5) MISS
+  farmers meet the festival: town clans at +200 69, of them farmers 52 (≥ ¾), towns working fields 13 of 13 pass
+  town clans walk less: walk per turn 0.000 vs farmers outside 0.182 (under half) pass
+  town clans trade more: traded per person a turn 0.0427 vs farmers outside 0.0357 (≥ 1.1 times) pass
+  traded over all clans: 0.0603 vs the control's 0.0614, less the floor 0.0000 MISS
+  clans change hands: 278.0 vs 226.0, less the floor 0.0 pass
+  people change hands: 1439.6 vs 1151.8, less the floor 0.0 pass
+  land changes hands: 797.0 vs 768.0, less the floor 0.0 pass
+  settled farmers stay: settled home moves less town steps 0.055 per 100 (town steps 0.277); town clans' moves off 0.032; gatherers 0.183 (each under half) pass
+  the store: maps with the top farmer at a pack 4 vs control 5 (no worse by more than 1); civs never at a pack 5 vs 5 (no worse by more than 1) pass
+  health: town clans starving 0.0105, farmers outside towns 0.0085, the control's 0.0220 (reported, not bound); lead changes and the spread: reported
+led games (each civ led by the planner, beside the same civ led and idle):
+  small  seed   2  Red 0.352 #1 moves 2 limit +200 (idle 0.256 #2 moves 1 limit +200); Blue 0.285 #2 moves 0 limit +200 (idle 0.143 #2 moves 0 limit +200); Gold 0.066 #3 moves 0 limit +200 (idle 0.047 #3 moves 0 limit +200)
+  small  seed   3  Red 0.073 #3 moves 1 limit +200 (idle 0.071 #2 moves 2 limit +200); Blue 0.161 #1 moves 2 limit +200 (idle 0.127 #1 moves 1 limit +200); Gold 0.100 #2 moves 1 limit +200 (idle 0.000 #3 moves 2 fell +156)
+  small  seed   6  Red 0.182 #1 moves 0 limit +200 (idle 0.120 #2 moves 3 limit +200); Blue 0.132 #2 moves 3 limit +200 (idle 0.087 #3 moves 0 limit +200); Gold 0.105 #3 moves 1 limit +200 (idle 0.074 #3 moves 1 limit +200)
+  small  seed   9  Red 0.131 #2 moves 2 limit +200 (idle 0.028 #3 moves 1 limit +200); Blue 0.182 #2 moves 3 limit +200 (idle 0.057 #3 moves 4 limit +200); Gold 0.126 #3 moves 6 limit +200 (idle 0.058 #3 moves 0 limit +200)
+  medium seed   8  Red 0.113 #1 moves 1 limit +250 (idle 0.076 #2 moves 2 limit +250); Blue 0.078 #2 moves 1 limit +250 (idle 0.061 #2 moves 1 limit +250); Gold 0.060 #3 moves 2 limit +250 (idle 0.046 #3 moves 2 limit +250)
+  medium seed   9  Red 0.137 #1 moves 1 limit +250 (idle 0.052 #1 moves 1 limit +250); Blue 0.028 #2 moves 1 limit +250 (idle 0.027 #2 moves 1 limit +250); Gold 0.015 #3 moves 0 limit +250 (idle 0.015 #3 moves 0 limit +250)
+  large  seed   8  Red 0.045 #2 moves 3 limit +300 (idle 0.026 #3 moves 0 limit +300); Blue 0.035 #3 moves 1 limit +300 (idle 0.028 #3 moves 1 limit +300); Gold 0.065 #1 moves 0 limit +300 (idle 0.035 #3 moves 2 limit +300)
+  doubt: the led civ's place changed in 16 of 21 games (31 changes; idle 15 games, 25); lead changes 21 (idle 18)
+  ends: before the limit 0 of 21 (0 by the led civ's fall); idle 1 (1 by its fall); won 6 (idle 2)
+  leading: Standing at the end 0.1177 against idle 0.0684, gain +0.0494; ahead of its idle self in 21 of 21
+seconds 105.7
+```
+
+## branch
+```
+small  seed   2 pick 262  standing +200 top 0.311 aligned 0.653  lead changes 0  spread +100 0.219 +200 0.247 swings 8  orders/100 54.33 levers 5.3  motion: clans changed 68 people 365.4 land 149  armies: camps kept 3/3 starved 13 lost 0 people vs control 0.89  land: markets 19/17 trading 0.96/0.96 homes 0.83/0.90 worked 0.37/0.35 route 0.98/1.00 changes 1.35 flips 0.08  fight (control): fallen 11.34 (0.00) taken 3 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +200, winner Red; no fight: limit +200; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 48.0, held 48.0, guard 13.9; no claims: lead changes 0, spread +200 0.212
+small  seed   3 pick 238  standing +200 top 0.159 aligned 0.350  lead changes 1  spread +100 0.088 +200 0.087 swings 3  orders/100 30.17 levers 4.7  motion: clans changed 14 people 67.9 land 114  armies: camps kept 3/3 starved 0 lost 0 people vs control 0.95  land: markets 16/15 trading 0.96/0.94 homes 0.92/0.83 worked 0.29/0.31 route 1.00/1.00 changes 0.39 flips 0.04  fight (control): fallen 22.70 (0.00) taken 11 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +200, winner Blue; no fight: limit +200; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 26.3, held 26.3, guard 1.7; no claims: lead changes 0, spread +200 0.026
+small  seed   6 pick 274  standing +200 top 0.161 aligned 0.427  lead changes 4  spread +100 0.043 +200 0.044 swings 2  orders/100 104.00 levers 4.7  motion: clans changed 26 people 117.9 land 127  armies: camps kept 3/3 starved 5 lost 0 people vs control 0.96  land: markets 20/19 trading 0.97/0.98 homes 0.95/0.90 worked 0.29/0.31 route 0.98/1.00 changes 0.63 flips 0.01  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +200, winner Red; no fight: limit +200; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 37.3, held 37.3, guard 7.7; no claims: lead changes 0, spread +200 0.062
+small  seed   9 pick 261  standing +200 top 0.199 aligned 0.465  lead changes 1  spread +100 0.077 +200 0.103 swings 2  orders/100 29.17 levers 4.3  motion: clans changed 41 people 230.1 land 102  armies: camps kept 3/3 starved 6 lost 0 people vs control 1.01  land: markets 19/18 trading 0.91/0.90 homes 0.85/0.82 worked 0.25/0.31 route 1.00/1.00 changes 1.22 flips 0.29  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +200, winner Red; no fight: limit +200; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 32.3, held 32.3, guard 8.0; no claims: lead changes 0, spread +200 0.035
+medium seed   8 pick 293  standing +200 top 0.112 aligned 0.251  lead changes 1  spread +100 0.049 +200 0.056 swings 1  orders/100 76.00 levers 6.0  motion: clans changed 41 people 210.3 land 116  armies: camps kept 3/3 starved 30 lost 0 people vs control 0.95  land: markets 33/31 trading 0.96/0.95 homes 0.87/0.86 worked 0.33/0.35 route 0.97/0.99 changes 0.64 flips 0.19  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +250, winner Red; no fight: limit +250; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 39.0, held 39.0, guard 11.7; no claims: lead changes 1, spread +200 0.063
+medium seed   9 pick 427  standing +200 top 0.139 aligned 0.182  lead changes 1  spread +100 0.127 +200 0.123 swings 0  orders/100 67.60 levers 2.7  motion: clans changed 14 people 86.0 land 45  armies: camps kept 3/3 starved 32 lost 0 people vs control 0.95  land: markets 37/38 trading 0.87/0.86 homes 0.93/0.92 worked 0.32/0.31 route 1.00/0.99 changes 0.72 flips 0.04  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +250, winner Red; no fight: limit +250; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 16.3, held 16.0, guard 3.3; no claims: lead changes 1, spread +200 0.031
+large  seed   8 pick 346  standing +200 top 0.063 aligned 0.140  lead changes 0  spread +100 0.022 +200 0.024 swings 1  orders/100 61.44 levers 4.3  motion: clans changed 74 people 362.1 land 144  armies: camps kept 3/3 starved 4 lost 0 people vs control 0.98  land: markets 73/72 trading 0.94/0.93 homes 0.80/0.84 worked 0.31/0.31 route 1.00/1.00 changes 0.48 flips 0.11  fight (control): fallen 0.00 (0.00) taken 0 (0) surrendered 0 (0)  health: centres 1 digests differ 0
+        end: limit +300, winner Gold; no fight: limit +300; capitals fallen 0 (0)
+        claims: on land at +200 0.000; per civ at +200 claimed 47.3, held 47.3, guard 12.0; no claims: lead changes 0, spread +200 0.007
+total standing: top at +200 0.163, aligned at +200 0.353, on land at +200 0.000
+total doubt: lead changes 8 on 5 maps, spread +100 0.089 +200 0.098, swings 17; no claims: lead changes 2 on 2 maps
+total decisions: AI orders per 100 turns 60.39 (claim 6.05, disband 2.93, forage 8.62, move 29.98, pillage 0.07, raise 10.26, setGift 1.99, zone 0.49), levers repeated 4.57
+total motion: clans changed 278, people 1439.6, land tiles 797; clans left 6, joined 273; claimed tiles taken 0
+total land: markets 217 at the pick, 210 at +200; trading 0.94/0.93; homes trailed 0.88/0.87; worked trailed 0.31/0.32; route trailed 0.99/1.00 (pick/+200); festival changes 0.65 and flips 0.11 per 100 clan-turns; per civ at +200 claimed 35.24, held 35.19, guard 8.33
+total economy: store mean 18.88, store max 49.91, at pack 384.3 civ-turns a map, levy per turn 15.73, largest army 14.1, guard mean 7.56
+total supply: ring tiles 705 at the pick (21 held), 757 at +200 (596 held); army-turns inside 3476 (266 hungry), outside 1243 (363 hungry); scout-turns inside 2864 (3 hungry), outside 1278 (24 hungry); clan territory 3.29 at the pick, 2.93 at +200
+total armies: camps kept 21 of 21, warriors starved 90, camps lost 0, people vs control 0.960
+total fight (control, fighting off): people fallen 34.04 (0.00), tiles taken 14 (0), armies surrendered 0 (0)
+total end: games ended before the limit 0 of 7 (no fight 0 of 7), turns to the end 228.6 (228.6), capitals fallen 0 (0)
+total health: pre-games by centres 7 of 7, panics 0, digest mismatches 0
+fields (against the no-fields control):
+  small  seed   2  civs (share, gain, store turns at a pack): Red 0.13 +0.070 192/200; Blue 0.11 +0.141 155/200; Gold 0.00 -0.029 192/200  starving 0.0419 vs 0.0333 = 1.26  settled 0.0090 gatherers 0.0439
+  small  seed   3  civs (share, gain, store turns at a pack): Red 0.00 -0.008 0/200; Blue 0.15 +0.038 49/200; Gold 0.00 +0.010 48/200  starving 0.0219 vs 0.0220 = 1.00  settled 0.0140 gatherers 0.0208
+  small  seed   6  civs (share, gain, store turns at a pack): Red 0.17 +0.041 193/200; Blue 0.15 +0.056 195/200; Gold 0.03 +0.002 44/200  starving 0.0428 vs 0.0343 = 1.25  settled 0.0119 gatherers 0.0417
+  small  seed   9  civs (share, gain, store turns at a pack): Red 0.14 +0.105 71/200; Blue 0.11 +0.058 0/200; Gold 0.16 +0.025 29/200  starving 0.0426 vs 0.0249 = 1.71  settled 0.0042 gatherers 0.0528
+  medium seed   8  civs (share, gain, store turns at a pack): Red 0.12 +0.026 219/250; Blue 0.15 +0.072 235/250; Gold 0.00 -0.006 244/250  starving 0.0265 vs 0.0123 = 2.16  settled 0.0079 gatherers 0.0263
+  medium seed   9  civs (share, gain, store turns at a pack): Red 0.20 +0.074 232/250; Blue 0.00 -0.014 0/250; Gold 0.00 -0.008 0/250  starving 0.0362 vs 0.0189 = 1.92  settled 0.0032 gatherers 0.0364
+  large  seed   8  civs (share, gain, store turns at a pack): Red 0.15 +0.011 0/300; Blue 0.11 +0.007 300/300; Gold 0.10 +0.006 292/300  starving 0.0255 vs 0.0236 = 1.08  settled 0.0035 gatherers 0.0294
+  standing: farming civs 14 of 21, gain +0.0521 (14 gaining), others -0.0076, over others +0.0597: gain ≥ +0.01 pass, ¾ gaining pass, over others ≥ 0.01 pass
+  aligned at +200 0.3526 vs 0.2559, gain +0.0967: past the floor pass
+  store: top farmer at a pack on half its turns on 4 of 7 maps (≥ 5 MISS); civs never at a pack 5 (control 9) (≤ 2 MISS)
+  motion: home moves per 100 settled 0.332 gatherers 0.183 (under half MISS); moves on settled 0.002 gatherers 0.066 (no more pass)
+  changed hands: clans 278 vs 189 pass, people 1439.6 vs 854.0 pass, land 797 vs 950 MISS; joined 273 vs 189
+  starving: 0.0299 vs 0.0223 = 1.339, read 1.339; worst map read 2.162; settled 0.0052 gatherers 0.0320 (not bound)
+  AI orders per 100 60.39 vs 32.98 (≥ half pass); lead changes 8 vs 3, spread +200 0.098 vs 0.057 (not bound)
+towns (against the no-towns control, Config.towns off):
+  small  seed   2  towns at +200 1 (clans 9, farmers 6, fields 1), formed 1, most homes 9; walk 0.000 vs farmers 0.260; traded 0.0476 vs 0.0451; starving 0.0302 vs control 0.0150
+  small  seed   3  towns at +200 0 (clans 0, farmers 0, fields 0), formed 0, most homes 2; walk 0.000 vs farmers 0.208; traded 0.0000 vs 0.0525; starving 0.0099 vs control 0.0127
+  small  seed   6  towns at +200 1 (clans 4, farmers 3, fields 1), formed 1, most homes 4; walk 0.000 vs farmers 0.271; traded 0.0418 vs 0.0452; starving 0.0265 vs control 0.0234
+  small  seed   9  towns at +200 0 (clans 0, farmers 0, fields 0), formed 0, most homes 3; walk 0.000 vs farmers 0.189; traded 0.0000 vs 0.0399; starving 0.0412 vs control 0.0278
+  medium seed   8  towns at +200 0 (clans 0, farmers 0, fields 0), formed 0, most homes 3; walk 0.000 vs farmers 0.236; traded 0.0000 vs 0.0427; starving 0.0205 vs control 0.0195
+  medium seed   9  towns at +200 2 (clans 15, farmers 13, fields 2), formed 2, most homes 9; walk 0.000 vs farmers 0.155; traded 0.0511 vs 0.0293; starving 0.0291 vs control 0.0437
+  large  seed   8  towns at +200 9 (clans 41, farmers 30, fields 9), formed 20, most homes 9; walk 0.001 vs farmers 0.152; traded 0.0399 vs 0.0316; starving 0.0184 vs control 0.0190
+  towns form: 13 towns at +200 over the seven (≥ 10), on 4 of 7 maps (≥ 5) MISS
+  farmers meet the festival: town clans at +200 69, of them farmers 52 (≥ ¾), towns working fields 13 of 13 pass
+  town clans walk less: walk per turn 0.000 vs farmers outside 0.182 (under half) pass
+  town clans trade more: traded per person a turn 0.0427 vs farmers outside 0.0357 (≥ 1.1 times) pass
+  traded over all clans: 0.0603 vs the control's 0.0614, less the floor 0.0000 MISS
+  clans change hands: 278.0 vs 226.0, less the floor 0.0 pass
+  people change hands: 1439.6 vs 1151.8, less the floor 0.0 pass
+  land changes hands: 797.0 vs 768.0, less the floor 0.0 pass
+  settled farmers stay: settled home moves less town steps 0.055 per 100 (town steps 0.277); town clans' moves off 0.032; gatherers 0.183 (each under half) pass
+  the store: maps with the top farmer at a pack 4 vs control 5 (no worse by more than 1); civs never at a pack 5 vs 5 (no worse by more than 1) pass
+  health: town clans starving 0.0105, farmers outside towns 0.0085, the control's 0.0220 (reported, not bound); lead changes and the spread: reported
+led games (each civ led by the planner, beside the same civ led and idle):
+  small  seed   2  Red 0.352 #1 moves 2 limit +200 (idle 0.256 #2 moves 1 limit +200); Blue 0.285 #2 moves 0 limit +200 (idle 0.143 #2 moves 0 limit +200); Gold 0.066 #3 moves 0 limit +200 (idle 0.047 #3 moves 0 limit +200)
+  small  seed   3  Red 0.073 #3 moves 1 limit +200 (idle 0.071 #2 moves 2 limit +200); Blue 0.161 #1 moves 2 limit +200 (idle 0.127 #1 moves 1 limit +200); Gold 0.100 #2 moves 1 limit +200 (idle 0.000 #3 moves 2 fell +156)
+  small  seed   6  Red 0.182 #1 moves 0 limit +200 (idle 0.120 #2 moves 3 limit +200); Blue 0.132 #2 moves 3 limit +200 (idle 0.087 #3 moves 0 limit +200); Gold 0.105 #3 moves 1 limit +200 (idle 0.074 #3 moves 1 limit +200)
+  small  seed   9  Red 0.131 #2 moves 2 limit +200 (idle 0.028 #3 moves 1 limit +200); Blue 0.182 #2 moves 3 limit +200 (idle 0.057 #3 moves 4 limit +200); Gold 0.126 #3 moves 6 limit +200 (idle 0.058 #3 moves 0 limit +200)
+  medium seed   8  Red 0.113 #1 moves 1 limit +250 (idle 0.076 #2 moves 2 limit +250); Blue 0.078 #2 moves 1 limit +250 (idle 0.061 #2 moves 1 limit +250); Gold 0.060 #3 moves 2 limit +250 (idle 0.046 #3 moves 2 limit +250)
+  medium seed   9  Red 0.137 #1 moves 1 limit +250 (idle 0.052 #1 moves 1 limit +250); Blue 0.028 #2 moves 1 limit +250 (idle 0.027 #2 moves 1 limit +250); Gold 0.015 #3 moves 0 limit +250 (idle 0.015 #3 moves 0 limit +250)
+  large  seed   8  Red 0.045 #2 moves 3 limit +300 (idle 0.026 #3 moves 0 limit +300); Blue 0.035 #3 moves 1 limit +300 (idle 0.028 #3 moves 1 limit +300); Gold 0.065 #1 moves 0 limit +300 (idle 0.035 #3 moves 2 limit +300)
+  doubt: the led civ's place changed in 16 of 21 games (31 changes; idle 15 games, 25); lead changes 21 (idle 18)
+  ends: before the limit 0 of 21 (0 by the led civ's fall); idle 1 (1 by its fall); won 6 (idle 2)
+  leading: Standing at the end 0.1177 against idle 0.0684, gain +0.0494; ahead of its idle self in 21 of 21
+seconds 106.6
+```

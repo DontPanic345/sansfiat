@@ -276,6 +276,8 @@ pub(super) fn search(w: &mut World, id: u32, ladder: &mut Ladder, start: f64) ->
         let known_cost = plan.known.as_ref().map(|k| k.1);
         let no_reveal = !plan.candidates.is_empty();
         let trail_on: &[usize] = match (&plan.known, &plan.possible) {
+            (Some((_, k)), Some((p, pc))) if !no_reveal && *pc < *k - EPS => p,
+            (None, Some((p, _))) if !no_reveal => p,
             (Some((p, _)), _) if !no_reveal => p,
             (_, Some((p, _))) if no_reveal => p,
             _ => &[],

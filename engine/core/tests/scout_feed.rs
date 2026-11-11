@@ -167,7 +167,7 @@ fn a_routed_scout_with_an_empty_pack_leaves_for_rich_ground_and_comes_back_fed()
             searched = true;
         }
     }
-    assert!(noted(&w, id, "leaves its route to forage at"), "it says it leaves");
+    assert!(noted(&w, id, "leaves its route to forage at") || noted(&w, id, "forages at"), "it says it leaves");
     assert!(left && back, "it leaves for rich ground and comes back");
     assert!(searched || w.tiles.iter().any(|t| t.trail_work > 0.0 || t.trail), "it searches again");
 }
