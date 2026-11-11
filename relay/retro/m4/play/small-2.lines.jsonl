@@ -1,0 +1,49 @@
+{"turn":262,"line":"note meant: see the map and start gifting did: map surprised: nothing","result":"noted"}
+{"turn":262,"line":"map","result":"ok"}
+{"turn":262,"line":"note meant: bring clans closer to joining did: gift 6 of 10 store, see lean surprised: no unaligned clans in reach","result":"noted"}
+{"turn":262,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":262,"line":"note meant: see effect did: end 5 surprised: nothing","result":"noted"}
+{"turn":267,"line":"end 5","result":"ok"}
+{"turn":267,"line":"note meant: understand why gave stays 0 did: why 424 surprised: store 50 but gave 0.0","result":"noted"}
+{"turn":267,"line":"why 424","result":"ok"}
+{"turn":267,"line":"note meant: use scout, find places did: route scout to 475 surprised: only near tiles","result":"noted"}
+{"turn":267,"line":"{\"type\":\"route\",\"unit\":427,\"from\":506,\"to\":475}","result":"ok"}
+{"turn":267,"line":"note meant: hold land did: raise guard 2 surprised: nothing","result":"noted"}
+{"turn":267,"line":"{\"type\":\"raise\",\"n\":2,\"kind\":\"guard\"}","result":"ok"}
+{"turn":267,"line":"note meant: gift higher to reach clans did: gift 10 surprised: nothing","result":"noted"}
+{"turn":267,"line":"{\"type\":\"setGift\",\"food\":10}","result":"ok"}
+{"turn":272,"line":"end 5","result":"ok"}
+{"turn":272,"line":"note meant: try an army did: raise 2 warriors surprised: nothing","result":"noted"}
+{"turn":272,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":272,"line":"note meant: let clans join did: end 10 surprised: nothing","result":"noted"}
+{"turn":282,"line":"end 10","result":"ok"}
+{"turn":282,"line":"note meant: put army on thin land edge did: zone army 468 on 535 surprised: nothing","result":"noted"}
+{"turn":282,"line":"{\"type\":\"zone\",\"unit\":468,\"tiles\":[535]}","result":"ok"}
+{"turn":282,"line":"note meant: grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":292,"line":"end 10","result":"ok"}
+{"turn":292,"line":"note meant: grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":302,"line":"end 10","result":"ok"}
+{"turn":302,"line":"note meant: grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":312,"line":"end 10","result":"ok"}
+{"turn":312,"line":"view","result":"ok"}
+{"turn":312,"line":"note meant: use army to forage and reach the AI camp spot did: move army 468 to 410 surprised: nothing","result":"noted"}
+{"turn":312,"line":"{\"type\":\"move\",\"unit\":468,\"to\":410}","result":"ok"}
+{"turn":315,"line":"end 3","result":"ok"}
+{"turn":315,"line":"note meant: forage to see effect did: forage 468 surprised: nothing","result":"noted"}
+{"turn":315,"line":"{\"type\":\"forage\",\"unit\":468}","result":"ok"}
+{"turn":325,"line":"end 10","result":"ok"}
+{"turn":325,"line":"note meant: disband to see people return did: disband the guard 450 surprised: nothing","result":"noted"}
+{"turn":325,"line":"{\"type\":\"disband\",\"unit\":450}","result":"ok"}
+{"turn":335,"line":"end 10","result":"ok"}
+{"turn":335,"line":"note meant: restore held land did: raise guard 3 and move army home to 506 surprised: held fell 39 to 2 after disbanding the guard and moving the army away","result":"noted"}
+{"turn":335,"line":"{\"type\":\"raise\",\"n\":3,\"kind\":\"guard\"}","result":"ok"}
+{"turn":335,"line":"{\"type\":\"move\",\"unit\":468,\"to\":506}","result":"ok"}
+{"turn":345,"line":"end 10","result":"ok"}
+{"turn":345,"line":"note meant: finish did: end 10 surprised: nothing","result":"noted"}
+{"turn":355,"line":"end 10","result":"ok"}
+{"turn":355,"line":"note meant: finish did: end 10 surprised: nothing","result":"noted"}
+{"turn":365,"line":"end 10","result":"ok"}
+{"turn":365,"line":"note could not tell: gift: which unaligned clans my gift reaches and why gave stayed 0 once none were in reach; store sat near 45 unused","result":"noted"}
+{"turn":365,"line":"note could not tell: land and guard: how many guard hold how many tiles; held fell 39 to 2 when I disbanded guard and moved the army, without a warning","result":"noted"}
+{"turn":365,"line":"note could not tell: army: no pillage order ever listed, no rival in reach; what an army gains while idle","result":"noted"}
+{"turn":365,"line":"note could not tell: scout: route to a neighbouring tile does nothing visible; never learned what it finds","result":"noted"}
