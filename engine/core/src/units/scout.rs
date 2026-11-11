@@ -348,6 +348,7 @@ fn choose_ground(w: &mut World, id: u32) {
         (None, d) => d,
     };
     let leaves = |at: &str, n: i32| match goal {
+        _ if n == 0 => format!("forages at {at}"),
         Some(_) if dest.is_none() => format!("leaves its route to forage at {at}, {n} steps away"),
         _ => format!("leaves for {at}, {n} steps away"),
     };

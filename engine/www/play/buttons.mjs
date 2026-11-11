@@ -1,9 +1,7 @@
 // Every button of every panel, pressed once each on a staged game, and the world checked after each press.
 // The panels are the page's own: `game.shape()` is the shape `describe` gives the selection, and each button
 // is pressed as a player presses it (a click, an armed tile, a painted tile, a stepper's Go). A label with no
-// case in CASES fails the script ("button X has no case"), so a new button forces a case. One thing is red on
-// main and wrapped in expectBug until it is fixed: Keep ±1 (the button moves the keep by more than one: the guard's
-// food is in the keep the page shows).
+// case in CASES fails the script ("button X has no case"), so a new button forces a case.
 //   node www/play/buttons.mjs [--out DIR] [--break forage]     (--break: Forage's case presses Pillage: a control)
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -224,21 +222,6 @@ async function paintTile(label, i) {
 
 // ---- the cases: each takes the kind of panel it is pressed on, and checks the world ---------------------------
 
-/** Red on main: T makes `all` a button that sends no count, finds it its new way, keeps the asserts and drops the
- *  wrapper. It passes while `fn` throws an error whose message includes `message` (the bug as it is on main),
- *  and fails, naming the case, when `fn` passes or throws anything else. */
-async function expectBug(name, message, fn) {
-  let error = null;
-  try {
-    await fn();
-  } catch (e) {
-    error = e;
-  }
-  if (error === null) throw new Error(`${name}: passed, but it is a known bug on main: drop its expectBug`);
-  if (!error.message.includes(message)) throw new Error(`${name}: expected "${message}", got: ${error.message}`);
-  console.log(`ok      ${name}: red on main, as its bug says (${message})`);
-}
-
 /** Disband all as a player presses it: the button sends the whole unit, with no count. */
 async function disbandAll(kind) {
   const word = kind === 'camp' ? 'army' : kind;
@@ -252,8 +235,7 @@ async function disbandAll(kind) {
   need(Math.abs(got - u0.people) < 1e-9, `Disband all sends the ${word}'s ${u0.people} people to its clan (the clan gained ${got})`);
 }
 
-/** Keep ±1 as a player presses it: the civ's keep moves by one. Red on main: the keep the page reads includes
- *  the guard's food, which the button leaves out of what it sets, so a press moves the keep by the guard's food too. */
+/** Keep ±1 as a player presses it: the civ's keep moves by one. */
 async function keepStep(label, step) {
   await select('civ');
   if (step < 0) need(await press('Keep +1'), 'Keep +1 is pressed to set a keep to step down from');
@@ -443,8 +425,8 @@ const CASES = {
     const g1 = (await live()).v.civs[(await live()).me].gift;
     need(Math.abs(g1 - (g0 + 1)) < 1e-9, `the gift moved up by one (${g0} → ${g1})`);
   },
-  'Keep −1': async () => expectBug('Keep −1', 'Keep −1 moves the keep by one', () => keepStep('Keep −1', -1)),
-  'Keep +1': async () => expectBug('Keep +1', 'Keep +1 moves the keep by one', () => keepStep('Keep +1', 1)),
+  'Keep −1': () => keepStep('Keep −1', -1),
+  'Keep +1': () => keepStep('Keep +1', 1),
   'Keep default': async () => {
     await select('civ');
     await press('Keep +1');

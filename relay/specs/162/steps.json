@@ -1,0 +1,27 @@
+[
+  {
+    "id": "build-1",
+    "title": "The scout builds the river bridge, and says it forages",
+    "part": "ford",
+    "model": "sonnet",
+    "effort": "medium",
+    "points": 6,
+    "why": "Open 0, New 1, Miss 2 (the test's errands no longer reproduce on main and must be restaged by scanning maps), Reach 2; about 5 files, 150 lines: search.rs (~10), scout.rs (~8), cases.rs (~30), notes.rs (~40), save.rs pins, sweep.md. Sonnet medium for the restage and sweep reading."
+  },
+  {
+    "id": "build-2",
+    "title": "Keep buttons move the set amount; view.rs doc",
+    "part": "ford",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 2,
+    "why": "Open 0, New 0, Miss 1, Reach 1; buttons.mjs already asserts the fix (it holds it in expectBug), so dropping the wrappers is the test. About 5 files, 40 lines: civs.rs (~6), web/src/lib.rs (~4), panels.js (~4), buttons.mjs (~-20), engine/CLAUDE.md (1)."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "sonnet",
+    "effort": "high",
+    "why": "Five findings, one test each, no rule added; Sonnet high reads each against its design line, runs buttons.mjs and check.sh, and reads the sweep."
+  }
+]
