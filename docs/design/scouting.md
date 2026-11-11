@@ -88,3 +88,4 @@ set its target. Debug views stay, but nothing in play needs them.
 - Along a range the scout checks the mountain with the best case first: the cost through it plus its walk there. The panel lists the mountains it leaves, each with its cost through against the known route. (#153)
 - A low scout leaves its errand for the nearest ground within eight steps where a turn's foraging brings a fifth more than it eats, fills its pack and goes back to its errand; an idle scout waits on such ground. (#153)
 - A scout's built trails count as walked while it works its route, so they don't wear away behind it. (#154)
+- Once no reveal is left, a scout builds trails on the cheapest possible route, so a bridge on a revealed river tile that would cut the settled route is built; a scout standing on the rich ground it picks says it forages there. (#162)

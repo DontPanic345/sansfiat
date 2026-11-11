@@ -79,3 +79,4 @@ mechanic; one panel component fed a selection; one play driver for the scripts.
 - Fields are drawn as furrows on every tile worked this turn, darker with more days, under View → Fields and on by default. The clan panel shows a farmer's fields (tiles, days, grain) and its doing line leads with "Farms a fifth of its days"; the tile tooltip gives its field ground and fields. (#155)
 - The feed tells when a clan takes up fields ("Clan 140 takes up fields at (3, −2)"), and clicking it selects the clan. (#155)
 - Clans sharing a home are drawn as a ring of small hearths on the tile, and a town carries a town mark. Its tooltip and the festival panel say "Town: N clans at the festival", and the tile panel lists the clans living there. (#156)
+- Keep −1 and Keep +1 move the civ's set keep by one; the shown keep also holds the guard's food, so the number a press moves is the set amount, not the shown total. (#162)
