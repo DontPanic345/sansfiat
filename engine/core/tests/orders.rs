@@ -188,9 +188,8 @@ fn the_ais_orders_are_not_in_the_log() {
         w.log.iter().all(|a| matches!(a, Action::ChooseCiv { .. } | Action::EndTurn)),
         "only the watch and the turns"
     );
-    let posted =
-        w.units.keys().any(|id| w.notes.get(id).is_some_and(|ns| ns.iter().any(|n| n.text.starts_with("posted at"))));
-    assert!(posted, "the AI's camps still give their orders: one was posted");
+    let gave = w.orders.values().map(|kinds| kinds.values().sum::<u32>()).sum::<u32>();
+    assert!(gave > 0, "the AI's civs still give their orders: {:?}", w.orders);
 }
 
 #[test]

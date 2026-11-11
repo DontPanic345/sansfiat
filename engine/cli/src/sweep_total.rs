@@ -30,6 +30,7 @@ pub(crate) struct Total {
     pub(crate) health: TotalHealth,
     pub(crate) fields_vs_control: TotalFields,
     pub(crate) towns_vs_control: TotalTowns,
+    pub(crate) led: crate::sweep_led::TotalLed,
 }
 
 /// The end group over the maps: how many games ended before the limit, the mean turns to the end and

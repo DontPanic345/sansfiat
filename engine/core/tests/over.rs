@@ -191,13 +191,15 @@ fn the_world_runs_on_after_the_end_and_the_ai_civs_orders_still_go_through() {
     let after: Vec<(u32, usize)> = w.clans.values().map(|k| (k.id, k.home)).collect();
     let moved = w.clans.values().map(|k| k.people).sum::<f64>() != people;
     assert!(before != after || moved, "the clans keep living and moving");
-    // The AI civ still gives orders through the world's door, which the end doesn't refuse.
+    // An AI civ still gives orders through the world's door, which the end doesn't refuse (the
+    // taker's army may have marched on the third capital since: a fallen civ gives none).
+    let other = if w.civs[&other].is_out() { taker } else { other };
     let raise = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None };
     let checked = w.check_order(other, &raise);
     assert_ne!(checked, Err("the game is over".to_string()));
     assert_ne!(checked, Err("the game has not begun".to_string()));
     let claim = w.civs[&other].claim.clone();
-    assert!(w.check_order(other, &Order::Claim { tiles: claim }).is_ok(), "an AI civ's claim still checks");
+    assert_eq!(w.check_order(other, &Order::Claim { tiles: claim }), Ok(()), "an AI civ's claim still checks");
 }
 
 #[test]

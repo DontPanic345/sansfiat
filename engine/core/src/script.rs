@@ -116,3 +116,20 @@ impl Lead {
         }
     }
 }
+
+/// The automatic player: a led civ played by the planner (`units::plan`), every decision given
+/// through `World::act` as a player's is, so it is logged and a save of its game replays. The judge
+/// leads each civ with it beside the idle control.
+pub struct Auto;
+
+impl Auto {
+    /// Gives the led civ's orders for the current turn, then leaves the turn to the caller. Nothing
+    /// before the pick, when watching, or after the end.
+    pub fn orders(w: &mut World) {
+        let (Phase::Main, Some(me)) = (w.phase, w.player) else { return };
+        units::plan(w, me, &mut |w, civ, d| match d {
+            units::Decision::Order(order) => w.act(Action::Order { civ, order }),
+            units::Decision::Gift(food) => w.act(Action::SetGift { food }),
+        });
+    }
+}

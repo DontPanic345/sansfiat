@@ -1,0 +1,69 @@
+{"turn":262,"line":"note meant: raise Standing by feeding clans, start with a bigger gift did: setGift 8 since store holds 10 grain and clans are slightly hungry surprised: I lead at 10.8% already","result":"noted"}
+{"turn":262,"line":"{\"type\":\"setGift\",\"food\":8}","result":"ok"}
+{"turn":265,"line":"end 3","result":"ok"}
+{"turn":265,"line":"note meant: use the scout and a guard did: route scout to 475 to try the scout lever; raise 1 guard to hold land surprised: store grew fast, 37 posted vs 8 given","result":"noted"}
+{"turn":265,"line":"{\"type\":\"route\",\"unit\":427,\"from\":506,\"to\":475}","result":"ok"}
+{"turn":265,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":265,"line":"view","result":"ok"}
+{"turn":265,"line":"note meant: more gift to pull in clans 90 (0.94) and 418 (0.82) did: gift 15 surprised: Blue overtook me at 12.6% to my 10.0%; guard raised fine","result":"noted"}
+{"turn":265,"line":"{\"type\":\"setGift\",\"food\":15}","result":"ok"}
+{"turn":268,"line":"end 3","result":"ok"}
+{"turn":268,"line":"note meant: see result of gift did: view surprised: gave 0.0 last turn yet 2 clans joined","result":"noted"}
+{"turn":268,"line":"view","result":"ok"}
+{"turn":268,"line":"note meant: hold land and build an army did: raise 3 guard and 2 warriors; store is 49 and unused surprised: scout still at 506 after route order, so scout lever not moving","result":"noted"}
+{"turn":268,"line":"{\"type\":\"raise\",\"n\":3,\"kind\":\"guard\"}","result":"ok"}
+{"turn":268,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":271,"line":"end 3","result":"ok"}
+{"turn":271,"line":"view","result":"ok"}
+{"turn":271,"line":"note meant: raise gift to reach more clans did: setGift 25 since store 31 and grain income 31/turn surprised: standing already 22.3% leader","result":"noted"}
+{"turn":271,"line":"{\"type\":\"setGift\",\"food\":25}","result":"ok"}
+{"turn":271,"line":"note meant: thicken guard on thin held tiles did: raise one guard surprised: nothing","result":"noted"}
+{"turn":271,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":271,"line":"note meant: explore did: scout route to 476 surprised: nothing","result":"noted"}
+{"turn":271,"line":"{\"type\":\"route\",\"unit\":427,\"from\":506,\"to\":476}","result":"ok"}
+{"turn":271,"line":"note meant: see effects did: end 5 surprised: nothing","result":"noted"}
+{"turn":276,"line":"end 5","result":"ok"}
+{"turn":276,"line":"note meant: use army levers did: raise 2 warriors into 454, set forage on, zone stays surprised: clans joined jumped to 19 after gift 25","result":"noted"}
+{"turn":276,"line":"{\"type\":\"raise\",\"n\":2,\"into\":454}","result":"ok"}
+{"turn":276,"line":"{\"type\":\"switches\",\"unit\":454,\"forage\":true,\"supply\":true}","result":"ok"}
+{"turn":276,"line":"note meant: let gift work did: end 5 surprised: nothing","result":"noted"}
+{"turn":281,"line":"end 5","result":"ok"}
+{"turn":281,"line":"note meant: keep store from draining did: gift 10 surprised: store fell to 17.9 as income only 10","result":"noted"}
+{"turn":281,"line":"{\"type\":\"setGift\",\"food\":10}","result":"ok"}
+{"turn":281,"line":"note meant: see claim tiles did: map surprised: nothing","result":"noted"}
+{"turn":281,"line":"map","result":"ok"}
+{"turn":281,"line":"note meant: try army move and supply did: move 454 to 410 where the AI would post camp surprised: nothing","result":"noted"}
+{"turn":281,"line":"{\"type\":\"move\",\"unit\":454,\"to\":410}","result":"ok"}
+{"turn":281,"line":"note meant: observe did: end 10 surprised: nothing","result":"noted"}
+{"turn":291,"line":"end 10","result":"ok"}
+{"turn":291,"line":"note meant: keep growing share did: end 10, gift 10 stays surprised: Blue rising to 18%","result":"noted"}
+{"turn":301,"line":"end 10","result":"ok"}
+{"turn":301,"line":"view","result":"ok"}
+{"turn":301,"line":"note meant: grow, try archers raise did: raise 1 archers into 454 then end 10 surprised: gift gave 0 as no clans on land need it","result":"noted"}
+{"turn":301,"line":"{\"type\":\"raise\",\"n\":1,\"fighter\":\"archers\",\"into\":454}","result":"ok"}
+{"turn":311,"line":"end 10","result":"ok"}
+{"turn":311,"line":"note meant: grow did: end 10 surprised: Blue gaining, 21%","result":"noted"}
+{"turn":321,"line":"end 10","result":"ok"}
+{"turn":321,"line":"note meant: use idle store grain to grow clans did: gift 30 and keep 10 surprised: store idle at 40 with gave 0 for 30 turns","result":"noted"}
+{"turn":321,"line":"{\"type\":\"setKeep\",\"food\":10}","result":"ok"}
+{"turn":321,"line":"{\"type\":\"setGift\",\"food\":30}","result":"ok"}
+{"turn":326,"line":"end 5","result":"ok"}
+{"turn":326,"line":"note meant: understand why gift gives 0 did: why 424 surprised: gave 0 despite gift 30","result":"noted"}
+{"turn":326,"line":"why 424","result":"ok"}
+{"turn":326,"line":"note meant: gift only reaches non-own clans at market, none reachable; reset did: keep null, gift 10 surprised: why shows gift is only for unaligned clans","result":"noted"}
+{"turn":326,"line":"{\"type\":\"setKeep\",\"food\":null}","result":"ok"}
+{"turn":326,"line":"{\"type\":\"setGift\",\"food\":10}","result":"ok"}
+{"turn":326,"line":"note meant: bring army home for later reach did: move 454 to 443 surprised: nothing","result":"noted"}
+{"turn":326,"line":"{\"type\":\"move\",\"unit\":454,\"to\":443}","result":"ok"}
+{"turn":336,"line":"end 10","result":"ok"}
+{"turn":336,"line":"note meant: grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":346,"line":"end 10","result":"ok"}
+{"turn":346,"line":"note meant: grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":356,"line":"end 10","result":"ok"}
+{"turn":356,"line":"note meant: reach +100 did: end 6 surprised: nothing","result":"noted"}
+{"turn":362,"line":"end 6","result":"ok"}
+{"turn":362,"line":"note could not tell: gift: which unaligned clans my market reaches and why gift gave 0 for long stretches; why showed it only gives to non-own clans","result":"noted"}
+{"turn":362,"line":"note could not tell: land and guard: tile numbers of my claim, so I could not repaint it toward clans leaning my way; what guard share protects","result":"noted"}
+{"turn":362,"line":"note could not tell: army: what an entrenched army at a zone actually does for Standing, and what pillage needs as no order was offered","result":"noted"}
+{"turn":362,"line":"note could not tell: scout: what route searching yields; it never changed anything I could see","result":"noted"}
+{"turn":362,"line":"view","result":"ok"}

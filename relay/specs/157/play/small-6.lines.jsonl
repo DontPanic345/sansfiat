@@ -1,0 +1,59 @@
+{"turn":274,"line":"note meant: raise Standing from 10.4% did: end 5 turns with the default gift 2 to see what the view does surprised: I already lead at the pick, though the header says 200 turns","result":"noted"}
+{"turn":279,"line":"end 5","result":"ok"}
+{"turn":279,"line":"note meant: convert the growing store (52) into clan joins did: setGift 10 since store is large and nearby clans lean 0.25 surprised: Standing slipped as rivals grew","result":"noted"}
+{"turn":279,"line":"{\"type\":\"setGift\",\"food\":10}","result":"ok"}
+{"turn":279,"line":"note meant: see the gift effect did: end 5 surprised: nothing yet","result":"noted"}
+{"turn":284,"line":"end 5","result":"ok"}
+{"turn":284,"line":"map","result":"ok"}
+{"turn":284,"line":"view","result":"ok"}
+{"turn":284,"line":"why 55","result":"ok"}
+{"turn":284,"line":"note meant: hold my claimed land (held 1 of 37) did: raise 3 guard at the capital surprised: clan 55 trades at another market so the gift does not reach it; why says it went to another festival","result":"noted"}
+{"turn":284,"line":"{\"type\":\"raise\",\"n\":3,\"kind\":\"guard\"}","result":"ok"}
+{"turn":284,"line":"note meant: see guard effect did: end 5 surprised: nothing yet","result":"noted"}
+{"turn":289,"line":"end 5","result":"ok"}
+{"turn":289,"line":"view","result":"ok"}
+{"turn":289,"line":"note meant: reach clans 55 and 267 that lean to me but trade at another market did: raise the gift to 30 to see if gave moves surprised: gave 0.0 despite a gift of 10","result":"noted"}
+{"turn":289,"line":"{\"type\":\"setGift\",\"food\":30}","result":"ok"}
+{"turn":289,"line":"note meant: use the idle scout did: route it to 262 toward the western clans surprised: no route shown","result":"noted"}
+{"turn":289,"line":"{\"type\":\"route\",\"unit\":248,\"from\":291,\"to\":262}","result":"ok"}
+{"turn":289,"line":"note meant: see why the gift is not given did: why on clan 55 surprised: nothing yet","result":"noted"}
+{"turn":289,"line":"why 55","result":"ok"}
+{"turn":289,"line":"note meant: pass a few turns and watch standing did: end 3 surprised: nothing","result":"noted"}
+{"turn":292,"line":"end 3","result":"ok"}
+{"turn":292,"line":"note meant: grow standing by holding the land with more people did: raise 1 guard from clans at the capital surprised: both clans joined, standing 13.9%","result":"noted"}
+{"turn":292,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":292,"line":"note meant: try an army did: raise 2 warriors into a new army surprised: nothing","result":"noted"}
+{"turn":292,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":292,"line":"view","result":"ok"}
+{"turn":292,"line":"note meant: try army movement and foraging did: move army 298 to 351 and set forage on surprised: nothing","result":"noted"}
+{"turn":292,"line":"{\"type\":\"move\",\"unit\":298,\"to\":351}","result":"ok"}
+{"turn":292,"line":"{\"type\":\"switches\",\"unit\":298,\"forage\":true,\"supply\":true}","result":"ok"}
+{"turn":292,"line":"note meant: see effect did: end 5 surprised: nothing","result":"noted"}
+{"turn":297,"line":"end 5","result":"ok"}
+{"turn":297,"line":"note meant: return the army people home since no enemy is near (also tries disband) did: disband army 298 surprised: nothing","result":"noted"}
+{"turn":297,"line":"{\"type\":\"disband\",\"unit\":298}","result":"ok"}
+{"turn":297,"line":"note meant: check land lever did: view the claim and map surprised: nothing","result":"noted"}
+{"turn":297,"line":"map","result":"ok"}
+{"turn":297,"line":"note meant: let standing grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":307,"line":"end 10","result":"ok"}
+{"turn":307,"line":"note meant: let standing grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":317,"line":"end 10","result":"ok"}
+{"turn":317,"line":"note meant: let standing grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":327,"line":"end 10","result":"ok"}
+{"turn":327,"line":"note meant: let standing grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":337,"line":"end 10","result":"ok"}
+{"turn":337,"line":"note meant: let standing grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":347,"line":"end 10","result":"ok"}
+{"turn":347,"line":"note meant: let standing grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":357,"line":"end 10","result":"ok"}
+{"turn":357,"line":"note meant: let standing grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":367,"line":"end 10","result":"ok"}
+{"turn":367,"line":"note meant: let standing grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":377,"line":"end 10","result":"ok"}
+{"turn":377,"line":"note meant: check state at ~turn 103 did: view surprised: nothing","result":"noted"}
+{"turn":377,"line":"view","result":"ok"}
+{"turn":377,"line":"note could not tell: gift: whether any gift was given after the first turns, gave stayed 0.0 with nobody left unaligned, and what a gift buys beyond reaching unaligned clans","result":"noted"}
+{"turn":377,"line":"note could not tell: gift: whether any gift was given after the first turns, gave stayed 0.0 with nobody left unaligned, and what a gift buys beyond reaching unaligned clans","result":"noted"}
+{"turn":377,"line":"note could not tell: land and guard: what the claim paint would change, which tiles to add, and what a bigger guard protects against","result":"noted"}
+{"turn":377,"line":"note could not tell: army: no rival came near, so I could not tell what an army gains, what foraging yields, or what raising costs in people","result":"noted"}
+{"turn":377,"line":"note could not tell: scout: it said no route can exist from 291, so I could not tell where to send it to find anything useful","result":"noted"}

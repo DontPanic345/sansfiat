@@ -37,6 +37,32 @@ pub fn rank_of(s: &BTreeMap<u32, f64>, led: u32) -> usize {
     1 + s.values().filter(|&&v| v > mine).count()
 }
 
+/// How often civ `led`'s place in Standing changed over `standing` (one entry a turn, the pick
+/// first). A rival passes it, or is passed, only once it is ahead or behind by more than
+/// `JUDGE.lead_margin`, so two civs neck and neck don't trade places on noise.
+pub fn rank_changes(standing: &[BTreeMap<u32, f64>], led: u32) -> u32 {
+    let Some(first) = standing.first() else { return 0 };
+    let at = |s: &BTreeMap<u32, f64>, id: u32| s.get(&id).copied().unwrap_or(0.0);
+    let mut ahead: BTreeMap<u32, bool> =
+        first.keys().filter(|&&o| o != led).map(|&o| (o, at(first, o) > at(first, led))).collect();
+    let mut changes = 0;
+    for s in &standing[1..] {
+        let before = ahead.values().filter(|&&a| a).count();
+        for (&o, a) in ahead.iter_mut() {
+            let (theirs, mine) = (at(s, o), at(s, led));
+            if theirs > mine + JUDGE.lead_margin {
+                *a = true;
+            } else if mine > theirs + JUDGE.lead_margin {
+                *a = false;
+            }
+        }
+        if ahead.values().filter(|&&a| a).count() != before {
+            changes += 1;
+        }
+    }
+    changes
+}
+
 /// The spread: the most Standing minus the least; 0 with no civs.
 fn spread(standing: &BTreeMap<u32, f64>) -> f64 {
     let max = standing.values().copied().fold(f64::NEG_INFINITY, f64::max);

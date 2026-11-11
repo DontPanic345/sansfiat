@@ -354,7 +354,7 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
 }
 
 /// **skirmish.** The led civ claims a corridor along the path to the nearest rival's capital, out
-/// until it overlaps the rival's stand-in claim by two tiles, and keeps it.
+/// until it overlaps the rival's claim by two tiles, and keeps it.
 ///
 /// - Every turn: the claim is the capital and the corridor, sent whenever it differs from the claim (a
 ///   tile lost is claimed again). Its guard is kept by the AI's rule, so its guard holds what its share
@@ -365,7 +365,7 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
 ///   the one warrior it can raise and the skirmish is the guards'.
 fn skirmish(s: &mut Story) {
     let way = s.way();
-    let theirs = claim::ai_claim(&s.w, s.rival);
+    let theirs = s.w.civs[&s.rival].claim.clone();
     let first = way.iter().position(|t| theirs.contains(t)).unwrap_or(way.len());
     let stand = way[first.saturating_sub(1)];
     bank_and_raise(s, 3, 30);
@@ -388,10 +388,10 @@ fn bank_and_raise(s: &mut Story, want: u32, by: u32) {
     }
 }
 
-/// The stand-in claim and the corridor: the way to the rival's capital out to two tiles inside its
+/// The rival's claim and the corridor: the way to the rival's capital out to two tiles inside its
 /// claim, the rival's capital left out.
 fn corridor_claim(w: &World, me: u32, rival: u32) -> Vec<usize> {
-    let (cap, theirs) = (w.civs[&me].capital, claim::ai_claim(w, rival));
+    let (cap, theirs) = (w.civs[&me].capital, w.civs[&rival].claim.clone());
     let way = units::path_between(w, cap, w.civs[&rival].capital).map(|(p, _)| p).unwrap_or_default();
     let first = way.iter().position(|t| theirs.contains(t)).unwrap_or(way.len());
     let end = (first + 2).min(way.len().saturating_sub(1));
@@ -427,7 +427,7 @@ const STACK_BY: u32 = 25;
 /// - +0: `UNIT.first` warriors are raised into an army at the capital, with their packs from the store
 ///   (refused if the store can't fill them, and then there is no army to march). Its two switches
 ///   go on, and the army is sent along the way to the rival's capital to the second tile
-///   of the rival's stand-in claim (`claim::ai_claim`) on it, and left there. The rival's stand-in
+///   of the rival's claim (`Civ.claim`) on it, and left there. The rival's claim
 ///   takes back the tiles behind it (it skips only tiles a rival army holds), which cuts the army's
 ///   line; hungry three turns in a row with its line cut by the rival's land, it surrenders to it.
 fn surrender(s: &mut Story) {
@@ -436,7 +436,7 @@ fn surrender(s: &mut Story) {
     }
     s.give(Order::Raise { n: UNIT.first, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None });
     let way = s.way();
-    let theirs = claim::ai_claim(&s.w, s.rival);
+    let theirs = s.w.civs[&s.rival].claim.clone();
     let first = way.iter().position(|t| theirs.contains(t)).unwrap_or(way.len().saturating_sub(2));
     let stop = way[(first + 1).min(way.len().saturating_sub(1))];
     if let Some(id) = s.camp().map(|u| u.id) {
