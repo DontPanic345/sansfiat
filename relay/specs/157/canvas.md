@@ -47,3 +47,13 @@ passing it or being passed only when ahead by more than half a point (`JUDGE.lea
 lead's own margin), or when the game ends before the limit. The judge counts both for the planner
 as the player and for the idle player, per civ, and the Standing the planner ends with over its
 idle self.
+
+## Games that end
+
+No game the planner leads ends before the limit (0 of 21), and no watched game does; one idle led
+civ falls (small 3, Gold, at +156). A longer march (7 turns), a longer siege (12) and a thinner
+remnant (0.2) together move nothing toward it: 0 of 21 still, and the idle fall goes too, with the
+gain over idle at +0.045. A capital behind the planner's guard (8 to 26 people, always entrenched)
+and its militia outweighs a quarter of a rival's people after a walk of 15 steps or more, so the
+planner never marches on one. Ending games needs something the planner's numbers don't hold: a
+capital that is easier to take, or an army that eats on the march.
