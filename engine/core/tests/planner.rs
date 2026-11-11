@@ -205,6 +205,28 @@ fn it_marches_on_a_capital_it_outweighs_and_pulls_back_from_one_it_does_not() {
 }
 
 #[test]
+fn a_rival_army_beside_its_capital_is_marched_on_when_outweighed_and_else_met_on_the_capital() {
+    let (mut w, ids, _) = watched();
+    let (red, blue) = (ids[0], ids[1]);
+    let home = w.civs[&red].capital;
+    // Blue's army of six beside Red's capital, with no line Red could stand across.
+    let beside = at_big(-4, 0);
+    let foe = stand(&mut w, blue, beside, 6.0);
+    w.units.get_mut(&foe).unwrap().actor.routes.clear();
+    let marches = |w: &mut World, people: f64, to: usize| {
+        let army = stand(w, red, at_big(-3, 0), people);
+        let seen = planned(w, red);
+        assert!(
+            orders(&seen).iter().any(|o| matches!(o, Order::Move { unit, to: t } if *unit == army && *t == to)),
+            "{people} people to {to}: {seen:?}"
+        );
+    };
+    // Three don't outweigh six: the army stands on its capital. Sixteen do: it marches onto them.
+    marches(&mut w, 3.0, home);
+    marches(&mut w, 16.0, beside);
+}
+
+#[test]
 fn an_army_whose_line_a_rival_cuts_marches_home() {
     let (mut w, ids, _) = watched();
     let (red, blue) = (ids[0], ids[1]);
