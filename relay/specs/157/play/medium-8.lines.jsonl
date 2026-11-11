@@ -14,3 +14,41 @@
 {"turn":303,"line":"{\"type\":\"route\",\"unit\":819,\"from\":1104,\"to\":1145}","result":"ok"}
 {"turn":303,"line":"note meant: let it run did: end 10 surprised: nothing","result":"noted"}
 {"turn":313,"line":"end 10","result":"ok"}
+{"turn":313,"line":"view","result":"ok"}
+{"turn":313,"line":"note meant: keep Standing rising did: end 5 to see if gift of 8 reaches anyone surprised: gave 0.0 last turn though gift is 8, no unaligned clans in reach","result":"noted"}
+{"turn":318,"line":"end 5","result":"ok"}
+{"turn":318,"line":"why 816","result":"ok"}
+{"turn":318,"line":"note meant: try the gift lever did: setGift 20 to feed clans more surprised: nothing","result":"noted"}
+{"turn":318,"line":"{\"type\":\"setGift\",\"food\":20}","result":"ok"}
+{"turn":318,"line":"note meant: try guard did: raise 1 guard to hold thin tile surprised: nothing","result":"noted"}
+{"turn":318,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":318,"line":"note meant: try army move did: move army 880 to 1184 surprised: nothing","result":"noted"}
+{"turn":318,"line":"{\"type\":\"move\",\"unit\":880,\"to\":1184}","result":"ok"}
+{"turn":318,"line":"note meant: scout lever did: route scout to 1062 surprised: nothing","result":"noted"}
+{"turn":318,"line":"{\"type\":\"route\",\"unit\":819,\"from\":1104,\"to\":1062}","result":"ok"}
+{"turn":318,"line":"note meant: forage lever did: forage army surprised: nothing","result":"noted"}
+{"turn":318,"line":"{\"type\":\"forage\",\"unit\":880}","result":"ok"}
+{"turn":318,"line":"note meant: advance did: end 10 surprised: nothing","result":"noted"}
+{"turn":328,"line":"end 10","result":"ok"}
+{"turn":328,"line":"note meant: hold lead did: end 10 surprised: nothing, standing steady","result":"noted"}
+{"turn":338,"line":"end 10","result":"ok"}
+{"turn":338,"line":"note meant: hold lead did: end 10 surprised: nothing, standing steady","result":"noted"}
+{"turn":348,"line":"end 10","result":"ok"}
+{"turn":348,"line":"note meant: hold lead did: end 10 surprised: nothing, standing steady","result":"noted"}
+{"turn":358,"line":"end 10","result":"ok"}
+{"turn":358,"line":"view","result":"ok"}
+{"turn":358,"line":"note meant: hold lead did: end 10 surprised: nothing","result":"noted"}
+{"turn":368,"line":"end 10","result":"ok"}
+{"turn":368,"line":"note meant: hold lead did: end 10 surprised: nothing","result":"noted"}
+{"turn":378,"line":"end 10","result":"ok"}
+{"turn":378,"line":"note meant: hold lead did: end 10 surprised: nothing","result":"noted"}
+{"turn":388,"line":"end 10","result":"ok"}
+{"turn":388,"line":"note meant: finish did: end 5 surprised: nothing","result":"noted"}
+{"turn":393,"line":"end 5","result":"ok"}
+{"turn":393,"line":"note could not tell: gift: why gave stays 0.0 at gift 8 and 20, and who a gift reaches","result":"noted"}
+{"turn":393,"line":"note could not tell: land and guard: what the thin held share costs me and whether more guard raises held tiles","result":"noted"}
+{"turn":393,"line":"note could not tell: gift: why gave stays 0.0 at gift 8 and 20, and who a gift reaches","result":"noted"}
+{"turn":393,"line":"note could not tell: land and guard: what the thin held share costs me and whether more guard raises held tiles","result":"noted"}
+{"turn":393,"line":"note could not tell: army: what moving or foraging gains with no rival near","result":"noted"}
+{"turn":393,"line":"note could not tell: scout: why its route never advanced and what it should search for","result":"noted"}
+{"turn":393,"line":"note could not tell: gift: test","result":"noted"}
