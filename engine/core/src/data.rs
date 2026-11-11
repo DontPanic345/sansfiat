@@ -644,9 +644,10 @@ pub const LEANING: LeaningRules = LeaningRules {
     // settles at 3.3, past the join line, so a held home joins in about 11 turns (canvas.md).
     land: 0.1,
     guarded: 0.5,
-    // Leaving after 5 turns drawn at 0.1: a held rival home wins a clan; 10/0.3 left none (canvas.md).
-    leave_run: 5,
-    leave_at: 0.1,
+    // Leaving after 3 turns drawn at 0.05: 5 turns at 0.1 left 2 to 4 clans over the seven retro maps with the
+    // planner playing, 3 at 0.05 leaves 8 (relay/specs/157/canvas.md); 10/0.3 left none.
+    leave_run: 3,
+    leave_at: 0.05,
 };
 
 /// The land a civ claims and holds (`claim.rs`). The floor is the guard share a claimed tile must keep
@@ -721,14 +722,17 @@ pub const PLAN: PlanRules = PlanRules {
     edge: 1.5,
     siege: 8,
     left: 0.3,
-    march: 3,
+    march: 4,
     raid: 3.0,
     reach: 0.5,
     packed: 0.8,
-    low: 2.0,
+    low: 1.0,
     party: 4.0,
     looks: 12,
-    note: "relay/specs/157/canvas.md",
+    note: "Tuned on the seven retro maps against the judge's led games (relay/specs/157/canvas.md): feed 1.5 fills \
+           a pack past spoilage where 1.25 never did; march 3 or 4 and a party of 4 keep an army where its pack \
+           and the land feed it (a stack of 14 sent 16 steps starved every time); low 1 turns a party back \
+           before it starves and still reaches a rival (2 kept every warrior fed but took 5 tiles against 17).",
 };
 
 /// The guard: the people a civ keeps on its claim at its capital (`units/guard.rs`, `claim.rs`).

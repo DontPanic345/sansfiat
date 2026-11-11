@@ -523,31 +523,28 @@ fn with_the_army_off_no_camp_is_founded_and_nothing_is_levied() {
 }
 
 #[test]
-fn the_ai_raises_a_lost_camp_and_posts_it_off_the_capital() {
-    let (mut w, ids, _) = three();
+fn the_ai_raises_an_army_it_can_feed_and_leaves_the_players_alone() {
+    let (mut w, ids, clans) = three();
     w.phase = Phase::Main;
     // The AI leads Blue and Gold; Red is the player's: its camp is left alone.
     w.player = Some(ids[0]);
     w.act(led_order(&w, Order::Disband { unit: led_camp(&w), n: None, fighter: None })).unwrap();
     w.units.remove(&camp_id(&w, ids[1]));
+    w.clans.get_mut(&clans[1]).unwrap().people = 30.0;
+    // A store with the pack but no levy to feed a warrior: none is raised.
     fill_stores(&mut w);
     units::ai(&mut w);
     assert!(units::camp(&w, ids[0]).is_none(), "not the player's civ");
-    assert!(units::camp(&w, ids[1]).is_none(), "the AI raises no army until R");
-    // Its camp, once it has one (as its own Raise makes it), is posted off the capital.
-    armed(&mut w, ids[1]);
+    assert!(units::camp(&w, ids[1]).is_none(), "no levy, no army");
+    // A levy that covers its mouths and one more, and a store that holds the pack: one warrior, at the capital.
+    let c = w.civs.get_mut(&ids[1]).unwrap();
+    c.store = [0.0, CIV.store_cap, 0.0, 0.0, 0.0];
+    c.levied = 50.0;
     units::ai(&mut w);
-    let blue = units::camp(&w, ids[1]).expect("its camp");
+    assert!(units::camp(&w, ids[0]).is_none(), "not the player's civ");
+    let blue = units::camp(&w, ids[1]).expect("its army");
+    assert_eq!((blue.people, blue.tile()), (1.0, w.civs[&ids[1]].capital));
     assert_eq!(w.civs[&ids[1]].army.raised, 2, "its first camp, from three(), and this one");
-    let id = blue.id;
-    let dest = units::camp(&w, ids[1]).unwrap().camp().unwrap().dest.expect("posted");
-    assert_ne!(dest, w.civs[&ids[1]].capital);
-    assert!(steps(&w, dest, w.civs[&ids[1]].capital) <= UNIT.post as i32);
-    assert_eq!(civs::tile_civ(&w, dest), Some(ids[1]), "on its own land");
-    for _ in 0..4 {
-        units::step(&mut w);
-    }
-    assert_eq!(w.units[&id].tile(), dest);
 }
 
 #[test]
@@ -659,7 +656,7 @@ fn the_control_run_has_no_army_and_never_levies() {
 }
 
 #[test]
-fn on_a_real_map_the_ai_camps_that_survive_the_pick_are_fed_by_their_line() {
+fn on_a_real_map_the_ai_armies_on_their_own_land_are_fed_by_their_line() {
     let mut w = World::new(Config {
         seed: 2,
         radius: size_radius("small").unwrap(),
@@ -672,27 +669,21 @@ fn on_a_real_map_the_ai_camps_that_survive_the_pick_are_fed_by_their_line() {
         w.run(1);
     }
     w.act(Action::ChooseCiv { civ: None }).unwrap();
-    // The AI raises no army until R, so each civ's first army is raised here, as its own Raise would.
+    // Each civ's first army is raised here, as its own Raise would; the planner keeps or grows it.
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     for id in ids {
         armed(&mut w, id);
     }
     w.run(100);
-    // The guard eats from the store the camps are fed from, so on this map a civ can starve its camp
-    // out (`army.lost`, and the sweep's report): those civs have no camp to check.
-    for c in w.civs.values() {
-        if c.army.lost > 0 {
-            continue;
-        }
-        let camp = units::camp(&w, c.id).unwrap_or_else(|| panic!("civ {} has its camp", c.id));
-        assert!(camp.people > 0.0, "civ {} has {} warriors", c.id, camp.people);
-        // A post keeps to the civ's held land (`ai::post`): off the capital wherever that land reaches.
-        let (path, cost, _) = units::line(&w, camp.id).unwrap();
-        if engine::claim::held(&w, c.id).len() > 1 {
-            assert!(!path.is_empty() && cost > 0.0, "civ {}'s camp is posted off its capital", c.id);
-        }
-        assert!(!units::cut_off(&w, camp.id), "civ {}'s camp is fed by its line", c.id);
+    // The planner sends an army abroad on its pack and home when it runs low, so only an army
+    // standing on its own land is read: its line feeds it there.
+    let mut read = 0;
+    for u in w.units.values().filter(|u| u.camp().is_some() && civs::tile_civ(&w, u.tile()) == Some(u.civ)) {
+        assert!(u.people > 0.0, "civ {}'s army has {} warriors", u.civ, u.people);
+        assert!(!units::cut_off(&w, u.id), "civ {}'s army is fed by its line", u.civ);
+        read += 1;
     }
+    assert!(read > 0, "an army stands on its own land");
 }
 
 fn held(w: &World, civ: u32) -> Vec<usize> {

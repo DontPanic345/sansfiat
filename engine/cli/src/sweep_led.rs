@@ -72,7 +72,8 @@ fn lead_changes(standing: &[std::collections::BTreeMap<u32, f64>]) -> u32 {
     let Some(first) = standing.first() else { return 0 };
     let margin = engine::data::JUDGE.lead_margin;
     let top = |s: &std::collections::BTreeMap<u32, f64>| {
-        s.iter().fold(None, |b: Option<(u32, f64)>, (&k, &v)| if b.is_none_or(|(_, bv)| v > bv) { Some((k, v)) } else { b })
+        s.iter()
+            .fold(None, |b: Option<(u32, f64)>, (&k, &v)| if b.is_none_or(|(_, bv)| v > bv) { Some((k, v)) } else { b })
     };
     let Some((mut leader, _)) = top(first) else { return 0 };
     let mut changes = 0;
@@ -133,12 +134,19 @@ pub(crate) fn map_led(config: Config, civs: &[u32], draws: u32) -> Vec<LedGame> 
     let runs: Vec<(LedRun, LedRun)> = std::thread::scope(|scope| {
         let handles: Vec<_> = civs
             .iter()
-            .map(|&c| (scope.spawn(move || led_run(config, c, true, draws)), scope.spawn(move || led_run(config, c, false, draws))))
+            .map(|&c| {
+                (
+                    scope.spawn(move || led_run(config, c, true, draws)),
+                    scope.spawn(move || led_run(config, c, false, draws)),
+                )
+            })
             .collect();
         handles
             .into_iter()
             .map(|(a, i)| {
-                let join = |h: std::thread::ScopedJoinHandle<LedRun>| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e));
+                let join = |h: std::thread::ScopedJoinHandle<LedRun>| {
+                    h.join().unwrap_or_else(|e| std::panic::resume_unwind(e))
+                };
                 (join(a), join(i))
             })
             .collect()
@@ -182,7 +190,9 @@ pub(crate) fn print_led(maps: &[MapJudged], t: &TotalLed, floor: Option<f64>) {
             .iter()
             .map(|g| {
                 let name = m.names.get(&g.civ).map_or("?", |n| n.as_str());
-                let run = |r: &LedRun| format!("{:.3} #{} moves {} {} +{}", r.standing, r.rank, r.rank_changes, r.why, r.turn);
+                let run = |r: &LedRun| {
+                    format!("{:.3} #{} moves {} {} +{}", r.standing, r.rank, r.rank_changes, r.why, r.turn)
+                };
                 format!("{name} {} (idle {})", run(&g.auto), run(&g.idle))
             })
             .collect();

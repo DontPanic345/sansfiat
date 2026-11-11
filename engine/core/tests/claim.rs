@@ -188,13 +188,13 @@ fn two_held_claims_on_one_tile_go_to_the_thicker_guard_and_a_tie_to_the_lower_id
 }
 
 #[test]
-fn the_ai_stand_in_is_the_capital_ring_and_a_civ_that_may_not_claim_keeps_its_capital() {
+fn the_first_claim_is_the_capital_ring_and_a_civ_that_may_not_claim_keeps_its_capital() {
     let (w, ids, _) = three();
     for &civ in &ids {
         let cap = w.civs[&civ].capital;
-        // The clans are on the capitals, so the stand-in is the ring one step out, the capital in it.
-        assert_eq!(w.civs[&civ].claim, within(&w, cap, 1), "{civ}: the stand-in at founding");
-        assert_eq!(claim::ai_claim(&w, civ), w.civs[&civ].claim, "{civ}: and it stays the stand-in");
+        // The clans are on the capitals, so the first claim is the ring one step out, the capital in it.
+        assert_eq!(w.civs[&civ].claim, within(&w, cap, 1), "{civ}: the claim at founding");
+        assert_eq!(claim::first(&w, civ), w.civs[&civ].claim, "{civ}: as `first` reads it");
     }
     // Under `none`, founding gives each civ its capital alone.
     let mut w = big();
@@ -207,19 +207,17 @@ fn the_ai_stand_in_is_the_capital_ring_and_a_civ_that_may_not_claim_keeps_its_ca
 }
 
 #[test]
-fn an_ai_civ_claims_and_guards_its_land_on_the_stand_in_when_the_clans_are_moved() {
+fn a_first_claim_takes_in_the_ring_of_a_clan_near_the_capital() {
     let (mut w, ids, _) = led();
     let red = ids[0];
     let cap = w.civs[&red].capital;
-    // A clan of Red's two steps out, within the reach: its home's ring joins the stand-in.
+    // A clan of Red's two steps out, within the reach: its home's ring joins the first claim.
     let far = at_big(-3, 0);
     let k = put(&mut w, &[far], 6.0);
     w.clans.get_mut(&k).unwrap().civ = Some(red);
-    w.player = Some(ids[2]);
-    engine::units::ai(&mut w);
-    let want = claim::ai_claim(&w, red);
-    assert_ne!(want, within(&w, cap, 1), "the clan's home widens the stand-in");
-    assert_eq!(w.civs[&red].claim, want, "the AI sent its stand-in claim");
+    let want = claim::first(&w, red);
+    assert_ne!(want, within(&w, cap, 1), "the clan's home widens the claim");
+    assert!(within(&w, far, 1).iter().all(|t| want.contains(t)), "by its whole ring");
 }
 
 #[test]

@@ -6,7 +6,7 @@ actions, with a CLI and a wasm page as its two front ends. Build what `docs/desi
 ```
 ./check.sh                                   # every check CI runs, in order
 cargo run -p sansfiat -- map | run | sweep | play | story | judge | replay | bench | digest   # USAGE in cli/src/main.rs
-cargo run -p sansfiat -- sweep --judge [--json] [--floor] [--solo]   # the retro maps beside no-army, no-claims, no-fight and no-fields controls: a report
+cargo run -p sansfiat -- sweep --judge [--json] [--floor] [--solo]   # the retro maps beside their controls, and the led games: a report
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a line at a time; g.lines.jsonl records it
 cargo run -p sansfiat -- judge g.json [--json]   # a played game beside the same map on the AI
 cargo run -p sansfiat -- judge --compare a.json b.json [--all]   # two sweep reports: each metric's change against its noise floor
@@ -37,9 +37,9 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/claim.rs` | A civ's claim, its guard's division, `held`, `tile_civ` and the `claim` step. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
-| `core/src/units/` | `line.rs` (paths, cuts, `ring`), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats; `Ladder`), `muster.rs`, `guard.rs`, `search.rs` (the route search), `scout.rs`, `ai.rs` (the AI's orders), `fight.rs`. |
+| `core/src/units/` | `line.rs` (paths, cuts, `ring`), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats; `Ladder`), `muster.rs`, `guard.rs`, `search.rs` (the route search), `scout.rs`, `ai.rs` (the planner), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
-| `core/src/script.rs` | `Lead`, the scripted game: the engine's second player. |
+| `core/src/script.rs` | `Lead`, the scripted game; `Auto`, the planner as a led player. |
 | `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map, layers, placements, orders and reads; `StageSpec` is its data form (`clans` for towns). A staged world is not a save. |
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
 | `core/src/judge.rs`, `judge_scores.rs` | `Watch`: a game scored from its pick in the score groups, the end group included; `judge_scores.rs` holds the score structs. Reads the world only. |
@@ -47,7 +47,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/judge_fields.rs` | The `fields` group: field tiles, farming share, farmers, store turns at a pack, and settled farmers' and gatherers' moves and starving. |
 | `core/src/towns.rs`, `judge_towns.rs` | Towns: `towns` (a festival with `TOWN.homes` homes on its tile) and `check`, which keeps `Market.town` and `TownFormed`; the `towns` group: towns, town clans and their walk, trade and starving, and home moves. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
-| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields against the no-fields control), `sweep_towns.rs` (towns against the no-towns control), `sweep_total.rs` (the sweep's totals), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view), `story.rs` (the scripted stories of war). |
+| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields against the no-fields control), `sweep_towns.rs` (towns against the no-towns control), `sweep_led.rs` (led games beside idle), `sweep_total.rs` (its totals), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view), `story.rs` (the scripted stories of war). |
 | `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the orders; `Sim.stage` builds a staged game. |
 | `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js`, `panels.js` (a selection's shape and its buttons) and `panels-land.js` (festival and tile shapes), `model.js` (the view model), `map/` (`MapView` and one file per layer, `towns.js` among them), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
@@ -70,7 +70,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 
 - Reasons and alerts are derived (`#[serde(skip)]`): a rule writes one `w.note` where it acts.
 - A change that moves `stats::digest` bumps `SAVE_VERSION` and the pins in `cli/tests/save.rs`.
-- The world changes only through `act` and the AI's orders; a save replays to an identical world.
+- The world changes only through `act` and the planner's orders; a save replays to an identical world.
 - The end is a phase: only the `over` step sets `Phase::Over`, and the world runs on in it (`playing()`);
   `validate` refuses the player's orders there.
 - A rule's proof is a stage (`core/src/stage.rs`), and a button's is `www/play/buttons.mjs`.

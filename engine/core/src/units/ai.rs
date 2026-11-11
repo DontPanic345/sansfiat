@@ -171,11 +171,8 @@ fn guard_plan(w: &World, civ: u32) -> Option<Order> {
         return order;
     }
     let g = guard_of(w, civ).filter(|g| g.people > 1.0 + EPS)?;
-    let thick = c
-        .claim
-        .iter()
-        .zip(&c.guard)
-        .all(|(&t, &share)| t == c.capital || share + EPS >= PLAN.thick * CLAIM.floor);
+    let thick =
+        c.claim.iter().zip(&c.guard).all(|(&t, &share)| t == c.capital || share + EPS >= PLAN.thick * CLAIM.floor);
     thick.then_some(Order::Disband { unit: g.id, n: Some(1), fighter: None })
 }
 
@@ -283,9 +280,10 @@ fn muster(w: &mut World, civ: u32, give: Give) {
     let armed = army.map_or(0.0, |a| a.1);
     // A rival within a pack's march, or on its land, is worth a full army; else a party.
     let capital = c.capital;
-    let near = civs::alive(w).filter(|o| o.id != civ).any(|o| {
-        path_between(w, capital, o.capital).is_some_and(|(p, _)| turns(w, &p, capital, 0.0) <= PLAN.march)
-    }) || w.units.values().any(|o| o.civ != civ && o.camp().is_some() && c.claim.binary_search(&o.home).is_ok());
+    let near = civs::alive(w)
+        .filter(|o| o.id != civ)
+        .any(|o| path_between(w, capital, o.capital).is_some_and(|(p, _)| turns(w, &p, capital, 0.0) <= PLAN.march))
+        || w.units.values().any(|o| o.civ != civ && o.camp().is_some() && c.claim.binary_search(&o.home).is_ok());
     let cap = if near { PLAN.army * (people + armed) } else { PLAN.party.min(PLAN.army * (people + armed)) };
     if armed + 1.0 > cap + EPS || !feeds_one_more(w, civ, pack_cap(1.0)) {
         return;
@@ -357,12 +355,12 @@ fn defence_at(w: &World, civ: u32, tile: usize) -> f64 {
         let held = claim::held(w, o.id);
         if held.binary_search(&tile).is_ok() {
             let shares = claim::guard_shares(w, o.id);
-            let on: f64 = o.claim.iter().zip(&shares).filter(|(t, _)| held.binary_search(t).is_ok()).map(|(_, g)| g).sum();
+            let on: f64 =
+                o.claim.iter().zip(&shares).filter(|(t, _)| held.binary_search(t).is_ok()).map(|(_, g)| g).sum();
             let here = o.claim.binary_search(&tile).ok().and_then(|k| shares.get(k).copied()).unwrap_or(0.0);
             if on > EPS {
-                sum += claim::guard_people(w, o.id) * here / on
-                    * FIGHTERS[0].defence
-                    * super::fight::entrenched(u32::MAX);
+                sum +=
+                    claim::guard_people(w, o.id) * here / on * FIGHTERS[0].defence * super::fight::entrenched(u32::MAX);
             }
         }
     }
@@ -377,8 +375,9 @@ fn defence_at(w: &World, civ: u32, tile: usize) -> f64 {
 
 /// What the army is for this turn, the first that applies:
 /// 1. **Feed it.** Hungry, or its line cut by a rival: it marches home, through whoever stands in
-///    the way. It leaves its own land for a rival's only with `PLAN.packed` of its pack, and on no
-///    one's land with under `PLAN.low` turns in its pack it halts and forages before it goes on.
+///    the way. It leaves its own land only with `PLAN.packed` of its pack; off it with under
+///    `PLAN.low` turns in its pack it halts and lives off the tile (foraging, or pillaging a
+///    rival's), and marches home once the tile is bare.
 /// 2. **Hold the land.** A rival army on its civ's claim or beside its capital: it marches onto it
 ///    when it outweighs it by `PLAN.edge`, else it stands across that army's line where its own line
 ///    feeds it, else it stands on its capital.
@@ -420,8 +419,13 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
         let _ = give(w, civ, Decision::Order(order));
         return;
     }
-    if here != capital && u.hungry > 0 {
-        return go(w, give, capital, "hungry: it marches home".to_string());
+    if here != capital && (u.hungry > 0 || (low && !home_ground)) {
+        let why = if u.hungry > 0 {
+            "hungry: it marches home"
+        } else {
+            "its pack is low and the land here is bare: it marches home"
+        };
+        return go(w, give, capital, why.to_string());
     }
     // An army sets out with its pack full: on its own land it waits for it.
     let packed = total(&u.store) + EPS >= PLAN.packed * pack_cap(people);
@@ -548,8 +552,9 @@ fn raid(w: &World, civ: u32, id: u32, strength: f64, party: bool) -> Option<usiz
 }
 
 /// The tile where army `id` would stand across rival army `foe`'s line: the first tile of that line
-/// past the rival's own that is no capital and not the rival's land, that it can walk to, and where
-/// its own line would carry its food. `None` when the rival has no line or no such tile.
+/// past the rival's own that is no capital and not the rival's land, that it can walk to without
+/// passing that army, where nobody of a rival's stands, and where its own line would carry its
+/// food. `None` when the rival has no line or no such tile.
 fn across(w: &World, civ: u32, id: u32, foe: u32) -> Option<usize> {
     let o = w.units.get(&foe)?;
     let line = &o.actor.routes.first()?.path;
@@ -560,7 +565,7 @@ fn across(w: &World, civ: u32, id: u32, foe: u32) -> Option<usize> {
             && TERRAIN[w.tiles[t].terrain].land
             && civs::tile_civ(w, t) != Some(o.civ)
             && !super::past_reach(w, id, t)
-            && (t == from || path_between(w, from, t).is_some())
+            && (t == from || path_between(w, from, t).is_some_and(|(p, _)| !p.contains(&o.home)))
             && defence_at(w, civ, t) <= EPS
     })
 }

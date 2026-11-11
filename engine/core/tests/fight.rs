@@ -297,17 +297,18 @@ fn a_tile_taken_from_an_ai_civ_is_not_fought_for_again() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
     let t = at_big(4, 0);
-    assert_eq!(claim::tile_civ(&w, t), Some(blue), "the AI's stand-in holds it");
+    assert_eq!(claim::tile_civ(&w, t), Some(blue), "the AI's first claim holds it");
     let r = army(&mut w, red, t, [10.0, 0.0]);
     camp_mut(&mut w, r).camp_mut().unwrap().auto_supply = false;
-    // The AI's stand-in gives the tile up under the stack (its step runs before the fight's), so
-    // it is taken at most once and never fought for again.
+    // The AI's claim gives the tile up under the stack (its step runs before the fight's), and its
+    // army doesn't march onto a stack it can't beat, so the tile is taken at most once and never
+    // fought for again.
     for _ in 0..3 {
         end_turn(&mut w);
     }
-    assert!(w.civs[&red].army.taken <= 1, "taken once at most");
-    assert_eq!(kinds(&w, EventKind::TileTaken) as u32, w.civs[&red].army.taken);
-    assert_eq!(kinds(&w, EventKind::Skirmish), kinds(&w, EventKind::TileTaken));
+    let at_t = |kind: EventKind| w.events.iter().filter(|e| e.kind == kind && e.tile == t).count();
+    assert!(at_t(EventKind::TileTaken) <= 1, "taken once at most");
+    assert_eq!(at_t(EventKind::Skirmish), at_t(EventKind::TileTaken), "and fought for no more than that");
     assert!(!w.civs[&blue].claim.contains(&t), "the AI doesn't paint it back under the stack");
 }
 

@@ -167,9 +167,7 @@ pub fn first(w: &World, civ: u32) -> Vec<usize> {
         .collect();
     let mut tiles: Vec<usize> = seeds
         .iter()
-        .flat_map(|&s| {
-            w.tiles[s].hex().within(CLAIM.ring).into_iter().filter_map(|h| map::index(w.config.radius, h))
-        })
+        .flat_map(|&s| w.tiles[s].hex().within(CLAIM.ring).into_iter().filter_map(|h| map::index(w.config.radius, h)))
         .filter(|&t| TERRAIN[w.tiles[t].terrain].land && !crate::civs::alive(w).any(|o| o.id != civ && o.capital == t))
         .collect();
     let rival: Vec<usize> = w
