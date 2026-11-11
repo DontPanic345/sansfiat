@@ -101,7 +101,8 @@ impl Sim {
     /// `claim`: the guard's people's share there plus its camps' shares), land (its held tiles: the capital
     /// and each claimed tile whose guard share reaches `CLAIM.floor`; the rest of the claim is paper),
     /// army (its `units::Counters`), keep (the food it keeps
-    /// in force, `civs::keep`), keep_set (the food the player set it to, null for the default), gift
+    /// in force, `civs::keep`), keep_guard (the guard's share of that keep, `civs::guard_keep`), keep_set
+    /// (the food the player set it to, null for the default), gift
     /// (the most it gives a turn), posted (food posted to its market last turn), given (food given
     /// last turn), joined (clans joined since founding), gifted (food given since founding), living
     /// (`{gathering, farming, army}`: its people by what they do, gathering over their land (Σ people ×
@@ -175,6 +176,7 @@ impl Sim {
                     "land": civs::land(w, c.id),
                     "army": c.army,
                     "keep": civs::keep(w, c.id),
+                    "keep_guard": civs::guard_keep(w, c.id),
                     "keep_set": c.keep,
                     "gift": c.gift,
                     "posted": c.posted,

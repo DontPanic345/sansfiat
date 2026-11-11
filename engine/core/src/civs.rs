@@ -464,13 +464,17 @@ fn repair(w: &mut World) {
 /// and `GUARD.keep_turns` turns of its guard's food.
 pub fn keep(w: &World, civ: u32) -> f64 {
     let Some(c) = w.civs.get(&civ).filter(|c| !c.is_out()) else { return 0.0 };
-    let guard = GUARD.keep_turns * UNIT.food * claim::guard_people(w, civ);
     let base = match c.keep {
         Some(k) => k,
         None if !w.config.army => 0.0,
         None => units::pack_cap(units::camp(w, civ).map_or(f64::from(UNIT.first), |u| u.people)),
     };
-    base + guard
+    base + guard_keep(w, civ)
+}
+
+/// The guard's share of `civ`'s keep: `GUARD.keep_turns` turns of its guard's food.
+pub fn guard_keep(w: &World, civ: u32) -> f64 {
+    GUARD.keep_turns * UNIT.food * claim::guard_people(w, civ)
 }
 
 /// The levy at market `mid`: each clan there that is the civ's, or whose home is on the civ's land, pays

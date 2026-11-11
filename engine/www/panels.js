@@ -456,8 +456,9 @@ function civShape(ctx, c) {
     });
     buttons.push({ label: 'Gift −1', action: { type: 'setGift', food: Math.max(0, c.gift - 1) } });
     buttons.push({ label: 'Gift +1', action: { type: 'setGift', food: Math.min(rules.gift_max, c.gift + 1) } });
-    buttons.push({ label: 'Keep −1', action: { type: 'setKeep', food: Math.max(0, c.keep - 1) } });
-    buttons.push({ label: 'Keep +1', action: { type: 'setKeep', food: c.keep + 1 } });
+    const base = c.keep - c.keep_guard;
+    buttons.push({ label: 'Keep −1', action: { type: 'setKeep', food: Math.max(0, base - 1) } });
+    buttons.push({ label: 'Keep +1', action: { type: 'setKeep', food: base + 1 } });
     if (c.keep_set != null) buttons.push({ label: 'Keep default', action: { type: 'setKeep', food: null } });
     buttons.push({ label: 'Claim (P)', paint: 'claim' }, { label: 'Unclaim (U)', paint: 'unclaim' });
   }
