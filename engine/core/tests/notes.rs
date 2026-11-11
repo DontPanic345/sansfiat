@@ -20,7 +20,7 @@ fn watched(seed: u32, after: u32) -> World {
 
 #[test]
 fn a_watched_game_gives_reasons_to_clans_markets_civs_and_camps() {
-    // The AI raises no army until R, so the watched game's civs raise theirs here, and it runs on.
+    // A civ starts with no army, so the watched game's civs raise theirs here, and it runs on.
     let mut w = watched(1, 50);
     armed_all(&mut w);
     // Fed each turn: the test's subject is the reasons, and a civ's store at the pick feeds an army

@@ -1,5 +1,5 @@
 //! The land: claims, the guard that holds them, held and paper tiles, rival units taking paper, the
-//! AI's stand-in, the guard's food, and the levy and Standing on the held land. Built maps from
+//! first claim, the guard's food, and the levy and Standing on the held land. Built maps from
 //! `common` (bare plains): Red's capital is at `at_big(-5, 0)`, Blue's at `at_big(5, 0)`.
 
 mod common;

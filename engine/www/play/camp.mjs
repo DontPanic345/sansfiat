@@ -3,7 +3,7 @@
 // Disband…); Move to… arms a click and sets `dest`; right-click moves; P and drag paint a zone and U
 // unpaints; each action applies or is greyed with a reason; Disband… opens a count. Then the hold: a
 // thicker guard marches onto a rival camp's post and cuts its line (small seed 4: see HOLD_SEED), which is
-// skipped until R: the AI raises no army until then.   node www/play/camp.mjs [--out DIR]
+// skipped: a civ starts with no army.   node www/play/camp.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -298,7 +298,7 @@ async function lineHome(page) {
     await page.close();
   }
 }
-// The hold is skipped until R: the AI raises no army until then (`relay/specs/152`, The start), so a
-// rival camp to post against does not exist. `hold` stays for R, when it can run.
-console.log(`skip hold (seed ${HOLD_SEED}): it needs a rival camp at a post, and the AI raises none until R`);
+// The hold is skipped: it needs a rival camp standing at a post from the pick, and a civ starts with
+// none (`relay/specs/152`, The start); the planner raises one only once its levy feeds it.
+console.log(`skip hold (seed ${HOLD_SEED}): it needs a rival camp at a post at the pick, and a civ starts with none`);
 process.exitCode = failed ? 1 : 0;

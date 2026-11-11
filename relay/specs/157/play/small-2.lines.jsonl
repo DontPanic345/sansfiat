@@ -1,0 +1,16 @@
+{"turn":262,"line":"note meant: raise Standing by feeding clans, start with a bigger gift did: setGift 8 since store holds 10 grain and clans are slightly hungry surprised: I lead at 10.8% already","result":"noted"}
+{"turn":262,"line":"{\"type\":\"setGift\",\"food\":8}","result":"ok"}
+{"turn":265,"line":"end 3","result":"ok"}
+{"turn":265,"line":"note meant: use the scout and a guard did: route scout to 475 to try the scout lever; raise 1 guard to hold land surprised: store grew fast, 37 posted vs 8 given","result":"noted"}
+{"turn":265,"line":"{\"type\":\"route\",\"unit\":427,\"from\":506,\"to\":475}","result":"ok"}
+{"turn":265,"line":"{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}","result":"ok"}
+{"turn":265,"line":"view","result":"ok"}
+{"turn":265,"line":"note meant: more gift to pull in clans 90 (0.94) and 418 (0.82) did: gift 15 surprised: Blue overtook me at 12.6% to my 10.0%; guard raised fine","result":"noted"}
+{"turn":265,"line":"{\"type\":\"setGift\",\"food\":15}","result":"ok"}
+{"turn":268,"line":"end 3","result":"ok"}
+{"turn":268,"line":"note meant: see result of gift did: view surprised: gave 0.0 last turn yet 2 clans joined","result":"noted"}
+{"turn":268,"line":"view","result":"ok"}
+{"turn":268,"line":"note meant: hold land and build an army did: raise 3 guard and 2 warriors; store is 49 and unused surprised: scout still at 506 after route order, so scout lever not moving","result":"noted"}
+{"turn":268,"line":"{\"type\":\"raise\",\"n\":3,\"kind\":\"guard\"}","result":"ok"}
+{"turn":268,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":271,"line":"end 3","result":"ok"}

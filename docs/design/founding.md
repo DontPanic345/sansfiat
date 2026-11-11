@@ -74,3 +74,6 @@ says.
 - A civ starts with its scout alone: no army and no guard. The scout's pack comes from the store, and the rest of the boon year's food stays there. (#152)
 - Until the AI learns to play for the end, it raises no army; it still claims and raises its guard. (#152)
 - Winning and losing are in: a civ loses when its capital falls (`vision.md`, Winning). (#152)
+- The AI gives 4 food a turn while a clan at its festival is a rival's or leans to one, the founding gift while only unaligned clans come, and nothing while only its own do. (#157)
+- A civ's clan leaves for a rival it has been drawn to three turns in a row, at a leaning of a twentieth or more. (#157)
+- The AI raises a guard only while its levy feeds one more mouth and no rival army stands on its capital, and sends a guard home when the levy no longer does and every held tile has twice the floor. (#157)

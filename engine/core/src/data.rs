@@ -664,7 +664,7 @@ pub struct ClaimRules {
 
 // The floor 0.05 lets three guards hold the ring around the clans' homes near the capital; 0.1 held 13 tiles a
 // civ, 0.05 holds 16 and wins 14 of 21 solo gains (canvas.md). Ring 1 and reach 4 keep the
-// stand-in near; ring 2 or reach 6 claimed more than the guard holds and the solo gain fell.
+// first claim near; ring 2 or reach 6 claimed more than the guard holds and the solo gain fell.
 pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05 * DAY, ring: 1, reach: 4 };
 
 /// The planner (`units/ai.rs`): what the AI's civs, and the automatic player, weigh each turn.

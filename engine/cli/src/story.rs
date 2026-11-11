@@ -354,7 +354,7 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
 }
 
 /// **skirmish.** The led civ claims a corridor along the path to the nearest rival's capital, out
-/// until it overlaps the rival's stand-in claim by two tiles, and keeps it.
+/// until it overlaps the rival's claim by two tiles, and keeps it.
 ///
 /// - Every turn: the claim is the capital and the corridor, sent whenever it differs from the claim (a
 ///   tile lost is claimed again). Its guard is kept by the AI's rule, so its guard holds what its share
@@ -388,7 +388,7 @@ fn bank_and_raise(s: &mut Story, want: u32, by: u32) {
     }
 }
 
-/// The stand-in claim and the corridor: the way to the rival's capital out to two tiles inside its
+/// The rival's claim and the corridor: the way to the rival's capital out to two tiles inside its
 /// claim, the rival's capital left out.
 fn corridor_claim(w: &World, me: u32, rival: u32) -> Vec<usize> {
     let (cap, theirs) = (w.civs[&me].capital, w.civs[&rival].claim.clone());
@@ -427,7 +427,7 @@ const STACK_BY: u32 = 25;
 /// - +0: `UNIT.first` warriors are raised into an army at the capital, with their packs from the store
 ///   (refused if the store can't fill them, and then there is no army to march). Its two switches
 ///   go on, and the army is sent along the way to the rival's capital to the second tile
-///   of the rival's stand-in claim (`Civ.claim`) on it, and left there. The rival's stand-in
+///   of the rival's claim (`Civ.claim`) on it, and left there. The rival's claim
 ///   takes back the tiles behind it (it skips only tiles a rival army holds), which cuts the army's
 ///   line; hungry three turns in a row with its line cut by the rival's land, it surrenders to it.
 fn surrender(s: &mut Story) {

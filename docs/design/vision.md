@@ -80,3 +80,4 @@ same rule: nothing is free, and every abstraction has to justify itself. It need
 - The turn limit counts turns after the pick: 200 on a small map, 250 on a medium one and 300 on a large one. (#152)
 - A game ends when the led civ's capital falls, when one capital is left standing, or at the turn limit. When the led civ falls, or at the limit, the winner is the standing civ with the most Standing, and a tie goes to the older civ. (#152)
 - After the end the world runs on with every rule and the AI keeps playing; the result never changes, and the player's orders are refused with "the game is over". A player whose capital fell may keep watching. (#152)
+- A led game is in doubt when the led civ's place in Standing changes after the pick, a rival passing it or being passed only by more than half a point, or when it ends before the limit. The judge reads it on every civ of the retro maps, led by the AI's planner and led idle. (#157)

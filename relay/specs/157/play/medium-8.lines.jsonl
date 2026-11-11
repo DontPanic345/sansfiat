@@ -1,0 +1,16 @@
+{"turn":293,"line":"note meant: raise guard to hold claim did: raise 3 guard because held 1 of 60 tiles surprised: nothing","result":"noted"}
+{"turn":293,"line":"{\"type\":\"raise\",\"n\":3,\"kind\":\"guard\"}","result":"ok"}
+{"turn":293,"line":"note meant: see effect did: end 5 surprised: nothing","result":"noted"}
+{"turn":298,"line":"end 5","result":"ok"}
+{"turn":298,"line":"note meant: tip unaligned clans to join did: gift 8 since store 45 and clan 308 at 0.91 trades at my market surprised: Standing rank 1 already","result":"noted"}
+{"turn":298,"line":"{\"type\":\"setGift\",\"food\":8}","result":"ok"}
+{"turn":298,"line":"note meant: watch gift effect did: end 5 surprised: nothing","result":"noted"}
+{"turn":303,"line":"end 5","result":"ok"}
+{"turn":303,"line":"note meant: try army levers did: raise 2 warriors into an army to see what orders appear surprised: nothing","result":"noted"}
+{"turn":303,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":303,"line":"note meant: army forage and zone did: set army 880 to forage then zone on 1184 surprised: runs raced earlier, army exists","result":"noted"}
+{"turn":303,"line":"{\"type\":\"forage\",\"unit\":880}","result":"ok"}
+{"turn":303,"line":"note meant: use scout did: route scout 819 to 1186 surprised: nothing","result":"noted"}
+{"turn":303,"line":"{\"type\":\"route\",\"unit\":819,\"from\":1104,\"to\":1145}","result":"ok"}
+{"turn":303,"line":"note meant: let it run did: end 10 surprised: nothing","result":"noted"}
+{"turn":313,"line":"end 10","result":"ok"}

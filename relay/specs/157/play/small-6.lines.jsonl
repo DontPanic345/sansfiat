@@ -1,0 +1,13 @@
+{"turn":274,"line":"note meant: raise Standing from 10.4% did: end 5 turns with the default gift 2 to see what the view does surprised: I already lead at the pick, though the header says 200 turns","result":"noted"}
+{"turn":279,"line":"end 5","result":"ok"}
+{"turn":279,"line":"note meant: convert the growing store (52) into clan joins did: setGift 10 since store is large and nearby clans lean 0.25 surprised: Standing slipped as rivals grew","result":"noted"}
+{"turn":279,"line":"{\"type\":\"setGift\",\"food\":10}","result":"ok"}
+{"turn":279,"line":"note meant: see the gift effect did: end 5 surprised: nothing yet","result":"noted"}
+{"turn":284,"line":"end 5","result":"ok"}
+{"turn":284,"line":"map","result":"ok"}
+{"turn":284,"line":"view","result":"ok"}
+{"turn":284,"line":"why 55","result":"ok"}
+{"turn":284,"line":"note meant: hold my claimed land (held 1 of 37) did: raise 3 guard at the capital surprised: clan 55 trades at another market so the gift does not reach it; why says it went to another festival","result":"noted"}
+{"turn":284,"line":"{\"type\":\"raise\",\"n\":3,\"kind\":\"guard\"}","result":"ok"}
+{"turn":284,"line":"note meant: see guard effect did: end 5 surprised: nothing yet","result":"noted"}
+{"turn":289,"line":"end 5","result":"ok"}
