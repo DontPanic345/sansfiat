@@ -74,9 +74,9 @@ pub(crate) fn print_text(r: &Report) {
             s.end.capitals_fallen,
             m.no_fight.end.capitals_fallen,
         );
-        let (claimed, held, guard) = civ_means(&l.civs_200);
+        let claimed = civ_means(&l.civs_200);
         println!(
-            "        claims: on land at +200 {:.3}; per civ at +200 claimed {claimed:.1}, held {held:.1}, guard {guard:.1}; no claims: lead changes {}, spread +200 {:.3}",
+            "        claims: on land at +200 {:.3}; per civ at +200 claimed {claimed:.1}; no claims: lead changes {}, spread +200 {:.3}",
             s.standing.on_land_200.unwrap_or(0.0),
             m.no_claims.doubt.lead_changes,
             m.no_claims.doubt.spread_200.unwrap_or(0.0),
@@ -123,7 +123,7 @@ pub(crate) fn print_text(r: &Report) {
     let l = &t.land;
     let f = |v: Option<f64>| v.map_or("-".to_string(), |v| format!("{v:.2}"));
     println!(
-        "total land: markets {} at the pick, {} at +200; trading {:.2}/{:.2}; homes trailed {}/{}; worked trailed {}/{}; route trailed {}/{} (pick/+200); festival changes {:.2} and flips {:.2} per 100 clan-turns; per civ at +200 claimed {}, held {}, guard {}",
+        "total land: markets {} at the pick, {} at +200; trading {:.2}/{:.2}; homes trailed {}/{}; worked trailed {}/{}; route trailed {}/{} (pick/+200); festival changes {:.2} and flips {:.2} per 100 clan-turns; per civ at +200 claimed {}",
         l.markets_pick,
         l.markets_200,
         l.trading_pick,
@@ -136,14 +136,12 @@ pub(crate) fn print_text(r: &Report) {
         f(l.route_trailed.1),
         l.festival_changes_per_100,
         l.flips_per_100,
-        f(l.claimed_200),
-        f(l.held_200),
-        f(l.guard_200)
+        f(l.claimed_200)
     );
     let e = &t.economy;
     println!(
-        "total economy: store mean {:.2}, store max {:.2}, at pack {:.1} civ-turns a map, levy per turn {:.2}, largest army {:.1}, guard mean {:.2}",
-        e.store_mean, e.store_max, e.turns_at_pack, e.levy_per_turn, e.largest_army, e.guard_mean
+        "total economy: store mean {:.2}, store max {:.2}, at pack {:.1} civ-turns a map, levy per turn {:.2}, largest army {:.1}",
+        e.store_mean, e.store_max, e.turns_at_pack, e.levy_per_turn, e.largest_army
     );
     let u = &t.supply;
     let c = &u.counts;

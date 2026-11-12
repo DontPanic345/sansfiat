@@ -356,7 +356,7 @@ impl World {
             // A skirmish on the led civ's land or by its army, its army's retreat, a tile it lost, a
             // surrender it is party to, and any fallen capital.
             EventKind::Skirmish | EventKind::ArmySurrendered => e.civ == Some(me) || e.other == Some(me),
-            EventKind::Retreated | EventKind::TileTaken => e.civ == Some(me),
+            EventKind::Retreated => e.civ == Some(me),
             EventKind::CapitalFell | EventKind::GameOver => true,
             _ => false,
         };

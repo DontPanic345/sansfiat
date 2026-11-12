@@ -5,11 +5,9 @@
 //! functions are written the way `core/src/script.rs`'s `Lead` is: what each does on which turn is
 //! in its doc comment.
 //!
-//! Every story sets gift 0 and keeps its guard by the AI's own rule (`units::guard_order`), and none
-//! leaves its camp at the capital beside the guard: with every store at 10 grain at the pick (the
-//! endowment less the scout's pack, on small 2 for every civ) and the levy bringing about three or four
-//! food a turn, a camp resupplied from the store at home and the guard together outeat it
-//! (`relay/specs/104/spec-review.md`). A store fills one warrior's pack at the pick, not three.
+//! Every story sets gift 0: with every store at 10 grain at the pick (the endowment less the scout's
+//! pack, on small 2 for every civ) and the levy bringing about three or four food a turn, a store
+//! fills one warrior's pack at the pick, not three (`relay/specs/104/spec-review.md`).
 
 use std::fs;
 
@@ -170,16 +168,8 @@ impl Story {
         raised
     }
 
-    /// Keeps the led civ's guard by the AI's own rule, once a turn.
-    fn keep_guard(&mut self) {
-        if let Some(order) = units::guard_order(&self.w, self.me) {
-            self.give(order);
-        }
-    }
-
-    /// Ends the turn: the guard is kept first.
+    /// Ends the turn.
     fn end_turn(&mut self) -> Result<(), String> {
-        self.keep_guard();
         self.w.act(Action::EndTurn)?;
         let n = self.n();
         let w = &self.w;
@@ -202,7 +192,7 @@ impl Story {
         Ok(())
     }
 
-    /// A line for `--trace`: the turn, the led civ's store, its armies, its guard, and the fight so far.
+    /// A line for `--trace`: the turn, the led civ's store, its armies, its land and the fight so far.
     fn trace_line(&self) {
         let w = &self.w;
         let st = stats::standing(w);
@@ -231,14 +221,11 @@ impl Story {
             w.clans.values().filter(|k| k.civ == Some(self.me) && k.home == self.capital()).map(|k| k.people).sum();
         println!("   rival capital {rcap} clans {mil:.1}, own {own:.1}, givers {}", units::givers(w, self.me).len());
         println!(
-            "+{} store {:.1} guard {:.1} claim {} held {}; rival guard {:.1} held {}; contested {}; fallen {:.2}/{:.2} taken {}/{}; standing {:.3}/{:.3}; {}",
+            "+{} store {:.1} land {}; rival land {}; contested {}; fallen {:.2}/{:.2} taken {}/{}; standing {:.3}/{:.3}; {}",
             self.n(),
             total(&me.store),
-            claim::guard_people(w, self.me),
             me.claim.len(),
-            claim::held(w, self.me).len(),
-            claim::guard_people(w, self.rival),
-            claim::held(w, self.rival).len(),
+            rv.claim.len(),
             w.contested.len(),
             me.army.fallen,
             rv.army.fallen,

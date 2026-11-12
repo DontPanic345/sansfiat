@@ -1,5 +1,5 @@
 //! The planner: how a civ plays for Standing with the player's own levers. Once a turn it reads a
-//! civ's needs in order (feed the armies, hold the land, grow Standing, hurt the nearest rival, take
+//! civ's needs in order (feed the armies, hold the land with them, grow Standing, hurt the nearest rival, take
 //! a capital it outweighs) and gives the orders that serve them. Every order goes through a sink
 //! (`Give`): the AI's is `World::order` and `World::set_gift`, not logged, so a replay re-derives
 //! them; the automatic player's (`script::Auto`) is `World::act`, logged as a player's are. The
@@ -8,7 +8,7 @@
 use std::collections::BTreeMap;
 
 use super::line::{line_by, path_between, ring, turns};
-use super::{camp, cut_off, givers, guard_of, pack_cap, room, zone_cap, zone_of, zone_ok, Unit, UnitKind, EPS};
+use super::{camp, cut_off, givers, pack_cap, room, zone_cap, zone_of, zone_ok, Unit, UnitKind, EPS};
 use crate::civs;
 use crate::claim;
 use crate::data::*;
@@ -86,7 +86,7 @@ pub fn ai(w: &mut World) {
 }
 
 /// One civ's turn of planning, its decisions given to `give` as they are made, each read against
-/// the world the last one left. In order: its gift, its claim and guard, its army's size, and each
+/// the world the last one left. In order: its gift, its claim, its army's size, and each
 /// army's orders.
 pub fn plan(w: &mut World, civ: u32, give: Give) {
     if w.civs.get(&civ).is_none_or(|c| c.is_out()) {
@@ -107,7 +107,7 @@ pub fn plan(w: &mut World, civ: u32, give: Give) {
     }
 }
 
-/// The food `civ`'s mouths eat a turn: its guard's and its armies' people.
+/// The food `civ`'s mouths eat a turn: its armies' people.
 fn mouths(w: &World, civ: u32) -> f64 {
     w.units.values().filter(|u| u.civ == civ && u.scout().is_none()).map(|u| u.people).sum::<f64>() * UNIT.food
 }
@@ -146,7 +146,7 @@ fn gift(w: &mut World, civ: u32, give: Give) {
 }
 
 /// The land: the claim (`claim_plan`) is sent when it differs from the civ's, where `Config.claims`
-/// lets it claim; then its guard (`guard_order`).
+/// lets it claim.
 fn land(w: &mut World, civ: u32, give: Give) {
     if claim::may_claim(w, civ) {
         let want = claim_plan(w, civ);
@@ -154,34 +154,18 @@ fn land(w: &mut World, civ: u32, give: Give) {
             let _ = give(w, civ, Decision::Order(Order::Claim { tiles: want }));
         }
     }
-    if let Some(order) = guard_plan(w, civ) {
-        let _ = give(w, civ, Decision::Order(order));
-    }
 }
 
-/// The planner's guard: `guard_order`, raising only while the levy feeds the civ's mouths and one
-/// more (`levy_feeds`) and no rival army presses its capital (a pressed guard is all drawn back, so
-/// the paper it leaves is not for want of guards). A guard the levy no longer feeds one more of
-/// sends a person home while every tile it holds has `PLAN.thick` floors of guard.
-fn guard_plan(w: &World, civ: u32) -> Option<Order> {
-    let c = &w.civs[&civ];
-    let fed = levy_feeds(w, civ) && !c.pressed;
-    let order = guard_order(w, civ).filter(|o| fed || !matches!(o, Order::Raise { .. }));
-    if order.is_some() || fed || c.pressed {
-        return order;
-    }
-    let g = guard_of(w, civ).filter(|g| g.people > 1.0 + EPS)?;
-    let thick =
-        c.claim.iter().zip(&c.guard).all(|(&t, &share)| t == c.capital || share + EPS >= PLAN.thick * CLAIM.floor);
-    thick.then_some(Order::Disband { unit: g.id, n: Some(1), fighter: None })
+/// The people of `civ`'s armies.
+fn armed(w: &World, civ: u32) -> f64 {
+    w.units.values().filter(|u| u.civ == civ && u.camp().is_some()).map(|u| u.people).sum()
 }
 
 /// The claim the planner wants for `civ` this turn, from the one it has. It leaves the tiles a rival
-/// army holds or stands on (with `Config.fight` on: a tile a stack took would come back under it and
-/// be fought for again each turn). While some of it is paper and no guard can be raised, it gives up
-/// the paper tile farthest from the capital. While all of it is held and it can feed one more guard,
-/// it widens by `PLAN.widen` tiles: the land next to the claim, no rival's, nearest a clan's home it
-/// doesn't yet claim. Sorted, with the capital, connected to it.
+/// army holds or stands on (with `Config.fight` on). Its armies hold its land, `PLAN.hold` tiles a
+/// person: while they are enough for a wider claim it widens by `PLAN.widen` tiles: the land next
+/// to the claim, nobody's, nearest a clan's home it doesn't yet claim. Sorted, with the capital,
+/// connected to it.
 pub fn claim_plan(w: &World, civ: u32) -> Vec<usize> {
     let c = &w.civs[&civ];
     let rival: Vec<usize> = w
@@ -191,20 +175,7 @@ pub fn claim_plan(w: &World, civ: u32) -> Vec<usize> {
         .flat_map(|u| u.held().iter().copied().chain(std::iter::once(u.home)))
         .collect();
     let mut tiles: Vec<usize> = c.claim.iter().copied().filter(|t| !rival.contains(t)).collect();
-    let paper: Vec<usize> = c
-        .claim
-        .iter()
-        .enumerate()
-        .filter(|&(k, &t)| t != c.capital && c.guard.get(k).copied().unwrap_or(0.0) + EPS < CLAIM.floor)
-        .map(|(_, &t)| t)
-        .collect();
-    let raising = matches!(guard_plan(w, civ), Some(Order::Raise { .. }));
-    if !paper.is_empty() {
-        if !raising {
-            let far = paper.iter().copied().max_by_key(|&t| (steps(w, c.capital, t), t));
-            tiles.retain(|&t| Some(t) != far);
-        }
-    } else if w.config.army && feeds_one_more(w, civ, civs::keep(w, civ)) {
+    if w.config.army && armed(w, civ) * PLAN.hold + EPS >= (tiles.len() + PLAN.widen) as f64 {
         // The clans' homes the claim doesn't cover, whoever's they are.
         let homes: Vec<usize> = w.clans.values().map(|k| k.home).filter(|h| tiles.binary_search(h).is_err()).collect();
         let near = |t: usize| homes.iter().map(|&h| steps(w, t, h)).min();
@@ -228,43 +199,11 @@ pub fn claim_plan(w: &World, civ: u32) -> Vec<usize> {
     claim::connected_part(w, c.capital, &tiles)
 }
 
-/// The rule for `civ`'s guard, as the order it would give: a guard that went hungry last turn
-/// loses a person (`Disband`); else the guard is raised a person a turn while a claimed tile under
-/// `CLAIM.floor` has no guard and its store and its clans' stores, after `keep`, hold
-/// `GUARD.keep_turns` turns of food for one more guard. `None` when it does neither. A story keeps
-/// the led civ's guard by giving this order through `act`.
-pub fn guard_order(w: &World, civ: u32) -> Option<Order> {
-    if !w.config.army || !claim::may_claim(w, civ) {
-        return None;
-    }
-    if let Some((id, hungry)) = guard_of(w, civ).map(|u| (u.id, u.hungry)) {
-        if hungry > 0 {
-            return Some(Order::Disband { unit: id, n: Some(1), fighter: None });
-        }
-    }
-    let c = &w.civs[&civ];
-    let short = c
-        .claim
-        .iter()
-        .enumerate()
-        .any(|(k, &t)| t != c.capital && c.guard.get(k).copied().unwrap_or(0.0) + EPS < CLAIM.floor);
-    let people = claim::guard_people(w, civ);
-    // The guard eats from the store and then its clans' stores, so both count to feed one more.
-    let kin: f64 = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| total(&k.actor.store)).sum();
-    let spare = total(&c.store) + kin - civs::keep(w, civ);
-    (short && spare >= GUARD.keep_turns * UNIT.food * (people + 1.0)).then_some(Order::Raise {
-        n: 1,
-        kind: UnitKind::Guard,
-        fighter: Fighter::Warriors,
-        into: None,
-    })
-}
-
 /// The army's size. A hungry army at its capital, or a store that can't feed the civ's mouths a
 /// turn, sends a warrior home. Else, while the civ can feed one more (`feeds_one_more`, with the
 /// new warrior's pack) and its army is under its cap, it raises one: a new army at the capital, or
 /// into its army where its line isn't cut. The cap is `PLAN.army` of its people while a rival's
-/// capital is within `PLAN.march` turns' walk or a rival army is on its claim, and a party of
+/// capital is within `PLAN.march` turns' walk or a rival army is on its land, and a party of
 /// `PLAN.party`, which can live off the land, while none is.
 fn muster(w: &mut World, civ: u32, give: Give) {
     let c = &w.civs[&civ];
@@ -312,65 +251,50 @@ fn might(u: &Unit) -> (f64, f64) {
 }
 
 /// Whether army `id` outweighs `rival`'s capital: the fight there played forward by the fight's own
-/// rule, its people attacking the whole guard drawn back and entrenched, the militia of the clans
-/// living there and any army standing on it. It outweighs the capital when the capital falls within
-/// `PLAN.siege` turns, the army never having to retreat, with `PLAN.left` of its people left.
+/// rule, its people attacking the armies standing on it. A capital no army stands on falls to
+/// whoever walks onto it. It outweighs a held capital when the armies there are gone or beaten off
+/// within `PLAN.siege` turns, the army never having to retreat, with `PLAN.left` of its people left.
 pub fn outweighs(w: &World, id: u32, rival: u32) -> bool {
     let (Some(u), Some(r)) = (w.units.get(&id), w.civs.get(&rival).filter(|r| !r.is_out())) else { return false };
     let attack = might(u).0;
     let mut a = u.people;
     // The defenders: people and strength a person.
-    let guard_def = FIGHTERS[0].defence * super::fight::entrenched(u32::MAX);
-    let mut parts: Vec<(f64, f64, bool)> = vec![(claim::guard_people(w, rival), guard_def, false)];
-    let militia: f64 = w.clans.values().filter(|k| k.civ == Some(rival) && k.home == r.capital).map(|k| k.people).sum();
-    parts.push((militia, FIGHTERS[0].defence * FIGHT.militia, true));
-    for o in w.units.values().filter(|o| o.civ == rival && o.camp().is_some() && o.home == r.capital) {
-        parts.push((o.people, might(o).1.max(FIGHTERS[0].defence), false));
-    }
+    let mut parts: Vec<(f64, f64)> = w
+        .units
+        .values()
+        .filter(|o| o.civ == rival && o.camp().is_some() && (o.home == r.capital || o.held().contains(&r.capital)))
+        .map(|o| (o.people, might(o).1.max(FIGHTERS[0].defence)))
+        .collect();
     for _ in 0..PLAN.siege {
         let strength: f64 = parts.iter().map(|p| p.0 * p.1).sum();
         let people: f64 = parts.iter().map(|p| p.0).sum();
+        if people <= EPS {
+            return a + EPS >= PLAN.left * u.people;
+        }
         let loss = (FIGHT.rate * a * attack).min(people);
         for p in &mut parts {
             p.0 -= loss * p.0 / people.max(EPS);
         }
         a -= (FIGHT.rate * strength).min(a);
         let left: f64 = parts.iter().map(|p| p.0 * p.1).sum();
-        let fallen = parts.iter().all(|p| if p.2 { p.0 < 1.0 } else { p.0 <= EPS });
-        if fallen {
-            return a + EPS >= PLAN.left * u.people;
-        }
         if a <= EPS || a * attack < FIGHT.retreat * left {
             return false;
+        }
+        if left < FIGHT.retreat * a * attack {
+            return a + EPS >= PLAN.left * u.people;
         }
     }
     false
 }
 
-/// The people of `rival` an army entering `tile` would fight, as strength: its guard's share there,
-/// the militia of its clans living there, and its armies standing there, each defending.
+/// The strength an army of `civ` entering `tile` would fight: the rival armies standing there,
+/// each defending.
 fn defence_at(w: &World, civ: u32, tile: usize) -> f64 {
-    let mut sum = 0.0;
-    for o in civs::alive(w).filter(|o| o.id != civ) {
-        let held = claim::held(w, o.id);
-        if held.binary_search(&tile).is_ok() {
-            let shares = claim::guard_shares(w, o.id);
-            let on: f64 =
-                o.claim.iter().zip(&shares).filter(|(t, _)| held.binary_search(t).is_ok()).map(|(_, g)| g).sum();
-            let here = o.claim.binary_search(&tile).ok().and_then(|k| shares.get(k).copied()).unwrap_or(0.0);
-            if on > EPS {
-                sum +=
-                    claim::guard_people(w, o.id) * here / on * FIGHTERS[0].defence * super::fight::entrenched(u32::MAX);
-            }
-        }
-    }
-    for k in w.clans.values().filter(|k| k.home == tile && k.civ.is_some_and(|c| c != civ)) {
-        sum += k.people * FIGHTERS[0].defence * FIGHT.militia;
-    }
-    for o in w.units.values().filter(|o| o.civ != civ && o.camp().is_some() && o.home == tile) {
-        sum += o.people * might(o).1;
-    }
-    sum
+    w.units
+        .values()
+        .filter(|o| o.civ != civ && o.camp().is_some() && (o.home == tile || o.held().contains(&tile)))
+        .map(|o| o.people * might(o).1)
+        .sum()
 }
 
 /// What the army is for this turn, the first that applies:
@@ -378,14 +302,14 @@ fn defence_at(w: &World, civ: u32, tile: usize) -> f64 {
 ///    the way. It leaves its own land only with `PLAN.packed` of its pack; off it with under
 ///    `PLAN.low` turns in its pack it halts and lives off the tile (foraging, or pillaging a
 ///    rival's), and marches home once the tile is bare.
-/// 2. **Hold the land.** A rival army on its civ's claim or beside its capital: it marches onto it
+/// 2. **Hold the land.** A rival army on its civ's land or beside it: it marches onto it
 ///    when it outweighs it by `PLAN.edge`, else it stands across that army's line where its own line
 ///    feeds it, else it stands on its capital.
 /// 3. **Take a capital.** A rival's capital it outweighs (`outweighs`), no more than `PLAN.march`
 ///    turns' walk away: it marches on it, and off again the turn it no longer outweighs it.
 /// 4. **Hurt the nearest rival.** Of `PLAN.raid` people or more: a rival's land inside its ring
-///    (`PLAN.reach`) whose defenders it outweighs, a clan's home or ground first: it marches there
-///    and pillages it; and a rival army abroad whose line it can stand across.
+///    (`PLAN.reach`) whose defenders it outweighs, a clan's home or ground first: it marches there,
+///    takes the tile by standing on it and pillages it; and a rival army abroad whose line it can stand across.
 /// 5. Else it stands at its post with a zone along its line home.
 fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
     let Some(u) = w.units.get(&id) else { return };
@@ -434,12 +358,14 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
         return stand(w, civ, id, paths, give);
     }
 
-    // 2. Hold the land: the nearest rival army on the claim or beside the capital.
+    // 2. Hold the land: the nearest rival army on the claim, beside it or beside the capital.
+    let claim = &w.civs[&civ].claim;
+    let on_land = |t: usize| claim.binary_search(&t).is_ok() || neighbours(w, t).any(|n| claim.binary_search(&n).is_ok());
     let threat = w
         .units
         .values()
         .filter(|o| o.civ != civ && o.camp().is_some() && o.people > EPS)
-        .filter(|o| w.civs[&civ].claim.binary_search(&o.home).is_ok() || steps(w, o.home, capital) <= 1)
+        .filter(|o| on_land(o.home) || steps(w, o.home, capital) <= 1)
         .min_by_key(|o| (steps(w, o.home, capital), o.id))
         .map(|o| (o.id, o.home, o.people * might(o).1));
     if let Some((foe, at, theirs)) = threat {
@@ -506,7 +432,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
             if !packed && home_ground && dest != Some(t) {
                 return fill(w, give);
             }
-            return go(w, give, t, format!("marches to {} to pillage a rival's land", w.at(t)));
+            return go(w, give, t, format!("marches to {} to take a rival's land", w.at(t)));
         }
     }
 
@@ -514,7 +440,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
     stand(w, civ, id, paths, give)
 }
 
-/// The rival land army `id` would pillage: a tile of a rival's land, not a capital and not the
+/// The rival land army `id` would take: a tile of a rival's land, not a capital and not the
 /// tile it stands on, whose defenders it outweighs by `PLAN.edge`; inside `civ`'s ring where its
 /// line takes no more than `PLAN.reach` of its days, or anywhere it can walk when it is a `party`,
 /// small enough to live off the land. The nearest, a rival clan's home counting two steps nearer

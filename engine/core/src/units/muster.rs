@@ -8,7 +8,6 @@ use super::camp::CampState;
 use super::scout::ScoutState;
 use super::{name_of, pack_cap, Unit, UnitKind, UnitState, EPS};
 use crate::actors::Actor;
-use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::steps;
@@ -234,7 +233,6 @@ pub fn surrender(w: &mut World, id: u32, by: u32) -> bool {
     };
     give_up(w, id, clan);
     w.civs.get_mut(&civ).unwrap().army.surrendered += 1;
-    claim::divide(w, civ);
     w.emit(Event::new(EventKind::ArmySurrendered, tile).civ(civ).other(by).unit(id).clan(clan).amount(people));
     let (name, taker) = (name_of(w, civ), name_of(w, by));
     let at = w.at(tile);
@@ -327,7 +325,4 @@ pub fn disband_kind(w: &mut World, id: u32, n: Option<u32>, fighter: Option<Figh
         format!("sent {k:.0} warrior(s) back; {home}")
     };
     w.note(id, text);
-    if was == UnitKind::Guard {
-        claim::divide(w, civ);
-    }
 }

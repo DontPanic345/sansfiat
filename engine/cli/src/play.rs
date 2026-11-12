@@ -254,10 +254,9 @@ fn map_text(w: &World) -> String {
     if let Some(me) = w.player {
         marks.push((w.civs[&me].capital, 'C'));
         marks.extend(w.units.values().filter(|u| u.civ == me).map(|u| (u.tile(), 'U')));
-        let held = engine::claim::held(w, me);
-        marks.extend(w.civs[&me].claim.iter().map(|&t| (t, if held.contains(&t) { 'L' } else { 'p' })));
+        marks.extend(w.civs[&me].claim.iter().map(|&t| (t, 'L')));
     }
     let mut out = engine::map::ascii_marked(&w.tiles, w.config.radius, &marks);
-    out += "C your capital  U your units  L your land  p your paper\n";
+    out += "C your capital  U your units  L your land\n";
     out
 }
