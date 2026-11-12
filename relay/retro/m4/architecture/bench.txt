@@ -1,0 +1,8 @@
+F run 1: seed 8: world 63.7 ms, pre-game 3105.3 ms, 50 turns past the pick 2172.6 ms (43.452 ms a turn) 
+T run 1: seed 8: world 65.1 ms, pre-game 1925.8 ms, 50 turns past the pick 782.4 ms (15.648 ms a turn) 
+M run 1: seed 8: world 65.0 ms, pre-game 1942.2 ms, 50 turns past the pick 1144.5 ms (22.889 ms a turn) 
+F run 2: seed 8: world 64.1 ms, pre-game 3158.6 ms, 50 turns past the pick 2200.2 ms (44.005 ms a turn) 
+T run 2: seed 8: world 65.7 ms, pre-game 1952.2 ms, 50 turns past the pick 790.4 ms (15.807 ms a turn) 
+M run 2: seed 8: world 65.0 ms, pre-game 1924.1 ms, 50 turns past the pick 1120.1 ms (22.402 ms a turn) 
+
+[exited with code 0]
