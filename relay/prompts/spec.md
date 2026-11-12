@@ -71,7 +71,7 @@ Each build step plays a **part** in its shape.
 - **Parts:** `easel` steps first, all settled, built for what the painter needs. Then one
   `canvas` step holding all the important unsettled work. Its brief says what the easel
   provides, what proves the painting, and that it may change the easel.
-- **Expect:** Haiku easels, Sonnet medium for an easel at 6–8, and an Opus low canvas.
+- **Expect:** Haiku easels, Sonnet medium for an easel at 6–8, and a Sonnet high canvas.
 
 ### Clay and Kiln
 
@@ -81,7 +81,7 @@ Each build step plays a **part** in its shape.
   interfaces, invariants and tests. Then `kiln` steps, all settled, each building on the
   clay. Each kiln brief says to keep the clay's shape, and where the clay doesn't hold, to
   make the smallest fix that works and record it as a decision.
-- **Expect:** Opus clay and a cheap kiln.
+- **Expect:** Sonnet high or Opus medium clay and a cheap kiln.
 
 ### Clay, Kiln and Glaze
 
@@ -90,7 +90,7 @@ Each build step plays a **part** in its shape.
 - **Parts:** as Clay and Kiln, ending with one `glaze` step that tunes the kiln's numbers on
   real maps and may change the kiln. Give the kiln starting numbers that run. A kiln that has
   to run stories on real maps to see its own rule work is part of the glaze.
-- **Expect:** Opus clay and glaze, and a cheap kiln.
+- **Expect:** Sonnet high or Opus medium clay and glaze, and a cheap kiln.
 
 Where does the unsettled work sit? On top, judged at the end on what the others built:
 Easel and Canvas. Underneath, a shape the others build on: Clay and Kiln.
@@ -119,11 +119,12 @@ The points add up, and the sum climbs the ladder:
 | ------ | --------- | ------------ | ---------- | ------------- | ----------- | ----------- |
 | Step   | haiku low | haiku medium | haiku high | sonnet medium | sonnet high | opus medium |
 
-`canvas`, `glaze` and `clay` run Opus low from 8 to 10.
+`canvas`, `glaze` and `clay` run Sonnet high from 8 to 10, and Opus medium from 11.
 
 - Haiku takes the lower half, judgement work included: it's more capable than its training
   data shows.
-- A `magnum` step runs on Opus: low under 11 points, medium from 11.
+- A `magnum` step runs Opus medium.
+- Haiku's cost is its turns: a step that waits on long runs costs as much as its waiting.
 - How many files a step touches costs minutes, not a bigger model. Don't go off the ladder
   for it.
 - Opus medium is the top.

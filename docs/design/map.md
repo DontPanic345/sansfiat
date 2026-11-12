@@ -87,9 +87,4 @@ Climate beyond deserts and rain shadow, seasons, and rivers changing course.
 
 ## Decided
 
-- Desert is slow to cross. (M2 retro, owner note 1)
-- Hidden country is behind a View toggle, off by default. (#93)
-- Alerts are for the player's own civ: hunger, a cut line, a clan joining a rival, people leaving. (#93)
 - Desert costs 2 to cross, as forest and hills do. (#102)
-- Before the pick the top bar shows the pre-game's counts; after it, every civ's Standing, with the world's counts in the turn's tooltip. (#103)
-- Festival routes are off by default and drawn for a selected clan or festival. (#103)

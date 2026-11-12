@@ -1,0 +1,32 @@
+turn 244 (+0): civ 229 9.7%, civ 230 8.1%, civ 231 10.9%; leader civ 231
+turn 254 (+10): civ 229 8.8%, civ 230 7.6%, civ 231 12.6%; leader civ 231
+turn 264 (+20): civ 229 10.5%, civ 230 7.6%, civ 231 17.5%; leader civ 231
+turn 274 (+30): civ 229 9.7%, civ 230 7.6%, civ 231 19.1%; leader civ 231
+turn 284 (+40): civ 229 11.0%, civ 230 7.4%, civ 231 19.0%; leader civ 231
+turn 294 (+50): civ 229 10.6%, civ 230 7.5%, civ 231 17.1%; leader civ 231
+turn 304 (+60): civ 229 10.3%, civ 230 7.6%, civ 231 17.9%; leader civ 231
+turn 314 (+70): civ 229 10.3%, civ 230 7.4%, civ 231 18.6%; leader civ 231
+turn 324 (+80): civ 229 10.1%, civ 230 7.4%, civ 231 19.5%; leader civ 231
+turn 334 (+90): civ 229 10.2%, civ 230 7.5%, civ 231 18.5%; leader civ 231
+turn 344 (+100): civ 229 10.5%, civ 230 7.7%, civ 231 16.1%; leader civ 231
+turn 354 (+110): civ 229 10.6%, civ 230 7.6%, civ 231 17.4%; leader civ 231
+turn 364 (+120): civ 229 10.5%, civ 230 7.5%, civ 231 18.1%; leader civ 231
+turn 374 (+130): civ 229 10.4%, civ 230 7.4%, civ 231 18.4%; leader civ 231
+turn 384 (+140): civ 229 10.4%, civ 230 7.5%, civ 231 18.3%; leader civ 231
+turn 394 (+150): civ 229 10.4%, civ 230 7.5%, civ 231 18.0%; leader civ 231
+turn 404 (+160): civ 229 10.6%, civ 230 7.6%, civ 231 17.6%; leader civ 231
+turn 414 (+170): civ 229 10.4%, civ 230 7.4%, civ 231 19.0%; leader civ 231
+turn 424 (+180): civ 229 10.6%, civ 230 7.6%, civ 231 17.6%; leader civ 231
+turn 434 (+190): civ 229 10.4%, civ 230 7.5%, civ 231 18.5%; leader civ 231
+turn 444 (+200): civ 229 10.5%, civ 230 7.5%, civ 231 17.5%; leader civ 231
+led civ 229: Standing at +200 10.5% (rank 2) in the game, 16.6% (rank 2) with every civ on the AI, 10.5% (rank 2) idle led civ
+end (game / control / idle): limit +200 rank 2 / limit +200 rank 2 / limit +200 rank 2
+claim (game / control): 33 / 43 tiles claimed, 1 / 43 held, guard 0.0 / 5.0 people
+doubt (game / control): lead changes 0 / 8, spread +200 0.100 / 0.105, swings 9 / 4
+motion (game / control): clans changed 20 / 43, people 80.2 / 192.6, land tiles 86 / 129, clans left 0 / 0, claimed tiles taken 0 / 0
+fight (game / control): people fallen 0.00 / 0.92, tiles taken 0 / 1, armies surrendered 0 / 0
+fight by civ (game): 229: fallen 0.00 taken 0 surrendered 0; 230: fallen 0.00 taken 0 surrendered 0; 231: fallen 0.00 taken 0 surrendered 0
+fields (game / control): farming share at +200 0.000 / 0.043, field tiles at +200 0 / 2, store turns at a pack 200 / 182 of 200
+player orders: 0 (none), 0.00 per 100 turns; turns with none 200 of 200, longest run 200
+player lines: 0 refused, 0 noted
+   258   A town forms at (-12, 2): 3 clans live by the festival

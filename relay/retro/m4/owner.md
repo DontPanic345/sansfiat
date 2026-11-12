@@ -7,16 +7,15 @@ local sessions, not by Relay: the `game`, `retro` and `proposal` steps read this
 
 | Note | Stands |
 |---|---|
-| M5 runs pieces in the new shape; the twin and pick go; the log per milestone; draft PRs; above and below the line; fewer ideas, and designers take the obvious ones; trust and verify; a test can't run too long | Built in this PR's Relay change (`relay/README.md`) |
-| Remove the militia and the guard | Not started. The guard is what makes a claim held (`claim.rs`), so a piece must say what holds land without it |
-| Play the page, name the worst aspects, propose fixes | Not started |
-| A click centres the camera on the tile | Not started |
-| Scouts go back to the capital for food; foraging doesn't work | Not started |
-| The scout's test on a small known map, viewable and runnable on the page, and every such test | Not started |
-| Warriors kill scouts, and a warrior's painted tiles trap them | Not started |
-| Towns: one town on small 61288 | Not started |
-| Strike implementation details from the design files; the ledger holds decisions of an ADR's weight | The prompts say so now (`relay/prompts/review.md`, The design ledger). The files themselves are not yet struck |
-| Record the starving decision and its reasoning | `docs/process.md`, Scores, line 5 has the rule. The reasoning below is not yet in a design file |
+| M5 runs pieces in the new shape; the twin and pick go; the log per milestone; draft PRs; above and below the line; fewer ideas, and designers take the obvious ones; trust and verify; a test can't run too long | Built in this PR's Relay change (`docs/proposals/m5-relay.md`) |
+| Remove the militia and the guard | M5 piece L, on the retro's question 1: what holds land without a guard |
+| Scouts go back to the capital for food; warriors kill scouts, and a warrior's painted tiles trap them | M5 piece C. The stalled errand is reproduced in `game/scout-61288.txt` |
+| Play the page, name the worst aspects, propose fixes; a click centres the camera on the tile | M5 piece P. The retro played the text view only |
+| The scout's test on a small known map, viewable and runnable on the page, and every such test | M5 piece V |
+| Towns: one town on small 61288 | M5 piece N. As built, small maps form one town or none (`game.md` §1) |
+| Strike implementation details from the design files; the ledger holds decisions of an ADR's weight | Done in this PR: 104 of 149 ledger lines struck, and `docs/design/README.md` says what the ledger is. The prose is untouched |
+| Record the starving decision and its reasoning | `docs/design/vision.md`, Decided, last line; `docs/process.md`, Scores, line 5. What else isn't helping: `docs/proposals/m4-retro.md` |
+| The scout issued its own order at the pick | Not reproduced in the text view |
 
 ## The notes
 

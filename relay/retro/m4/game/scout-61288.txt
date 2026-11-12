@@ -1,0 +1,16 @@
+small 61288, led civ 1 (Red). One order at the pick, then end turn to the limit:
+  {"type":"route","unit":232,"from":735,"to":109}     (Gold's capital, 18 steps)
+
+The scout's line in the text view:
+  +0    at 735 (12, -3): known route 47.3 days, possible route 39.7 days, 8 tiles to search, hungry 0 turns
+  +10   at 497 (3, -7):  known route 45.7 days, possible route 38.3 days, 7 tiles to search, hungry 0 turns
+  +30   at 497 (3, -7):  known route 46.0 days, possible route 38.0 days, 5 tiles to search, hungry 0 turns
+  +60   at 497 (3, -7):  known route 46.3 days, possible route 38.0 days, 5 tiles to search, hungry 0 turns
+  +120  at 497 (3, -7):  known route 44.7 days, possible route 38.0 days, 5 tiles to search, hungry 0 turns
+  +200  at 497 (3, -7):  known route 45.7 days, possible route 38.0 days, 5 tiles to search, hungry 0 turns
+
+The feed, Red's scout, the whole game:
+  426   Red's scout finds a pass at (3, -6)
+
+The same scout sent to Blue's capital (495, 15 steps by the card, 9 tiles walked) has its route
+at +2 and builds a trail at +7.

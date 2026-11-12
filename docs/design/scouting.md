@@ -77,15 +77,5 @@ set its target. Debug views stay, but nothing in play needs them.
 
 ## Decided
 
-- The scout has the camp's switches and forages round it. (M2 retro, owner note 9)
 - Trails, worn or built, make a route cheaper; a marsh trail only bridges its river. (#74, #76)
-- A trail on a route the civ uses, such as a camp's line, counts as walked. (#78)
-- The player hears of a route when it's found and again when it's built. (#74, #77)
-- A scout forages its own tile and the tiles next to it, and pays the walk to each. (#104)
-- A scout keeps its route until the route is cleared, and the trails along it count as walked while it does. (#104)
 - A trail brings plains and coast to three quarters of their bare cost, worn by traffic as on rough ground; marsh and desert gain nothing. The scout builds no flat trail. (#153)
-- The scout's row is Move to… (it walks to a tile and stays there, foraging), Route from… (a ring marks the start) and Route to…, with Clear route and Stop. (#153)
-- Along a range the scout checks the mountain with the best case first: the cost through it plus its walk there. The panel lists the mountains it leaves, each with its cost through against the known route. (#153)
-- A low scout leaves its errand for the nearest ground within eight steps where a turn's foraging brings a fifth more than it eats, fills its pack and goes back to its errand; an idle scout waits on such ground. (#153)
-- A scout's built trails count as walked while it works its route, so they don't wear away behind it. (#154)
-- Once no reveal is left, a scout builds trails on the cheapest possible route, so a bridge on a revealed river tile that would cut the settled route is built; a scout standing on the rich ground it picks says it forages there. (#162)
