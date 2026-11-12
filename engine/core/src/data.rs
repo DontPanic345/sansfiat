@@ -709,7 +709,7 @@ pub const PLAN: PlanRules = PlanRules {
     army: 0.25,
     gift_contested: 4.0,
     widen: 1,
-    hold: 6.0,
+    hold: 15.0,
     widen_reach: 3,
     edge: 1.5,
     siege: 8,
@@ -724,7 +724,9 @@ pub const PLAN: PlanRules = PlanRules {
     note: "Tuned on the seven retro maps against the judge's led games (relay/specs/157/canvas.md): feed 1.5 fills \
            a pack past spoilage where 1.25 never did; march 3 or 4 and a party of 4 keep an army where its pack \
            and the land feed it (a stack of 14 sent 16 steps starved every time); low 1 turns a party back \
-           before it starves and still reaches a rival (2 kept every warrior fed but took 5 tiles against 17).",
+           before it starves and still reaches a rival (2 kept every warrior fed but took 5 tiles against 17). hold 15 (relay/specs/336/scores.md): at 6 a party of 4 never widens the claim it is \
+           founded with and 8 tiles change hands on the retro maps; at 15, 36 do and the lead changes 13 times; \
+           at 30 the claims cover the map and one capital falls where two did.",
 };
 
 pub struct UnitRules {
