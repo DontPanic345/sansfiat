@@ -862,10 +862,9 @@ pub const FIGHT: FightRules = FightRules {
     hungry: 0.5,
     floor: 0.01,
     surrender: 3,
-    note: "Tuned on small seed 2's stories (relay/specs/104/glaze.md): rate 0.2 makes the guards' skirmish \
-           move Standing (Red +2.9, Blue -1.0 against the control) while a guard of 2-3 still lasts its \
-           19 contested turns; the rest held, since a beaten stack still retreats a step and starves or \
-           surrenders at surrender 3 (the stack's and surrender story's armies both do).",
+    note: "Tuned on small seed 2's stories (relay/specs/104/glaze.md): at rate 0.2 a fight moves Standing \
+           and a party of 2-3 still lasts its contested turns; a beaten stack retreats a step and starves \
+           or surrenders at surrender 3 (the stack's and surrender story's armies both do).",
 };
 
 /// Which civs may claim land (`claim.rs`): `All` (the default), `None` (the control: no civ claims

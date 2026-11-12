@@ -247,8 +247,7 @@ fn unknown(text: &str) -> String {
     "unknown".to_string()
 }
 
-/// The map as `sansfiat map` prints it, with the led civ's capital `C`, its units `U`, and its land `L`
-/// and paper `p` (the claimed tiles its guard doesn't hold).
+/// The map as `sansfiat map` prints it, with the led civ's capital `C`, its units `U` and its land `L`.
 fn map_text(w: &World) -> String {
     let mut marks: Vec<(usize, char)> = Vec::new();
     if let Some(me) = w.player {

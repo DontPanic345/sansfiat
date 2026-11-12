@@ -16,7 +16,7 @@ use crate::world::World;
 
 impl Unit {
     /// Takes `k` people (at most all) from the unit, an army's from every kind in proportion. Returns
-    /// what came off each kind (a scout's or guard's as warriors). Every loss of an army's people
+    /// what came off each kind (a scout's as warriors). Every loss of an army's people
     /// goes through here or `take_kind`, so its stack sums to its people.
     pub fn take_people(&mut self, k: f64) -> [f64; 2] {
         let people = self.actor.people;

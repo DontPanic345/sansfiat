@@ -341,26 +341,21 @@ pub(crate) fn story(args: &[String]) -> Result<(), String> {
 }
 
 /// **skirmish.** The led civ claims a corridor along the path to the nearest rival's capital, out
-/// until it overlaps the rival's claim by two tiles, and keeps it.
+/// to the rival's land, and takes the rival's tiles on the way one at a time.
 ///
-/// - Every turn: the claim is the capital and the corridor, sent whenever it differs from the claim (a
-///   tile lost is claimed again). Its guard is kept by the AI's rule, so its guard holds what its share
-///   reaches, and a tile of the corridor the rival also holds is contested.
+/// - Every turn: the claim is what it has and the corridor, sent whenever it differs from the claim (a
+///   tile lost is claimed again).
 /// - From turn 30, or when the store fills three warriors' packs, those warriors are raised into one army, staged
-///   (`stage_then_push`) and posted on the last corridor tile outside the rival's claim, with its zone
-///   over the two tiles beyond. On small seed 2 the store never fills three packs, so the army is
-///   the one warrior it can raise and the skirmish is the guards'.
+///   (`stage_then_push`) and sent onto the first tile of the way that is the rival's land: ending its
+///   turn there takes it, the tile joins the corridor, and the army goes on to the next. On small
+///   seed 2 the store never fills three packs, so the army is the one warrior it can raise.
 fn skirmish(s: &mut Story) {
     let way = s.way();
     let theirs = s.w.civs[&s.rival].claim.clone();
     let first = way.iter().position(|t| theirs.contains(t)).unwrap_or(way.len());
-    let stand = way[first.saturating_sub(1)];
+    let stand = way[first.min(way.len().saturating_sub(2))];
     bank_and_raise(s, 3, 30);
     s.stage_then_push(stand);
-    if let Some(id) = s.camp().filter(|u| u.home == stand && u.territory.len() == 1).map(|u| u.id) {
-        let zone: Vec<usize> = way[first..].iter().copied().take(2).collect();
-        s.give(Order::Zone { unit: id, tiles: zone });
-    }
     let want = corridor_claim(&s.w, s.me, s.rival);
     if want != s.w.civs[&s.me].claim {
         s.give(Order::Claim { tiles: want });
@@ -375,25 +370,23 @@ fn bank_and_raise(s: &mut Story, want: u32, by: u32) {
     }
 }
 
-/// The rival's claim and the corridor: the way to the rival's capital out to two tiles inside its
-/// claim, the rival's capital left out.
+/// The led civ's claim and the corridor: the way to the rival's capital out to the rival's land.
 fn corridor_claim(w: &World, me: u32, rival: u32) -> Vec<usize> {
     let (cap, theirs) = (w.civs[&me].capital, w.civs[&rival].claim.clone());
     let way = units::path_between(w, cap, w.civs[&rival].capital).map(|(p, _)| p).unwrap_or_default();
-    let first = way.iter().position(|t| theirs.contains(t)).unwrap_or(way.len());
-    let end = (first + 2).min(way.len().saturating_sub(1));
-    let mut tiles = vec![cap];
-    tiles.extend(way[..end].iter().copied());
+    let first = way.iter().position(|t| theirs.contains(t)).unwrap_or(way.len().saturating_sub(1));
+    let mut tiles = w.civs[&me].claim.clone();
+    tiles.extend(way[..first].iter().copied());
     tiles.sort_unstable();
     tiles.dedup();
-    claim::check(w, me, &tiles).unwrap_or(tiles)
+    claim::check(w, me, &tiles).unwrap_or_else(|_| w.civs[&me].claim.clone())
 }
 
 /// **stack.** The led civ banks its store, raises every warrior it fills at once into one army and
 /// marches it at the nearest rival's capital.
 ///
-/// - Until the store fills `STACK_WANT` warriors' packs, or turn `STACK_BY`: nothing but the guard's
-///   upkeep. Then every warrior the store fills is raised at once into one army at the capital.
+/// - Until the store fills `STACK_WANT` warriors' packs, or turn `STACK_BY`: nothing. Then every warrior
+///   the store fills is raised at once into one army at the capital.
 /// - The army marches to the last tile of the way whose line is not cut (`stage_tile`), waits there
 ///   until its pack is full (auto-supply fills it from the store) or `WAIT` turns have passed, and then
 ///   pushes at the rival's capital with both switches on.
@@ -408,7 +401,7 @@ const WAIT: u32 = 10;
 const STACK_WANT: u32 = 3;
 const STACK_BY: u32 = 25;
 
-/// **surrender.** The led civ marches its starting army into the rival's land, past its guard, and
+/// **surrender.** The led civ marches its starting army into the rival's land and
 /// halts it two tiles inside.
 ///
 /// - +0: `UNIT.first` warriors are raised into an army at the capital, with their packs from the store
