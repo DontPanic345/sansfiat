@@ -1,0 +1,43 @@
+# per-step ms a turn, large 8, 50 turns past the pick (prof-main.rs on each tree)
+== towns
+move          5.96
+go            6.28
+harvest       1.01
+trade         0.23
+eat           1.08
+people        0.10
+lean          0.10
+ai            0.11
+units         0.68
+markets       0.10
+total        15.76
+== main
+move          6.08
+go            6.27
+harvest       1.01
+trade         0.23
+eat           1.10
+people        0.11
+lean          0.11
+ai            6.53
+units         1.27
+markets       0.10
+total        22.94
+== main, instrumented (path_between, ring, and the planner's four parts; calls a turn)
+move          5.86
+go            6.37
+harvest       0.99
+trade         0.22
+eat           1.11
+people        0.11
+lean          0.11
+ai            6.39
+units         1.28
+markets       0.09
+total        22.69
+path_between     5.55 ms/turn    16.3 calls/turn
+ring             0.25 ms/turn     0.8 calls/turn
+gift             0.01 ms/turn     3.0 calls/turn
+land             0.14 ms/turn     3.0 calls/turn
+muster           2.87 ms/turn     3.0 calls/turn
+direct           3.36 ms/turn     3.0 calls/turn
