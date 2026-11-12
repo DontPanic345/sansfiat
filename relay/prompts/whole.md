@@ -36,6 +36,8 @@ that will make it hold:
 
 - Every clause of the Goal and every Decided line is in the game, each shown by a test or a
   number.
+- The files you grew keep `docs/architecture.md`'s rules: you split one you took past about 800
+  lines.
 - The Goal's question is answered in the scores: `sansfiat sweep --judge` on the branch and on
   `main`, the old and new numbers beside the control, in a file under `relay/specs/<piece>/`.
 - The games the Goal asks of a player are played through `sansfiat play` by a player who knows

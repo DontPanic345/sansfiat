@@ -14,8 +14,8 @@ motion comes from people, land and what they learn, not from the weather.
 | Land that is yours, and armies that take and hold it                              | M3                             |
 | A page that is the game: start, play, end, save                                   | M3, then grown every milestone |
 | A judge on every change, and a player that plays every piece                      | M3, then M4: the stage, the compare and the play step |
-| The day as the yardstick everything is priced in                                  | M4; the clock war runs on, decided before M5 |
-| New ways to feed a civ: fields, herds, beer                                       | M4, M5                         |
+| The day as the yardstick everything is priced in                                  | M4; the clock closed as built in M5 |
+| New ways to feed a civ: fields, herds, beer                                       | M4, M5, M6                     |
 | Knowledge that spreads                                                            | M6                             |
 | A world worth crossing: biomes, deserts, ranges, steppe, the routes across them   | M7                             |
 | Goods worth the walk                                                              | M8                             |
@@ -44,18 +44,22 @@ economy. `proposals/m4.md` has the pieces. You play: a game that ends, against a
 settles and comes for your store. Visions: `design/labour.md` and `design/farming.md`,
 drafted.
 
-### M5: Herds and beer
+### M5: Holding and herding
 
-Herds as a store that walks and breeds; pastoral clans with wide, thin land; pack animals
-that cut a route's cost and carry a line further; horsemen. Beer from grain: a good that
-isn't eaten, which draws clans to a feast and feeds people put to a work. The engine learns
-that a good can be something other than food. You play: a pastoral civ against a farming
-one, and a feast that draws a rival's clans. Needs: a carrier on the shared actor; goods
-that aren't eaten; the owner's call on which clock war runs on under the day
-(`proposals/m3-retro.md`, question 1), since animals change what a person carries and how
-far. Visions: `design/animals.md` and `design/goods.md`, to write.
+First a small map becomes a game, from the owner's notes on M4: land that is held by being
+claimed and lost by being walked on, with the guard and the militia gone; scouts that eat at
+the capital, finish their errands and can be killed; the page played and its worst faults
+fixed; every staged test listed and watched on the page; a town at the capital. Then the code
+made ready for goods that aren't eaten and animals that carry, herds as a store that walks and
+breeds, pastoral clans with wide, thin land, pack animals that carry a line further, and
+horsemen. `proposals/m5.md` has the pieces, and `proposals/m4-retro.md` what M4 answered.
+You play: a small map where a capital falls, and a pastoral civ against a farming one.
+Vision: `design/animals.md`, drafted.
 
 ### M6: Knowing things
+
+Beer first, from grain: a good that isn't eaten, which draws clans to a feast and feeds
+people put to a work, on the goods table M5 leaves. Vision: `design/goods.md`, to write.
 
 Technology as drift (`design/technology.md`): knacks that grow by practice, luck and contact,
 so an advantage leaks and lagging is a strategy. The camel is one: a knack that turns up

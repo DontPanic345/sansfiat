@@ -58,22 +58,11 @@ says.
 
 ## Decided
 
-- A unit is a camp or a scout; warriors are the camp's people. (M2 retro, owner note 7)
-- Scouts are raised and disbanded like the camp. (M2 retro, owner note 7)
-- If the civ's own clan is gone, its biggest clan takes over the capital. (#67, #69)
 - The levy is a share of the food civ clans bring to the capital's festival, until the store is full. (#72)
-- Only unaligned clans lean toward a civ. Gifts and trade at its festival draw them, the leaning fades, and enough of it makes them join. (#81)
 - A civ gives its spare food at its festival to win clans; how much it gives is the player's choice. (#81)
 - A civ can lose clans and people to its rivals. (#58, #63, M3 answer 2)
 - Unaligned clans whose homes are on a civ's land pay its levy at its festival, as its own clans do. (#102)
 - A civ's gifts go to every clan at its festival that isn't its own, a rival's clans included. Trade leaning reaches its own clans too. (#102)
-- A clan that joins a civ, or leaves for one, starts at the joining line toward it, and its other leanings are cleared. (#102)
-- A civ keeps a turn of its guard's food in its store, out of gifts. (#102)
 - A civ may have any number of armies, of warriors and archers. Raising names a kind and a place: a new army at the capital, or into an army. Disbanding names a kind, or takes all kinds in proportion. (#104)
-- A civ may raise a scout at any time, and have any number, each with its pack filled from the store. (#104)
 - A civ starts with its scout alone: no army and no guard. The scout's pack comes from the store, and the rest of the boon year's food stays there. (#152)
-- Until the AI learns to play for the end, it raises no army; it still claims and raises its guard. (#152)
 - Winning and losing are in: a civ loses when its capital falls (`vision.md`, Winning). (#152)
-- The AI gives 4 food a turn while a clan at its festival is a rival's or leans to one, the founding gift while only unaligned clans come, and nothing while only its own do. (#157)
-- A civ's clan leaves for a rival it has been drawn to three turns in a row, at a leaning of a twentieth or more. (#157)
-- The AI raises a guard only while its levy feeds one more mouth and no rival army stands on its capital, and sends a guard home when the levy no longer does and every held tile has twice the floor. (#157)

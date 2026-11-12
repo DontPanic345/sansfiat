@@ -63,16 +63,7 @@ first, so there's no reserve to set.
 
 ## Decided
 
-- The pack spoils. (#69)
-- A line reaches a few steps on plains, fewer in hills. (#72)
-- Foraging past the line takes only what's needed, and the tile rests in proportion. (M2 retro, owner note 9)
-- A contested tile goes to the side guarding it more; capitals can't be held. (#90)
 - Held ground blocks rivals' lines, and lets your own line through their land. (#88, #90)
-- Lines, and forage against pillage, read a civ's land as the part of its claim its guard holds. (#102)
 - Foraging takes only what it takes, for every unit: the tile keeps the rest of its food and rests in proportion. (#104)
-- A scout has the army's switches, and can be ordered to forage, pillage and resupply. (#104)
 - A civ can raise people into an army only while that army's line is open, so a cut-off army can't be reinforced. (#104)
-- A scout forages only what a tile regrows after the clans' harvest, and never leaves a tile fallow; armies forage as before. (#153)
-- A hungry scout's reasons say what foraging and its line brought against what it eats, and what its line costs from there. Move to… and Route to… warn when the line there can't carry what the scout eats. (#153)
 - The ring is every tile from which a civ's line feeds an army with days to spare. It is the same for every army and scout of the civ, and a rival's held ground is past it. (#154)
-- The page draws the ring when an army or its civ is selected: the tiles inside are tinted in the civ's colour, deeper where the line takes less of an army's days, with a solid line along the edge and nothing past it. A tile's tooltip gives the share of an army's days its line takes there. (#154)
