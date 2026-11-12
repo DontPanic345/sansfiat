@@ -146,18 +146,17 @@ piece or the goal is judged by play. Nothing that judges runs at low effort.
 The crew adds a `play` step before the review when the piece's `Play:` line names a model; it
 isn't in `steps.json`.
 
-## The twin and the pick: an M4 experiment
+## The ideas before you
 
-A piece with a `canvas`, `clay` or `glaze` twins one of them to test the ladder. The crew runs it
-twice from the same commit, on its ladder rung and on a rung you choose, each on its own branch.
-Then a `pick` step compares both versions blind and lands one, or parts of both, before the next
-step runs.
+Your prompt lists the milestone's open ideas, and `relay/specs/` holds the last piece's
+`notes.md`. Take into this piece each one that is obvious to do within its goal, and name the
+ideas you took under `took` in `result.json`. Leave the rest.
 
-The twin's rung is the question: a rung below asks whether the step needs its rung, and a rung
-above asks whether more would have paid. Its `why` says what you expect each version to do.
+## A test's time
 
-The twinned step's brief serves both versions as written. Its proof names the runs, seeds and
-control each version reports, so the pick can read both side by side in the scores.
+A test a build adds runs in seconds. A proof that needs a whole game on a retro map is a sweep
+or a play script whose numbers go in a file, run once by the step that needs them, not a test
+every later session and every CI run pays for.
 
 ## steps.json
 
@@ -168,7 +167,7 @@ counting tests, pins and `engine/CLAUDE.md`), so the retro can read cost against
 ```json
 [
   { "id": "build-1", "title": "…", "part": "easel", "model": "…", "effort": "…", "points": 7, "why": "Open 2, New 1, Miss 1, Reach 2; about 4 files, 300 lines: …" },
-  { "id": "build-2", "title": "…", "part": "canvas", "model": "opus", "effort": "low", "points": 10, "why": "…", "twin": { "model": "…", "effort": "…", "why": "…" } },
+  { "id": "build-2", "title": "…", "part": "canvas", "model": "opus", "effort": "low", "points": 10, "why": "…" },
   { "id": "review", "title": "Review the piece", "model": "sonnet", "effort": "high", "why": "…" }
 ]
 ```

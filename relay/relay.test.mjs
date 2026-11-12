@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { due, say } from "./usage-hook.mjs";
 import {
     afterOf,
     applyModel,
@@ -11,7 +12,6 @@ import {
     dollars,
     holdReason,
     initProblem,
-    ideaList,
     nextWork,
     pace,
     parseCommand,
@@ -26,7 +26,6 @@ import {
     specReviewChoice,
     statusLine,
     stepBody,
-    stepComment,
     stepsTable,
     usagePoints,
     waitingOn,
@@ -49,15 +48,18 @@ import {
     promptPath,
     withStatus,
     writeMeta,
-    pairBranches,
-    pairSteps,
-    pickOutcome,
     planSteps,
-    sideOf,
     wholeChoice,
     capOf,
     stopOf,
     WHOLE_STOP,
+    hitLimit,
+    withIdeas,
+    tickIdeas,
+    openIdeas,
+    settledIdeas,
+    usageReport,
+    logTitle,
 } from "./relay.mjs";
 
 const resets = new Date("2026-10-17T09:00:00Z");
@@ -135,14 +137,6 @@ test("checkSteps wants builds in order, then the review, each with points and a 
     assert.match(checkSteps(ok("build-1", s("review", { effort: "low" }))).error, /low effort/);
     assert.ok(checkSteps(ok(s("build-1", { part: "glaze", model: "opus", effort: "low" }), "review")).steps);
     assert.match(checkSteps(ok(s("build-1", { why: "" }), "review")).error, /no why/);
-    const twin = { model: "sonnet", effort: "high", why: "w" };
-    const canvas = { part: "canvas", model: "opus", effort: "low" };
-    assert.ok(checkSteps(ok(s("build-1", { ...canvas, twin }), "review")).steps);
-    assert.ok(checkSteps(ok(s("build-1", { model: "opus", twin }), "review")).steps);
-    assert.match(checkSteps(ok(s("build-1", { ...canvas, twin: { ...twin, model: "gpt" } }), "review")).error, /twin needs/);
-    assert.match(checkSteps(ok(s("build-1", { ...canvas, model: "sonnet", effort: "high", twin }), "review")).error, /own rung/);
-    assert.match(checkSteps(ok(s("build-1", { ...canvas, twin: { ...twin, why: "" } }), "review")).error, /why for its twin/);
-    assert.match(checkSteps(ok(s("build-1", { ...canvas, twin }), s("build-2", { ...canvas, twin }), "review")).error, /only one/);
 });
 
 const step = (id, state = "open", meta = {}) => ({ number: 100, state, meta: { id, model: "sonnet", effort: "medium", ...meta } });
@@ -360,14 +354,6 @@ test("a step's body is its status, its choice, its links and its brief as made",
     assert.equal(withStatus("old body", "skipped"), "**Status:** skipped\n\nold body");
 });
 
-test("a step's PR comment carries what it took", () => {
-    const s = { number: 50, meta: { id: "build-2", model: "sonnet", effort: "high", points: 9, cost: 1.3, minutes: 12.4, decisions: [{ decision: "Rivers flow east", why: "" }] } };
-    assert.equal(
-        stepComment(s, { summary: "Rivers.", ideas: [{ title: "Ports" }] }),
-        "**build-2** (sonnet high, 9 points, $1.30, 12 min, #50): Rivers.\n\n🧭 Decided:\n- Rivers flow east\n\n💡 Ideas, not built:\n- **Ports**",
-    );
-});
-
 test("initProblem refuses the wrong model and anything but auto mode", () => {
     assert.equal(initProblem({ model: "claude-sonnet-x", permissionMode: "auto" }, "sonnet"), null);
     assert.match(initProblem({ model: "claude-opus-x", permissionMode: "auto" }, "sonnet"), /mismatch/);
@@ -480,94 +466,6 @@ test("redact hides secrets of eight characters or more, and any GitHub token", (
     assert.equal(redact("ghost_writer ghs_short", []), "ghost_writer ghs_short");
 });
 
-test("ideaList lists a session's ideas and skips any without a title", () => {
-    assert.equal(ideaList([{ title: "Rivers", body: "carry goods" }, { title: "" }, null, { title: "Ports" }]), "- **Rivers**: carry goods\n- **Ports**");
-    assert.equal(ideaList(undefined), "");
-    assert.equal(ideaList("rivers"), "");
-});
-
-const twinned = [
-    { id: "build-1", title: "Easel", part: "easel", model: "haiku", effort: "high", points: 5, why: "w1" },
-    { id: "build-2", title: "Canvas", part: "canvas", model: "opus", effort: "low", points: 10, why: "w2", twin: { model: "sonnet", effort: "high", why: "does Sonnet paint it?" } },
-    { id: "review", title: "Review the piece", model: "sonnet", effort: "high", why: "w3" },
-];
-
-test("the crew twins one step from steps.json and adds its pick, then play before the review", () => {
-    const p = piece(9, []);
-    const made = planSteps(p, twinned, { model: "sonnet", effort: "medium", why: "sonnet" }, () => 0.9);
-    assert.deepEqual(made.map((s) => s.id), ["build-1", "build-2", "build-2-twin", "build-2-pick", "play", "review"]);
-    const [, ladder, twin, pick] = made;
-    assert.deepEqual(pairBranches(p, "build-2"), ["relay/9-build-2-a", "relay/9-build-2-b"]);
-    assert.equal(ladder.branch, "relay/9-build-2-b");
-    assert.equal(ladder.twin, undefined);
-    assert.deepEqual([twin.model, twin.effort, twin.branch, twin.of, twin.part, twin.points], ["sonnet", "high", "relay/9-build-2-a", "build-2", "canvas", 10]);
-    assert.match(twin.why, /does Sonnet paint it/);
-    assert.deepEqual([pick.model, pick.effort, pick.of, pick.branch], ["opus", "medium", "build-2", undefined]);
-    assert.equal(planSteps(p, twinned, null, () => 0.1)[1].branch, "relay/9-build-2-a");
-    assert.deepEqual(made.map((s) => s.id).sort((a, b) => stepRank(a) - stepRank(b)), made.map((s) => s.id));
-    assert.deepEqual(["build-2-twin", "build-2-pick"].map(stepKind), ["build", "pick"]);
-});
-
-test("the pick's choice reads back as which run won and how much of each landed", () => {
-    const steps = [step("build-2", "closed", { branch: "relay/9-build-2-b" }), step("build-2-twin", "closed", { branch: "relay/9-build-2-a", of: "build-2" }), step("build-2-pick")];
-    const pair = pairSteps(steps, "build-2-pick");
-    assert.equal(pair.ladder.meta.id, "build-2");
-    assert.equal(pairSteps(steps, "build-2").twin.meta.id, "build-2-twin");
-    assert.equal(pairSteps(steps, "build-1"), null);
-    assert.equal(sideOf("relay/9-build-2-a"), "A");
-    assert.deepEqual(pickOutcome(pair, "A"), { chose: "twin", ladder: "none", twin: "all" });
-    assert.deepEqual(pickOutcome(pair, "B"), { chose: "ladder", ladder: "all", twin: "none" });
-    assert.deepEqual(pickOutcome(pair, "both"), { chose: "both", ladder: "part", twin: "part" });
-});
-
-test("a twin is told it's the step it twins, on its own branch, and sees neither run's summary", () => {
-    const p = piece(9, [], [
-        step("build-1", "closed", { summary: "Built the easel." }),
-        step("build-2", "closed", { summary: "Painted on Opus.", branch: "relay/9-build-2-b" }),
-    ]);
-    const twin = step("build-2-twin", "open", { of: "build-2", branch: "relay/9-build-2-a", reply: "Use 0.5" });
-    const text = sessionPrompt(p, twin, files({ brief: "# build-2: Canvas\n\nPaint." }));
-    assert.match(text, /on its branch, `relay\/9-build-2-a`/);
-    assert.match(text, /# build-2: Canvas/);
-    assert.match(text, /this step, `build-2`, only/);
-    assert.doesNotMatch(text, /twin/);
-    assert.match(text, /Built the easel/);
-    assert.doesNotMatch(text, /Painted on Opus/);
-});
-
-test("a pick session gets the brief and both versions as A and B, and no design", () => {
-    const p = piece(9, [], [
-        step("build-1", "closed", { summary: "Built the easel." }),
-        step("build-2", "closed", { model: "opus", summary: "Painted it one way.", branch: "relay/9-build-2-b", decisions: [{ decision: "Rivers flow east", why: "" }] }),
-        step("build-2-twin", "closed", { summary: "Painted it another.", branch: "relay/9-build-2-a", of: "build-2", ideas: [{ title: "Ports" }] }),
-    ]);
-    const prompts = { ...files().prompts, pick: "# Pick step" };
-    const text = sessionPrompt(p, step("build-2-pick", "open", { of: "build-2" }), files({ prompts, brief: "# build-2: Canvas\n\nPaint.", sides: { A: " a.rs | 3 +", B: " b.rs | 9 +" } }));
-    assert.match(text, /version A on `relay\/9-build-2-a` and version B on `relay\/9-build-2-b`/);
-    assert.match(text, /land the result on `relay\/9`/);
-    assert.match(text, /# The brief both versions built\n\n## build-2: Canvas/);
-    assert.match(text, /# Version A\n\nPainted it another\.\n\nIdeas, not built:\n- \*\*Ports\*\*\n\n```\na\.rs \| 3 \+/);
-    assert.match(text, /# Version B\n\nPainted it one way\.\n- Decided: Rivers flow east\n\n```\nb\.rs \| 9 \+/);
-    assert.ok(text.indexOf("# Version A") < text.indexOf("# Version B"));
-    assert.doesNotMatch(text, /opus|twin|Rivers run downhill/);
-    assert.match(text, /Built the easel/);
-    assert.match(text, /# Pick step/);
-});
-
-test("the steps table and the PR comments say what each run landed and what the pick chose", () => {
-    const table = stepsTable([
-        { ...step("build-2", "closed", { branch: "relay/9-build-2-b", picked: "none", cost: 2 }), stateReason: "completed" },
-        { ...step("build-2-twin", "closed", { branch: "relay/9-build-2-a", picked: "all", cost: 1 }), stateReason: "completed" },
-        { ...step("build-2-pick", "closed", { chose: "twin", cost: 1 }), stateReason: "completed" },
-    ]);
-    assert.match(table, /\| #100 build-2 \| done, none landed \|/);
-    assert.match(table, /\| #100 build-2-twin \| done, all landed \|/);
-    assert.match(table, /\| #100 build-2-pick \| done, chose twin \|/);
-    assert.match(table, /\$4\.00 at list price so far\./);
-    const twin = step("build-2-twin", "closed", { branch: "relay/9-build-2-a", picked: "all", cost: 1, summary: "Painted." });
-    assert.match(stepComment(twin, twin.meta), /\(sonnet medium, version A, all landed, \$1\.00/);
-});
-
 const WHOLE = ["**Goal:** a rival.", "**Whole:** fable medium: the free reset", "**Design:** docs/design/map.md"].join("\n");
 
 test("a Whole line gives the piece one step, with no spec, that runs and then is finished", () => {
@@ -599,4 +497,63 @@ test("a whole session gets the piece, its design, its cap and the whole prompt",
     assert.match(text, /Rivers run downhill/);
     assert.ok(text.indexOf("# Whole step") < text.indexOf("# Every session"));
     assert.doesNotMatch(text, /# The diff to review/);
+});
+
+test("a whole step may hand on: the crew plans from its steps.json, the review alone or builds first", () => {
+    const review = { id: "review", title: "Review the piece", model: "sonnet", effort: "high", why: "w" };
+    assert.ok(checkSteps(JSON.stringify([review]), 0).steps);
+    assert.match(checkSteps(JSON.stringify([review])).error, /build steps/);
+    assert.equal(pieceAction(piece(1, [], [step("whole", "closed", { handed: true })], { body: WHOLE })).action, "plan");
+    assert.equal(stepRank("whole") < stepRank("build-1"), true);
+    const made = planSteps([{ id: "build-1" }, review], { model: "sonnet", effort: "medium", why: "sonnet" });
+    assert.deepEqual(made.map((s) => s.id), ["build-1", "play", "review"]);
+    assert.deepEqual(planSteps([review], null), [review]);
+});
+
+test("a session's prompt gives its usage windows, and a designer's the milestone's open ideas", () => {
+    const f = files({ prompts: { whole: "# Whole step", session: "# Every session" }, usage: { session: 3.2, weekly: 41 }, ideas: "- [ ] **Ports**: a harbour (#9 build-1)" });
+    const text = sessionPrompt(piece(4, [], [], { body: WHOLE }), step("whole", "open", { model: "fable" }), f);
+    assert.match(text, /stands at 3% and the week at 41% as you start, and a hook tells you both again every 15 minutes/);
+    assert.match(text, /# The milestone's open ideas[\s\S]*\*\*Ports\*\*/);
+    assert.doesNotMatch(sessionPrompt(piece(4, []), step("build-1"), files({ brief: "# b", ideas: "- [ ] **Ports**" })), /Ports/);
+});
+
+test("the usage limit ending a session is told apart from a failure", () => {
+    assert.equal(hitLimit({ is_error: true, result: "API Error: 429 usage_limit_reached" }), true);
+    assert.equal(hitLimit({ is_error: true, result: "something else broke" }), false);
+    assert.equal(hitLimit({ is_error: false, result: "done; usage limit is fine" }), false);
+    assert.equal(hitLimit(null), false);
+});
+
+test("ideas are lines on one issue: added once, ticked when taken, and the open ones go to a designer", () => {
+    const body = withIdeas("Ideas.\n", [{ title: "Ports", body: "a harbour" }, { title: "Herds" }], "#9 build-1");
+    assert.equal(body, "Ideas.\n- [ ] **Ports**: a harbour (#9 build-1)\n- [ ] **Herds** (#9 build-1)\n");
+    assert.equal(withIdeas(body, [{ title: "Ports" }], "#10 play"), body);
+    const ticked = tickIdeas(body, ["Ports"], "#11 whole");
+    assert.match(ticked, /- \[x\] \*\*Ports\*\*: a harbour \(#9 build-1\) Taken by #11 whole\./);
+    assert.equal(openIdeas(ticked), "- [ ] **Herds** (#9 build-1)");
+    assert.equal(openIdeas("Ideas.\n"), null);
+});
+
+test("a merged proposal's Ideas section names the proposed issues it takes or drops", () => {
+    const md = "# M5\n\n## Ideas\n\n- #220, #239: taken in A\n- #272: dropped, the search is fast enough\n- #181: kept for M6\n\n## Pieces\n\n- #999 taken";
+    assert.deepEqual(settledIdeas(md).map((i) => i.number), [220, 239, 272]);
+    assert.equal(settledIdeas("# M5").length, 0);
+});
+
+test("the run log is one issue per milestone, and its report gives both windows", () => {
+    assert.equal(logTitle({ title: "M5" }), "Relay log: M5");
+    assert.equal(logTitle(null), "Relay log");
+    assert.equal(usageReport({ session: 54.6, weekly: 60, weeklyResetsAt: resets }, day(5)), "5-hour 55%, week 60% of the 67.9% day 5 allows");
+});
+
+test("the usage hook speaks every fifteen minutes, and says to commit as the window runs out", () => {
+    assert.equal(due(null, 1e9), false);
+    assert.equal(due(0, 14 * 60_000), false);
+    assert.equal(due(0, 15 * 60_000), true);
+    const now = new Date("2026-11-12T00:00:00Z");
+    const at = (session) => say({ session, weekly: 40, sessionResetsAt: new Date("2026-11-12T01:30:00Z") }, now);
+    assert.equal(at(20), "Usage: 20% of the 5-hour window, which resets in 90 minutes; 40% of the week.");
+    assert.match(at(75), /Commit and push what you have/);
+    assert.match(at(95), /nearly spent/);
 });

@@ -24,6 +24,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { appToken } from "./token.mjs";
 import { readUsage } from "./usage.mjs";
+import { USAGE_EVERY_MIN } from "./usage-hook.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.dirname(HERE);
@@ -35,6 +36,10 @@ export const BOT = "sansfiat-relay[bot]";
 const GH_REPO = `${OWNER}/sansfiat`;
 const BOARD = "Sans Fiat Work";
 const LOG_TITLE = "Relay log";
+// The run log's issue for a milestone: one each, so the latest status is a short scroll.
+export const logTitle = (milestone) => (milestone ? `${LOG_TITLE}: ${milestone.title}` : LOG_TITLE);
+// A wait job sleeps at most this long; a lift further off is waited for again by the run it starts.
+const WAIT_MAX_MS = 300 * 60_000;
 const WORKFLOW = "relay.yml";
 const MAX_ATTEMPTS = 2;
 const STARTED = Date.now();
@@ -63,10 +68,20 @@ export const RETRO_WAIT_MS = 72 * 3600_000;
 
 // Start a step only while the 5-hour window is under `stop`%, and the weekly window is under
 // day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`, where that's known.
-export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now, stop = SESSION_STOP) => {
+// The weekly ramp: the day of the weekly cycle, and the share of the week it allows.
+export const ramp = (weeklyResetsAt, now) => {
     const cycleStart = weeklyResetsAt.getTime() - 7 * 86400_000;
     const day = Math.min(7, Math.max(1, Math.floor((now.getTime() - cycleStart) / 86400_000) + 1));
-    const weeklyLimit = (day / 7) * 95;
+    return { cycleStart, day, weeklyLimit: (day / 7) * 95 };
+};
+// Both windows as the run log gives them: "5-hour 55%, week 60% of the 67.9% day 5 allows".
+export const usageReport = (u, now) => {
+    const { day, weeklyLimit } = ramp(u.weeklyResetsAt, now);
+    return `5-hour ${Math.round(u.session)}%, week ${Math.round(u.weekly)}% of the ${weeklyLimit.toFixed(1)}% day ${day} allows`;
+};
+
+export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now, stop = SESSION_STOP) => {
+    const { cycleStart, day, weeklyLimit } = ramp(weeklyResetsAt, now);
     const [s, w] = [Math.round(session), Math.round(weekly)];
     if (session >= stop) {
         const resets = sessionResetsAt ? `, resets ${sessionResetsAt.toISOString()}` : "";
@@ -162,9 +177,9 @@ export const RETRO_STEPS = [
     { id: "architecture", title: "The architecture angle", model: "opus", effort: "medium", why: "Reads the code's shape against docs/architecture.md." },
     { id: "relay", title: "The relay angle", model: "opus", effort: "medium", why: "Reads the crew, the prompts and the transcripts." },
     { id: "wait", title: "The owner's notes", model: "none", effort: "none", why: "Up to 72 hours for the owner's notes, or `/relay retro go`." },
-    { id: "game", title: "The game and players angles", model: "opus", effort: "medium", why: "Reads the owner's notes; one session, two files." },
-    { id: "retro", title: "The retro", model: "opus", effort: "medium", why: "Reads the angles and writes the retro." },
-    { id: "proposal", title: "The next proposal", model: "opus", effort: "medium", why: "Writes the next milestone's proposals from the retro." },
+    { id: "game", title: "The game and players angles", model: "fable", effort: "medium", why: "Reads the owner's notes; one session, two files." },
+    { id: "retro", title: "The retro", model: "fable", effort: "medium", why: "Reads the angles and writes the retro." },
+    { id: "proposal", title: "The next proposal", model: "fable", effort: "medium", why: "Writes the next milestone's proposals from the retro." },
 ];
 const RETRO_IDS = RETRO_STEPS.map((s) => s.id);
 
@@ -172,17 +187,16 @@ const RETRO_IDS = RETRO_STEPS.map((s) => s.id);
 // A whole piece has the one step, `whole`.
 export const stepRank = (id) => {
     if (RETRO_IDS.includes(id)) return 2000 + RETRO_IDS.indexOf(id);
-    if (id === "spec") return 0;
+    if (id === "spec" || id === "whole") return 0;
     if (id === "spec-review") return 1;
     if (id === "play") return 999;
     if (id === "review") return 1000;
-    const m = /^build-(\d+)(?:-(twin|pick))?$/.exec(id);
-    return m ? 1 + Number(m[1]) + ({ twin: 0.25, pick: 0.5 }[m[2]] ?? 0) : 500;
+    const m = /^build-(\d+)$/.exec(id);
+    return m ? 1 + Number(m[1]) : 500;
 };
 export const stepKind = (id) => {
     if (id === "wait") return "wait";
     if (RETRO_IDS.includes(id)) return "retro";
-    if (/^build-\d+-pick$/.test(id)) return "pick";
     return ["spec", "spec-review", "play", "review", "whole"].includes(id) ? id : "build";
 };
 // The steps whose `result.json` carries the merge verdict the crew acts on.
@@ -195,46 +209,10 @@ const sortSteps = (steps) => [...steps].sort((a, b) => stepRank(a.meta.id) - ste
 export const branchOf = (piece) => `relay/${piece.number}`;
 export const specDir = (piece) => `relay/specs/${piece.number}`;
 
-// The twinned step runs twice from the same commit, once on each of these branches, and its
-// pick lands one version, or parts of both, on the piece's branch. `-a` and `-b` are all the
-// pick sees.
-export const pairBranches = (piece, id) => [`${branchOf(piece)}-${id}-a`, `${branchOf(piece)}-${id}-b`];
-export const sideOf = (branch) => (branch.endsWith("-a") ? "A" : "B");
-
-// The twinned step, its twin and its pick, found by any of their ids.
-export const pairSteps = (steps, id) => {
-    const base = /^build-\d+/.exec(id)?.[0];
-    const find = (want) => steps.find((s) => s.meta.id === want);
-    const twin = base && find(`${base}-twin`);
-    if (!twin) return null;
-    return { ladder: find(base), twin, pick: find(`${base}-pick`) };
-};
-
-// What the pick's `chose` (A, B or both) means: which run won, and how much of each landed.
-export const pickOutcome = (pair, chose) => {
-    if (chose === "both") return { chose: "both", ladder: "part", twin: "part" };
-    const ladder = sideOf(pair.ladder.meta.branch) === chose;
-    return { chose: ladder ? "ladder" : "twin", ladder: ladder ? "all" : "none", twin: ladder ? "none" : "all" };
-};
-
-// steps.json's steps as the crew makes them: the twin and the pick after the twinned step,
-// and the play step before the review. `coin` puts the twinned step on `-a` or `-b`.
-export const planSteps = (piece, steps, play, coin = Math.random) => {
-    const out = [];
-    for (const s of steps) {
-        const { twin, ...step } = s;
-        if (!twin) {
-            out.push(step);
-            continue;
-        }
-        const [a, b] = pairBranches(piece, s.id);
-        const [mine, its] = coin() < 0.5 ? [a, b] : [b, a];
-        out.push({ ...step, branch: mine });
-        out.push({ ...step, id: `${s.id}-twin`, title: `${s.title} (twin)`, model: twin.model, effort: twin.effort, of: s.id, branch: its, why: `The twin of ${s.id}: ${twin.why}` });
-        out.push({ id: `${s.id}-pick`, title: `Pick between ${s.id}'s two versions`, model: "opus", effort: "medium", of: s.id, why: "Compares the two versions blind and lands one, or parts of both." });
-    }
-    if (!play) return out;
-    return [...out.slice(0, -1), { id: "play", title: "Play the branch", model: play.model, effort: play.effort, why: `The piece's Play line: ${play.why}` }, out.at(-1)];
+// steps.json's steps as the crew makes them: the play step goes in before the review.
+export const planSteps = (steps, play) => {
+    if (!play) return steps;
+    return [...steps.slice(0, -1), { id: "play", title: "Play the branch", model: play.model, effort: play.effort, why: `The piece's Play line: ${play.why}` }, steps.at(-1)];
 };
 // `M4` → `m4`, from the milestone's title; null without one.
 export const milestoneTag = (milestone) => {
@@ -246,8 +224,9 @@ export const isRetro = (piece) => (piece.labels ?? []).includes("kind:retro");
 export const isFixes = (piece) => (piece.labels ?? []).includes("relay:fixes");
 
 // The steps the spec wrote to `relay/specs/<n>/steps.json`, as spec-review left them,
-// checked. Returns { steps } or { error }.
-export const checkSteps = (text) => {
+// checked. Returns { steps } or { error }. A whole step that hands on may leave no builds
+// (`builds` 0): the review alone.
+export const checkSteps = (text, builds = 1) => {
     let steps;
     try {
         steps = JSON.parse(text);
@@ -255,7 +234,7 @@ export const checkSteps = (text) => {
         return { error: `steps.json isn't JSON: ${e.message}` };
     }
     const ids = Array.isArray(steps) ? steps.map((s) => s?.id) : [];
-    if (ids.at(-1) !== "review" || ids.length < 2) {
+    if (ids.at(-1) !== "review" || ids.length < builds + 1) {
         return { error: "steps.json must list the build steps, then `review`" };
     }
     for (const [i, s] of steps.slice(0, -1).entries()) {
@@ -269,15 +248,7 @@ export const checkSteps = (text) => {
         if (s.id !== "review" && !PARTS.includes(s.part)) return { error: `${s.id}: part must be one of ${PARTS.join(", ")}` };
         if (!s.title) return { error: `${s.id}: no title` };
         if (!s.why) return { error: `${s.id}: no why for its model and effort` };
-        if (s.twin != null) {
-            const t = s.twin;
-            if (s.id === "review") return { error: "review: only a build step has a twin" };
-            if (!MODELS.includes(t.model) || !EFFORTS.includes(t.effort)) return { error: `${s.id}: its twin needs a model and an effort` };
-            if (t.model === s.model && t.effort === s.effort) return { error: `${s.id}: its twin runs on its own rung` };
-            if (!t.why) return { error: `${s.id}: no why for its twin` };
-        }
     }
-    if (steps.filter((s) => s.twin != null).length > 1) return { error: "only one build step has a twin" };
     return { steps };
 };
 
@@ -334,6 +305,8 @@ export const pieceAction = (piece, now = new Date()) => {
     if (open?.meta.id === "wait") return waitOver(steps, open, now) ? { action: "waited", step: open } : null;
     if (open) return open.meta.status === "blocked" ? null : { action: "step", step: open };
     if (steps.every((s) => s.meta.id === "spec" || s.meta.id === "spec-review")) return { action: "plan" };
+    // A whole step that handed on, whose steps aren't made yet.
+    if (steps.length === 1 && steps[0].meta.id === "whole" && steps[0].meta.handed) return { action: "plan" };
     return null;
 };
 
@@ -377,7 +350,6 @@ export const PROMPTS_FOR = {
     spec: ["spec"],
     "spec-review": ["spec-review", "spec"],
     build: ["build"],
-    pick: ["pick"],
     play: ["play", "players/player", "players/judge"],
     review: ["review", "players/judge"],
     whole: ["whole"],
@@ -394,42 +366,27 @@ export const promptPath = (name) => (name.includes("/") ? `relay/${name}.md` : `
 // (path → text, null for a named file that doesn't exist), `designFiles` (every path in
 // docs/design/), `diffStat` (review only), `lastSpec` (spec only: the folder of the latest
 // other piece's spec, or null), `notes` (the retro's game step: the owner's notes, or null),
-// `started` and `cap` (when the session started, and the minutes it may run), and `sides`
-// (pick only: A's and B's diff stats against the piece's branch).
+// `started` and `cap` (when the session started, and the minutes it may run), `usage` (the
+// windows as the session starts, or null) and `ideas` (the milestone's open ideas, or null).
 export const sessionPrompt = (piece, step, files) => {
     const kind = stepKind(step.meta.id);
     const retro = kind === "retro";
-    // A twin is told it's the step it twins, so the two versions can't be told apart.
-    const id = kind === "build" ? step.meta.of ?? step.meta.id : step.meta.id;
+    const id = step.meta.id;
     const where = retro ? `the milestone's retro files live in \`${retroDir(piece)}/\`` : `its spec lives in \`${specDir(piece)}/\``;
     const clock = files.started
         ? ` The session started at ${files.started}, and the crew stops it after ${files.cap} minutes: check the clock (\`date -u\`) before giving up on time.`
         : "";
+    const used = files.usage
+        ? ` ${usageLine(files.usage)} as you start, and a hook tells you both again every ${USAGE_EVERY_MIN} minutes.`
+        : "";
     const parts = [
         `You are a Relay session for Sans Fiat, in GitHub Actions with no other context: one cold session ` +
             `doing one step of ${retro ? "retro" : "piece"} #${piece.number}, "${piece.title}". You are on its branch, ` +
-            `\`${step.meta.branch ?? branchOf(piece)}\`, and ${where}. This prompt holds how Relay works; the design and the code hold the rest.${clock}`,
+            `\`${branchOf(piece)}\`, and ${where}. This prompt holds how Relay works; the design and the code hold the rest.${clock}${used}`,
     ];
     if (kind === "build") {
         if (!files.brief) throw new Error(`${specDir(piece)}/${id}.md is missing`);
         parts.push(atLevel(files.brief.trim(), 1));
-    } else if (kind === "pick") {
-        const pair = pairSteps(piece.steps, step.meta.id);
-        const [a, b] = pairBranches(piece, step.meta.of);
-        parts.push(
-            `# Your step: #${piece.number} ${step.meta.id}\n\nTwo sessions built \`${step.meta.of}\` from the same commit: version A on \`${a}\` and ` +
-                `version B on \`${b}\`. Pick between them, as the Pick step below says, and land the result on \`${branchOf(piece)}\`.`,
-        );
-        if (files.brief) parts.push(`# The brief both versions built\n\n${atLevel(files.brief.trim(), 2)}`);
-        for (const s of [pair.ladder, pair.twin].sort((x, y) => sideOf(x.meta.branch).localeCompare(sideOf(y.meta.branch)))) {
-            const side = sideOf(s.meta.branch);
-            const decided = (s.meta.decisions ?? []).map((d) => `\n- Decided: ${d.decision}${d.why ? ` (${d.why})` : ""}`).join("");
-            const ideas = ideaList(s.meta.ideas);
-            parts.push(
-                `# Version ${side}\n\n${s.meta.summary ?? "No summary."}${decided}${ideas ? `\n\nIdeas, not built:\n${ideas}` : ""}\n\n` +
-                    `\`\`\`\n${(files.sides?.[side] ?? "").trim()}\n\`\`\``,
-            );
-        }
     } else if (retro) {
         const s = RETRO_STEPS.find((r) => r.id === step.meta.id);
         parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${s.title}, as \`retro.md\` says for the \`${s.id}\` step. The retro:`);
@@ -460,7 +417,7 @@ export const sessionPrompt = (piece, step, files) => {
                 `\`${id}\`, only: a later step is another session's, even if the reply says to carry on.\n\n"""${step.meta.reply}"""`,
         );
     }
-    if (!["build", "pick", "play", "retro"].includes(kind)) {
+    if (!["build", "play", "retro"].includes(kind)) {
         const named = Object.entries(files.design ?? {});
         const builds = named.length
             ? named.map(([f, text]) => `## \`${f}\`\n\n${text ? atLevel(text.trim(), 3) : "That file doesn't exist yet."}`).join("\n\n")
@@ -472,10 +429,17 @@ export const sessionPrompt = (piece, step, files) => {
     if (kind === "review") {
         parts.push(`# The diff to review\n\nThe piece's changes against \`main\`:\n\n\`\`\`\n${(files.diffStat ?? "").trim()}\n\`\`\``);
         if (files.spec) parts.push(`# The whole spec\n\n${atLevel(files.spec.trim())}`);
-        parts.push(`# The steps\n\nPut this table at the top of the PR description, under "Closes #${piece.number}". The crew rewrites it with your own row after you finish:\n\n${stepsTable(piece.steps)}`);
+        parts.push(`# The steps\n\nPut this table in the PR description under the judge's block. The crew rewrites it with your own row after you finish:\n\n${stepsTable(piece.steps)}`);
     }
-    // The two versions of the twinned step stay apart; the pick's summary says what landed.
-    const done = sortSteps(piece.steps).filter((s) => s.state === "closed" && s.meta.summary && !s.meta.branch);
+    if (["spec", "whole", "play"].includes(kind) && files.ideas) {
+        const what =
+            kind === "play"
+                ? "Sessions before you noticed these. A finding that repeats one adds nothing: leave it out."
+                : "Sessions before you noticed these. Take into this piece each one that is obvious to do within its goal, and name its title under `took` in `result.json`.";
+        parts.push(`# The milestone's open ideas\n\n${what}\n\n${files.ideas}`);
+    }
+    // The player plays as a player: the piece says what is new, and how it was built isn't its to know.
+    const done = kind === "play" ? [] : sortSteps(piece.steps).filter((s) => s.state === "closed" && s.meta.summary);
     if (done.length) parts.push(`# This piece so far\n\n${done.map(soFar).join("\n")}`);
     for (const name of [...promptsFor(step.meta.id), "session"]) {
         if (files.prompts[name]) parts.push(atLevel(files.prompts[name].trim(), 1));
@@ -516,6 +480,9 @@ export const sessionStats = (lastAssistant, result, model, compactions = 0) => {
     return { cost: result?.total_cost_usd ?? 0, context: Math.round((held / window) * 100), compactions };
 };
 
+// Whether the usage limit ended the session: its result frame is an error that says so.
+export const hitLimit = (result) => Boolean(result?.is_error) && /usage[_ ]limit|rate_limit|\b429\b/i.test(JSON.stringify(result));
+
 export const dollars = (n) => `$${(n ?? 0).toFixed(2)}`;
 export const cents = (n) => Math.round((n ?? 0) * 100) / 100;
 
@@ -541,7 +508,7 @@ export const withStatus = (body, line) => (STATUS.test(body ?? "") ? body.replac
 export const stepBody = (piece, s, { brief, pr } = {}) => {
     const blob = `https://github.com/${GH_REPO}/blob/${branchOf(piece)}/${specDir(piece)}`;
     const on = `**${s.model} ${s.effort}**${s.points != null ? `, ${s.points} points` : ""}${s.part ? `, ${s.part}` : ""}`;
-    const links = [`Piece #${piece.number}`, ...(pr ? [`PR #${pr}`] : []), `[spec.md](${blob}/spec.md)`, ...(brief ? [`[the brief](${blob}/${s.of ?? s.id}.md)`] : [])];
+    const links = [`Piece #${piece.number}`, ...(pr ? [`PR #${pr}`] : []), `[spec.md](${blob}/spec.md)`, ...(brief ? [`[the brief](${blob}/${s.id}.md)`] : [])];
     const parts = [`**Status:** ready`, `Step \`${s.id}\` on ${on}. ${s.why ?? ""}`.trim(), links.join(" · ")];
     if (brief) {
         const text = brief.trim();
@@ -559,8 +526,44 @@ export const sortFindings = (result, { retro = false, milestone = null } = {}) =
     return { fix: items.filter(fix), ask: items.filter((i) => !fix(i)) };
 };
 
-// A finding as a line of the fixes piece, or the body of a proposed issue.
+// A finding as a line of the fixes piece or of the ideas issue.
 export const findingText = (i, from) => `**${i.title}**${i.body ? `: ${i.body}` : ""}${i.repro ? ` Repro: ${i.repro}` : ""} (${from})`;
+
+// The one issue that holds a milestone's ideas, a line each, ticked when a piece takes one.
+export const ideasTitle = (milestone) => (milestone ? `Ideas from ${milestone.title}` : "Ideas");
+export const IDEAS_BODY =
+    "What sessions noticed and didn't build, one line each. A designer takes the obvious ones into its piece, which ticks them; the retro's proposal takes or drops the rest.\n";
+const IDEA = /^- \[( |x)\] \*\*(.+?)\*\*/;
+// The ideas issue's body with `ideas` added as open lines; a title already there is skipped.
+export const withIdeas = (body, ideas, from) => {
+    const have = new Set((body ?? "").split("\n").map((l) => IDEA.exec(l)?.[2]).filter(Boolean));
+    const lines = ideas.filter((i) => !have.has(i.title) && have.add(i.title)).map((i) => `- [ ] ${findingText(i, from)}`);
+    return lines.length ? `${(body ?? "").trimEnd()}\n${lines.join("\n")}\n` : body;
+};
+// The body with each idea a session `took` ticked.
+export const tickIdeas = (body, took, from) =>
+    (body ?? "")
+        .split("\n")
+        .map((l) => {
+            const m = IDEA.exec(l);
+            return m && m[1] === " " && took.includes(m[2]) ? `${l.replace("- [ ]", "- [x]")} Taken by ${from}.` : l;
+        })
+        .join("\n");
+// The open lines, for a designer's prompt; null when there are none.
+export const openIdeas = (body) => (body ?? "").split("\n").filter((l) => IDEA.exec(l)?.[1] === " ").join("\n") || null;
+
+// `usage` as the words a session's prompt gives.
+export const usageLine = (u) => `The 5-hour usage window stands at ${Math.round(u.session)}% and the week at ${Math.round(u.weekly)}%`;
+
+// The proposed issues a merged proposal settles: each `#n` on a line of its `## Ideas`
+// section that says taken or dropped.
+export const settledIdeas = (md) => {
+    const section = /^## Ideas\s*$([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(md ?? "")?.[1] ?? "";
+    return section
+        .split("\n")
+        .filter((l) => /\b(taken|dropped)\b/i.test(l))
+        .flatMap((l) => [...l.matchAll(/#(\d+)/g)].map((m) => ({ number: Number(m[1]), line: l.replace(/^[\s|*-]+/, "").trim() })));
+};
 
 // The fixes piece a milestone's `fix` findings go to.
 export const fixesBody = (milestone) =>
@@ -662,13 +665,6 @@ export const applyResult = (meta, result, exitOk) => {
     return { meta: next, outcome: "blocked", why: `it ended ${next.attempts} times without finishing. Last: ${next.note}` };
 };
 
-// The ideas a session noticed, as a list for its PR comment.
-export const ideaList = (ideas) =>
-    (Array.isArray(ideas) ? ideas : [])
-        .filter((i) => i?.title)
-        .map((i) => `- **${i.title}**${i.body ? `: ${i.body}` : ""}`)
-        .join("\n");
-
 // A `/relay …` command in a comment, or null.
 export const parseCommand = (body) => {
     const m = /^\s*\/relay\s+(\S+)(.*)$/m.exec(body ?? "");
@@ -695,8 +691,7 @@ export const stepsTable = (steps) => {
         "|---|---|---|---|---|---|---|---|---|---|---|",
         ...sorted.map((s) => {
             const m = s.meta;
-            const landed = m.chose ? `, chose ${m.chose}` : m.picked ? `, ${m.picked} landed` : "";
-            const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : `done${landed}`) : m.status ?? "pending";
+            const state = s.state === "closed" ? (s.stateReason === "not_planned" ? "skipped" : "done") : m.status ?? "pending";
             return `| #${s.number} ${m.id} | ${state} | ${m.part ?? ""} | ${m.model} | ${m.effort} | ${num(m.points)} | ${m.sessions ?? m.attempts ?? 0} | ${num(m.cost, dollars)} | ${num(m.minutes, Math.round)} | ${num(m.fiveHour)} | ${num(m.weekly)} |`;
         }),
         "",
@@ -946,25 +941,6 @@ const checkoutPiece = (piece) => {
     return branch;
 };
 
-// Checks out the branch a step runs on. The first of the twinned step's two runs makes both
-// its branches from the piece's branch, so both start from the same commit.
-const checkoutStep = (piece, step) => {
-    const branch = checkoutPiece(piece);
-    const own = step.meta.branch;
-    if (!own) return branch;
-    for (const b of pairBranches(piece, step.meta.of ?? step.meta.id)) {
-        try {
-            git("fetch", "-q", "origin", b);
-        } catch {
-            git("push", "-q", "origin", `origin/${branch}:refs/heads/${b}`);
-            git("fetch", "-q", "origin", b);
-        }
-    }
-    git("checkout", "-q", "-B", own, `origin/${own}`);
-    git("branch", "-q", "-u", `origin/${own}`);
-    return own;
-};
-
 // Whatever the session left behind: unpushed commits are pushed if they rebase cleanly,
 // anything uncommitted is dropped. The runner is thrown away at the end of the job.
 const tidyUp = (branch) => {
@@ -1029,8 +1005,8 @@ const runSession = (piece, step, prompt) =>
                 "--permission-mode", "auto",
                 "--output-format", "stream-json",
                 "--verbose",
-                // A commit trailer names the model, and the pick reads both branches blind.
-                ...(step.meta.branch ? ["--settings", JSON.stringify({ attribution: { commit: "", pr: "" }, includeCoAuthoredBy: false })] : []),
+                // The hook tells the session its usage windows as it works (usage-hook.mjs).
+                "--settings", JSON.stringify({ hooks: { PostToolUse: [{ hooks: [{ type: "command", command: `node "${path.join(HERE, "usage-hook.mjs")}"`, timeout: 20 }] }] } }),
             ],
             { cwd: REPO, env, shell: false, stdio: ["pipe", "pipe", "pipe"] },
         );
@@ -1083,7 +1059,7 @@ const runSession = (piece, step, prompt) =>
             // A session that never said how it started costs no attempt: the CLI changed, not the step.
             if (!model && !refused && !timedOut) refused = initProblem(null, step.meta.model);
             const stats = { ...sessionStats(lastAssistant, result, step.meta.model, compactions), minutes: (Date.now() - began) / 60_000 };
-            resolve({ code, model, refused, timedOut, stats });
+            resolve({ code, model, refused, timedOut, stats, limited: hitLimit(result) });
         });
     });
 
@@ -1095,14 +1071,16 @@ const lastSpec = (piece) => {
     return n ? `relay/specs/${n}` : null;
 };
 
-// The files a step's prompt draws on, read from the piece's branch.
-const stepPrompt = (piece, step) => {
+// The files a step's prompt draws on, read from the piece's branch. `extra` holds what the
+// crew read elsewhere: `usage` and `ideas`.
+const stepPrompt = (piece, step, extra = {}) => {
     const kind = stepKind(step.meta.id);
     const prompts = Object.fromEntries([...promptsFor(step.meta.id), "session"].map((n) => [n, readRepo(promptPath(n))]));
     const designDir = path.join(REPO, "docs/design");
     const files = {
         prompts,
-        brief: readRepo(`${specDir(piece)}/${step.meta.of ?? step.meta.id}.md`),
+        ...extra,
+        brief: readRepo(`${specDir(piece)}/${step.meta.id}.md`),
         spec: readRepo(`${specDir(piece)}/spec.md`),
         design: Object.fromEntries(designPaths(piece.body).map((f) => [f, readRepo(f)])),
         designFiles: fs.existsSync(designDir) ? fs.readdirSync(designDir).map((f) => `docs/design/${f}`) : [],
@@ -1112,13 +1090,6 @@ const stepPrompt = (piece, step) => {
         started: new Date().toISOString(),
         cap: capOf(step.meta.id) / 60_000,
     };
-    if (kind === "pick") {
-        files.sides = {};
-        for (const b of pairBranches(piece, step.meta.of)) {
-            git("fetch", "-q", "origin", b);
-            files.sides[sideOf(b)] = git("diff", "--stat=120", `HEAD...origin/${b}`);
-        }
-    }
     return sessionPrompt(piece, step, files);
 };
 
@@ -1132,8 +1103,8 @@ const findPr = async (piece) => {
 // A step's issue, with its brief as it is on the branch now.
 const createStep = async (piece, s) => {
     const meta = { id: s.id, model: s.model, effort: s.effort, why: s.why ?? "", attempts: 0, status: "pending" };
-    for (const k of ["points", "part", "of", "branch"]) if (s[k] != null) meta[k] = s[k];
-    const brief = stepKind(s.id) === "build" ? readRepo(`${specDir(piece)}/${s.of ?? s.id}.md`) : null;
+    for (const k of ["points", "part"]) if (s[k] != null) meta[k] = s[k];
+    const brief = stepKind(s.id) === "build" ? readRepo(`${specDir(piece)}/${s.id}.md`) : null;
     const pr = (await findPr(piece))?.number;
     const issue = await github("POST", "/issues", {
         title: `#${piece.number} ${s.id}: ${s.title}`,
@@ -1164,48 +1135,34 @@ const startPiece = async (piece) => {
     await setStatus(piece, "Spec");
 };
 
-const readSteps = (piece) => checkSteps(readRepo(`${specDir(piece)}/steps.json`) ?? "");
+const readSteps = (piece, builds) => checkSteps(readRepo(`${specDir(piece)}/steps.json`) ?? "", builds);
 
-// After the spec, spec-review on the model the piece's body chose. After spec-review, every
-// later step from steps.json as spec-review left it. Spec-review checked it before it closed,
-// so an error here means the branch changed since; spec-review runs again to fix it.
+// After the spec, spec-review on the model the piece's body chose. After spec-review, or a
+// whole step that handed on, every later step from steps.json as that step left it. It was
+// checked before the step closed, so an error here means the branch changed since; the step
+// runs again to fix it.
 const plan = async (piece) => {
     checkoutPiece(piece);
-    const review = piece.steps.find((s) => s.meta.id === "spec-review");
+    const whole = piece.steps.find((s) => s.meta.id === "whole");
+    const review = whole ?? piece.steps.find((s) => s.meta.id === "spec-review");
     if (!review) {
         const choice = specReviewChoice(piece.body) ?? { model: "opus", effort: "medium", why: "The piece names no spec-review, so the default." };
         await createStep(piece, { id: "spec-review", title: "Review the spec", ...choice });
         await setStatus(piece, "Spec");
         return;
     }
-    const { steps, error } = readSteps(piece);
+    const { steps, error } = readSteps(piece, whole ? 0 : 1);
     if (error) {
         await github("PATCH", `/issues/${review.number}`, { state: "open" });
         await saveMeta(review, { ...review.meta, status: "pending", note: `steps.json can't be read: ${error}` });
-        log(`#${piece.number}: ${error}; spec-review runs again`);
+        log(`#${piece.number}: ${error}; ${review.meta.id} runs again`);
         return;
     }
-    for (const s of planSteps(piece, steps, playChoice(piece.body))) await createStep(piece, s);
+    for (const s of planSteps(steps, playChoice(piece.body))) await createStep(piece, s);
     await setStatus(piece, "Building");
 };
 
-// The other run of the twinned step, when `step` is one of its two.
-const partnerOf = (piece, step) => {
-    const pair = step.meta.branch && pairSteps(piece.steps, step.meta.id);
-    if (!pair) return null;
-    return [pair.ladder, pair.twin].find((s) => s && s.number !== step.number) ?? null;
-};
-
-// A blocker on either run of the twinned step blocks both, so the owner's reply reaches both.
 const blockStep = async (piece, step, why) => {
-    const partner = partnerOf(piece, step);
-    if (partner && partner.meta.status !== "blocked") {
-        if (partner.state === "closed") await github("PATCH", `/issues/${partner.number}`, { state: "open" });
-        partner.state = "open";
-        partner.body = withStatus(partner.body, `blocked with ${step.meta.id}: ${why}`);
-        await saveMeta(partner, { ...partner.meta, status: "blocked" });
-        await setBoard(partner.nodeId, { Status: "Waiting" });
-    }
     await addLabel(piece.number, "waiting");
     await comment(
         piece.number,
@@ -1241,46 +1198,42 @@ const autoMerge = async (piece, pr, result) => {
     return null;
 };
 
-// The PR comment for a finished step: its summary, decisions and ideas, with what it took.
-export const stepComment = (step, result) => {
-    const m = step.meta;
-    const took = [
-        `${m.model} ${m.effort}`,
-        ...(m.part ? [m.part] : []),
-        ...(m.points != null ? [`${m.points} points`] : []),
-        ...(m.branch ? [`version ${sideOf(m.branch)}, ${m.picked ?? "none"} landed`] : []),
-        ...(m.chose ? [`chose ${m.chose}`] : []),
-        dollars(m.cost),
-        `${Math.round(m.minutes ?? 0)} min`,
-        `#${step.number}`,
-    ];
-    const decided = m.decisions?.length ? `\n\n🧭 Decided:\n${m.decisions.map((d) => `- ${d.decision}${d.why ? `: ${d.why}` : ""}`).join("\n")}` : "";
-    const list = ideaList(result.ideas);
-    const ideas = list ? `\n\n💡 Ideas, not built:\n${list}` : "";
-    const found = ideaList(result.findings);
-    const findings = found ? `\n\n🔎 Findings:\n${found}` : "";
-    return `**${m.id}** (${took.join(", ")}): ${result.summary}${decided}${findings}${ideas}`;
+// A piece's PR is a draft until its verdict, so nothing asks for the owner's eyes before then.
+const openPr = async (piece) => {
+    const pr = { title: piece.title, head: branchOf(piece), base: "main", body: `Closes #${piece.number}.` };
+    try {
+        return await github("POST", "/pulls", { ...pr, draft: true });
+    } catch (e) {
+        log(`couldn't open the PR as a draft: ${e.message}`);
+        return github("POST", "/pulls", pr);
+    }
+};
+const markReady = async (pr) => {
+    if (!pr?.draft) return;
+    try {
+        await graphql(`mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { id } } }`, { id: pr.node_id });
+    } catch (e) {
+        log(`couldn't mark PR #${pr.number} ready: ${e.message}`);
+    }
 };
 
-// What follows a finished step: the PR once the branch has commits, the next steps after the
-// spec and spec-review, and the owner's turn after the piece's review.
+// What follows a finished step: the draft PR once the branch has commits, the next steps after
+// the spec, spec-review or a whole step that hands on, and the owner's turn after the verdict.
+// A step's summary and decisions stay in its issue's block for the sessions after it: the PR's
+// description is what the owner reads.
 const afterStep = async (piece, step, result) => {
     const kind = stepKind(step.meta.id);
     let pr = await findPr(piece);
     if (!pr && git("rev-list", `origin/main..origin/${branchOf(piece)}`)) {
-        pr = await github("POST", "/pulls", { title: piece.title, head: branchOf(piece), base: "main", body: `Closes #${piece.number}.` });
+        pr = await openPr(piece);
         log(`#${piece.number}: PR #${pr.number}`);
         const tree = `https://github.com/${GH_REPO}/tree/${branchOf(piece)}/${specDir(piece)}`;
-        await comment(piece.number, `📎 The PR is #${pr.number}, and the spec is in [\`${specDir(piece)}/\`](${tree}).`);
+        await comment(piece.number, `📎 The PR is #${pr.number}, a draft until its verdict, and the spec is in [\`${specDir(piece)}/\`](${tree}).`);
     }
-    // The two runs of the twinned step stay off the PR until the pick, which reads them blind.
-    if (!step.meta.branch) {
-        if (pr && result.summary) await comment(pr.number, stepComment(step, result));
-        await fileFindings(piece, step, result);
-    }
-    if (kind === "pick") await afterPick(piece, step, result, pr);
-    if (kind === "spec" || kind === "spec-review") await plan(await loadPiece(piece.number));
+    await fileFindings(piece, step, result);
+    if (kind === "spec" || kind === "spec-review" || step.meta.handed) await plan(await loadPiece(piece.number));
     else if (step.meta.id === "proposal") {
+        await markReady(pr);
         await comment(piece.number, `📝 The proposal is on ${pr?.html_url ?? "the branch"}. Correct it there and merge it: the crew then opens its pieces.`);
         await setStatus(piece, "Review", "your merge");
     } else if (!VERDICTS.includes(kind)) await setStatus(piece, "Building");
@@ -1289,6 +1242,7 @@ const afterStep = async (piece, step, result) => {
             const fresh = await loadPiece(piece.number);
             const { body } = await github("GET", `/pulls/${pr.number}`);
             await github("PATCH", `/pulls/${pr.number}`, { body: withTable(body ?? `Closes #${piece.number}.`, stepsTable(fresh.steps)) });
+            await markReady(pr);
         }
         const why = await autoMerge(piece, pr, result);
         if (why) {
@@ -1298,20 +1252,6 @@ const afterStep = async (piece, step, result) => {
             );
             await setStatus(piece, "Review", "your merge");
         }
-    }
-};
-
-// After the pick: each run of the twinned step records how much of it landed, posts on the PR,
-// and files its ideas if any of it landed.
-const afterPick = async (piece, pick, result, pr) => {
-    const fresh = await loadPiece(piece.number);
-    const pair = pairSteps(fresh.steps, pick.meta.id);
-    const outcome = pickOutcome(pair, result.chose);
-    for (const which of ["ladder", "twin"]) {
-        const s = pair[which];
-        await saveMeta(s, { ...s.meta, picked: outcome[which] });
-        if (pr && s.meta.summary) await comment(pr.number, stepComment(s, s.meta));
-        if (outcome[which] !== "none") await fileFindings(piece, s, { ideas: s.meta.ideas });
     }
 };
 
@@ -1329,11 +1269,21 @@ const fixesPiece = async (milestone) => {
     return issue;
 };
 
+// The issue that holds a milestone's ideas, opened if it isn't yet.
+const ideasIssue = async (milestone, { open = true } = {}) => {
+    const title = ideasTitle(milestone);
+    const found = (await allPages("/issues?state=open&labels=kind:idea")).find((i) => i.title === title);
+    if (found || !open) return found ?? null;
+    return github("POST", "/issues", { title, body: IDEAS_BODY, labels: ["kind:idea"], ...(milestone ? { milestone: milestone.number } : {}) });
+};
+
 // A step's `fix` findings go on its milestone's fixes piece while that hasn't started; the rest
-// become `relay:proposed` issues. A title already open is skipped.
+// are lines on the milestone's ideas issue, and the ideas the step took are ticked there. A
+// retro's ideas stay in its angle files, which its proposal reads.
 const fileFindings = async (piece, step, result) => {
     const { fix, ask } = sortFindings(result, { retro: isRetro(piece), milestone: piece.milestone });
-    if (!fix.length && !ask.length) return;
+    const took = (Array.isArray(result?.took) ? result.took : []).map(String);
+    if (isRetro(piece) || (!fix.length && !ask.length && !took.length)) return;
     const from = `#${piece.number} ${step.meta.id}`;
     if (fix.length) {
         const fixes = await fixesPiece(piece.milestone);
@@ -1345,17 +1295,12 @@ const fileFindings = async (piece, step, result) => {
             if (lines.length) await github("PATCH", `/issues/${fixes.number}`, { body: `${body.trimEnd()}\n${lines.join("\n")}\n` });
         }
     }
-    const titles = new Set((await allPages("/issues?state=open&labels=kind:piece")).map((i) => i.title));
-    for (const i of ask) {
-        if (titles.has(i.title)) continue;
-        titles.add(i.title);
-        await github("POST", "/issues", {
-            title: i.title,
-            body: `${findingText(i, from)}\n\n\`/relay ready\` makes this a piece once its body has \`Spec:\` and \`Spec-review:\` lines.`,
-            labels: ["kind:piece", "relay:proposed"],
-        });
+    const ideas = await ideasIssue(piece.milestone, { open: ask.length > 0 });
+    if (ideas) {
+        const body = withIdeas(tickIdeas(ideas.body, took, from), ask, from);
+        if (body !== ideas.body) await github("PATCH", `/issues/${ideas.number}`, { body });
     }
-    log(`#${piece.number} ${step.meta.id}: ${fix.length} fix and ${ask.length} ask findings filed`);
+    log(`#${piece.number} ${step.meta.id}: ${fix.length} fix findings, ${ask.length} ideas, ${took.length} taken`);
 };
 
 // When none of a milestone's pieces can run, main is tagged `m<n>` and its retro opens.
@@ -1408,6 +1353,28 @@ const openProposal = async (retro) => {
         numbers[p.key] = issue.number;
     }
     await comment(retro.number, `🚀 Opened ${next}'s pieces: ${pieces.map((p) => `${p.key} #${numbers[p.key]}`).join(", ")}.`);
+    await settleIdeas(retro, `docs/proposals/${next.toLowerCase()}.md`);
+};
+
+// A merged proposal ends the ideas it took or dropped: each proposed issue its `## Ideas`
+// section names is closed with its line, and so are the milestone's ideas issue and its log.
+const settleIdeas = async (retro, file) => {
+    const blob = `https://github.com/${GH_REPO}/blob/main/${file}`;
+    for (const { number, line } of settledIdeas(await mainFile(file))) {
+        try {
+            const issue = await github("GET", `/issues/${number}`);
+            if (issue.state !== "open" || !issue.labels.some((l) => l.name === "relay:proposed")) continue;
+            await comment(number, `[The proposal](${blob}) settles this: ${line}`);
+            await github("PATCH", `/issues/${number}`, { state: "closed", state_reason: /\bdropped\b/i.test(line) ? "not_planned" : "completed" });
+        } catch (e) {
+            log(`couldn't settle #${number}: ${e.message}`);
+        }
+    }
+    const done = [await ideasIssue(retro.milestone, { open: false }), (await allPages("/issues?state=open&labels=kind:chore")).find((i) => i.title === logTitle(retro.milestone))];
+    for (const issue of done.filter(Boolean)) {
+        await comment(issue.number, `[The proposal](${blob}) is merged, so this closes with ${retro.milestone.title}.`);
+        await github("PATCH", `/issues/${issue.number}`, { state: "closed" });
+    }
 };
 
 // Ends a retro's wait, with or without the owner's notes.
@@ -1423,7 +1390,7 @@ const endWait = async (piece, step) => {
 // `refused` when the session couldn't start as asked.
 // `before` is the usage the crew paced on, so the step's points are the rise from it.
 const runStep = async (piece, step, before) => {
-    const branch = checkoutStep(piece, step);
+    const branch = checkoutPiece(piece);
     const tracked = git("ls-files", "relay/runs");
     if (tracked) {
         throw Object.assign(new Error(`#${piece.number}'s branch tracks ${tracked.split("\n").join(", ")}; \`git rm --cached\` it before a session runs`), { refused: true });
@@ -1432,17 +1399,18 @@ const runStep = async (piece, step, before) => {
     await setStatus(piece, { review: "Review", build: "Building", play: "Building", retro: "Building", whole: "Building" }[kind] ?? "Spec");
     let prompt;
     try {
-        prompt = stepPrompt(piece, step);
+        const ideas = ["spec", "whole", "play"].includes(kind) ? openIdeas((await ideasIssue(piece.milestone, { open: false }))?.body) : null;
+        prompt = stepPrompt(piece, step, { usage: before, ideas });
     } catch (e) {
         // The spec can't brief the session; only a spec edit fixes that.
         step.body = withStatus(step.body, `blocked: ${e.message} (see #${piece.number})`);
         await saveMeta(step, { ...step.meta, status: "blocked" });
         await blockStep(piece, step, e.message);
-        return { line: `#${piece.number} ${step.meta.id}: blocked (${e.message})`, after: before };
+        return { line: `#${piece.number} ${step.meta.id} (#${step.number}): blocked (${e.message})`, after: before };
     }
     await writeTokenFile();
     log(`start #${piece.number} ${step.meta.id} on ${step.meta.model}/${step.meta.effort} with Claude Code ${cliVersion()}`);
-    const { code, model, refused, timedOut, stats } = await runSession(piece, step, prompt);
+    const { code, model, refused, timedOut, stats, limited } = await runSession(piece, step, prompt);
     if (refused) {
         tidyUp(branch);
         throw Object.assign(new Error(`stopped #${piece.number} ${step.meta.id} before it began: ${refused}`), { refused: true });
@@ -1451,16 +1419,17 @@ const runStep = async (piece, step, before) => {
     let result = readResult(fs.existsSync(RESULT) ? fs.readFileSync(RESULT, "utf8") : null);
     log(`end #${piece.number} ${step.meta.id}: exit ${code}, model ${model}, ${dollars(stats.cost)}, ${stats.minutes.toFixed(1)} minutes, ${stats.context}% context, ${stats.compactions} compactions, result ${JSON.stringify(result)}`);
     tidyUp(branch);
+    const head = git("log", "-1", "--format=%h %s");
     // Spec-review isn't done until the crew can make the steps.
     if (step.meta.id === "spec-review" && result?.status === "done") {
         const { error } = readSteps(piece);
         if (error) result = { status: "pending", note: `You reported done, but steps.json can't be read: ${error}` };
     }
-    if (VERDICTS.includes(kind) && result?.status === "done" && typeof result.merge !== "boolean") {
-        result = { status: "pending", note: "You reported done without `merge`: result.json needs `\"merge\": true` or `false`." };
-    }
-    if (kind === "pick" && result?.status === "done" && !["A", "B", "both"].includes(result.chose)) {
-        result = { status: "pending", note: "You reported done without `chose`: result.json needs `\"chose\": \"A\"`, `\"B\"` or `\"both\"`." };
+    // A whole step ends with its verdict, or hands on to the steps it wrote in steps.json.
+    const handed = kind === "whole" && result?.status === "done" && typeof result.merge !== "boolean" && !readSteps(piece, 0).error;
+    if (VERDICTS.includes(kind) && result?.status === "done" && typeof result.merge !== "boolean" && !handed) {
+        const hand = kind === "whole" ? `, or a \`steps.json\` the crew can read to hand on (${readSteps(piece, 0).error})` : "";
+        result = { status: "pending", note: `You reported done without \`merge\`: result.json needs \`"merge": true\` or \`false\`${hand}.` };
     }
     let after = null;
     try {
@@ -1470,8 +1439,16 @@ const runStep = async (piece, step, before) => {
     }
 
     const applied = applyResult(step.meta, result, exitOk);
-    const { outcome, why } = applied;
+    let { outcome, why } = applied;
     const { meta } = applied;
+    // The usage limit ending a session isn't the step's doing, so it costs no attempt.
+    if (limited && outcome !== "done") {
+        outcome = "pending";
+        meta.status = "pending";
+        meta.attempts = step.meta.attempts ?? 0;
+        meta.note = `The usage limit ended the last session, not anything it did. What it hadn't committed is gone; the branch's last commit is \`${head}\`.`;
+    }
+    if (handed) meta.handed = true;
     const points = usagePoints(before, after);
     const add = (was, n) => (n == null ? was ?? null : (was ?? 0) + n);
     meta.cost = cents((step.meta.cost ?? 0) + stats.cost);
@@ -1484,11 +1461,6 @@ const runStep = async (piece, step, before) => {
     meta.context = stats.context;
     meta.compactions = (step.meta.compactions ?? 0) + stats.compactions;
     meta.cli = cliVersion();
-    if (outcome === "done" && meta.branch) {
-        // Filed after the pick, for the versions that landed.
-        meta.ideas = [...(Array.isArray(result.ideas) ? result.ideas : []), ...(Array.isArray(result.findings) ? result.findings : [])].filter((i) => i?.title);
-    }
-    if (outcome === "done" && kind === "pick") meta.chose = pickOutcome(pairSteps(piece.steps, meta.id), result.chose).chose;
     step.body = withStatus(step.body, statusLine(meta, outcome, outcome === "blocked" ? `${why} (see #${piece.number})` : meta.note));
     await saveMeta(step, meta);
     await setBoard(step.nodeId, {
@@ -1505,7 +1477,7 @@ const runStep = async (piece, step, before) => {
     } else if (outcome === "blocked") {
         await blockStep(piece, step, why);
     }
-    return { line: `#${piece.number} ${step.meta.id}: ${outcome}`, after };
+    return { line: `#${piece.number} ${step.meta.id} (#${step.number}): ${outcome}${handed ? ", handed on" : ""}`, after };
 };
 
 // ---- Commands ----
@@ -1521,23 +1493,26 @@ const usage = async () => {
 const dispatchRun = () =>
     github("POST", `/actions/workflows/${WORKFLOW}/dispatches`, { ref: "main", inputs: { command: "run" } }, process.env.DISPATCH_TOKEN);
 
-const logIssue = async () => {
-    const found = (await allPages("/issues?state=open&labels=kind:chore")).find((i) => i.title === LOG_TITLE);
+// The log issue of `milestone`, opened if it isn't yet; without one, the newest log there is.
+const logIssue = async (milestone) => {
+    const logs = (await allPages("/issues?state=open&labels=kind:chore")).filter((i) => i.title.startsWith(LOG_TITLE));
+    const found = milestone ? logs.find((i) => i.title === logTitle(milestone)) : logs[0];
     if (found) return found.number;
     const issue = await github("POST", "/issues", {
-        title: LOG_TITLE,
-        body: "Each Relay run reports here. Pieces report on their own issues.",
+        title: logTitle(milestone),
+        body: `Each Relay run${milestone ? ` on ${milestone.title}` : ""} reports here, each line linking its step. Pieces report on their own issues.`,
         labels: ["kind:chore"],
+        ...(milestone ? { milestone: milestone.number } : {}),
     });
     return issue.number;
 };
 
-// Starts a run that waits for the 5-hour window to reset, then starts a crew run.
+// Starts a run that waits for a window to lift, then starts a crew run.
 const dispatchWait = (until) =>
     github(
         "POST",
         `/actions/workflows/${WORKFLOW}/dispatches`,
-        { ref: "main", inputs: { command: "wait", until: until.toISOString() } },
+        { ref: "main", inputs: { command: "wait", until: new Date(Math.min(until.getTime(), Date.now() + WAIT_MAX_MS)).toISOString() } },
         process.env.DISPATCH_TOKEN,
     );
 
@@ -1565,6 +1540,7 @@ const runSteps = async (ran) => {
         const pieces = await loadPieces();
         const next = nextWork(pieces);
         if (!next) return "nothing to do: every ready piece is waiting, paused, held or finished";
+        ran.milestone = next.piece.milestone ?? ran.milestone;
         if (next.action === "start") {
             await startPiece(next.piece);
             ran.push(`#${next.piece.number}: started`);
@@ -1587,10 +1563,11 @@ const runSteps = async (ran) => {
         }
         const before = reading ?? (await usage());
         reading = null;
+        ran.usage = before;
         const verdict = pace(before, new Date(), stopOf(next.step.meta.id));
         if (!verdict.ok) {
             await setBoard(next.piece.nodeId, { "Waiting on": waitingOn(verdict) });
-            if (verdict.window === "5-hour" && verdict.until) {
+            if (verdict.until) {
                 try {
                     await dispatchWait(verdict.until);
                 } catch (e) {
@@ -1603,6 +1580,7 @@ const runSteps = async (ran) => {
         const { line, after } = await runStep(next.piece, next.step, before);
         ran.push(line);
         reading = after;
+        ran.usage = after ?? ran.usage;
     }
 };
 
@@ -1621,7 +1599,8 @@ const run = async () => {
     if (ran.length > 0 || !/^(budget stop|nothing to do)/.test(reason)) {
         const steps = ran.length ? ran.map((r) => `- ${r}`).join("\n") : "- (no steps)";
         const url = process.env.GITHUB_RUN_ID ? `\n\n[The run](https://github.com/${GH_REPO}/actions/runs/${process.env.GITHUB_RUN_ID})` : "";
-        await comment(await logIssue(), `🏃 Run finished: ${reason}\n\n${steps}${url}`);
+        const windows = ran.usage ? `\n\n${usageReport(ran.usage, new Date())}.` : "";
+        await comment(await logIssue(ran.milestone), `🏃 Run finished: ${reason}\n\n${steps}${windows}${url}`);
     }
 };
 
@@ -1641,18 +1620,13 @@ const report = async () => comment(await logIssue(), `⚠️ ${process.argv.slic
 const findStep = (piece, id) => piece.steps.find((s) => s.meta.id === id && s.state === "open");
 
 // The owner's reply on a piece with a blocked step goes to that step's next session.
-// Both runs of the twinned step were blocked together, so both get it.
 const unblock = async (piece, step, reply) => {
-    const partner = partnerOf(piece, step);
-    const both = [step, ...(partner?.state === "open" && partner.meta.status === "blocked" ? [partner] : [])];
-    for (const s of both) {
-        const meta = { ...s.meta, status: "pending", attempts: 0 };
-        if (reply) meta.reply = reply;
-        delete meta.note;
-        s.body = withStatus(s.body, reply ? "ready, with your reply" : "ready, retrying");
-        await saveMeta(s, meta);
-    }
-    if (!piece.steps.some((s) => !both.includes(s) && s.state === "open" && s.meta.status === "blocked")) await removeLabel(piece.number, "waiting");
+    const meta = { ...step.meta, status: "pending", attempts: 0 };
+    if (reply) meta.reply = reply;
+    delete meta.note;
+    step.body = withStatus(step.body, reply ? "ready, with your reply" : "ready, retrying");
+    await saveMeta(step, meta);
+    if (!piece.steps.some((s) => s !== step && s.state === "open" && s.meta.status === "blocked")) await removeLabel(piece.number, "waiting");
     await setStatus(piece, "Building");
 };
 
