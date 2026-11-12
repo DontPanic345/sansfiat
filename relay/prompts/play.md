@@ -46,5 +46,6 @@ Everything else is `ask`: a new or changed rule, prose, a new lever, a band, two
 conflict, or "less fun" with no line named.
 
 Put every finding in `result.json` as well, under `findings`, each with `title`, `body`, `class`
-and `repro`. The crew puts each `fix` on the milestone's fixes piece and opens each `ask` as a
-proposed issue for the owner.
+and `repro`. The crew puts each `fix` on the milestone's fixes piece and each `ask` on the
+milestone's ideas issue. Your prompt lists the ideas already open: a finding that repeats one
+stays in `play.md` and out of `result.json`.

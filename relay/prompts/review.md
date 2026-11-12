@@ -14,25 +14,29 @@ or a fail check that encodes a rule: name it in the verdict as a rule.
 
 ## The judge
 
-Judge the change as the judge's verdict below says. Run `sansfiat sweep --judge --json` on the
-branch and on `main`, and `sansfiat judge --compare` on the two, and read the play note
-(`relay/specs/<piece>/play.md`) when there is one. Where `judge --compare` or the buttons script
-doesn't exist yet, compare the two runs' totals by hand. Re-run the earlier pieces' questions of this
-milestone from their PRs, and report any that fell. Every new button or order is pressed once by a
-script that checks the world changed as it says (`www/play/buttons.mjs`); run it.
+Judge the change as the judge's verdict below says, from `sansfiat sweep --judge --json` on the
+branch and on `main` and `sansfiat judge --compare` on the two, and read the play note
+(`relay/specs/<piece>/play.md`) when there is one. Where an earlier step saved those sweeps under
+`relay/specs/<piece>/` and the engine hasn't changed since (`git log` says), read its files: run
+a sweep only for a commit nobody swept. The same holds for the buttons script and the tests: CI
+runs them on your push. Your own checking goes where the builds' couldn't: the diff read cold
+against the goal, an earlier piece's question of this milestone that this one could have moved,
+a seed or a case no step ran.
 
 ## The design ledger
 
-Append the piece's decisions to the `## Decided` ledger at the foot of each design file they
-belong to: one line each, a rule a player would notice in the game's words, ending with the
-piece's number, such as `(#54)`. A rule it settled, a number now decided in words, a scope
-line lifted. How it was built is the diff, not a ledger line. Never edit the prose above the
-ledger.
+The `## Decided` ledger at the foot of a design file is its decision record: the few choices
+that shape the game and that a later piece must not undo by accident. Add a line only for a
+decision of that weight: a rule of the game chosen over another the design allowed, in the
+game's words, with the reason in a clause, ending with the piece's number, such as `(#54)`.
+Most pieces add one line or none. How a rule is built, a number, what the AI does this
+milestone and anything a later piece is free to change are the code as built, not ledger
+lines. Never edit the prose above the ledger.
 
 ## The PR description
 
 The owner reads it once, on a phone. Rewrite it (`gh pr edit --body`) so it's enough on its
-own: the judge's block (the verdict and a line per score), the steps table, then the answer to
+own: the judge's block (the verdict and a line per score), then the steps table, then the answer to
 the piece's question in the scores with its control, the ledger lines you added, the play
 note's findings if there is one, the screenshots a page piece took, linked at the commit and not
 the branch, the play link

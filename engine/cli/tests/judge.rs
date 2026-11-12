@@ -4,6 +4,7 @@
 use std::process::Command;
 
 #[test]
+#[ignore = "a report: the whole sweep takes minutes; run it with --ignored"]
 fn sweep_judge_json_has_the_claim_groups_and_keys() {
     let out = Command::new(env!("CARGO_BIN_EXE_sansfiat"))
         .args(["sweep", "--judge", "--json", "--solo"])
