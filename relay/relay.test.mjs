@@ -68,14 +68,11 @@ const day = (n) => new Date(resets.getTime() - 7 * 86400_000 + (n - 1) * 86400_0
 test("pace starts a step only while the 5-hour window is under 75%", () => {
     assert.equal(pace({ session: 74.6, weekly: 0, weeklyResetsAt: resets }, day(1)).ok, true);
     assert.equal(pace({ session: 75, weekly: 0, weeklyResetsAt: resets }, day(1)).ok, false);
-    assert.equal(pace({ session: 33.333, weekly: 4.0001, weeklyResetsAt: resets }, day(1)).reason, "5-hour 33%, weekly 4% < 13.6% (day 1)");
+    assert.equal(pace({ session: 33.333, weekly: 4.0001, weeklyResetsAt: resets }, day(1)).reason, "5-hour 33%, weekly 4%");
 });
 
-test("pace spreads the weekly budget across the cycle", () => {
-    assert.equal(pace({ session: 0, weekly: 12, weeklyResetsAt: resets }, day(1)).ok, true);
-    assert.equal(pace({ session: 0, weekly: 14, weeklyResetsAt: resets }, day(1)).ok, false);
-    assert.equal(pace({ session: 0, weekly: 94, weeklyResetsAt: resets }, day(7)).ok, true);
-    assert.equal(pace({ session: 0, weekly: 95, weeklyResetsAt: resets }, day(7)).ok, false);
+test("pace ignores the weekly window", () => {
+    assert.equal(pace({ session: 0, weekly: 99, weeklyResetsAt: resets }, day(1)).ok, true);
 });
 
 test("a stop says when it lifts", () => {
@@ -83,11 +80,6 @@ test("a stop says when it lifts", () => {
     const five = pace({ session: 80, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: at }, day(1));
     assert.equal(waitingOn(five), "5-hour usage, until 15:20");
     assert.match(five.reason, /resets 2026-10-11T02:20:00\.000Z/);
-    // 14% on day 1 lifts on day 2, when the ramp reaches 27.1%.
-    const weekly = pace({ session: 0, weekly: 14, weeklyResetsAt: resets }, day(1));
-    assert.equal(weekly.until.getTime(), resets.getTime() - 6 * 86400_000);
-    assert.equal(waitingOn(weekly), "weekly usage, until Sun 22:00");
-    assert.equal(pace({ session: 0, weekly: 96, weeklyResetsAt: resets }, day(7)).until, resets);
     assert.equal(waitingOn(pace({ session: 0, weekly: 0, weeklyResetsAt: resets }, day(1))), "");
 });
 
@@ -513,7 +505,7 @@ test("a whole step may hand on: the crew plans from its steps.json, the review a
 test("a session's prompt gives its usage windows, and a designer's the milestone's open ideas", () => {
     const f = files({ prompts: { whole: "# Whole step", session: "# Every session" }, usage: { session: 3.2, weekly: 41 }, ideas: "- [ ] **Ports**: a harbour (#9 build-1)" });
     const text = sessionPrompt(piece(4, [], [], { body: WHOLE }), step("whole", "open", { model: "fable" }), f);
-    assert.match(text, /stands at 3% and the week at 41% as you start, and a hook tells you both again every 15 minutes/);
+    assert.match(text, /stands at 3% and the week at 41% as you start, and a hook tells you both again every 10 minutes/);
     assert.match(text, /# The milestone's open ideas[\s\S]*\*\*Ports\*\*/);
     assert.doesNotMatch(sessionPrompt(piece(4, []), step("build-1"), files({ brief: "# b", ideas: "- [ ] **Ports**" })), /Ports/);
 });
@@ -544,13 +536,13 @@ test("a merged proposal's Ideas section names the proposed issues it takes or dr
 test("the run log is one issue per milestone, and its report gives both windows", () => {
     assert.equal(logTitle({ title: "M5" }), "Relay log: M5");
     assert.equal(logTitle(null), "Relay log");
-    assert.equal(usageReport({ session: 54.6, weekly: 60, weeklyResetsAt: resets }, day(5)), "5-hour 55%, week 60% of the 67.9% day 5 allows");
+    assert.equal(usageReport({ session: 54.6, weekly: 60, weeklyResetsAt: resets }), "5-hour 55%, week 60%");
 });
 
-test("the usage hook speaks every fifteen minutes, and says to commit as the window runs out", () => {
+test("the usage hook speaks every ten minutes, and says to commit as the window runs out", () => {
     assert.equal(due(null, 1e9), false);
-    assert.equal(due(0, 14 * 60_000), false);
-    assert.equal(due(0, 15 * 60_000), true);
+    assert.equal(due(0, 9 * 60_000), false);
+    assert.equal(due(0, 10 * 60_000), true);
     const now = new Date("2026-11-12T00:00:00Z");
     const at = (session) => say({ session, weekly: 40, sessionResetsAt: new Date("2026-11-12T01:30:00Z") }, now);
     assert.equal(at(20), "Usage: 20% of the 5-hour window, which resets in 90 minutes; 40% of the week.");

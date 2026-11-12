@@ -66,33 +66,18 @@ export const RETRO_WAIT_MS = 72 * 3600_000;
 
 // ---- Pure logic (covered by relay.test.mjs) ----
 
-// Start a step only while the 5-hour window is under `stop`%, and the weekly window is under
-// day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`, where that's known.
-// The weekly ramp: the day of the weekly cycle, and the share of the week it allows.
-export const ramp = (weeklyResetsAt, now) => {
-    const cycleStart = weeklyResetsAt.getTime() - 7 * 86400_000;
-    const day = Math.min(7, Math.max(1, Math.floor((now.getTime() - cycleStart) / 86400_000) + 1));
-    return { cycleStart, day, weeklyLimit: (day / 7) * 95 };
-};
-// Both windows as the run log gives them: "5-hour 55%, week 60% of the 67.9% day 5 allows".
-export const usageReport = (u, now) => {
-    const { day, weeklyLimit } = ramp(u.weeklyResetsAt, now);
-    return `5-hour ${Math.round(u.session)}%, week ${Math.round(u.weekly)}% of the ${weeklyLimit.toFixed(1)}% day ${day} allows`;
-};
+// Start a step only while the 5-hour window is under `stop`%. A stop says when it lifts, as
+// `until`, where that's known.
+// Both windows as the run log gives them: "5-hour 55%, week 60%".
+export const usageReport = (u) => `5-hour ${Math.round(u.session)}%, week ${Math.round(u.weekly)}%`;
 
-export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now, stop = SESSION_STOP) => {
-    const { cycleStart, day, weeklyLimit } = ramp(weeklyResetsAt, now);
+export const pace = ({ session, weekly, sessionResetsAt }, now, stop = SESSION_STOP) => {
     const [s, w] = [Math.round(session), Math.round(weekly)];
     if (session >= stop) {
         const resets = sessionResetsAt ? `, resets ${sessionResetsAt.toISOString()}` : "";
         return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${s}% ≥ ${stop}%${resets}` };
     }
-    if (weekly >= weeklyLimit) {
-        const lifts = Math.floor((weekly * 7) / 95) + 1;
-        const until = lifts > 7 ? weeklyResetsAt : new Date(cycleStart + (lifts - 1) * 86400_000);
-        return { ok: false, window: "weekly", until, reason: `weekly usage ${w}% ≥ ${weeklyLimit.toFixed(1)}% (day ${day})` };
-    }
-    return { ok: true, reason: `5-hour ${s}%, weekly ${w}% < ${weeklyLimit.toFixed(1)}% (day ${day})` };
+    return { ok: true, reason: `5-hour ${s}%, weekly ${w}%` };
 };
 
 // The board's "Waiting on" for a budget stop, in the owner's time: "5-hour usage, until
@@ -1599,7 +1584,7 @@ const run = async () => {
     if (ran.length > 0 || !/^(budget stop|nothing to do)/.test(reason)) {
         const steps = ran.length ? ran.map((r) => `- ${r}`).join("\n") : "- (no steps)";
         const url = process.env.GITHUB_RUN_ID ? `\n\n[The run](https://github.com/${GH_REPO}/actions/runs/${process.env.GITHUB_RUN_ID})` : "";
-        const windows = ran.usage ? `\n\n${usageReport(ran.usage, new Date())}.` : "";
+        const windows = ran.usage ? `\n\n${usageReport(ran.usage)}.` : "";
         await comment(await logIssue(ran.milestone), `🏃 Run finished: ${reason}\n\n${steps}${windows}${url}`);
     }
 };

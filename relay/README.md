@@ -58,7 +58,7 @@ the briefs and `steps.json` live on the piece's branch, `relay/<number>`, in
 A whole step starts only while the 5-hour window is under 10%, so the session gets a whole
 window, and only in a job with five hours left, so a run that has already spent its time starts
 a fresh one. The prompt gives the session both usage windows as it starts, and a hook
-(`usage-hook.mjs`) repeats them every fifteen minutes, on every session. A session the usage
+(`usage-hook.mjs`) repeats them every ten minutes, on every session. A session the usage
 limit ends costs its step no attempt: the next attempt waits for the reset and is told why the
 last one ended and the branch's last commit.
 
@@ -168,15 +168,13 @@ pieces comparable. The usage probe reads the whole account, so the owner's own s
 the same hours land on Relay's steps. A crashed attempt has no result frame and records no
 cost. Usage is read once at each step boundary and rounded.
 
-A step starts only while the 5-hour window is under 75% (10% for a whole step), and the weekly
-window under its share of the week. A stop on either window starts a `wait` run, which sleeps
-until the window lifts, five hours at most, and starts a crew run, which waits again if the
-lift is further off. So a stop costs the window, not the schedule's lateness. The weekly window
-is the real limit on how much Relay gets done. The owner's own sessions share both windows.
+A step starts only while the 5-hour window is under 75% (10% for a whole step). A stop starts a
+`wait` run, which sleeps until the window resets, five hours at most, and starts a crew run,
+which waits again if the reset is further off. So a stop costs the window, not the schedule's
+lateness. The weekly window isn't checked: the owner's own sessions share both windows.
 
 Each milestone has one log issue, "Relay log: M<n>". A run that did anything reports there: why
-it stopped, each step it ran with a link to the step's issue, and both windows, the week beside
-the share the day allows.
+it stopped, each step it ran with a link to the step's issue, and both windows.
 
 Before each piece of work the crew fetches `main`, and once the crew's code there differs from
 the code it is running, it starts a fresh run and stops.
