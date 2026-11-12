@@ -9,7 +9,7 @@ them what helps.
 
 You started on a 5-hour usage window that was nearly unused, and it is the budget: on Fable it
 lasts about ninety minutes of steady work, not five hours. The prompt gives both windows as you
-start and a hook repeats them every fifteen minutes.
+start and a hook repeats them every ten minutes.
 
 - Spend the window on what only you can do: the design, the core, the rules that have to be
   right. Hand on what a cheaper session can do from a brief (below).

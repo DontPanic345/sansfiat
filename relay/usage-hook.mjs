@@ -8,7 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readUsage } from "./usage.mjs";
 
-export const USAGE_EVERY_MIN = 15;
+export const USAGE_EVERY_MIN = 10;
 
 // Whether the hook speaks now: `last` is when it last did (ms), or null on the session's first
 // tool call, which only starts the clock since the prompt gave the reading.

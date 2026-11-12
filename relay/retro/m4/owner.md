@@ -5,23 +5,24 @@ local sessions, not by Relay: the `game`, `retro` and `proposal` steps read this
 
 ## Where each note stands
 
-| Note | Stands |
-|---|---|
-| M5 runs pieces in the new shape; the twin and pick go; the log per milestone; draft PRs; above and below the line; fewer ideas, and designers take the obvious ones; trust and verify; a test can't run too long | Built in this PR's Relay change (`docs/proposals/m5-relay.md`) |
-| Remove the militia and the guard | M5 piece L, on the retro's question 1: what holds land without a guard |
-| Scouts go back to the capital for food; warriors kill scouts, and a warrior's painted tiles trap them | M5 piece C. The stalled errand is reproduced in `game/scout-61288.txt` |
-| Play the page, name the worst aspects, propose fixes; a click centres the camera on the tile | M5 piece P. The retro played the text view only |
-| The scout's test on a small known map, viewable and runnable on the page, and every such test | M5 piece V |
-| Towns: one town on small 61288 | M5 piece N. As built, small maps form one town or none (`game.md` §1) |
-| Strike implementation details from the design files; the ledger holds decisions of an ADR's weight | Done in this PR: 104 of 149 ledger lines struck, and `docs/design/README.md` says what the ledger is. The prose is untouched |
-| Record the starving decision and its reasoning | `docs/design/vision.md`, Decided, last line; `docs/process.md`, Scores, line 5. What else isn't helping: `docs/proposals/m4-retro.md` |
-| The scout issued its own order at the pick | Not reproduced in the text view |
+| Note                                                                                                                                                                                                             | Stands                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| M5 runs pieces in the new shape; the twin and pick go; the log per milestone; draft PRs; above and below the line; fewer ideas, and designers take the obvious ones; trust and verify; a test can't run too long | Built in this PR's Relay change (`docs/proposals/m5-relay.md`)                                                                        |
+| Remove the militia and the guard                                                                                                                                                                                 | M5 piece L, on the retro's question 1: what holds land without a guard                                                                |
+| Scouts go back to the capital for food; warriors kill scouts, and a warrior's painted tiles trap them                                                                                                            | M5 piece C. The stalled errand is reproduced in `game/scout-61288.txt`                                                                |
+| Play the page, name the worst aspects, propose fixes; a click centres the camera on the tile                                                                                                                     | M5 piece P. The retro played the text view only                                                                                       |
+| The scout's test on a small known map, viewable and runnable on the page, and every such test                                                                                                                    | M5 piece V                                                                                                                            |
+| Towns: one town on small 61288                                                                                                                                                                                   | M5 piece N. As built, small maps form one town or none (`game.md` §1)                                                                 |
+| Strike implementation details from the design files; the ledger holds decisions of an ADR's weight                                                                                                               | Done in this PR: 104 of 149 ledger lines struck, and `docs/design/README.md` says what the ledger is. The prose is untouched          |
+| Record the starving decision and its reasoning                                                                                                                                                                   | `docs/design/vision.md`, Decided, last line; `docs/process.md`, Scores, line 5. What else isn't helping: `docs/proposals/m4-retro.md` |
+| The scout issued its own order at the pick                                                                                                                                                                       | Not reproduced in the text view                                                                                                       |
 
 ## The notes
 
 I want remaining steps of M4 to run with Fable.
 
 M5 should run pieces in new shape.
+
 1. Relay check for a full 5hour window
 2. Fable starts the whole piece, planning and building
 3. At the start, and Peridoically via some hook or other, the usage is inserted into the session
@@ -30,6 +31,7 @@ M5 should run pieces in new shape.
 Remove the milita and the guard - should be an easy way get more variation in the game. You can probably test that now actually...
 
 Relay log should be per milestone
+
 - So I dont have to scroll so far to see the current status.
 - Updates should should link to sub-issue
 - Add the weekly limit to the comment as well
@@ -66,12 +68,14 @@ First time hitting "deadline: no time for another step in this job". Is the test
 
 Its possible the game has wandered into a pit of failure. The precedenct has become to run the game generate numbers, compare numbers with other numbers (tests), but all the while those numbers are totally meaningless. Tests noone asked for are driving and deciding factors.
 I am cautious of this starving tests, its not something that needs to tested and adjusted for, its a consiquence of growth and not something to min/max tune against. A game where 'everyone is fed and happy' is not this game, and it would hardly be a game. This is a simulation and meaningful consiquences are the desired outcome, having more more people 'fed' is not.
+
 - the above lead to changes mid #156, record the decision and reasoning somewhere.
 - I delt with the starving tuning by removing the bands, but what else is going on that's not helpful?
 
 How long does it take to run the tests? How long is the cache timeout when running relay? Can we set it to run on the 5min timeout for an easy win? Bake in a rule somewhere that a test cannot run on too long.
 
 This was an early play tests, but my scout issued its own order at the pick. Or, there was AI running in the background that took over before I got in control.
+
 - I didn't see that in my second play through so maybe fixed or non-issue
 
 PR should be created as a draft till ready.

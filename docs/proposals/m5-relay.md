@@ -13,7 +13,7 @@ Every M5 piece has a `Whole: fable medium` line. Its first session plans and bui
 - **A fresh window.** A whole step starts only while the 5-hour window is under 10%, and only
   in a job with five hours left.
 - **Usage in the session.** The prompt gives both windows as the session starts, and a hook
-  repeats them every fifteen minutes. At 70% it says to commit and push; at 90% to stop and
+  repeats them every ten minutes. At 70% it says to commit and push; at 90% to stop and
   hand back.
 - **Handing on.** The session may end the piece itself with a merge verdict, or write
   `steps.json` with builds, each with a brief, and a review, and finish without one. The crew
@@ -71,10 +71,9 @@ game. The review reuses the builds' saved sweeps.
 ## 7. The log, the PR and the wait
 
 - One log issue a milestone, "Relay log: M<n>". Each run's report links the step it ran and
-  gives both windows, the week beside the share the day allows. Closes #216.
+  gives both windows. Closes #216.
 - A PR is a draft until its verdict.
 - The review puts the judge's block above the steps table.
-- A weekly stop starts a wait for its lift, as a 5-hour stop does, five hours at a time.
 
 ## 8. The ledger
 

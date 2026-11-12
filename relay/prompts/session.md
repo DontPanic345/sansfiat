@@ -63,7 +63,7 @@ names them under `took`.
   Chrome are installed. `engine/check.sh` runs every check CI runs on the engine.
   `engine/www/play.mjs` drives the page in headless Chrome.
 - The crew stops a session at its cap, which the top of this prompt gives. The top also gives
-  the usage windows as you start, and a hook repeats them every fifteen minutes.
+  the usage windows as you start, and a hook repeats them every ten minutes.
 - Wait on a long command with one call, not by polling it.
 - Anyone signed in to GitHub can read your transcript for two weeks, so keep secrets and the
   environment out of your output.
