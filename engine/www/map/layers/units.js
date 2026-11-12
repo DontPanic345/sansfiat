@@ -1,4 +1,4 @@
-// Units: each army (camp), scout and guard is its figure over its mask tinted in its civ's colour, with its
+// Units: each army (camp) and scout is its figure over its mask tinted in its civ's colour, with its
 // people beside it: one decimal under ten, whole above, and an army's archers split off as "6+2" with a small
 // bow. Several units on one tile sit side by side and a click cycles them (as now). A hungry one is edged red,
 // the selected one white. A fallen civ draws nothing.

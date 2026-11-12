@@ -1,4 +1,4 @@
-use engine::data::{CIV, CLAIM, FIELD, FIGHT, FIGHTERS, GUARD, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::over::{self, Why};
 use engine::script::Lead;
@@ -97,17 +97,15 @@ impl Sim {
     /// wear, in `goods()` order). `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
     /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, claim (the civ's claimed
-    /// tiles, sorted, the capital among them), guard (the guard share on each claimed tile, aligned with
-    /// `claim`: the guard's people's share there plus its camps' shares), land (its held tiles: the capital
-    /// and each claimed tile whose guard share reaches `CLAIM.floor`; the rest of the claim is paper),
+    /// tiles, sorted, the capital among them), land (its held tiles: its whole claim),
     /// army (its `units::Counters`), keep (the food it keeps
-    /// in force, `civs::keep`), keep_guard (the guard's share of that keep, `civs::guard_keep`), keep_set
+    /// in force, `civs::keep`), keep_set
     /// (the food the player set it to, null for the default), gift
     /// (the most it gives a turn), posted (food posted to its market last turn), given (food given
     /// last turn), joined (clans joined since founding), gifted (food given since founding), living
     /// (`{gathering, farming, army}`: its people by what they do, gathering over their land (Σ people ×
     /// (1 − fields) over its clans), working fields (Σ people × fields over its clans), or in its units
-    /// (the people of all its units: camps, the guard and scouts))}}`. Each
+    /// (the people of all its units: camps and scouts))}}`. Each
     /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ), `routes`
     /// (its festival route: `[{to, path, cost}]`, the path from home, so its walk is home then the path),
     /// `fields` (its share of its days on fields) and `plots` (`[[tile, days, grain]]`, its field tiles
@@ -172,11 +170,9 @@ impl Sim {
                     "people": mine.clone().map(|k| k.people).sum::<f64>(),
                     "clans": mine.count(),
                     "claim": c.claim,
-                    "guard": c.guard,
                     "land": civs::land(w, c.id),
                     "army": c.army,
                     "keep": civs::keep(w, c.id),
-                    "keep_guard": civs::guard_keep(w, c.id),
                     "keep_set": c.keep,
                     "gift": c.gift,
                     "posted": c.posted,
@@ -469,7 +465,7 @@ pub fn goods() -> String {
 }
 
 /// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
-/// hungry_turns, store_cap, floor, join, gift_max, notes_shown, save_version, fighters, fight}`. `join` is the
+/// hungry_turns, store_cap, join, gift_max, notes_shown, save_version, fighters, fight}`. `join` is the
 /// leaning at which a clan joins a civ; `gift_max` is the most a civ can give a turn (its store cap);
 /// `notes_shown` is how many reasons the panel shows. `fighters` is `[{name, attack, defence}]` in
 /// `Fighter` order (strength per person attacking and defending); `fight` is `{entrench, entrench_cap,
@@ -485,8 +481,6 @@ pub fn rules() -> String {
         "unit_food": UNIT.food,
         "hungry_turns": UNIT.hungry_turns,
         "store_cap": CIV.store_cap,
-        "floor": CLAIM.floor,
-        "guard_keep_turns": GUARD.keep_turns,
         "join": LEANING.join,
         "gift_max": CIV.store_cap,
         "notes_shown": NOTES.shown,

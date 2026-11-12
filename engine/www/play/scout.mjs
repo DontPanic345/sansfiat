@@ -35,8 +35,8 @@ async function tipAt(page, i) {
   return page.eval("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()");
 }
 
-/** Leads the first civ of `seed` into its main phase and selects its scout (on its capital, where the camp and the
- *  guard stand too). Returns the ids the script needs. */
+/** Leads the first civ of `seed` into its main phase and selects its scout (on its capital, where the camp
+ *  stands too). Returns the ids the script needs. */
 async function leadAndSelectScout(page) {
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');

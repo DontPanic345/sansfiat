@@ -59,15 +59,17 @@ const MARK = { A: [-1, 0], B: [1, 0], F: [-2, 0], R: [2, 0], S: [0, 0], N: [-1, 
 const MARKS = gridText((q, r) => Object.keys(MARK).find((k) => MARK[k][0] === q && MARK[k][1] === r) ?? '.');
 const GRAIN = 1;
 
-/** The StageSpec of the game: two civs, the first led, its camp of 4.6 beside food on F (`armyAt` moves it). */
-function specFor(armyAt = 'F') {
+/** The StageSpec of the game: two civs, the first led, its camp of 4.6 beside food on F (`armyAt` moves it).
+ *  The first civ's claim takes the ground round both capitals, so with `rivalFirst` the rival is the first civ
+ *  and the led civ's camp stands on land that is the rival's. */
+function specFor(armyAt = 'F', rivalFirst = false) {
   return {
     map: MAP,
     marks: MARKS,
-    civs: [{ mark: 'A' }, { mark: 'B' }],
+    civs: rivalFirst ? [{ mark: 'B' }, { mark: 'A' }] : [{ mark: 'A' }, { mark: 'B' }],
     people: 12,
-    lead: 0,
-    armies: [{ civ: 0, at: { mark: armyAt }, people: 4.6 }],
+    lead: rivalFirst ? 1 : 0,
+    armies: [{ civ: rivalFirst ? 1 : 0, at: { mark: armyAt }, people: 4.6 }],
     food: [
       { at: { mark: 'A' }, good: GRAIN, amount: 30 },
       { at: { mark: 'F' }, good: GRAIN, amount: 4 },
@@ -102,15 +104,14 @@ async function live() {
   const unitOf = (civ, kind) => Object.values(v.units).find((u) => u.civ === civ && u.kind === kind);
   const camp = unitOf(me, 'camp');
   const scout = unitOf(me, 'scout');
-  const guard = unitOf(me, 'guard');
   const clan = Object.values(v.clans).find((k) => k.civ === me);
-  return { v, me, other, camp, scout, guard, clan, capital: v.civs[me].capital, rivalCapital: v.civs[other].capital, market: v.civs[me].market };
+  return { v, me, other, camp, scout, clan, capital: v.civs[me].capital, rivalCapital: v.civs[other].capital, market: v.civs[me].market };
 }
 
 /** The unit a kind names for the led civ, read now. */
 async function unit(kind) {
   const w = await live();
-  return kind === 'camp' ? w.v.units[w.camp.id] : kind === 'scout' ? w.v.units[w.scout.id] : w.v.units[w.guard.id];
+  return kind === 'camp' ? w.v.units[w.camp.id] : w.v.units[w.scout.id];
 }
 const packOf = (u) => u.store.reduce((a, b) => a + b, 0);
 /** What a Forage or Resupply moves: the civ's army counter for a camp (it counts only camps), the pack for a scout. */
@@ -153,8 +154,6 @@ async function select(kind) {
       return selectKey(`unit:${w.camp.id}`, w.v.units[w.camp.id].tile);
     case 'scout':
       return selectKey(`unit:${w.scout.id}`, w.v.units[w.scout.id].tile);
-    case 'guard':
-      return selectKey(`unit:${w.guard.id}`, w.v.units[w.guard.id].tile);
     default:
       throw new Error(`no selection ${kind}`);
   }
@@ -368,7 +367,6 @@ const CASES = {
   },
   'Raise…/warriors': async (kind) => (kind === 'civ' ? raiseCivKind('warriors', (u) => u.kind === 'camp') : raiseIntoCamp('warriors')),
   'Raise…/archers': async (kind) => (kind === 'civ' ? raiseCivKind('archers', (u) => u.kind === 'camp') : raiseIntoCamp('archers')),
-  'Raise…/a guard': async () => raiseCivKind('a guard', (u) => u.kind === 'guard'),
   'Raise…/a scout': async () => raiseCivKind('a scout', (u) => u.kind === 'scout'),
   'Disband…/people': async (kind) => {
     await select(kind);
@@ -467,7 +465,7 @@ async function raiseIntoCamp(option) {
 /** Raise… as a player presses it: one unit of the kind, count 1, Go. A unit that takes a pack is filled from the
  *  civ's store, which the staged game starts without (its founding spends the endowment on the first army's pack),
  *  so the press is refused with the store's reason and nothing appears. Then the case checks that refusal and that
- *  the world is unchanged; where the store is not needed (a guard), the unit appears. */
+ *  the world is unchanged; where the store is not needed (a scout), the unit appears. */
 async function raiseAs(option, count, what) {
   const n0 = await count();
   const r = await stepperGo('Raise…', { option, n: 1 });
@@ -481,13 +479,12 @@ async function raiseAs(option, count, what) {
 }
 async function raiseCivKind(option, made) {
   await select('civ');
-  // A guard is one unit a civ has: raising it adds people to it, so it counts people; the others count units.
   const count = async () => {
     const { v, me } = await live();
     const mine = Object.values(v.units).filter((u) => u.civ === me && made(u));
-    return option === 'a guard' ? mine.reduce((a, u) => a + u.people, 0) : mine.length;
+    return mine.length;
   };
-  await raiseAs(option, count, option === 'a guard' ? 'guard' : option === 'a scout' ? 'scout' : 'army');
+  await raiseAs(option, count, option === 'a scout' ? 'scout' : 'army');
 }
 
 // ---- the inventory: every button of every panel the led civ can see, by the page's own shape -----------------
@@ -507,7 +504,6 @@ const PANELS = [
   { name: 'scout', sel: 'scout', kind: 'scout', setup: async () => {} },
   { name: 'scout, moving', sel: 'scout', kind: 'scout', setup: async () => { await armAndClick('Move to…', T); } },
   { name: 'scout, routed', sel: 'scout', kind: 'scout', setup: async () => { await armAndClick('Route to…', T); } },
-  { name: 'guard', sel: 'guard', kind: 'guard', setup: async () => {} },
 ];
 
 /** Each (kind, button) the led civ's panels show, with the panel it was found on. */
@@ -543,7 +539,7 @@ for (const key of pairs.keys()) {
   const label = keyOf(name);
   const c = CASES[label];
   if (!c) continue;
-  await stage(label === 'Pillage' ? specFor('P') : specFor());
+  await stage(label === 'Pillage' ? specFor('P', true) : specFor());
   try {
     console.log(`case    ${kind}: ${name}`);
     await c(kind);
