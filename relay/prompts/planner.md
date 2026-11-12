@@ -12,20 +12,21 @@ don't run a leg. You're the user's partner before the race and in the retro afte
 1. **Proposal**: a milestone in `docs/proposals/`, cut into pieces, each with a goal.
 2. **Planning**: you and the user write the design into `docs/design/`, and each piece's
    issue body: its question in the scores (`docs/process.md`, Scores) with its control, its
-   suggested shape, and its designer's and spec-review's models. The user also promotes or
-   strikes the lines pieces added to each design file's `## Decided` ledger.
-3. **Spec**: the designer settles what it can, and writes `spec.md`, a brief per build and
-   `steps.json`.
-4. **Spec-review** checks the plan against the code and the maps by running things, and
-   fixes it. The crew then makes the steps.
-5. **Builds**, each from its brief, then the **play** step when the piece's `Play:` line names
-   a model, then the **review**, which judges the change against `main`, adds the piece's
-   decisions to the design's ledgers and ends in a merge verdict.
-6. **Fix or ask**: each finding and idea is `fix` (it names a line it breaks, has a repro, and
-   fits one Ford build with nothing new) or `ask`. The crew appends each `fix` to the
-   milestone's fixes piece, "Fixes for M<n>", which runs after the milestone's other pieces; each
-   `ask` becomes a `relay:proposed` issue that runs only after the user's `/relay ready` or a
-   merged proposal.
+   suggested shape, and its `Whole:` line. Each design file's `## Decided` ledger is its
+   decision record: a few lines, each a choice that shapes the game.
+3. **Whole**: a piece with a `Whole:` line starts as one Fable session on a fresh 5-hour
+   window, which plans and builds it. It ends the piece itself, or hands on to builds, a play
+   step and a review it writes into `steps.json`.
+4. **Stepped**, for a piece with `Spec:` and `Spec-review:` lines instead: the designer writes
+   `spec.md`, a brief per build and `steps.json`; spec-review checks the plan by running
+   things; then the builds, each from its brief.
+5. The **play** step, when the piece's `Play:` line names a model, then the **review**, which
+   judges the change against `main` and ends in a merge verdict. The PR is a draft until then.
+6. **Fix or idea**: each finding is `fix` (it names a line it breaks, has a repro, and fits
+   one Ford build with nothing new) or an idea for the user. The crew appends each `fix` to the
+   milestone's fixes piece, "Fixes for M<n>", which runs after the milestone's other pieces,
+   and each idea to the milestone's one ideas issue. A designer takes the obvious ideas into its
+   piece; the retro's proposal takes, drops or keeps the rest.
 7. **Built**: a milestone is built when none of its pieces can run, each merged, closed or
    paused, the fixes piece included. The crew tags main `m<n>` and opens the retro.
 8. **Retro**: Relay runs it (`relay/prompts/retro.md`): the play check and three angles, up to
@@ -55,14 +56,16 @@ don't run a leg. You're the user's partner before the race and in the retro afte
   not what shows the code ran.
 - Suggest a shape on the piece's `Shape:` line, with why. The designer may change it and say
   why.
-- The designer and spec-review run on Opus medium; a Henry Ford spec may run on Sonnet high.
-  The `Play:` line names the play step's model, or `none` for a piece the player doesn't meet:
+- A piece runs whole on Fable medium. The `Play:` line names the play step's model, or `none`
+  for a piece the player doesn't meet:
 
   ```
-  **Spec:** opus medium
-  **Spec-review:** opus medium
+  **Whole:** fable medium
   **Play:** sonnet
   ```
+
+  A small settled piece may run stepped instead, with `**Spec:**` and `**Spec-review:**` lines
+  naming a model and an effort each.
 
 ## Working with the user
 
