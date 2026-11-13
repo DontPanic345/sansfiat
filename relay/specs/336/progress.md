@@ -33,3 +33,7 @@ first order has to be a raise.
 | claim tiles taken (motion.claim_taken) | 0 | 8 |
 | fight.taken | 14 | 4 |
 | largest army (mean) | 14.1 | 4.0 |
+
+## Tests (build-1)
+
+The tests are done against the guardless rules: `cargo test --release` and `engine/check.sh` pass whole. A three-civ fight test (#291) is in `fight.rs`. `cargo fmt` also reformatted a few lines in `core/src` (no rule changed).

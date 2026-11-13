@@ -249,7 +249,7 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     let a = put(&mut w, &[at_big(-4, 1)], 12.0);
     let b = put(&mut w, &[at_big(-1, 1)], 2.5);
     found(&mut w, &ms);
-    // Red's land is the 19 tiles within two steps of its capital, held by its guard.
+    // Red's land is the 19 tiles within two steps of its capital, held by its claim.
     let ring: Vec<usize> =
         w.tiles[at_big(-4, 1)].hex().within(2).into_iter().filter_map(|h| engine::map::index(BIG, h)).collect();
     let red_id = *w.civs.keys().next().unwrap();
@@ -261,8 +261,8 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     // The bigger clan is the civ, its home the capital.
     assert_eq!((red.name.as_str(), red.capital, red.q, red.r), ("Red", at_big(-4, 1), -4, 1));
     assert_eq!(w.civs.values().next().unwrap().clan, a);
-    // 14.5 people, less the two the scout took from the clans and the three the guard `hold_land` raised.
-    assert_eq!((red.clans, red.people, red.hearths), (2, 9.5, 1));
+    // 14.5 people, less the two the scout took from the clans; no guard is raised.
+    assert_eq!((red.clans, red.people, red.hearths), (2, 12.5, 1));
     let names: Vec<&str> = red.terrain.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(names, ["plains", "forest", "hills"], "ties by terrain index");
     // Of the 19 land tiles: 15 plains, 2 forest, 2 hills (the clan's tile beyond is not Red's land now).
@@ -377,9 +377,9 @@ fn at_founding_a_clan_as_close_to_a_capital_as_its_festival_switches_to_it() {
 
 #[test]
 fn a_civ_serialises_its_store_where_it_always_was_and_reads_back() {
-    const KEYS: [&str; 22] = [
+    const KEYS: [&str; 21] = [
         "id", "name", "color", "market", "capital", "founded", "store", "lost", "clan", "army", "keep", "gift",
-        "posted", "given", "joined", "gifted", "revealed", "claim", "guard", "pressed", "besieged", "fallen",
+        "posted", "given", "joined", "gifted", "revealed", "claim", "pressed", "besieged", "fallen",
     ];
     let (w, ids) = founded();
     let civ = &w.civs[&ids[0]];

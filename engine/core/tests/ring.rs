@@ -86,7 +86,8 @@ fn a_fallen_civ_has_no_ring() {
 #[test]
 fn the_walk_out_goes_hungry_past_the_ring() {
     let mut first_past = None;
-    for k in 1..=10 {
+    // Past 8 steps the walk is on Blue's land, where no line runs: the ring ends there.
+    for k in 1..=8 {
         let (mut s, _) = plains();
         let me = s.world().player.unwrap();
         let tile = common::at_big(-5 + k, 0);

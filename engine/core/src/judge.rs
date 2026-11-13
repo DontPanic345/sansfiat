@@ -95,10 +95,7 @@ pub struct CivLand {
 
 /// Every civ's land, in id order.
 pub fn civ_lands(w: &World) -> Vec<CivLand> {
-    w.civs
-        .keys()
-        .map(|&id| CivLand { id, claimed: w.civs[&id].claim.len() })
-        .collect()
+    w.civs.keys().map(|&id| CivLand { id, claimed: w.civs[&id].claim.len() }).collect()
 }
 
 /// The economy's tallies over the civ-turns read so far (see `EconomyScores`).

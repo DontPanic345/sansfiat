@@ -182,16 +182,34 @@ fn an_army_that_ends_its_turn_on_a_rivals_land_takes_the_tile_without_a_fight() 
 }
 
 #[test]
-fn a_march_stops_on_the_first_tile_of_a_rivals_land() {
+fn a_march_crosses_a_rivals_land_nobody_stands_on() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
     let line: Vec<usize> = (1..=4).map(|q| at_big(q, 0)).collect();
     hold_land(&mut w, blue, &line);
     let r = army(&mut w, red, at_big(-1, 0), [3.0, 0.0]);
     camp_mut(&mut w, r).camp_mut().unwrap().dest = Some(at_big(3, 0));
-    units::step(&mut w);
-    assert_eq!(w.units[&r].home, at_big(1, 0));
+    for _ in 0..10 {
+        units::step(&mut w);
+    }
+    assert_eq!(w.units[&r].home, at_big(3, 0));
     let _ = blue;
+}
+
+#[test]
+fn three_civs_armies_on_one_tile_each_lose_by_the_others_strength_and_one_holds() {
+    let (mut w, ids, _) = led();
+    let t = at_big(0, 5);
+    let strength = [10.0, 8.0, 6.0];
+    let a: Vec<u32> = (0..3).map(|i| army(&mut w, ids[i], t, [strength[i], 0.0])).collect();
+    fight_with(&mut w, &[]);
+    let all: f64 = strength.iter().sum();
+    for i in 0..3 {
+        let left = strength[i] - FIGHT.rate * (all - strength[i]);
+        assert!((w.units[&a[i]].people - left).abs() < 1e-9, "army {i}: {}", w.units[&a[i]].people);
+    }
+    let holders: Vec<usize> = (0..3).filter(|&i| w.units[&a[i]].held().contains(&t)).collect();
+    assert_eq!(holders, vec![0], "the strongest holds the tile");
 }
 
 #[test]
@@ -265,13 +283,13 @@ fn a_tile_taken_from_an_ai_civ_is_not_fought_for_again() {
     assert_eq!(claim::tile_civ(&w, t), Some(blue), "the AI's first claim holds it");
     let r = army(&mut w, red, t, [10.0, 0.0]);
     camp_mut(&mut w, r).camp_mut().unwrap().auto_supply = false;
-    // The stack takes the tile once. The AI doesn't claim it back under the stack, and its army
-    // doesn't march onto a stack it can't beat, so the tile is never fought for.
+    // The AI drops a tile a rival army stands on from its claim before `claim::step`, so the stack
+    // takes it at most once. Its army doesn't march onto a stack it can't beat: never fought for.
     for _ in 0..3 {
         end_turn(&mut w);
     }
     let at_t = |kind: EventKind| w.events.iter().filter(|e| e.kind == kind && e.tile == t).count();
-    assert_eq!(at_t(EventKind::ClaimTaken), 1, "taken once");
+    assert!(at_t(EventKind::ClaimTaken) <= 1, "taken at most once");
     assert_eq!(at_t(EventKind::Skirmish), 0, "and never fought for");
     assert!(!w.civs[&blue].claim.contains(&t), "the AI doesn't paint it back under the stack");
 }

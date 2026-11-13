@@ -381,8 +381,8 @@ fn pillage_yields_more_than_forage() {
         w.tiles[t].cap = [0.0, 100.0, 0.0, 0.0, 0.0];
         w.tiles[t].unworn = w.tiles[t].cap;
         w.tiles[t].stock = [0.0, 100.0, 0.0, 0.0, 0.0];
-        // With the fight on, the camp would take Blue's tile from its thin guard and it would be
-        // nobody's to pillage; off, the guard stays and the tile stays Blue's.
+        // With the fight on, the camp would take Blue's tile and it would be
+        // nobody's to pillage; off, no land is taken and the tile stays Blue's.
         w.config.fight = false;
         let id = put_camp(&mut w, red, t);
         camp_mut(&mut w, id).store = [0.0; N];
@@ -643,7 +643,7 @@ fn the_control_run_has_no_army_and_never_levies() {
     w.run(400);
     assert!(w.phase == Phase::Main && w.turn > w.end.as_ref().unwrap().turn + 50);
     // Founding raises a scout with or without an army, and on this map it lives on (it did not on
-    // main): what is checked is that no camp or guard is raised.
+    // main): what is checked is that no camp is raised.
     assert!(w.units.values().all(|u| u.kind() == UnitKind::Scout), "only scouts, which founding raises either way");
     for c in w.civs.values() {
         assert_eq!(c.army.raised, 0);

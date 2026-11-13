@@ -38,6 +38,8 @@ const GRACE: u32 = 3;
 
 fn errand(size: &str, seed: u32, rival: bool) -> Errand {
     let mut stage = Stage::retro(size, seed).unwrap();
+    // The fight is off: the led civ sits idle past the pick and this test is not about war.
+    stage.world_mut().config.fight = false;
     let me = *stage.world().civs.keys().next().unwrap();
     stage.lead(me).unwrap();
     let w = stage.world();

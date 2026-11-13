@@ -360,7 +360,8 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
 
     // 2. Hold the land: the nearest rival army on the claim, beside it or beside the capital.
     let claim = &w.civs[&civ].claim;
-    let on_land = |t: usize| claim.binary_search(&t).is_ok() || neighbours(w, t).any(|n| claim.binary_search(&n).is_ok());
+    let on_land =
+        |t: usize| claim.binary_search(&t).is_ok() || neighbours(w, t).any(|n| claim.binary_search(&n).is_ok());
     let threat = w
         .units
         .values()

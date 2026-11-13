@@ -171,12 +171,12 @@ fn judge_prints_a_score_line_and_the_control_for_the_led_civ() {
 
 #[test]
 fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
-    // On small seed 6, 25 turns after the pick, an unaligned clan is in reach of the led civ's market
+    // On small seed 2, 25 turns after the pick, an unaligned clan is in reach of the led civ's market
     // but trades at another, so the civ's gift never reaches it: the view says so, and `why` for that
     // clan gives its reasons. The seed and turn follow the rules: with the feeding (`feeding.md`) the
     // first of seeds 1 to 24 that shows one at this turn is this.
     let (_dir, game) = game_in("reach");
-    sansfiat(&["play", "--game", &game, "--seed", "6", "--size", "small", "--civ", "1"], RAISE);
+    sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
     let out = sansfiat(&["play", "--game", &game], "end 25\n");
     assert!(out.contains("a gift reaches only those that trade there"), "{out}");
     let clan = out
@@ -192,13 +192,13 @@ fn the_view_says_whether_a_gift_reaches_each_clan_in_reach() {
 fn the_view_at_the_pick_lists_the_claim_and_its_new_legal_orders() {
     let (_dir, game) = game_in("claim-view");
     let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
-    assert!(made.lines().any(|l| l.starts_with("claim: ") && l.contains("held") && l.contains("paper")), "{made}");
+    assert!(made.lines().any(|l| l.starts_with("land: ") && l.contains(" tiles, your claim:")), "{made}");
+    assert!(made.contains("nobody stands on it:"), "{made}");
     assert!(made.contains("unaligned clans on your land:"), "{made}");
     assert!(made.contains(r#"  {"type":"claim","tiles":"#), "{made}");
-    assert!(made.contains(r#"  {"type":"raise","n":1,"kind":"guard"}"#), "{made}");
     assert!(made.lines().count() < 80, "{} lines", made.lines().count());
     let map = sansfiat(&["play", "--game", &game], "map\n");
-    assert!(map.contains("L your land  p your paper"), "{map}");
+    assert!(map.contains("L your land"), "{map}");
     assert!(map.lines().any(|l| l.contains(" L ") || l.contains(" L\n") || l.ends_with(" L")), "{map}");
 }
 
@@ -206,12 +206,17 @@ fn the_view_at_the_pick_lists_the_claim_and_its_new_legal_orders() {
 fn judge_prints_the_claim_lines_for_the_led_civ() {
     let (_dir, game) = game_in("judge-claim");
     sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
-    sansfiat(&["play", "--game", &game], "{\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}\nend 10\n");
+    sansfiat(&["play", "--game", &game], "end 10\n");
     let out = sansfiat(&["judge", &game], "");
     let claim = out
         .lines()
-        .find(|l| l.starts_with("claim (game / control): "))
-        .unwrap_or_else(|| panic!("no claim line in:\n{out}"));
-    assert!(claim.contains(" tiles claimed, ") && claim.contains(" held, guard "), "{claim}");
-    assert!(out.lines().any(|l| l.starts_with("motion (game / control):") && l.contains("clans left")), "{out}");
+        .find(|l| l.starts_with("land (game / control): "))
+        .unwrap_or_else(|| panic!("no land line in:\n{out}"));
+    assert!(claim.contains(" tiles claimed"), "{claim}");
+    assert!(
+        out.lines().any(|l| l.starts_with("motion (game / control):")
+            && l.contains("clans left")
+            && l.contains("claimed tiles taken")),
+        "{out}"
+    );
 }

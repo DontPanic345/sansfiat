@@ -15,6 +15,8 @@ use engine::{Action, EventKind, Order, World};
 /// The real map of `seed` (the small retro map, from its cached pick), led by its first civ.
 fn lead(seed: u32) -> Stage {
     let mut s = Stage::retro("small", seed).unwrap();
+    // The fight is off: the led civ sits idle past the pick and this test is not about war.
+    s.world_mut().config.fight = false;
     let first = s.world().civs.keys().next().copied().expect("a civ");
     s.lead(first).unwrap();
     s
@@ -256,7 +258,7 @@ fn a_route_order_replays_to_the_same_world() {
     let target = open_ray(&w, cap, 6)[5];
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
     w.run(15);
-    // The guard eats from the civ's store, which on this seed can't feed the scout past a route's walk: a
+    // The army eats from the civ's store, which on this seed can't feed the scout past a route's walk: a
     // scout that starved out has no route to clear, and its hunger is the event that says so.
     let civ = w.player.unwrap();
     match units::scout(&w, civ).map(|u| u.id) {

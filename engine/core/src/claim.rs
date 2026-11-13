@@ -142,7 +142,9 @@ pub fn step(w: &mut World) {
         if w.civs[&owner].capital == tile || w.civs.get(&by).is_none_or(|c| c.is_out()) {
             continue;
         }
-        if w.units.values().any(|u| u.civ == owner && u.camp().is_some() && (u.home == tile || u.held().contains(&tile)))
+        if w.units
+            .values()
+            .any(|u| u.civ == owner && u.camp().is_some() && (u.home == tile || u.held().contains(&tile)))
         {
             continue;
         }

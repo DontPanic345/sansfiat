@@ -205,16 +205,16 @@ fn a_rival_army_ending_its_turn_on_land_takes_it_and_nobody_loses_people() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
     let cap = w.civs[&red].capital;
-    w.order(red, Order::Claim { tiles: vec![at_big(-4, 0), at_big(-3, 1)] }).unwrap();
+    w.order(red, Order::Claim { tiles: vec![at_big(-4, 0), at_big(-3, 0)] }).unwrap();
     let people: Vec<f64> = w.units.values().map(|u| u.people).collect();
-    put_camp(&mut w, blue, at_big(-3, 1));
+    put_camp(&mut w, blue, at_big(-3, 0));
     w.events.clear();
     claim::step(&mut w);
     assert_eq!(w.civs[&red].claim, vec![cap.min(at_big(-4, 0)), cap.max(at_big(-4, 0))], "the tile left the claim");
-    assert_eq!(claim::tile_civ(&w, at_big(-3, 1)), None, "it does not touch Blue's land: nobody's");
+    assert_eq!(claim::tile_civ(&w, at_big(-3, 0)), None, "it does not touch Blue's land: nobody's");
     let taken: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::ClaimTaken).collect();
     assert_eq!(taken.len(), 1);
-    assert_eq!((taken[0].civ, taken[0].other, taken[0].tile), (Some(red), Some(blue), at_big(-3, 1)));
+    assert_eq!((taken[0].civ, taken[0].other, taken[0].tile), (Some(red), Some(blue), at_big(-3, 0)));
     assert_eq!(taken[0].amount, Some(1.0));
     assert_eq!(w.units.values().map(|u| u.people).collect::<Vec<_>>(), people, "no losses to anyone");
     // The next turn it takes nothing more.
@@ -233,7 +233,10 @@ fn taking_a_tile_that_cuts_the_claim_takes_the_cut_off_part_and_the_tile_joins_o
     put_camp(&mut w, blue, at_big(-3, 0));
     w.events.clear();
     claim::step(&mut w);
-    assert_eq!(w.civs[&red].claim, vec![cap, at_big(-4, 0)].into_iter().collect::<std::collections::BTreeSet<_>>().into_iter().collect::<Vec<_>>());
+    assert_eq!(
+        w.civs[&red].claim,
+        vec![cap, at_big(-4, 0)].into_iter().collect::<std::collections::BTreeSet<_>>().into_iter().collect::<Vec<_>>()
+    );
     let taken: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::ClaimTaken).collect();
     assert_eq!(taken.len(), 1);
     assert_eq!(taken[0].amount, Some(3.0), "three tiles lost");

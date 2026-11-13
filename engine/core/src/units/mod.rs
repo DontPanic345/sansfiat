@@ -40,10 +40,10 @@ pub use search::{route_plan, search_view, Plan, SearchView};
 
 use camp::{camp_march, camp_turn, hold};
 use forage::room;
+pub(crate) use muster::make_camp;
 pub use muster::{
     disband, disband_kind, give_up, givers, nearest_clan, raise, raise_scout, raise_scout_at_founding, surrender,
 };
-pub(crate) use muster::make_camp;
 use scout::scout_turn;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

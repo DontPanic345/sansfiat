@@ -89,7 +89,9 @@ pub fn posture(w: &mut World) {
         if pressed != was_pressed {
             w.civs.get_mut(&civ).unwrap().pressed = pressed;
             let text = if pressed {
-                format!("its capital at {at} is pressed: a rival army stands on it, and only its own army there holds it")
+                format!(
+                    "its capital at {at} is pressed: a rival army stands on it, and only its own army there holds it"
+                )
             } else {
                 format!("its capital at {at} is no longer pressed: no rival army stands on it")
             };
@@ -259,11 +261,8 @@ pub fn step(w: &mut World, holders: &BTreeMap<usize, u32>) {
         let at = w.at(t);
         for p in &parts {
             let c = p.civ;
-            let others: Vec<String> = civs
-                .iter()
-                .filter(|&&o| o != c)
-                .map(|&o| format!("{}'s army", name_of(w, o)))
-                .collect();
+            let others: Vec<String> =
+                civs.iter().filter(|&&o| o != c).map(|&o| format!("{}'s army", name_of(w, o))).collect();
             let Who::Army(id) = p.who;
             let ent = if holder == Some(c) {
                 w.units.get(&id).and_then(|u| u.camp()).map(|k| entrenched(k.still)).unwrap_or(1.0)
@@ -299,7 +298,8 @@ fn falls(w: &mut World) {
         let army = |u: &&super::Unit| u.camp().is_some() && u.people > EPS;
         let by = w.units.values().filter(army).find(|u| u.civ != civ && u.home == capital).map(|u| u.civ);
         let Some(by) = by.filter(|b| w.civs.get(b).is_some_and(|c| !c.is_out())) else { continue };
-        let own = w.units.values().filter(army).any(|u| u.civ == civ && (u.home == capital || u.held().contains(&capital)));
+        let own =
+            w.units.values().filter(army).any(|u| u.civ == civ && (u.home == capital || u.held().contains(&capital)));
         if !own {
             civs::fall(w, civ, by);
         }
