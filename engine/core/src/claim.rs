@@ -125,8 +125,12 @@ pub fn first(w: &World, civ: u32) -> Vec<usize> {
 }
 
 /// The `claim` step, after `units`: each army (never a scout) that ends its turn on a tile of a
-/// rival's claim, not its capital, where no army of that rival holds, takes it (`take`).
+/// rival's claim, not its capital, where no army of that rival holds, takes it (`take`). With
+/// `Config.fight` off no land is taken: the control.
 pub fn step(w: &mut World) {
+    if !w.config.fight {
+        return;
+    }
     let standing: Vec<(u32, u32, usize)> = w
         .units
         .values()
