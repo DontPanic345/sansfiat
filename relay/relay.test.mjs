@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
-import { due, say } from "./usage-hook.mjs";
+import { crossed, due, fromFile, say } from "./usage-hook.mjs";
 import {
     afterOf,
     applyModel,
@@ -300,6 +303,9 @@ test("applyResult closes, retries once, then blocks", () => {
     assert.match(second.why, /2 times/);
     // A crashed session may not have read the owner's reply, so it's kept for the next one.
     assert.equal(applyResult(meta, null, false).meta.reply, "use the river map");
+    assert.match(applyResult(meta, null, true, "Waiting on the test helper to finish.").meta.note, /without a result\. Its last message: "Waiting on the test helper to finish\."/);
+    assert.equal(applyResult(meta, null, true).meta.note, "The session ended without saying where it got to.");
+    assert.equal(applyResult(meta, { status: "pending", note: "half way" }, true, "Waiting.").meta.note, "half way");
     const blocked = applyResult(meta, { status: "blocked", blocker: "Needs a Steam account" }, true);
     assert.deepEqual([blocked.outcome, blocked.why], ["blocked", "Needs a Steam account"]);
 });
@@ -514,6 +520,7 @@ test("the usage limit ending a session is told apart from a failure", () => {
     assert.equal(hitLimit({ is_error: true, result: "API Error: 429 usage_limit_reached" }), true);
     assert.equal(hitLimit({ is_error: true, result: "something else broke" }), false);
     assert.equal(hitLimit({ is_error: false, result: "done; usage limit is fine" }), false);
+    assert.equal(hitLimit({ is_error: true, api_error_status: 429, result: "You've hit your 5-hour limit · resets 3:40pm (UTC)" }), true);
     assert.equal(hitLimit(null), false);
 });
 
@@ -539,7 +546,7 @@ test("the run log is one issue per milestone, and its report gives both windows"
     assert.equal(usageReport({ session: 54.6, weekly: 60, weeklyResetsAt: resets }), "5-hour 55%, week 60%");
 });
 
-test("the usage hook speaks every ten minutes, and says to commit as the window runs out", () => {
+test("the usage hook speaks every ten minutes and as the window passes a mark, and says to commit, then to stop", () => {
     assert.equal(due(null, 1e9), false);
     assert.equal(due(0, 9 * 60_000), false);
     assert.equal(due(0, 10 * 60_000), true);
@@ -547,5 +554,14 @@ test("the usage hook speaks every ten minutes, and says to commit as the window 
     const at = (session) => say({ session, weekly: 40, sessionResetsAt: new Date("2026-11-12T01:30:00Z") }, now);
     assert.equal(at(20), "Usage: 20% of the 5-hour window, which resets in 90 minutes; 40% of the week.");
     assert.match(at(75), /Commit and push what you have/);
-    assert.match(at(95), /nearly spent/);
+    assert.match(at(85), /Stop here/);
+    assert.equal(crossed(60, 69), false);
+    assert.equal(crossed(60, 71), true);
+    assert.equal(crossed(71, 84), false);
+    assert.equal(crossed(71, 102), true);
+    assert.equal(fromFile(null), null);
+    const file = path.join(os.tmpdir(), `relay-usage-test-${process.pid}.json`);
+    fs.writeFileSync(file, JSON.stringify({ session: 88, weekly: 40, sessionResetsAt: now }));
+    assert.deepEqual(fromFile(file), { session: 88, weekly: 40, sessionResetsAt: now });
+    fs.rmSync(file);
 });

@@ -63,7 +63,12 @@ names them under `took`.
   Chrome are installed. `engine/check.sh` runs every check CI runs on the engine.
   `engine/www/play.mjs` drives the page in headless Chrome.
 - The crew stops a session at its cap, which the top of this prompt gives. The top also gives
-  the usage windows as you start, and a hook repeats them every ten minutes.
+  the usage windows as you start, and a hook repeats them every ten minutes and as the 5-hour
+  window passes 70% and 85%. At 85% stop: commit, push, write `result.json` and end. A session
+  the window ends is cut off mid-step.
+- The session ends when your turn does. Take a helper's result before you end your turn, and
+  never end on a message that says you are waiting: nothing comes after it.
+- What an unfinished session leaves uncommitted, the crew commits to the branch as it stands.
 - Wait on a long command with one call, not by polling it.
 - Anyone signed in to GitHub can read your transcript for two weeks, so keep secrets and the
   environment out of your output.
