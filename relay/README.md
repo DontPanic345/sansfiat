@@ -58,9 +58,15 @@ the briefs and `steps.json` live on the piece's branch, `relay/<number>`, in
 A whole step starts only while the 5-hour window is under 10%, so the session gets a whole
 window, and only in a job with five hours left, so a run that has already spent its time starts
 a fresh one. The prompt gives the session both usage windows as it starts, and a hook
-(`usage-hook.mjs`) repeats them every ten minutes, on every session. A session the usage
-limit ends costs its step no attempt: the next attempt waits for the reset and is told why the
-last one ended and the branch's last commit.
+(`usage-hook.mjs`) repeats them every ten minutes, on every session. The crew reads the windows
+from the session's own stream as it runs, helpers included, so the hook also speaks as the
+5-hour window passes 70% (commit) and 85% (stop: commit, push, write the result and end). A
+session the usage limit ends costs its step no attempt: the next attempt waits for the reset
+and is told why the last one ended and the branch's last commit.
+
+A session ends when its turn does, and its helpers may run until then. When a session ends
+unfinished, the crew commits what it left uncommitted to the piece's branch and tells the next
+attempt so; a session that wrote no result leaves its last message as the note.
 
 The crew makes the steps after a whole step that hands on, or after spec-review, from
 `steps.json` as that step left it, with the play step before the review. Neither is done until

@@ -23,8 +23,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { appToken } from "./token.mjs";
-import { readUsage } from "./usage.mjs";
-import { USAGE_EVERY_MIN } from "./usage-hook.mjs";
+import { parseUsage, readUsage } from "./usage.mjs";
+import { MARKS, USAGE_EVERY_MIN } from "./usage-hook.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.dirname(HERE);
@@ -362,7 +362,7 @@ export const sessionPrompt = (piece, step, files) => {
         ? ` The session started at ${files.started}, and the crew stops it after ${files.cap} minutes: check the clock (\`date -u\`) before giving up on time.`
         : "";
     const used = files.usage
-        ? ` ${usageLine(files.usage)} as you start, and a hook tells you both again every ${USAGE_EVERY_MIN} minutes.`
+        ? ` ${usageLine(files.usage)} as you start, and a hook tells you both again every ${USAGE_EVERY_MIN} minutes and as the 5-hour window passes ${MARKS.join("% and ")}%.`
         : "";
     const parts = [
         `You are a Relay session for Sans Fiat, in GitHub Actions with no other context: one cold session ` +
@@ -465,7 +465,7 @@ export const sessionStats = (lastAssistant, result, model, compactions = 0) => {
     return { cost: result?.total_cost_usd ?? 0, context: Math.round((held / window) * 100), compactions };
 };
 
-// Whether the usage limit ended the session: its result frame is an error that says so.
+// Whether the usage limit ended the session: a result frame is an error that says so.
 export const hitLimit = (result) => Boolean(result?.is_error) && /usage[_ ]limit|rate_limit|\b429\b/i.test(JSON.stringify(result));
 
 export const dollars = (n) => `$${(n ?? 0).toFixed(2)}`;
@@ -621,9 +621,12 @@ export const readResult = (text) => {
     }
 };
 
+const clip = (text, n) => (text.length > n ? `${text.slice(0, n - 1)}…` : text);
+
 // What a session's outcome does to its step's meta. Returns { meta, outcome }, where outcome
 // is "done", "pending" or "blocked"; `why` says what blocked it.
-export const applyResult = (meta, result, exitOk) => {
+// `said` is the session's last message, which stands in for a note it didn't write.
+export const applyResult = (meta, result, exitOk, said = null) => {
     const next = { ...meta };
     // A session that crashed may not have read the reply, so the next one gets it again.
     if (exitOk) delete next.reply;
@@ -641,7 +644,8 @@ export const applyResult = (meta, result, exitOk) => {
         return { meta: next, outcome: "blocked", why: result.blocker };
     }
     next.attempts = (next.attempts ?? 0) + 1;
-    next.note = exitOk ? result?.note ?? "The session ended without saying where it got to." : "The session crashed, timed out or wrote no result.";
+    const last = said?.trim() ? `The session ended without a result. Its last message: "${clip(said.trim(), 300)}"` : "The session ended without saying where it got to.";
+    next.note = exitOk ? result?.note ?? last : "The session crashed, timed out or wrote no result.";
     if (next.attempts < MAX_ATTEMPTS) {
         next.status = "pending";
         return { meta: next, outcome: "pending" };
@@ -926,13 +930,23 @@ const checkoutPiece = (piece) => {
     return branch;
 };
 
-// Whatever the session left behind: unpushed commits are pushed if they rebase cleanly,
-// anything uncommitted is dropped. The runner is thrown away at the end of the job.
-const tidyUp = (branch) => {
+// Whatever the session left behind: unpushed commits are pushed if they rebase cleanly. What
+// is uncommitted is committed under `keep`, the commit's message, so an unfinished step's next
+// attempt starts from it; without `keep` it is dropped. Returns whether it kept anything. The
+// runner is thrown away at the end of the job.
+const tidyUp = (branch, keep = null) => {
+    let kept = false;
     if (git("status", "--porcelain")) {
-        log("session left uncommitted changes; dropping them");
-        git("reset", "--hard");
-        git("clean", "-fdq", "-e", "relay/runs/");
+        if (keep) {
+            log("session left uncommitted changes; committing them");
+            git("add", "-A");
+            git("commit", "-q", "-m", keep);
+            kept = true;
+        } else {
+            log("session left uncommitted changes; dropping them");
+            git("reset", "--hard");
+            git("clean", "-fdq", "-e", "relay/runs/");
+        }
     }
     if (git("rev-list", `origin/${branch}..HEAD`)) {
         try {
@@ -940,8 +954,10 @@ const tidyUp = (branch) => {
         } catch (e) {
             log(`could not push the session's commits, dropping them: ${e.message}`);
             git("reset", "--hard", `origin/${branch}`);
+            kept = false;
         }
     }
+    return kept;
 };
 
 const readRepo = (f) => (fs.existsSync(path.join(REPO, f)) ? fs.readFileSync(path.join(REPO, f), "utf8") : null);
@@ -951,6 +967,8 @@ const readRepo = (f) => (fs.existsSync(path.join(REPO, f)) ? fs.readFileSync(pat
 // The token sessions use for git and `gh`, rewritten as the crew's token is renewed, so a
 // session never holds the App's key and never outlives its token.
 const TOKEN_FILE = path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), "relay-token");
+// The usage windows as the session's own stream last gave them, for the hook (usage-hook.mjs).
+const USAGE_FILE = path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), "relay-usage.json");
 const BIN = path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), "relay-bin");
 
 const writeTokenFile = async () => fs.writeFileSync(TOKEN_FILE, await token(), { mode: 0o600 });
@@ -972,12 +990,15 @@ const runSession = (piece, step, prompt) =>
     new Promise((resolve) => {
         fs.mkdirSync(RUNS, { recursive: true });
         fs.rmSync(RESULT, { force: true });
+        fs.rmSync(USAGE_FILE, { force: true });
         const stamp = new Date().toISOString().replace(/[:.]/g, "-");
         const name = `${stamp}-${piece.number}-${step.meta.id}`;
         fs.writeFileSync(path.join(RUNS, `${name}.prompt.md`), prompt);
         const out = fs.createWriteStream(path.join(RUNS, `${name}.jsonl`));
         const hidden = secrets();
-        const env = { ...process.env, PATH: `${BIN}:${process.env.PATH}` };
+        // Headless Claude Code stops a session's helpers ten minutes after its last turn; 0 lets
+        // them finish and wake it, inside the step's cap.
+        const env = { ...process.env, PATH: `${BIN}:${process.env.PATH}`, RELAY_USAGE_FILE: USAGE_FILE, CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: "0" };
         delete env.RELAY_APP_KEY;
         delete env.DISPATCH_TOKEN;
         delete env.RELAY_BOARD_TOKEN;
@@ -1001,6 +1022,8 @@ const runSession = (piece, step, prompt) =>
         let refused = null;
         let timedOut = false;
         let lastAssistant = null;
+        let said = null;
+        let limited = false;
         let result = null;
         let compactions = 0;
         const renew = setInterval(() => writeTokenFile().catch((e) => log(`couldn't renew the token: ${e.message}`)), 5 * 60_000);
@@ -1028,8 +1051,16 @@ const runSession = (piece, step, prompt) =>
                             child.kill();
                         }
                     }
-                    if (frame.type === "assistant") lastAssistant = frame;
-                    if (frame.type === "result") result = frame;
+                    if (frame.type === "assistant") {
+                        lastAssistant = frame;
+                        const text = frame.parent_tool_use_id ? null : frame.message?.content?.findLast?.((c) => c.type === "text")?.text;
+                        if (text) said = text;
+                    }
+                    if (frame.type === "result") {
+                        result = frame;
+                        limited ||= hitLimit(frame);
+                    }
+                    if (frame.type === "rate_limit_event") fs.writeFileSync(USAGE_FILE, JSON.stringify(parseUsage(frame.rate_limit_info)));
                     if (frame.type === "system" && frame.subtype === "compact_boundary") compactions++;
                 } catch {
                     // non-JSON line
@@ -1044,7 +1075,7 @@ const runSession = (piece, step, prompt) =>
             // A session that never said how it started costs no attempt: the CLI changed, not the step.
             if (!model && !refused && !timedOut) refused = initProblem(null, step.meta.model);
             const stats = { ...sessionStats(lastAssistant, result, step.meta.model, compactions), minutes: (Date.now() - began) / 60_000 };
-            resolve({ code, model, refused, timedOut, stats, limited: hitLimit(result) });
+            resolve({ code, model, refused, timedOut, stats, limited, said });
         });
     });
 
@@ -1395,7 +1426,7 @@ const runStep = async (piece, step, before) => {
     }
     await writeTokenFile();
     log(`start #${piece.number} ${step.meta.id} on ${step.meta.model}/${step.meta.effort} with Claude Code ${cliVersion()}`);
-    const { code, model, refused, timedOut, stats, limited } = await runSession(piece, step, prompt);
+    const { code, model, refused, timedOut, stats, limited, said } = await runSession(piece, step, prompt);
     if (refused) {
         tidyUp(branch);
         throw Object.assign(new Error(`stopped #${piece.number} ${step.meta.id} before it began: ${refused}`), { refused: true });
@@ -1403,7 +1434,7 @@ const runStep = async (piece, step, before) => {
     const exitOk = code === 0 && !timedOut && model !== null;
     let result = readResult(fs.existsSync(RESULT) ? fs.readFileSync(RESULT, "utf8") : null);
     log(`end #${piece.number} ${step.meta.id}: exit ${code}, model ${model}, ${dollars(stats.cost)}, ${stats.minutes.toFixed(1)} minutes, ${stats.context}% context, ${stats.compactions} compactions, result ${JSON.stringify(result)}`);
-    tidyUp(branch);
+    const kept = tidyUp(branch, result?.status === "done" ? null : `#${piece.number} ${step.meta.id}: what the session left uncommitted`);
     const head = git("log", "-1", "--format=%h %s");
     // Spec-review isn't done until the crew can make the steps.
     if (step.meta.id === "spec-review" && result?.status === "done") {
@@ -1423,7 +1454,7 @@ const runStep = async (piece, step, before) => {
         log(`couldn't read usage after the step: ${e.message}`);
     }
 
-    const applied = applyResult(step.meta, result, exitOk);
+    const applied = applyResult(step.meta, result, exitOk, said);
     let { outcome, why } = applied;
     const { meta } = applied;
     // The usage limit ending a session isn't the step's doing, so it costs no attempt.
@@ -1431,8 +1462,9 @@ const runStep = async (piece, step, before) => {
         outcome = "pending";
         meta.status = "pending";
         meta.attempts = step.meta.attempts ?? 0;
-        meta.note = `The usage limit ended the last session, not anything it did. What it hadn't committed is gone; the branch's last commit is \`${head}\`.`;
+        meta.note = `The usage limit ended the last session, not anything it did. The branch's last commit is \`${head}\`.`;
     }
+    if (kept && outcome !== "done") meta.note = `${meta.note ?? ""} The crew committed what the session left uncommitted, as the branch's last commit: it may not build.`.trim();
     if (handed) meta.handed = true;
     const points = usagePoints(before, after);
     const add = (was, n) => (n == null ? was ?? null : (was ?? 0) + n);
