@@ -382,50 +382,15 @@ fn a_small_seed_runs_a_hundred_turns_past_the_pick_with_leanings_rising_and_a_fo
 }
 
 #[test]
-fn a_home_on_a_guarded_civs_land_joins_sooner_than_a_barely_held_one() {
+fn a_home_on_a_civs_land_leans_to_it_by_the_land_gain_a_turn() {
     let (mut w, civ, _) = scene();
-    let (guarded, barely) = (at_big(-5, 1), at_big(-4, 1));
-    // Two tiles of the civ's land, one guarded thick and one at the floor; the guard shares are set
-    // directly, so the lean steps alone run (no end of turn divides them again).
-    let claim = {
-        let mut v = vec![w.civs[&civ].capital, guarded, barely];
-        v.sort_unstable();
-        v
-    };
-    let guard: Vec<f64> = claim
-        .iter()
-        .map(|&t| {
-            if t == guarded {
-                1.0
-            } else if t == barely {
-                CLAIM.floor
-            } else {
-                0.0
-            }
-        })
-        .collect();
-    {
-        let c = w.civs.get_mut(&civ).unwrap();
-        c.claim = claim;
-        c.guard = guard;
-    }
-    let a = put(&mut w, &[guarded], 6.0);
-    let b = put(&mut w, &[barely], 6.0);
-    // Land alone settles past the join line ((land + guarded × floor) / fade), so both join; the
-    // guarded one first.
-    let joined = |w: &World, id: u32| w.clans[&id].civ == Some(civ);
-    let (mut ta, mut tb) = (None, None);
-    for t in 0..60 {
-        lean(&mut w);
-        if ta.is_none() && joined(&w, a) {
-            ta = Some(t);
-        }
-        if tb.is_none() && joined(&w, b) {
-            tb = Some(t);
-        }
-    }
-    let (ta, tb) = (ta.expect("the guarded home's clan joins"), tb.expect("the barely held one joins too"));
-    assert!(ta < tb, "the guarded one joins first: {ta} against {tb}");
+    let (on, off) = (at_big(-5, 1), at_big(-4, 2));
+    hold_land(&mut w, civ, &[on]);
+    let a = put(&mut w, &[on], 6.0);
+    let b = put(&mut w, &[off], 6.0);
+    lean(&mut w);
+    let pull = |id: u32| format!("{:?}", w.clans[&id].leaning);
+    assert_ne!(pull(a), pull(b), "the home on its land leans further");
 }
 
 #[test]

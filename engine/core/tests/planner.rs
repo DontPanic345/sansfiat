@@ -107,14 +107,11 @@ fn the_claim_widens_toward_a_clan_while_the_guard_holds_and_gives_up_paper_it_ca
     // A levy that feeds no more: it widens no further.
     poor(&mut w, red);
     assert_eq!(units::claim_plan(&w, red), w.civs[&red].claim);
-    // Its guard gone and nothing to raise one with: the claim is paper, and it gives up the
-    // farthest tile each turn.
-    no_guard(&mut w, red);
-    let had = w.civs[&red].claim.clone();
-    let now = units::claim_plan(&w, red);
-    assert_eq!(now.len(), had.len() - 1);
-    let gone: Vec<usize> = had.iter().copied().filter(|t| !now.contains(t)).collect();
-    assert_eq!(gone, vec![at_big(-3, 0)], "the farthest paper tile, {} steps out", steps(&w, cap, gone[0]));
+    // Its army gone: the claim stays its land, and it widens no further.
+    let army = army_of(&w, red);
+    w.units.remove(&army);
+    rich(&mut w, red);
+    assert_eq!(units::claim_plan(&w, red), w.civs[&red].claim);
 }
 
 #[test]
@@ -178,23 +175,22 @@ fn it_marches_on_a_capital_it_outweighs_and_pulls_back_from_one_it_does_not() {
     let (red, blue) = (ids[0], ids[1]);
     let cap = w.civs[&blue].capital;
     let army = stand(&mut w, red, at_big(2, 0), 4.0);
-    assert!(!units::outweighs(&w, army, blue), "four against a guard of three, an army and the militia");
-    // Blue's army and guard gone and its clan small: four outweigh the militia.
-    let theirs = army_of(&w, blue);
+    // Blue's army of twelve on its capital: four don't outweigh it.
+    let theirs = stand(&mut w, blue, cap, 12.0);
+    assert!(!units::outweighs(&w, army, blue), "four against twelve on their capital");
+    // Blue's army gone: nobody stands on the capital, however many its clan is.
     w.units.remove(&theirs);
-    no_guard(&mut w, blue);
-    w.clans.get_mut(&clans[1]).unwrap().people = 3.0;
+    w.clans.get_mut(&clans[1]).unwrap().people = 30.0;
     assert!(units::outweighs(&w, army, blue));
     let seen = planned(&mut w, red);
     assert!(
         orders(&seen).iter().any(|o| matches!(o, Order::Move { unit, to } if *unit == army && *to == cap)),
         "{seen:?}"
     );
-    // On the capital, a guard raised against it that it no longer outweighs: it pulls back home.
+    // On the capital, an army raised against it that it no longer outweighs: it pulls back home.
     let army = stand(&mut w, red, cap, 4.0);
-    units::guard::raise(&mut w, blue, 1);
-    let g = units::guard_of(&w, blue).unwrap().id;
-    w.units.get_mut(&g).unwrap().actor.people = 12.0;
+    armed(&mut w, blue);
+    stand(&mut w, blue, cap, 12.0);
     assert!(!units::outweighs(&w, army, blue));
     let seen = planned(&mut w, red);
     let home = w.civs[&red].capital;

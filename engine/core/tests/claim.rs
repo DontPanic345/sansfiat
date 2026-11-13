@@ -333,7 +333,7 @@ fn a_raise_of_kind_guard_does_not_parse() {
 
 #[test]
 fn a_claim_changes_in_words_naming_the_tiles_added_and_dropped() {
-    let (mut w, ids, _) = led();
+    let (w, ids, _) = led();
     let red = ids[0];
     let cap = w.civs[&red].capital;
     let (a, b) = (at_big(-4, 0), at_big(-3, 0));

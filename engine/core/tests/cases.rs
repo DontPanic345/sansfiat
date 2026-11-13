@@ -306,25 +306,23 @@ fn people_in(w: &World) -> f64 {
 }
 
 /// Control, green on main: `Order::Disband` with no count sends every person of a unit home at once,
-/// for an army, a scout and a guard with fractional people: each unit is gone, the clans gain exactly
+/// for an army and a scout with fractional people: each unit is gone, the clans gain exactly
 /// its people, and the world's people are conserved. The page's count is the red case (page arm).
 #[test]
 fn disband_all_sends_every_person_home() {
     let mut stage = Stage::retro("small", 2).unwrap();
     let me = *stage.world().civs.keys().next().unwrap();
     stage.lead(me).unwrap();
-    // A civ starts with no army or guard: the stage places its army and raises its guard.
+    // A civ starts with no army: the stage places it.
     let cap = stage.world().civs[&me].capital;
     stage.army(me, cap, 3.0);
-    units::guard::raise(stage.world_mut(), me, 3);
     let w = stage.world_mut();
     let camp = units::camp(w, me).unwrap().id;
     let scout = units::scout(w, me).unwrap().id;
-    let guard = units::guard_of(w, me).unwrap().id;
-    for (id, k) in [(camp, 4.6), (scout, 1.5), (guard, 2.5)] {
+    for (id, k) in [(camp, 4.6), (scout, 1.5)] {
         set_people(w.units.get_mut(&id).unwrap(), k);
     }
-    for id in [camp, scout, guard] {
+    for id in [camp, scout] {
         let k = stage.world().units[&id].people;
         let (clans, all) = (stage.world().clans.values().map(|c| c.people).sum::<f64>(), people_in(stage.world()));
         stage.order(me, Order::Disband { unit: id, n: None, fighter: None }).unwrap();

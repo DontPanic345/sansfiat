@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use common::*;
 use engine::claim;
 use engine::data::*;
-use engine::units::fight::{self, Part, Who};
+use engine::units::fight::{self, Part};
 use engine::units::{self, UnitKind};
 use engine::{civs, clans, EventKind, Order, World};
 
@@ -161,7 +161,7 @@ fn archers_defend_better_and_attack_worse() {
 }
 
 #[test]
-fn a_stack_of_ten_takes_a_guarded_tile_and_loses_almost_nothing() {
+fn an_army_that_ends_its_turn_on_a_rivals_land_takes_the_tile_without_a_fight() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
     let cap = w.civs[&blue].capital;
@@ -171,58 +171,27 @@ fn a_stack_of_ten_takes_a_guarded_tile_and_loses_almost_nothing() {
     let t = at_big(3, 0);
     assert_eq!(claim::tile_civ(&w, t), Some(blue));
     let r = army(&mut w, red, t, [10.0, 0.0]);
-    let guard = units::guard_of(&w, blue).unwrap().people;
-    let on = fight::presence(&w)[&t].iter().filter(|p| p.civ == blue).map(|p| p.people).sum::<f64>();
+    assert!(parts_of(&w, t, blue).is_empty(), "nobody of Blue's stands on its land");
     fight_with(&mut w, &[]);
-    assert!((units::guard_of(&w, blue).unwrap().people - (guard - on)).abs() < 1e-9, "its presence there is wiped");
+    claim::step(&mut w);
     assert!(!w.civs[&blue].claim.contains(&t), "the tile left the claim");
-    assert_eq!(kinds(&w, EventKind::TileTaken), 1);
-    assert_eq!(kinds(&w, EventKind::ClaimTaken), 0);
-    assert!(10.0 - w.units[&r].people < 0.05, "lost {}", 10.0 - w.units[&r].people);
-    assert_eq!(w.civs[&red].army.taken, 1);
+    assert_eq!(kinds(&w, EventKind::ClaimTaken), 1);
+    assert_eq!(kinds(&w, EventKind::Skirmish), 0);
+    assert_eq!(w.units[&r].people, 10.0, "nobody fell");
+    assert_eq!(fallen(&w), 0.0);
 }
 
 #[test]
-fn two_guards_on_an_overlap_both_lose_and_neither_gives_way() {
+fn a_march_stops_on_the_first_tile_of_a_rivals_land() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
-    let line = |q0: i32, q1: i32| (q0.min(q1)..=q0.max(q1)).map(|q| at_big(q, 0)).collect::<Vec<_>>();
-    hold_land(&mut w, red, &line(-4, 0));
-    hold_land(&mut w, blue, &line(0, 4));
-    units::guard::raise(&mut w, red, 3);
-    let t = at_big(0, 0);
-    let share = |w: &World, c: u32| fight::presence(w)[&t].iter().filter(|p| p.civ == c).map(|p| p.people).sum::<f64>();
-    let (r, b) = (share(&w, red), share(&w, blue));
-    assert!((r / b - 2.0).abs() < 0.2, "Red's guard there is twice Blue's: {r} and {b}");
-    let (gr, gb) = (units::guard_of(&w, red).unwrap().people, units::guard_of(&w, blue).unwrap().people);
-    let before = (w.civs[&red].claim.clone(), w.civs[&blue].claim.clone());
-    fight_with(&mut w, &[]);
-    assert!(units::guard_of(&w, red).unwrap().people < gr && units::guard_of(&w, blue).unwrap().people < gb);
-    assert_eq!((w.civs[&red].claim.clone(), w.civs[&blue].claim.clone()), before, "neither tile leaves its claim");
-    assert_eq!(kinds(&w, EventKind::Retreated), 0);
-    assert_eq!(kinds(&w, EventKind::Skirmish), 1);
-    // The fight goes on the next turn without a second skirmish.
-    fight_with(&mut w, &[]);
-    assert_eq!(kinds(&w, EventKind::Skirmish), 1);
-}
-
-#[test]
-fn a_march_stops_on_a_rivals_held_tile_and_not_on_paper() {
-    let march = |paper: bool| {
-        let (mut w, ids, _) = led();
-        let (red, blue) = (ids[0], ids[1]);
-        let line: Vec<usize> = (1..=4).map(|q| at_big(q, 0)).collect();
-        hold_land(&mut w, blue, &line);
-        if paper {
-            no_guard(&mut w, blue);
-        }
-        let r = army(&mut w, red, at_big(-1, 0), [3.0, 0.0]);
-        camp_mut(&mut w, r).camp_mut().unwrap().dest = Some(at_big(3, 0));
-        units::step(&mut w);
-        w.units[&r].home
-    };
-    assert_eq!(march(false), at_big(1, 0), "it stops on the first of Blue's held tiles");
-    assert_ne!(march(true), at_big(1, 0), "paper doesn't stop it");
+    let line: Vec<usize> = (1..=4).map(|q| at_big(q, 0)).collect();
+    hold_land(&mut w, blue, &line);
+    let r = army(&mut w, red, at_big(-1, 0), [3.0, 0.0]);
+    camp_mut(&mut w, r).camp_mut().unwrap().dest = Some(at_big(3, 0));
+    units::step(&mut w);
+    assert_eq!(w.units[&r].home, at_big(1, 0));
+    let _ = blue;
 }
 
 #[test]
@@ -250,7 +219,7 @@ fn the_fight_conserves_people_and_with_it_off_nobody_falls() {
 }
 
 #[test]
-fn a_scout_on_a_rivals_held_tile_neither_fights_nor_takes_it() {
+fn a_scout_on_a_rivals_land_neither_fights_nor_takes_it() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
     let line: Vec<usize> = (1..=4).map(|q| at_big(q, 0)).collect();
@@ -261,11 +230,7 @@ fn a_scout_on_a_rivals_held_tile_neither_fights_nor_takes_it() {
     units::step(&mut w);
     claim::step(&mut w);
     assert_eq!(fallen(&w), 0.0);
-    assert_eq!(w.civs[&blue].claim, claim);
-    // Nor paper.
-    no_guard(&mut w, blue);
-    claim::step(&mut w);
-    assert_eq!(w.civs[&blue].claim, claim, "a scout takes no paper");
+    assert_eq!(w.civs[&blue].claim, claim, "a scout takes no land");
     let _ = red;
 }
 
@@ -300,15 +265,14 @@ fn a_tile_taken_from_an_ai_civ_is_not_fought_for_again() {
     assert_eq!(claim::tile_civ(&w, t), Some(blue), "the AI's first claim holds it");
     let r = army(&mut w, red, t, [10.0, 0.0]);
     camp_mut(&mut w, r).camp_mut().unwrap().auto_supply = false;
-    // The AI's claim gives the tile up under the stack (its step runs before the fight's), and its
-    // army doesn't march onto a stack it can't beat, so the tile is taken at most once and never
-    // fought for again.
+    // The stack takes the tile once. The AI doesn't claim it back under the stack, and its army
+    // doesn't march onto a stack it can't beat, so the tile is never fought for.
     for _ in 0..3 {
         end_turn(&mut w);
     }
     let at_t = |kind: EventKind| w.events.iter().filter(|e| e.kind == kind && e.tile == t).count();
-    assert!(at_t(EventKind::TileTaken) <= 1, "taken once at most");
-    assert_eq!(at_t(EventKind::Skirmish), at_t(EventKind::TileTaken), "and fought for no more than that");
+    assert_eq!(at_t(EventKind::ClaimTaken), 1, "taken once");
+    assert_eq!(at_t(EventKind::Skirmish), 0, "and never fought for");
     assert!(!w.civs[&blue].claim.contains(&t), "the AI doesn't paint it back under the stack");
 }
 
@@ -341,71 +305,38 @@ fn parts_of(w: &World, t: usize, civ: u32) -> Vec<Part> {
 }
 
 #[test]
-fn an_army_on_a_rival_clans_home_meets_its_militia_and_both_lose() {
+fn a_clan_does_not_defend_its_home() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
     let t = at_big(0, 5);
     let k = put(&mut w, &[t], 10.0);
     w.clans.get_mut(&k).unwrap().civ = Some(blue);
     army(&mut w, red, t, [10.0, 0.0]);
-    let parts = parts_of(&w, t, blue);
-    assert!(
-        parts.iter().any(|p| p.who == Who::Militia(k) && (p.people - 10.0).abs() < 1e-9),
-        "the clan's people defend its home: {parts:?}"
-    );
-    let p = parts.iter().find(|p| p.who == Who::Militia(k)).unwrap();
-    assert!((p.defence - FIGHT.militia * FIGHTERS[0].defence).abs() < 1e-9, "a fraction of a warrior's defence");
+    assert!(parts_of(&w, t, blue).is_empty(), "a clan is no part of a fight");
     fight_with(&mut w, &[(t, red)]);
-    assert!(w.clans[&k].people < 10.0, "the clan loses people");
-    assert!(w.units[&camp_id(&w, red)].people < 10.0, "the army loses people");
-    assert!(fallen(&w) > 0.0);
+    assert_eq!(w.clans[&k].people, 10.0, "the clan loses nobody");
+    assert_eq!(w.units[&camp_id(&w, red)].people, 10.0, "nor the army");
+    assert_eq!(fallen(&w), 0.0);
     sums(&w);
 }
 
 #[test]
-fn an_unaligned_clan_on_a_rivals_army_gives_no_militia() {
-    let (mut w, ids, _) = led();
-    let (red, _) = (ids[0], ids[1]);
-    let t = at_big(0, 5);
-    let k = put(&mut w, &[t], 10.0);
-    assert_eq!(w.clans[&k].civ, None);
-    army(&mut w, red, t, [10.0, 0.0]);
-    assert!(parts_of(&w, t, ids[1]).is_empty(), "nobody's clan");
-    fight_with(&mut w, &[(t, red)]);
-    assert_eq!(w.clans[&k].people, 10.0, "the unaligned clan is not drawn in");
-}
-
-#[test]
-fn a_rival_army_on_the_capital_draws_the_whole_guard_there_and_the_claim_is_paper() {
+fn a_rival_army_on_the_capital_presses_it_and_the_claim_stays_its_land() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
     let cap = w.civs[&blue].capital;
     hold_land(&mut w, blue, &[at_big(4, 0), at_big(3, 0)]);
-    assert!(claim::held(&w, blue).len() > 1, "the claim holds past the capital");
-    let people = units::guard_of(&w, blue).unwrap().people;
+    let land = claim::held(&w, blue);
+    assert!(land.len() > 1, "the claim holds past the capital");
     army(&mut w, red, cap, [4.0, 0.0]);
     fight::posture(&mut w);
     assert!(w.civs[&blue].pressed, "pressed while a rival stands on the capital");
-    assert_eq!(claim::held(&w, blue), vec![cap], "the rest of the claim is paper");
-    let guard: Vec<Part> = fight::presence(&w)
-        .into_iter()
-        .flat_map(|(t, ps)| {
-            ps.into_iter().filter(|p| p.civ == blue && matches!(p.who, Who::Guard(_))).map(move |p| (t, p))
-        })
-        .map(|(t, p)| {
-            assert_eq!(t, cap, "the guard is on the capital");
-            p
-        })
-        .collect();
-    assert_eq!(guard.len(), 1);
-    assert!((guard[0].people - people).abs() < 1e-9, "all its people, entrenched at the cap");
-    assert!((guard[0].defence - FIGHTERS[0].defence * fight::entrenched(u32::MAX)).abs() < 1e-9);
-    // The army leaves: the capital is no longer pressed and the guard spreads again.
+    assert_eq!(claim::held(&w, blue), land, "its land is still its claim");
+    // The army leaves: the capital is no longer pressed.
     let r = camp_id(&w, red);
     camp_mut(&mut w, r).actor.home = at_big(0, 5);
     fight::posture(&mut w);
     assert!(!w.civs[&blue].pressed);
-    assert!(claim::held(&w, blue).len() > 1);
 }
 
 #[test]
