@@ -7,7 +7,6 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 
 use crate::civs::{alive, tile_civ};
-use crate::claim;
 use crate::data::{JUDGE, TERRAIN, UNIT};
 use crate::events::EventKind;
 use crate::judge_fields::Fields;
@@ -87,27 +86,16 @@ fn land_civs(w: &World) -> Vec<Option<u32>> {
 /// A clan's festival now, and the festivals it left within the flip window with the turn it left each.
 type Festivals = (Option<u32>, Vec<(Option<u32>, u32)>);
 
-/// A civ's land at a turn: the tiles it claims, the tiles it holds (`claim::held`) and its guard's
-/// people.
+/// A civ's land at a turn: the tiles it claims.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CivLand {
     pub id: u32,
     pub claimed: usize,
-    pub held: usize,
-    pub guard: f64,
 }
 
 /// Every civ's land, in id order.
 pub fn civ_lands(w: &World) -> Vec<CivLand> {
-    w.civs
-        .keys()
-        .map(|&id| CivLand {
-            id,
-            claimed: w.civs[&id].claim.len(),
-            held: claim::held(w, id).len(),
-            guard: claim::guard_people(w, id),
-        })
-        .collect()
+    w.civs.keys().map(|&id| CivLand { id, claimed: w.civs[&id].claim.len() }).collect()
 }
 
 /// The economy's tallies over the civ-turns read so far (see `EconomyScores`).
@@ -118,7 +106,6 @@ struct Economy {
     store_max: f64,
     turns_at_pack: u32,
     levy_sum: f64,
-    guard_sum: f64,
     largest_army: f64,
 }
 
@@ -253,7 +240,6 @@ impl Watch {
             e.store_max = e.store_max.max(store);
             e.turns_at_pack += (store >= pack) as u32;
             e.levy_sum += c.levied;
-            e.guard_sum += claim::guard_people(w, c.id);
         }
         let camp = w.units.values().filter(|u| u.kind() == UnitKind::Camp).map(|u| u.people).fold(0.0, f64::max);
         self.economy.largest_army = self.economy.largest_army.max(camp);
@@ -473,7 +459,6 @@ impl Economy {
             turns_at_pack: self.turns_at_pack,
             levy_per_turn: mean(self.levy_sum),
             largest_army: self.largest_army,
-            guard_mean: mean(self.guard_sum),
         }
     }
 }

@@ -8,7 +8,7 @@
 //!
 //! The files: `line` (the paths and the line to the capital), `camp` (the camp's turn and orders and
 //! its zone), `scout` (the scout's turn and feeding), `search` (the route search), `forage` (what a
-//! unit eats, and the labour it spends on food, `Ladder`), `guard` (the civ's guard), `fight` and `ai`
+//! unit eats, and the labour it spends on food, `Ladder`), `fight` and `ai`
 //! (the AI's posts and zones). `muster` raises, disbands and gives up people. The types, the JSON,
 //! the queries and the `units` step are here.
 
@@ -16,7 +16,6 @@ mod ai;
 mod camp;
 pub mod fight;
 mod forage;
-pub mod guard;
 mod line;
 mod muster;
 mod scout;
@@ -32,7 +31,7 @@ use crate::claim;
 use crate::data::*;
 use crate::world::World;
 
-pub use ai::{ai, claim_plan, guard_order, outweighs, plan, post, Decision, Give};
+pub use ai::{ai, claim_plan, outweighs, plan, post, Decision, Give};
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
 pub use line::{cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, route, turns};
@@ -41,10 +40,10 @@ pub use search::{route_plan, search_view, Plan, SearchView};
 
 use camp::{camp_march, camp_turn, hold};
 use forage::room;
+pub(crate) use muster::make_camp;
 pub use muster::{
     disband, disband_kind, give_up, givers, nearest_clan, raise, raise_scout, raise_scout_at_founding, surrender,
 };
-pub(crate) use muster::{make_camp, take_people};
 use scout::scout_turn;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,7 +51,6 @@ pub enum UnitKind {
     #[default]
     Camp,
     Scout,
-    Guard,
 }
 
 impl UnitKind {
@@ -60,7 +58,6 @@ impl UnitKind {
         match self {
             UnitKind::Camp => "camp",
             UnitKind::Scout => "scout",
-            UnitKind::Guard => "guard",
         }
     }
 }
@@ -92,7 +89,7 @@ pub struct Counters {
     /// Turns the line was cut by a rival's held ground (and would carry the camp's food without it).
     #[serde(default)]
     pub cut_by_army: u32,
-    /// People lost in fights: its armies', guard's and (build-2) militia's.
+    /// People lost in fights: its armies'.
     #[serde(default)]
     pub fallen: f64,
     /// Tiles it won by fighting.
@@ -120,13 +117,11 @@ pub struct Unit {
     pub state: UnitState,
 }
 
-/// What a unit is, and the state only that kind has. A guard has none: its people and hunger are the
-/// unit's (`claim.rs` divides them over the claim).
+/// What a unit is, and the state only that kind has.
 #[derive(Clone, Debug, PartialEq)]
 pub enum UnitState {
     Camp(CampState),
     Scout(ScoutState),
-    Guard,
 }
 
 /// A unit's JSON: the flat object every unit has always written, the fields in their old order.
@@ -182,7 +177,6 @@ impl From<Unit> for UnitFlat {
         let dest = match &u.state {
             UnitState::Camp(c) => c.dest,
             UnitState::Scout(s) => s.dest,
-            UnitState::Guard => None,
         };
         let (camp, scout) = match u.state {
             UnitState::Camp(c) => (c, ScoutState::new()),
@@ -197,7 +191,6 @@ impl From<Unit> for UnitFlat {
                 },
                 s,
             ),
-            UnitState::Guard => (scout_camp_fields(), ScoutState::new()),
         };
         UnitFlat {
             id: u.id,
@@ -267,7 +260,6 @@ impl From<UnitFlat> for Unit {
                 wander: f.wander,
                 hunger: None,
             }),
-            UnitKind::Guard => UnitState::Guard,
         };
         Unit { id: f.id, civ: f.civ, actor: f.actor, banked: f.banked, hungry: f.hungry, state }
     }
@@ -319,7 +311,6 @@ impl Unit {
         match self.state {
             UnitState::Camp(_) => UnitKind::Camp,
             UnitState::Scout(_) => UnitKind::Scout,
-            UnitState::Guard => UnitKind::Guard,
         }
     }
 
@@ -328,35 +319,34 @@ impl Unit {
         match &self.state {
             UnitState::Camp(c) => c.dest,
             UnitState::Scout(s) => s.dest,
-            UnitState::Guard => None,
         }
     }
 
     pub fn camp(&self) -> Option<&CampState> {
         match &self.state {
             UnitState::Camp(c) => Some(c),
-            UnitState::Scout(_) | UnitState::Guard => None,
+            UnitState::Scout(_) => None,
         }
     }
 
     pub fn camp_mut(&mut self) -> Option<&mut CampState> {
         match &mut self.state {
             UnitState::Camp(c) => Some(c),
-            UnitState::Scout(_) | UnitState::Guard => None,
+            UnitState::Scout(_) => None,
         }
     }
 
     pub fn scout(&self) -> Option<&ScoutState> {
         match &self.state {
             UnitState::Scout(s) => Some(s),
-            UnitState::Camp(_) | UnitState::Guard => None,
+            UnitState::Camp(_) => None,
         }
     }
 
     pub fn scout_mut(&mut self) -> Option<&mut ScoutState> {
         match &mut self.state {
             UnitState::Scout(s) => Some(s),
-            UnitState::Camp(_) | UnitState::Guard => None,
+            UnitState::Camp(_) => None,
         }
     }
 
@@ -376,16 +366,6 @@ pub fn camp(w: &World, civ: u32) -> Option<&Unit> {
 /// `civ`'s scout, if it has one.
 pub fn scout(w: &World, civ: u32) -> Option<&Unit> {
     w.units.values().find(|u| u.civ == civ && u.kind() == UnitKind::Scout)
-}
-
-/// `civ`'s guard, if it has one.
-pub fn guard_of(w: &World, civ: u32) -> Option<&Unit> {
-    w.units.values().find(|u| u.civ == civ && u.kind() == UnitKind::Guard)
-}
-
-/// `civ`'s guard, if it has one, for changing.
-pub(crate) fn guard_of_mut(w: &mut World, civ: u32) -> Option<&mut Unit> {
-    w.units.values_mut().find(|u| u.civ == civ && u.kind() == UnitKind::Guard)
 }
 
 /// The food `people` warriors' packs hold.
@@ -428,7 +408,6 @@ pub fn step(w: &mut World) {
                 camp_turn(w, id, left.max(0.0));
             }
             Some(UnitKind::Scout) => scout_turn(w, id),
-            Some(UnitKind::Guard) => guard::turn(w, id),
             None => {}
         }
     }

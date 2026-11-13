@@ -249,7 +249,7 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     let a = put(&mut w, &[at_big(-4, 1)], 12.0);
     let b = put(&mut w, &[at_big(-1, 1)], 2.5);
     found(&mut w, &ms);
-    // Red's land is the 19 tiles within two steps of its capital, held by its guard.
+    // Red's land is the 19 tiles within two steps of its capital, held by its claim.
     let ring: Vec<usize> =
         w.tiles[at_big(-4, 1)].hex().within(2).into_iter().filter_map(|h| engine::map::index(BIG, h)).collect();
     let red_id = *w.civs.keys().next().unwrap();
@@ -261,8 +261,8 @@ fn a_card_counts_clans_people_hearths_terrain_and_rivals() {
     // The bigger clan is the civ, its home the capital.
     assert_eq!((red.name.as_str(), red.capital, red.q, red.r), ("Red", at_big(-4, 1), -4, 1));
     assert_eq!(w.civs.values().next().unwrap().clan, a);
-    // 14.5 people, less the two the scout took from the clans and the three the guard `hold_land` raised.
-    assert_eq!((red.clans, red.people, red.hearths), (2, 9.5, 1));
+    // 14.5 people, less the two the scout took from the clans; no guard is raised.
+    assert_eq!((red.clans, red.people, red.hearths), (2, 12.5, 1));
     let names: Vec<&str> = red.terrain.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(names, ["plains", "forest", "hills"], "ties by terrain index");
     // Of the 19 land tiles: 15 plains, 2 forest, 2 hills (the clan's tile beyond is not Red's land now).
@@ -377,9 +377,9 @@ fn at_founding_a_clan_as_close_to_a_capital_as_its_festival_switches_to_it() {
 
 #[test]
 fn a_civ_serialises_its_store_where_it_always_was_and_reads_back() {
-    const KEYS: [&str; 22] = [
+    const KEYS: [&str; 21] = [
         "id", "name", "color", "market", "capital", "founded", "store", "lost", "clan", "army", "keep", "gift",
-        "posted", "given", "joined", "gifted", "revealed", "claim", "guard", "pressed", "besieged", "fallen",
+        "posted", "given", "joined", "gifted", "revealed", "claim", "pressed", "besieged", "fallen",
     ];
     let (w, ids) = founded();
     let civ = &w.civs[&ids[0]];
@@ -394,7 +394,7 @@ fn a_civ_serialises_its_store_where_it_always_was_and_reads_back() {
 }
 
 /// Red's army of `people` on Blue's capital, Blue's own camp taken away: a rival on the capital with
-/// nobody of Blue's but its guard, its clan there and the guard's people.
+/// nobody of Blue's there but its clan.
 fn invade_capital(w: &mut World, red: u32, blue: u32, people: f64) -> usize {
     let cap = w.civs[&blue].capital;
     let own = camp_id(w, blue);
@@ -411,13 +411,13 @@ fn invade_capital(w: &mut World, red: u32, blue: u32, people: f64) -> usize {
 }
 
 #[test]
-fn a_capital_with_no_guard_army_or_militia_left_falls_and_its_civ_is_out() {
+fn a_capital_a_rival_army_stands_on_with_no_army_of_its_own_falls_and_its_civ_is_out() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
     let cap = invade_capital(&mut w, red, blue, 5.0);
+    // Its clan there, however many, is no defence.
     let bc = w.civs[&blue].clan;
-    w.clans.get_mut(&bc).unwrap().people = 0.5;
-    no_guard(&mut w, blue);
+    w.clans.get_mut(&bc).unwrap().people = 14.0;
     let before = total_people(&w);
     let holders = fight::army_holders(&w);
     fight::step(&mut w, &holders);
@@ -430,7 +430,7 @@ fn a_capital_with_no_guard_army_or_militia_left_falls_and_its_civ_is_out() {
     assert!(w.civs[&blue].claim.is_empty());
     assert_ne!(engine::claim::tile_civ(&w, cap), Some(blue));
     assert_eq!(engine::stats::standing(&w)[&blue], 0.0);
-    assert!(w.units.values().all(|u| u.civ != blue), "its armies and guard are gone");
+    assert!(w.units.values().all(|u| u.civ != blue), "its units are gone");
     assert!(w.civs[&red].army.taken == 0, "a fall is not a tile taken");
     assert!(w.units[&camp_id(&w, red)].store.iter().sum::<f64>() > 0.0, "its store fills the taker's pack");
     assert_eq!(w.civs[&blue].store, [0.0; N], "the rest is lost");
@@ -447,29 +447,20 @@ fn a_capital_with_no_guard_army_or_militia_left_falls_and_its_civ_is_out() {
 }
 
 #[test]
-fn a_capital_with_a_guard_left_on_it_does_not_fall() {
+fn a_capital_its_own_army_stands_on_does_not_fall() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
-    let cap = invade_capital(&mut w, red, blue, 1.0);
-    let bc = w.civs[&blue].clan;
-    w.clans.get_mut(&bc).unwrap().people = 0.5;
+    let cap = w.civs[&blue].capital;
+    let own = camp_id(&w, blue);
+    assert_eq!(w.units[&own].home, cap);
+    let r = put_camp(&mut w, red, cap);
+    let u = camp_mut(&mut w, r);
+    u.actor.people = 1.0;
+    u.camp_mut().unwrap().stack = [1.0, 0.0];
     let holders = fight::army_holders(&w);
     fight::step(&mut w, &holders);
-    assert!(!w.civs[&blue].is_out(), "its guard is on the capital");
+    assert!(!w.civs[&blue].is_out(), "its army is on the capital");
     assert_eq!(engine::claim::tile_civ(&w, cap), Some(blue));
-}
-
-#[test]
-fn a_capital_with_a_clan_of_a_person_or_more_left_as_militia_does_not_fall() {
-    let (mut w, ids, _) = led();
-    let (red, blue) = (ids[0], ids[1]);
-    invade_capital(&mut w, red, blue, 1.0);
-    no_guard(&mut w, blue);
-    let bc = w.civs[&blue].clan;
-    w.clans.get_mut(&bc).unwrap().people = 14.0;
-    let holders = fight::army_holders(&w);
-    fight::step(&mut w, &holders);
-    assert!(!w.civs[&blue].is_out(), "one person of militia or more holds it");
 }
 
 #[test]
@@ -501,9 +492,6 @@ fn a_fallen_capitals_market_fades_like_any_festival() {
     let (red, blue) = (ids[0], ids[1]);
     let mid = w.civs[&blue].market;
     invade_capital(&mut w, red, blue, 5.0);
-    no_guard(&mut w, blue);
-    let bc = w.civs[&blue].clan;
-    w.clans.get_mut(&bc).unwrap().people = 0.5;
     w.markets.get_mut(&mid).unwrap().activity = 0.0;
     engine::markets::fade(&mut w);
     assert!(w.markets.contains_key(&mid), "a civ's market is kept while it stands");

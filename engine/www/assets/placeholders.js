@@ -19,7 +19,7 @@ export const HEX_R = 74;
 /** How many world units (a hex has circumradius 1) a 64 px icon cell spans. */
 export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth': 1.6, 'icon.pass': 1, 'icon.town': 1.1 };
 
-const UNITS = ['camp', 'scout', 'guard'];
+const UNITS = ['camp', 'scout'];
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
 
 /** Every cell with its place in the sheet, its size and a note: `{width, height, cells}`. */

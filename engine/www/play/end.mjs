@@ -39,7 +39,7 @@ const MARK = { A: [-2, 0], B: [2, 0], C: [0, -3] };
 const MAP = gridText((q, r) => (dist(q, r) === R ? '~' : '.'));
 const MARKS = gridText((q, r) => Object.keys(MARK).find((k) => MARK[k][0] === q && MARK[k][1] === r) ?? '.');
 // Each civ's clan is 1.5 people with grain on its capital (a clan under one person dies, and one with no food
-// starves to it). A rival army on a capital takes it once the capital's militia is beaten (`civs::fall`'s rule).
+// starves to it). A rival army on a capital with no army of its civ on it takes it (`civs::fall`'s rule).
 const spec = (civs, extra = {}) => ({
   map: MAP,
   marks: MARKS,
@@ -69,7 +69,7 @@ async function playToEnd(turns) {
 }
 
 try {
-  // Conquest: A's army of five on B's capital, where B's guard is the only part of B left. B falls in a turn or two,
+  // Conquest: A's army of five on B's capital, where B has no army. B falls in a turn or two,
   // and A is the last capital standing.
   await stage(spec(['A', 'B'], { armies: [{ civ: 0, at: { mark: 'B' }, people: 5 }] }));
   await playToEnd(10);
@@ -80,7 +80,7 @@ try {
   await page.shot(join(out, 'end-won.png'), 0.5);
   need(page.errors().length === 0, `conquest: page errors: ${page.errors().join('; ')}`);
 
-  // Fell: B's army of five on A's capital, where the led civ has a guard and its own militia under one person. A's
+  // Fell: B's army of five on A's capital, where the led civ has no army. A's
   // capital falls to B, and the line names the taker (the led civ's fall is told as its fall).
   await stage(spec(['A', 'B', 'C'], { armies: [{ civ: 1, at: { mark: 'A' }, people: 5 }] }));
   await playToEnd(10);

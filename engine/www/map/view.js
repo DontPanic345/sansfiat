@@ -167,29 +167,25 @@ export class MapView {
     }
   }
 
-  /** The civ marks that change only with a turn, built when first drawn after one: each civ's border, the
-   *  solid one round its held land and the dashed one round its paper (claimed, not held) against the
-   *  ground its claim doesn't cover. */
+  /** The civ marks that change only with a turn, built when first drawn after one: each civ's border, round
+   *  its land (its claim) against the ground the claim doesn't cover. */
   civShapes() {
     if (this.shapes) return this.shapes;
     this.shapes = [];
     for (const c of Object.values(this.model.v.civs || {})) {
       const landSet = new Set(c.land);
-      const claim = new Set(c.claim);
       const solid = new Path2D();
-      const dashed = new Path2D();
       for (const i of c.land) this.outline(solid, i, (j) => landSet.has(j));
-      for (const i of c.claim) if (!landSet.has(i)) this.outline(dashed, i, (j) => claim.has(j));
-      this.shapes.push({ civ: c, solid, dashed, held: c.land.length, paper: c.claim.length - c.land.length });
+      this.shapes.push({ civ: c, solid, held: c.land.length });
     }
     return this.shapes;
   }
 
-  /** A civ's border as the page draws it: its held tiles and its paper, counted; null for a civ not
+  /** A civ's border as the page draws it: its land tiles, counted; null for a civ not
    *  in the view. */
   border(civ) {
     const s = this.civShapes().find((x) => x.civ.id === civ);
-    return s ? { held: s.held, paper: s.paper } : null;
+    return s ? { held: s.held } : null;
   }
 
   /** The routes to draw: `[{unit, tiles, selected}]`, the tiles from where the unit stands to its destination. */

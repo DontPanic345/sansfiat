@@ -34,10 +34,10 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/fields.rs` | The field job: `ground`, `yield_a_day`, `open`, `sow`, the split's `notch`, a farmer's `home_toward`, `plots`. |
 | `core/src/market.rs`, `markets.rs` | Barter clearing; festivals: reach, the `go` step, trading, forming, fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
-| `core/src/claim.rs` | A civ's claim, its guard's division, `held`, `tile_civ` and the `claim` step. |
+| `core/src/claim.rs` | A civ's claim, which is its land: `check`, `held`, `tile_civ`, `change`, and the `claim` step, where a rival army takes a tile. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
-| `core/src/units/` | `line.rs` (paths, cuts, `ring`), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats; `Ladder`), `muster.rs`, `guard.rs`, `search.rs` (the route search), `scout.rs`, `ai.rs` (the planner), `fight.rs`. |
+| `core/src/units/` | `line.rs` (paths, cuts, `ring`), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats; `Ladder`), `muster.rs`, `search.rs` (the route search), `scout.rs`, `ai.rs` (the planner), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game; `Auto`, the planner as a led player. |
 | `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map, layers, placements, orders and reads; `StageSpec` is its data form (`clans` for towns). A staged world is not a save. |
@@ -62,9 +62,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
    `Action`, checked in `validate` and applied in `act`. `World::run` takes the pick itself; a
    front end that calls `act(EndTurn)` must send `ChooseCiv` when `phase` is `choose`.
 3. A module of its own under `core/src/`, tests under `core/tests/`. Shared actor behaviour goes in
-   `actors.rs`; a unit kind is a `UnitKind` and a `UnitState` variant. A kind with no state of its
-   own (the guard) takes no order but raising and disbanding, and its turn is one arm in
-   `units::step` (`units/mod.rs`).
+   `actors.rs`; a unit kind is a `UnitKind` and a `UnitState` variant.
 
 ## Invariants
 

@@ -1,6 +1,6 @@
 //! The planner (`units/ai.rs`): one civ's turn of decisions, read on the built map of `common`
 //! (bare plains, Red's capital at `at_big(-5, 0)`, Blue's at `at_big(5, 0)`, Gold's at
-//! `at_big(0, -10)`, each with an army of three and a guard of three).
+//! `at_big(0, -10)`, each with an army of three).
 
 mod common;
 
@@ -67,6 +67,30 @@ fn stand(w: &mut World, civ: u32, tile: usize, people: f64) -> u32 {
     id
 }
 
+/// A second army for `civ` on its capital, made as the fight tests make one, so the capital is no
+/// prize.
+fn garrison(w: &mut World, civ: u32, people: f64) -> u32 {
+    let tile = w.civs[&civ].capital;
+    let mut u = units::camp(w, civ).expect("a camp to copy").clone();
+    let id = w.next_id;
+    w.next_id += 1;
+    u.id = id;
+    u.actor.people = people;
+    u.actor.home = tile;
+    u.actor.territory = vec![tile];
+    u.actor.store = [0.0, units::pack_cap(people), 0.0, 0.0, 0.0];
+    u.hungry = 0;
+    u.banked = 0.0;
+    let c = u.camp_mut().unwrap();
+    c.stack = [people, 0.0];
+    c.held = vec![tile];
+    c.guard = vec![0.0];
+    c.dest = None;
+    c.still = 0;
+    w.units.insert(id, u);
+    id
+}
+
 #[test]
 fn the_gift_follows_who_comes_to_the_festival() {
     let (mut w, ids, _) = watched();
@@ -87,13 +111,12 @@ fn the_gift_follows_who_comes_to_the_festival() {
 }
 
 #[test]
-fn the_claim_widens_toward_a_clan_while_the_guard_holds_and_gives_up_paper_it_cannot_guard() {
+fn the_claim_widens_toward_a_clan_while_its_armies_can_hold_it() {
     let (mut w, ids, _) = watched();
     let red = ids[0];
-    let cap = w.civs[&red].capital;
     let before = w.civs[&red].claim.clone();
-    assert!(claim::held(&w, red).len() == before.len(), "the guard holds the first claim");
-    // A clan three steps out, past the claim: with the levy to feed one more guard, the claim
+    assert!(claim::held(&w, red).len() == before.len(), "the claim is its land");
+    // A clan three steps out, past the claim: with its army to hold one tile more, the claim
     // takes the tile next to it nearest that home.
     let home = at_big(-2, 0);
     put(&mut w, &[home], 6.0);
@@ -104,17 +127,11 @@ fn the_claim_widens_toward_a_clan_while_the_guard_holds_and_gives_up_paper_it_ca
     assert_eq!(new, vec![at_big(-3, 0)], "the tile toward the clan's home");
     let seen = planned(&mut w, red);
     assert!(orders(&seen).iter().any(|o| matches!(o, Order::Claim { tiles } if *tiles == want)), "{seen:?}");
-    // A levy that feeds no more: it widens no further.
-    poor(&mut w, red);
+    // Its army gone: the claim stays, and it widens no further.
+    let army = army_of(&w, red);
+    w.units.remove(&army);
+    rich(&mut w, red);
     assert_eq!(units::claim_plan(&w, red), w.civs[&red].claim);
-    // Its guard gone and nothing to raise one with: the claim is paper, and it gives up the
-    // farthest tile each turn.
-    no_guard(&mut w, red);
-    let had = w.civs[&red].claim.clone();
-    let now = units::claim_plan(&w, red);
-    assert_eq!(now.len(), had.len() - 1);
-    let gone: Vec<usize> = had.iter().copied().filter(|t| !now.contains(t)).collect();
-    assert_eq!(gone, vec![at_big(-3, 0)], "the farthest paper tile, {} steps out", steps(&w, cap, gone[0]));
 }
 
 #[test]
@@ -153,6 +170,11 @@ fn an_army_marches_onto_a_rivals_land_it_outweighs_and_pillages_it() {
     let (mut w, ids, _) = watched();
     let (red, blue) = (ids[0], ids[1]);
     let army = stand(&mut w, red, at_big(2, 0), 4.0);
+    // No capital is a prize.
+    for civ in [blue, ids[2]] {
+        let cap = w.civs[&civ].capital;
+        stand(&mut w, civ, cap, 12.0);
+    }
     let seen = planned(&mut w, red);
     let to = orders(&seen).iter().find_map(|o| {
         if let Order::Move { unit, to } = o {
@@ -178,23 +200,25 @@ fn it_marches_on_a_capital_it_outweighs_and_pulls_back_from_one_it_does_not() {
     let (red, blue) = (ids[0], ids[1]);
     let cap = w.civs[&blue].capital;
     let army = stand(&mut w, red, at_big(2, 0), 4.0);
-    assert!(!units::outweighs(&w, army, blue), "four against a guard of three, an army and the militia");
-    // Blue's army and guard gone and its clan small: four outweigh the militia.
-    let theirs = army_of(&w, blue);
+    // Gold's army holds its capital, so Red has no prize but Blue's.
+    let gold_cap = w.civs[&ids[2]].capital;
+    stand(&mut w, ids[2], gold_cap, 12.0);
+    // Blue's army of twelve on its capital: four don't outweigh it.
+    let theirs = stand(&mut w, blue, cap, 12.0);
+    assert!(!units::outweighs(&w, army, blue), "four against twelve on their capital");
+    // Blue's army gone: nobody stands on the capital, however many its clan is.
     w.units.remove(&theirs);
-    no_guard(&mut w, blue);
-    w.clans.get_mut(&clans[1]).unwrap().people = 3.0;
+    w.clans.get_mut(&clans[1]).unwrap().people = 30.0;
     assert!(units::outweighs(&w, army, blue));
     let seen = planned(&mut w, red);
     assert!(
         orders(&seen).iter().any(|o| matches!(o, Order::Move { unit, to } if *unit == army && *to == cap)),
         "{seen:?}"
     );
-    // On the capital, a guard raised against it that it no longer outweighs: it pulls back home.
+    // On the capital, an army raised against it that it no longer outweighs: it pulls back home.
     let army = stand(&mut w, red, cap, 4.0);
-    units::guard::raise(&mut w, blue, 1);
-    let g = units::guard_of(&w, blue).unwrap().id;
-    w.units.get_mut(&g).unwrap().actor.people = 12.0;
+    armed(&mut w, blue);
+    stand(&mut w, blue, cap, 12.0);
     assert!(!units::outweighs(&w, army, blue));
     let seen = planned(&mut w, red);
     let home = w.civs[&red].capital;
@@ -246,6 +270,10 @@ fn it_stands_across_the_line_of_a_rival_army_abroad_and_paints_its_zone_there() 
     let (red, blue) = (ids[0], ids[1]);
     // Blue's army abroad, three steps from Red's capital, its line running east to its own.
     let foe = stand(&mut w, blue, at_big(-2, 0), 3.0);
+    // Blue's capital and Gold's are held, so neither is a prize.
+    garrison(&mut w, blue, 12.0);
+    let gold_cap = w.civs[&ids[2]].capital;
+    stand(&mut w, ids[2], gold_cap, 12.0);
     let (path, cost, _) = units::line(&w, foe).expect("Blue's line home");
     let to = w.civs[&blue].capital;
     w.units.get_mut(&foe).unwrap().actor.routes = vec![Route { to, path: path.clone(), cost }];

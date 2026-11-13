@@ -178,9 +178,6 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     out
 }
 
-/// The led civ's claim: its tiles, held (the capital and the claimed tiles its guard holds) and paper,
-/// its guard's people and the thinnest share of a held tile besides the capital; and the unaligned
-/// clans whose homes are on its land.
 /// One line per town on the led civ's land, or with one of its clans living on it: the tile, its
 /// clans and how many of them farm.
 fn town_lines(w: &World, me: u32) -> String {
@@ -197,29 +194,25 @@ fn town_lines(w: &World, me: u32) -> String {
     out
 }
 
+/// The led civ's land: its claim's size and tiles, what holds it, its posture, and the unaligned
+/// clans whose homes are on it.
 fn claim_lines(w: &World, me: u32) -> String {
     let c = &w.civs[&me];
-    let held = claim::held(w, me);
-    let thinnest = c
-        .claim
-        .iter()
-        .enumerate()
-        .filter(|&(_, &t)| t != c.capital && held.contains(&t))
-        .map(|(k, &t)| (c.guard.get(k).copied().unwrap_or(0.0), t))
-        .min_by(|a, b| a.0.total_cmp(&b.0));
-    let thin = thinnest.map_or("none".to_string(), |(g, t)| format!("{g:.2} at {}", tile(w, t)));
     let posture = [(c.pressed, "pressed"), (c.besieged, "besieged")]
         .iter()
         .filter(|(on, _)| *on)
         .map(|(_, name)| format!(", {name}"))
         .collect::<String>();
+    let names: Vec<String> = c.claim.iter().map(|&t| tile(w, t)).collect();
     let mut out = format!(
-        "claim: {} tiles, held {}, paper {}; guard {:.1} people, thinnest held share {thin}{posture}\n",
+        "land: {} tiles, your claim{posture}: {}\n  nobody stands on it: a rival army that ends its turn on a tile takes it, \
+         with any tiles that cuts off from your capital, unless an army of yours holds that tile\n",
         c.claim.len(),
-        held.len(),
-        c.claim.len() - held.len(),
-        claim::guard_people(w, me)
+        names.join(" ")
     );
+    if let Some(n) = w.notes.get(&me).and_then(|l| l.iter().rev().find(|n| n.text.starts_with("the claim "))) {
+        out += &format!("  last claim order, turn {}: {}\n", n.turn, n.text);
+    }
     let on_land: Vec<&Clan> =
         w.clans.values().filter(|k| k.civ.is_none() && claim::tile_civ(w, k.home) == Some(me)).collect();
     let people = on_land.iter().fold(0.0, |p, k| p + k.people);
@@ -282,9 +275,6 @@ fn unit_line(w: &World, u: &Unit) -> String {
             };
             format!("  scout {} at {}: {route}, hungry {} turns\n", u.id, tile(w, u.tile()), u.hungry)
         }
-        UnitKind::Guard => {
-            format!("  guard {} at {}: {:.1} people, hungry {} turns\n", u.id, tile(w, u.tile()), u.people, u.hungry)
-        }
     }
 }
 
@@ -325,9 +315,6 @@ fn legal(w: &World, me: u32) -> String {
                 out += &format!("  {{\"type\":\"raise\",\"n\":1{fighter},\"into\":{id}}}  {name} into army {id}\n");
             }
         }
-    }
-    if ok(Order::Raise { n: 1, kind: UnitKind::Guard, fighter: Default::default(), into: None }) {
-        out += "  {\"type\":\"raise\",\"n\":1,\"kind\":\"guard\"}  a guard at your capital, from your clans\n";
     }
     let claimed = w.civs[&me].claim.clone();
     if ok(Order::Claim { tiles: claimed.clone() }) {
@@ -381,11 +368,6 @@ fn legal(w: &World, me: u32) -> String {
                     if ok(o) {
                         out += &format!("  {{\"type\":\"{kind}\",\"unit\":{id}}}\n");
                     }
-                }
-            }
-            UnitKind::Guard => {
-                if ok(Order::Disband { unit: id, n: None, fighter: None }) {
-                    out += &format!("  {{\"type\":\"disband\",\"unit\":{id}}}\n");
                 }
             }
             UnitKind::Scout => {

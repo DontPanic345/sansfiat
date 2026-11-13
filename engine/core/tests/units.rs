@@ -21,10 +21,9 @@ fn founding_with_no_centre_clan_makes_the_biggest_near_clan_the_civ_and_moves_no
     assert_eq!(red.clan, small, "but the near one is the civ");
     assert_eq!(red.capital, at_big(-5, 0), "the capital stays on the site");
     assert_eq!(w.markets[&red.market].tile, at_big(-5, 0), "the market does not move");
-    // A civ starts with its scout and nothing else (`founding.md`, The start): no army, no guard.
+    // A civ starts with its scout and nothing else (`founding.md`, The start): no army.
     assert_eq!(red.army.raised, 0);
     assert!(units::camp(&w, red.id).is_none());
-    assert!(units::guard_of(&w, red.id).is_none());
     // The scout's people come from the clans, biggest first, and its pack from the store.
     let scout = units::scout(&w, red.id).unwrap();
     assert_eq!(scout.people, f64::from(SCOUT.people));
@@ -221,7 +220,6 @@ fn disbanding_returns_the_warriors_to_the_civs_clan() {
 fn a_camp_at_the_capital_fills_with_no_labour() {
     let (mut w, ids, _) = three();
     let red = ids[0];
-    no_guard(&mut w, red);
     no_scout(&mut w, red);
     let id = camp_id(&w, red);
     assert_eq!(units::line(&w, id), Some((Vec::new(), 0.0, f64::INFINITY)));
@@ -383,8 +381,8 @@ fn pillage_yields_more_than_forage() {
         w.tiles[t].cap = [0.0, 100.0, 0.0, 0.0, 0.0];
         w.tiles[t].unworn = w.tiles[t].cap;
         w.tiles[t].stock = [0.0, 100.0, 0.0, 0.0, 0.0];
-        // With the fight on, the camp would take Blue's tile from its thin guard and it would be
-        // nobody's to pillage; off, the guard stays and the tile stays Blue's.
+        // With the fight on, the camp would take Blue's tile and it would be
+        // nobody's to pillage; off, no land is taken and the tile stays Blue's.
         w.config.fight = false;
         let id = put_camp(&mut w, red, t);
         camp_mut(&mut w, id).store = [0.0; N];
@@ -410,7 +408,6 @@ fn pillage_yields_more_than_forage() {
 fn with_the_switches_off_it_neither_forages_nor_supplies() {
     let (mut w, ids, _) = led();
     let red = ids[0];
-    no_guard(&mut w, red);
     no_scout(&mut w, red);
     let t = at_big(-3, 1);
     w.tiles[t].stock = [0.0, 10.0, 0.0, 0.0, 0.0];
@@ -440,7 +437,6 @@ fn with_the_switches_off_it_neither_forages_nor_supplies() {
 fn hunger_loses_warriors() {
     let (mut w, ids, clans) = led();
     let red = ids[0];
-    no_guard(&mut w, red);
     let id = put_camp(&mut w, red, at_big(-5, 8));
     {
         let c = camp_mut(&mut w, id);
@@ -647,7 +643,7 @@ fn the_control_run_has_no_army_and_never_levies() {
     w.run(400);
     assert!(w.phase == Phase::Main && w.turn > w.end.as_ref().unwrap().turn + 50);
     // Founding raises a scout with or without an army, and on this map it lives on (it did not on
-    // main): what is checked is that no camp or guard is raised.
+    // main): what is checked is that no camp is raised.
     assert!(w.units.values().all(|u| u.kind() == UnitKind::Scout), "only scouts, which founding raises either way");
     for c in w.civs.values() {
         assert_eq!(c.army.raised, 0);

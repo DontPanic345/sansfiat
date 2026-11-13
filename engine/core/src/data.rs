@@ -623,8 +623,6 @@ pub struct LeaningRules {
     pub floor: f64,
     /// Leaning a clan gains each turn towards the civ whose held land its home is on.
     pub land: f64,
-    /// Further leaning a turn per share of guard its home tile has (`Civ.guard`).
-    pub guarded: f64,
     /// Turns in a row a civ clan must be drawn to a rival before it leaves for it.
     pub leave_run: u32,
     /// The leaning to a rival a civ clan must reach to be drawn to it at all; below it, it never leaves.
@@ -640,37 +638,31 @@ pub const LEANING: LeaningRules = LeaningRules {
     join: 1.0,
     gift_default: 2.0,
     floor: 0.001,
-    // A clan on a held home gains land + guarded × guard a turn, against a fade of 0.03: land alone
-    // settles at 3.3, past the join line, so a held home joins in about 11 turns (canvas.md).
+    // A clan whose home is on a civ's land gains `land` a turn, against a fade of 0.03: it settles at
+    // 3.3, past the join line, so such a clan joins in about 11 turns (canvas.md).
     land: 0.1,
-    guarded: 0.5,
     // Leaving after 3 turns drawn at 0.05: 5 turns at 0.1 left 2 to 4 clans over the seven retro maps with the
     // planner playing, 3 at 0.05 leaves 8 (relay/specs/157/canvas.md); 10/0.3 left none.
     leave_run: 3,
     leave_at: 0.05,
 };
 
-/// The land a civ claims and holds (`claim.rs`). The floor is the guard share a claimed tile must keep
-/// to be held; a civ's first claim is every land tile within `ring` steps of the capital or of
-/// a clan's home within `reach` steps of it.
+/// The land a civ claims (`claim.rs`): a civ's first claim is every land tile within `ring` steps of
+/// the capital or of a clan's home within `reach` steps of it.
 pub struct ClaimRules {
-    /// A share (of a person's days a turn).
-    pub floor: f64,
     /// Hex steps.
     pub ring: i32,
     /// Hex steps.
     pub reach: i32,
 }
 
-// The floor 0.05 lets three guards hold the ring around the clans' homes near the capital; 0.1 held 13 tiles a
-// civ, 0.05 holds 16 and wins 14 of 21 solo gains (canvas.md). Ring 1 and reach 4 keep the
-// first claim near; ring 2 or reach 6 claimed more than the guard holds and the solo gain fell.
-pub const CLAIM: ClaimRules = ClaimRules { floor: 0.05 * DAY, ring: 1, reach: 4 };
+// Ring 1 and reach 4 keep the first claim near the capital and its clans (canvas.md).
+pub const CLAIM: ClaimRules = ClaimRules { ring: 1, reach: 4 };
 
 /// The planner (`units/ai.rs`): what the AI's civs, and the automatic player, weigh each turn.
 pub struct PlanRules {
     /// A share: the levy a turn must cover the civ's mouths and one more this many times over before
-    /// it raises that one (a warrior, or the guard a wider claim needs).
+    /// it raises that one.
     pub feed: f64,
     /// A share of the store's cap: a store this full has its levy cut to the room left, so the levy
     /// counts as feeding one more whenever it covers the mouths at all.
@@ -681,10 +673,10 @@ pub struct PlanRules {
     pub army: f64,
     /// Food a turn it gives while a clan at its festival is a rival's or leans to one.
     pub gift_contested: f64,
-    /// Tiles a turn its claim widens by, while all of it is held and it can feed one more guard.
+    /// Tiles a turn its claim widens by, while its armies are enough to hold the wider claim.
     pub widen: usize,
-    /// How many floors of guard every held tile must have before an unfed guard sends a person home.
-    pub thick: f64,
+    /// Tiles of its claim a person of its armies holds: the planner claims no more.
+    pub hold: f64,
     /// Hex steps: the claim widens only toward a clan's home this near its edge.
     pub widen_reach: i32,
     /// How many times a defender's strength an army's must be before it marches onto it.
@@ -717,7 +709,7 @@ pub const PLAN: PlanRules = PlanRules {
     army: 0.25,
     gift_contested: 4.0,
     widen: 1,
-    thick: 2.0,
+    hold: 15.0,
     widen_reach: 3,
     edge: 1.5,
     siege: 8,
@@ -732,31 +724,10 @@ pub const PLAN: PlanRules = PlanRules {
     note: "Tuned on the seven retro maps against the judge's led games (relay/specs/157/canvas.md): feed 1.5 fills \
            a pack past spoilage where 1.25 never did; march 3 or 4 and a party of 4 keep an army where its pack \
            and the land feed it (a stack of 14 sent 16 steps starved every time); low 1 turns a party back \
-           before it starves and still reaches a rival (2 kept every warrior fed but took 5 tiles against 17).",
+           before it starves and still reaches a rival (2 kept every warrior fed but took 5 tiles against 17). hold 15 (relay/specs/336/scores.md): at 6 a party of 4 never widens the claim it is \
+           founded with and 8 tiles change hands on the retro maps; at 15, 36 do and the lead changes 13 times; \
+           at 30 the claims cover the map and one capital falls where two did.",
 };
-
-/// The guard: the people a civ keeps on its claim at its capital (`units/guard.rs`, `claim.rs`).
-pub struct GuardRules {
-    /// Guards raised at founding, from the civ's clans, one person each. 0: a civ starts with its
-    /// scout and nothing else, and raises its guard on its claim itself (`founding.md`, The start).
-    pub start: u32,
-    /// The guards a staged civ has (`StageSpec`): the guard founding gave a civ before the start moved.
-    pub first: u32,
-    /// Days a person a turn a guard puts into holding the claim: its whole labour (`UNIT.labour`), since a
-    /// guard does nothing else. Divided over the claim with `inside`.
-    pub guarding: f64,
-    /// The weight of a guard's walk from the capital over the claim (`walk_cost`), paid by every guard
-    /// walking a tile: the guard's people over the claim. The camp's `UNIT.inside`: the walk is a
-    /// share of a person's days on a tile whatever the guard's size, so a weight a tenth of that left
-    /// the walk free and one guard held the claim (the AI's raises and claims fell to a seventh; `walk.md`).
-    pub inside: f64,
-    /// Turns of a guard's food the civ keeps in its store out of posting and gifts (`civs::keep`).
-    pub keep_turns: f64,
-}
-
-// Inside 0.2 (the camp's; 0.02, 0.1 and 0.15 left the AI's orders at 1.2 to 3.4 a hundred turns against the base's 8.3: walk.md)
-// and keep_turns 1, so the store still gives (canvas.md).
-pub const GUARD: GuardRules = GuardRules { start: 0, first: 3, guarding: 3.5 * DAY, inside: 0.2, keep_turns: 1.0 };
 
 pub struct UnitRules {
     /// Days a person a turn: one person's work: what a camp spends on its steps, its foraging and its line (`CLAN.work`).
@@ -870,16 +841,14 @@ pub struct FightRules {
     pub rate: f64,
     /// A defending army's strength gained per turn it has stood still.
     pub entrench: f64,
-    /// The most entrenchment adds; a guard always defends at it.
+    /// The most entrenchment adds.
     pub entrench_cap: f64,
-    /// A side whose strength after the losses is under this times the others' retreats (armies only).
+    /// A side whose strength after the losses is under this times the others' retreats.
     pub retreat: f64,
     /// An army that went hungry last turn fights at this times its strength.
     pub hungry: f64,
     /// The fewest people a civ must have on a tile to be a side there.
     pub floor: f64,
-    /// A militia person's strength, attacking or defending, times a warrior's defence.
-    pub militia: f64,
     /// Hungry turns in a row, with its line cut by a rival, before an army surrenders (before hunger's take).
     pub surrender: u32,
     pub note: &'static str,
@@ -892,16 +861,14 @@ pub const FIGHT: FightRules = FightRules {
     retreat: 0.5,
     hungry: 0.5,
     floor: 0.01,
-    militia: 0.3,
     surrender: 3,
-    note: "Tuned on small seed 2's stories (relay/specs/104/glaze.md): rate 0.2 makes the guards' skirmish \
-           move Standing (Red +2.9, Blue -1.0 against the control) while a guard of 2-3 still lasts its \
-           19 contested turns; the rest held, since a beaten stack still retreats a step and starves or \
-           surrenders at surrender 3 (the stack's and surrender story's armies both do).",
+    note: "Tuned on small seed 2's stories (relay/specs/104/glaze.md): at rate 0.2 a fight moves Standing \
+           and a party of 2-3 still lasts its contested turns; a beaten stack retreats a step and starves \
+           or surrenders at surrender 3 (the stack's and surrender story's armies both do).",
 };
 
 /// Which civs may claim land (`claim.rs`): `All` (the default), `None` (the control: no civ claims
-/// past its capital and raises no guard), or `Only(k)` (the k-th civ in id order, 0-based, claims as
+/// past its capital), or `Only(k)` (the k-th civ in id order, 0-based, claims as
 /// under `All`; the others as under `None`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -932,7 +899,7 @@ pub struct Config {
     #[serde(default)]
     pub claims: Claims,
     /// Whether people of two civs on a tile fight (`units/fight.rs`): off is the control (no losses,
-    /// no retreats, no militia, no surrender, no fall, no pressed capital and no siege; holding is
+    /// no retreats, no surrender, no fall, no pressed capital and no siege; holding is
     /// the strength comparison alone). Old saves load with it on.
     #[serde(default = "yes")]
     pub fight: bool,

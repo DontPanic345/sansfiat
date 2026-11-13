@@ -56,7 +56,7 @@ pub struct EndScores {
     pub led_rank: Option<usize>,
 }
 
-/// The economy group: the civs' stores, the levy that fills them, the camps and the guards, read
+/// The economy group: the civs' stores, the levy that fills them, the camps, read
 /// after each turn over the civs that are alive. The means are over civ-turns.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct EconomyScores {
@@ -70,11 +70,9 @@ pub struct EconomyScores {
     pub levy_per_turn: f64,
     /// The most people in one camp after any turn.
     pub largest_army: f64,
-    /// The people of the civ's guard, mean over civ-turns.
-    pub guard_mean: f64,
 }
 
-/// The fight group: per civ and in total, the people fallen in fights (armies, guards and militia),
+/// The fight group: per civ and in total, the people fallen in fights (armies),
 /// the tiles taken by fighting and the armies surrendered, from `Civ.army` at the end of the watch.
 /// The counters run from the start of the game, and fighting begins at the pick, so they are the
 /// watch's.

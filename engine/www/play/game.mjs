@@ -1,5 +1,5 @@
 // A played game on the page (spec, Left unsettled): leads a civ on a small map and plays 30 turns with only
-// the page's buttons, keys and clicks. On the way it changes the gift, raises a guard, paints a claim, moves
+// the page's buttons, keys and clicks. On the way it changes the gift, raises a scout, paints a claim, moves
 // the camp with Move to… and paints its zone, follows an alert, reloads the page at turn 15 and Continues,
 // and at the end saves to a file. The page's `game.digest()` must match `sansfiat digest --game FILE`, and
 // `sansfiat judge FILE` reads the save. The script reads the page (game.view()) to choose its targets; every
@@ -73,12 +73,12 @@ try {
   await page.button('Gift +1');
   need((await page.eval(`game.view().civs[${me}].gift`)) === gift0 + 1, `Gift +1 raises the gift (${gift0} → ${gift0 + 1})`);
 
-  // A guard, through Raise…'s stepper.
-  const guards = () => page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${me} && u.kind === 'guard').reduce((a, u) => a + u.people, 0)`);
-  const g0 = await guards();
-  const g = await page.stepper('Raise…', { n: 1, option: 'a guard', go: true });
+  // A scout, through Raise…'s stepper.
+  const scouts = () => page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${me} && u.kind === 'scout').length`);
+  const g0 = await scouts();
+  const g = await page.stepper('Raise…', { n: 1, option: 'a scout', go: true });
   await page.eval(frames);
-  need(g.go && (await guards()) > g0, `Raise… raises a guard (${g.go ? 'done' : g.title})`);
+  need(g.go && (await scouts()) > g0, `Raise… raises a scout (${g.go ? 'done' : g.title})`);
 
   // A claim: P, a click on a free land tile beside the claim, Escape.
   const nb = await page.eval(`(() => { const m = game.map, c = game.view().civs[${me}]; const out = new Set();

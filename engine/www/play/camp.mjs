@@ -2,7 +2,7 @@
 // reasons and one button row (Move to…, Paint, Unpaint, Forage, Pillage, Resupply, the two switches,
 // Disband…); Move to… arms a click and sets `dest`; right-click moves; P and drag paint a zone and U
 // unpaints; each action applies or is greyed with a reason; Disband… opens a count. Then the hold: a
-// thicker guard marches onto a rival camp's post and cuts its line (small seed 4: see HOLD_SEED), which is
+// thicker army marches onto a rival camp's post and cuts its line (small seed 4: see HOLD_SEED), which is
 // skipped: a civ starts with no army.   node www/play/camp.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -145,7 +145,7 @@ async function panelChecks(page) {
  *  nearest rival camp's post (its tile), the ring round it is painted, and turns end until the rival's
  *  line is cut by our army and its camp goes hungry. */
 async function hold(page) {
-  // The store at the pick fills one warrior's pack and the guard eats from the store, so the hold raises seven, not ten.
+  // The store at the pick fills one warrior's pack, so the hold raises seven, not ten.
   const WARRIORS = 7;
   await page.until("document.body.dataset.phase === 'choose'");
   await page.button('Lead ');

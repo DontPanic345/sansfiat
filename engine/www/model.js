@@ -2,17 +2,9 @@
 // once per change. Layers and panels read the model; the `Sim` is called for orders and per-selection
 // queries only.
 
-/** A civ's claim as counts: tiles claimed, held, paper (claimed, not held), and the thinnest guard
- *  share on a held tile (0 with none held). */
+/** A civ's claim as a count: every claimed tile is its land. */
 function claimCounts(c) {
-  const share = new Map(c.claim.map((t, k) => [t, c.guard[k] ?? 0]));
-  const held = c.land.map((t) => share.get(t) ?? 0);
-  return {
-    claimed: c.claim.length,
-    held: c.land.length,
-    paper: c.claim.length - c.land.length,
-    thinnest: held.length ? Math.min(...held) : 0,
-  };
+  return { claimed: c.claim.length };
 }
 
 /**
