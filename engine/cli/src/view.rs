@@ -210,6 +210,9 @@ fn claim_lines(w: &World, me: u32) -> String {
         c.claim.len(),
         names.join(" ")
     );
+    if let Some(n) = w.notes.get(&me).and_then(|l| l.iter().rev().find(|n| n.text.starts_with("the claim "))) {
+        out += &format!("  last claim order, turn {}: {}\n", n.turn, n.text);
+    }
     let on_land: Vec<&Clan> =
         w.clans.values().filter(|k| k.civ.is_none() && claim::tile_civ(w, k.home) == Some(me)).collect();
     let people = on_land.iter().fold(0.0, |p, k| p + k.people);
