@@ -55,7 +55,7 @@ civ's button row, one panel shape for everything, a greyed button says why).
 
 ## Done
 
-`engine/check.sh` passes whole. The screenshot shows a signpost and a settlement that read as
+`engine/check.sh` passes whole. It has not passed whole on this branch yet: the whole step ran it as far as `core/tests/notes.rs` (fixed since); the test files after it, the web build, `www/check.mjs` and `www/play/all.mjs` are unrun on this code, so expect to fix what they find (a view key list, a legal-orders text). The screenshot shows a signpost and a settlement that read as
 what they are. Nothing in `engine/core/src` changes but `stage.rs` if needed: the rules are
 settled, and the sweep numbers in `relay/specs/353/scores.md` must not move (`stats::digest` on a
 run is unchanged by this step).
