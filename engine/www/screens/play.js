@@ -719,9 +719,6 @@ function fillTip(i) {
     const name = `<i class="sw" style="background:${c.color}"></i>${c.name}`;
     lines.push(c.capital === i ? `${name}'s capital` : `${name}'s land`);
   }
-  for (const c of Object.values(v.civs)) {
-    if (c.claim.includes(i) && !c.land.includes(i)) lines.push(`paper of <i class="sw" style="background:${c.color}"></i>${c.name}`);
-  }
   const here = Object.values(v.units).filter((u) => u.tile === i);
   if (here.length) {
     const names = here.map((u) => `${v.civs[u.civ]?.name ?? '?'} ${u.kind} ${u.id}${u.hungry ? ' (hungry)' : ''}`);

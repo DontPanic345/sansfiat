@@ -54,7 +54,7 @@ pub(crate) struct Armies {
 
 /// One civ's gain from claiming alone on a map (`--solo`): its Standing at +200 when only it claims,
 /// less its Standing at +200 in the no-claims control. `clans` and `land` are the two parts of that
-/// gain: its clans' and units' people, and the unaligned people on its held land.
+/// gain: its clans' and units' people, and the unaligned people on its land.
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct SoloGain {
     pub(crate) civ: u32,
@@ -243,11 +243,9 @@ pub(crate) fn mean_some(v: &[Option<f64>]) -> Option<f64> {
     }
 }
 
-/// Mean claimed tiles, held tiles and guard people per civ over `civs`.
-pub(crate) fn civ_means(civs: &[CivLand]) -> (f64, f64, f64) {
-    let n = civs.len().max(1) as f64;
-    let sum = |f: fn(&CivLand) -> f64| civs.iter().map(f).sum::<f64>() / n;
-    (sum(|c| c.claimed as f64), sum(|c| c.held as f64), sum(|c| c.guard))
+/// Mean claimed tiles per civ over `civs`.
+pub(crate) fn civ_means(civs: &[CivLand]) -> f64 {
+    civs.iter().map(|c| c.claimed as f64).sum::<f64>() / civs.len().max(1) as f64
 }
 
 /// The totals over the maps that judged (panicked maps are not in them).

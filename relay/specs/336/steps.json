@@ -1,0 +1,4 @@
+[
+  { "id": "build-1", "title": "The tests against the guardless rules", "part": "ford", "model": "sonnet", "effort": "medium", "points": 6, "why": "Open 1, New 1, Miss 2, Reach 2; about 14 test files, 300 lines, no rule changed. Every fix is named in the brief; the model reads a failing assert and changes the test, not the rule. The risk is a test bent to pass: the brief names the expected behaviour for each." },
+  { "id": "review", "title": "Review the piece", "model": "sonnet", "effort": "high", "why": "The whole step built the rules, the planner, the page and the scores (scores.md) and build-1 the tests. A cold reader checks each Decided line against its test, reads the played games, and judges one thing the builds couldn't: a led civ that raises no army loses its capital within a few turns of the pick (progress.md). The verdict says whether that is the game the design asks for." }
+]

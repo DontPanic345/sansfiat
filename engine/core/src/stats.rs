@@ -130,8 +130,8 @@ pub struct Parts {
 }
 
 /// Each civ's Standing in its parts (`Parts`): the people of its clans (wherever they live) and of
-/// its units, and of the unaligned clans whose homes are on its held land, over the people of every
-/// clan and every unit. Warriors, guards and scouts are people the civ took from its clans, so raising
+/// its units, and of the unaligned clans whose homes are on its land, over the people of every
+/// clan and every unit. Warriors and scouts are people the civ took from its clans, so raising
 /// one moves nobody between civs. Every civ is there, at 0 when the world has nobody.
 pub fn standing_parts(w: &World) -> BTreeMap<u32, Parts> {
     let mut mine: BTreeMap<u32, Parts> = w.civs.keys().map(|&c| (c, Parts::default())).collect();

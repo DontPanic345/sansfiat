@@ -1,5 +1,5 @@
 // A civ in the page (touch point 20): the bar's chip selects it; its panel has Standing with its parts in the
-// tooltip, its store and its claim's counts; Raise… raises warriors and a guard; Gift + and −, and Keep, move
+// tooltip, its store and its claim's count; Raise… raises warriors and a scout; Gift + and −, and Keep, move
 // their numbers; P paints the claim and U unpaints it, and the border and counts show; an unaligned clan
 // leans to the civ within 30 turns of a raised gift. On small seed 6: the store fills its packs within a few
 // turns there (on seed 2 the camp at the capital draws the store down faster than it fills).
@@ -46,9 +46,10 @@ try {
   // Standing with its parts in the tooltip, and the claim's counts.
   const standing = p.numbers.find((n) => n.label === 'Standing');
   need(standing && /clans and units/i.test(standing.tip) && /unaligned clans on its land/.test(standing.tip), 'Standing shows its two parts in its tooltip');
-  for (const word of ['Claimed', 'Held', 'Paper', 'Thinnest guard']) need(p.numbers.some((n) => n.label === word), `the panel shows ${word}`);
+  const claimedRow = p.numbers.find((n) => n.label === 'Claimed');
+  need(claimedRow && /nobody standing on it/.test(claimedRow.tip) && /rival army/.test(claimedRow.tip), 'the panel shows Claimed, and its tooltip says what a claim is');
 
-  // Raise…: warriors need the store to fill their packs, so turns end until a warrior is allowed; a guard
+  // Raise…: warriors need the store to fill their packs, so turns end until a warrior is allowed; a scout
   // is raised from the civ's clans.
   const peopleOf = (kind) => page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${civ} && u.kind === '${kind}').reduce((a, u) => a + u.people, 0)`);
   const w0 = await peopleOf('camp');
@@ -60,10 +61,10 @@ try {
   }
   await page.eval(frames);
   need(raised && (await peopleOf('camp')) > w0, 'Raise… raises warriors for the camp');
-  const g0 = await peopleOf('guard');
-  const g = await page.stepper('Raise…', { n: 1, option: 'a guard', go: true });
+  const g0 = await peopleOf('scout');
+  const g = await page.stepper('Raise…', { n: 1, option: 'a scout', go: true });
   await page.eval(frames);
-  need(g.go && (await peopleOf('guard')) > g0, `Raise… raises a guard (${g.go ? 'done' : g.title})`);
+  need(g.go && (await peopleOf('scout')) > g0, `Raise… raises a scout (${g.go ? 'done' : g.title})`);
 
   // Gift and Keep.
   const gift0 = await page.eval(`game.view().civs[${civ}].gift`);

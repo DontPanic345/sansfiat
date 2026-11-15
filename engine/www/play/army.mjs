@@ -1,6 +1,6 @@
-// The armies (build-4): on small seed 3, Blue (the civ that holds forest, and whose corridor meets Gold's guard
+// The armies (build-4): on small seed 3, Blue (the civ that holds forest, and whose corridor meets Gold's land
 // from the first turn), the page raises warriors as a new army through the civ's panel, raises archers into it
-// through the army's panel, sees its number on the map, marches it with Move to… onto a rival's guarded tile, and
+// through the army's panel, sees its number on the map, marches it with Move to… onto a rival's land tile, and
 // reads the fight in the feed and the army's reasons. Gift 0 and the turns that fill the store come first.
 // Exits non-zero when any of these is missing; writes army-*.png to --out.   node www/play/army.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
@@ -48,10 +48,7 @@ try {
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   const civKey = `civ:${me}`;
 
-  // The guard holds the land (a civ with none holds its capital alone): three guards, raised through the civ's Raise….
-  await selectKey(page, civKey, cap);
-  for (let g = 0; g < 3; g++) await page.stepper('Raise…', { n: 1, option: 'a guard', go: true });
-  // The led civ holds forest (archers are made on it), and its corridor meets a rival's guard from the first turn.
+  // The led civ holds forest (archers are made on it), and its corridor meets a rival's land from the first turn.
   const forest = await page.eval(`(() => { const v = game.view(), L = game.layout(), T = game.terrain();
     return v.civs[${me}].land.filter((i) => T[L.terrain[i]].name === 'forest').length; })()`);
   need(forest > 0, `the led civ holds ${forest} forest tiles`);
@@ -72,7 +69,7 @@ try {
   }
   const store = await page.eval(`game.view().civs[${me}].store.reduce((a, b) => a + b, 0)`);
   need(offer?.go === true, `Raise… warriors is no longer greyed after ${turns} turns (the store holds ${store.toFixed(1)} food)`);
-  need(['warriors', 'archers', 'a guard', 'a scout'].every((o) => (offer?.options ?? []).includes(o)), `the civ's Raise… offers ${(offer?.options ?? []).join(', ')}`);
+  need(['warriors', 'archers', 'a scout'].every((o) => (offer?.options ?? []).includes(o)), `the civ's Raise… offers ${(offer?.options ?? []).join(', ')}`);
 
   // Raise one warrior as a new army through the civ's panel.
   await selectKey(page, civKey, cap);
@@ -123,13 +120,23 @@ try {
   need(drawn.seen === drawn.label && drawn.label.includes('+'), `the map draws the army's number as "${drawn.seen}"`);
   await page.shot(join(out, 'army-raised.png'), 1);
 
-  // March: Move to… onto a rival's guarded tile: a contested one if the corridors meet one, else the nearest one held.
+  // Warriors stay at the capital as its own army: a capital with no army of its civ on it falls to a rival army
+  // there, and the marching army leaves it. Each Raise… from the civ's panel makes an army at the capital.
+  const home = () => page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${me} && u.kind === 'camp' && u.id !== ${army.id}).reduce((a, u) => a + u.people, 0)`);
+  for (let k = 0; k < TURNS && (await home()) < 3; k++) {
+    await selectKey(page, civKey, cap);
+    if (!(await page.stepper('Raise…', { n: 1, option: 'warriors', go: true })).go) await page.button('End turn');
+  }
+  need((await home()) >= 3, `${(await home()).toFixed(1)} people stay at the capital`);
+
+  // March: Move to… onto a rival army's tile if there is one (it is at the capital's door), else a rival's land tile: a contested one if the corridors meet one, else the nearest one held.
   const target = await page.eval(`(() => { const v = game.view(), L = game.layout(), me = ${me};
     const u = v.units[${army.id}];
     const d = (a, b) => { const dq = L.q[a] - L.q[b], dr = L.r[a] - L.r[b]; return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr)); };
     const rival = (t) => Object.values(v.civs).some((c) => c.id !== me && c.land.includes(t));
     const contested = v.contested.filter(rival);
-    const pool = contested.length ? contested : Object.values(v.civs).filter((c) => c.id !== me).flatMap((c) => c.land);
+    const armies = Object.values(v.units).filter((x) => x.kind === 'camp' && x.civ !== me).map((x) => x.tile);
+    const pool = armies.length ? armies : contested.length ? contested : Object.values(v.civs).filter((c) => c.id !== me).flatMap((c) => c.land);
     pool.sort((a, b) => d(u.tile, a) - d(u.tile, b) || a - b);
     return pool[0] ?? null; })()`);
   need(target != null, 'a rival holds a tile the army can march onto');
@@ -141,14 +148,15 @@ try {
   const dest = await page.eval(`game.view().units[${army.id}].dest`);
   need(dest === target, `the army marches to (${target}) by Move to…`);
 
-  // End turns until the army fights on that tile: a skirmish in the feed, with the army in it.
+  // End turns until the army stands on a contested tile with a skirmish in the feed, the army in it.
   const marched = await page.eval('game.view().turn');
   let skirmish = null;
   for (let k = 0; k < 60 && !skirmish; k++) {
     await page.button('End turn');
-    skirmish = await page.eval(`(() => game.feed.items.find((it) => it.kind === 'skirmish' && it.unit === ${army.id}) ?? null)()`);
+    skirmish = await page.eval(`(() => { const v = game.view(), u = v.units[${army.id}];
+      return u && v.contested.includes(u.tile) ? game.feed.items.findLast((it) => it.kind === 'skirmish' && it.unit === ${army.id} && it.turn >= ${marched}) ?? null : null; })()`);
   }
-  need(skirmish != null && skirmish.turn > marched, `a skirmish with the army is in the feed (${skirmish ? `turn ${skirmish.turn}: ${skirmish.text}` : 'none'})`);
+  need(skirmish != null && skirmish.turn >= marched, `a skirmish with the army is in the feed (${skirmish ? `turn ${skirmish.turn}: ${skirmish.text}` : 'none'})`);
   if (skirmish) {
     // Click it in the feed: the army is selected, and its panel says it is fighting and why.
     await page.eval(`(() => { const li = [...document.querySelectorAll('#feed li')].find((l) => Number(l.dataset.id) === ${skirmish.id});
@@ -161,10 +169,11 @@ try {
     await page.shot(join(out, 'army-fight.png'), 1);
   }
 
-  // The civ's reasons carry the fight too (its guard fought), and its panel shows its posture.
+  // The civ's panel gives its reasons and lists the army that fought.
   await selectKey(page, civKey, cap);
   p = await page.panel();
-  need(p.reasons.some((r) => /fought|took/.test(r)), `the civ's reasons give the fight or the tile it took ("${p.reasons[0] ?? 'none'}")`);
+  need(p.reasons.length > 0, `the civ's panel gives its reasons ("${p.reasons[0] ?? 'none'}")`);
+  need(p.lists.some((l) => /^Units/.test(l.label) && l.rows.some((r) => r === `Army ${army.id}`)), 'the civ\'s panel lists the army');
   await page.shot(join(out, 'army-civ.png'), 1);
 
   // The feed with the skirmish in it (the feed is shut at laptop width unless opened).

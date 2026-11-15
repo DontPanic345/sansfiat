@@ -258,10 +258,7 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
         rank(s.idle_end.rank)
     );
     let (l, c) = (&j.land.game, &j.land.control);
-    println!(
-        "claim (game / control): {} / {} tiles claimed, {} / {} held, guard {:.1} / {:.1} people",
-        l.claimed, c.claimed, l.held, c.held, l.guard, c.guard
-    );
+    println!("land (game / control): {} / {} tiles claimed", l.claimed, c.claimed);
     let (g, c) = (&j.game.doubt, &j.control.doubt);
     println!(
         "doubt (game / control): lead changes {} / {}, spread +{} {:.3} / {:.3}, swings {} / {}",

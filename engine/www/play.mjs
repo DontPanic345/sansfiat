@@ -350,7 +350,7 @@ export const open = async (query = '', { size = 'laptop', path = 'index.html', r
 /**
  * Raises the led civ's army through its panel, as a player does: selects the civ and, while its warriors
  * are short of `warriors`, presses Raise… warriors one at a time, ending turns until the store fills a
- * pack, then its guard to hold its land. A civ starts with its scout and no army (`founding.md`, The start),
+ * pack, then leaves the civ selected. A civ starts with its scout and no army (`founding.md`, The start),
  * so a script that needs one raises it here. Call it once the game is in Main.
  */
 export const raiseArmy = async (page, { warriors = 3, turns = 40 } = {}) => {
@@ -372,15 +372,10 @@ export const raiseArmy = async (page, { warriors = 3, turns = 40 } = {}) => {
     const r = await page.stepper('Raise…', { n: 1, option: 'warriors', go: true });
     if (!r.go) await page.button('End turn');
   }
-  // The guard holds the land (a civ with none holds its capital alone): three, as the start's pack allows.
-  const guards = () =>
-    page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${me} && u.kind === 'guard').reduce((a, u) => a + u.people, 0)`);
-  for (let t = 0; t < 6 && (await guards()) < 3; t++) {
-    for (let n = 0; n < 8 && (await page.data()).selected !== `civ:${me}`; n++) {
-      await page.click(cap);
-      await page.eval('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))');
-    }
-    await page.stepper('Raise…', { n: 1, option: 'a guard', go: true });
+  // Leave the civ selected, as a player does after raising from its panel.
+  for (let n = 0; n < 8 && (await page.data()).selected !== `civ:${me}`; n++) {
+    await page.click(cap);
+    await page.eval('new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))');
   }
   return people();
 };

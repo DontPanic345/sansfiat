@@ -18,6 +18,8 @@ use engine::{EventKind, Order, World};
 /// The real map of seed 2 (the small retro map), led by its first civ.
 fn lead() -> Stage {
     let mut s = Stage::retro("small", 2).unwrap();
+    // The fight is off: the led civ sits idle past the pick and this test is not about war.
+    s.world_mut().config.fight = false;
     let first = s.world().civs.keys().next().copied().expect("a civ");
     s.lead(first).unwrap();
     s
@@ -192,6 +194,8 @@ fn search_view_to_the_rival_orders_its_open_mountains_by_best_case() {
 
 fn search_view_on(size: &str, seed: u32) -> bool {
     let mut s = Stage::retro(size, seed).unwrap();
+    // The fight is off: the led civ sits idle past the pick and this test is not about war.
+    s.world_mut().config.fight = false;
     let me = *s.world().civs.keys().next().unwrap();
     s.lead(me).unwrap();
     let w0 = s.world();

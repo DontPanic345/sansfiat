@@ -56,8 +56,8 @@ pub fn give(w: &mut World, civ: u32, ids: &[u32], kept: &mut [Basket], pool: f64
 }
 
 /// The `lean` step, after `people`. Every clan's leanings fade by `LEANING.fade` and any under
-/// `LEANING.floor` go. A clan whose home is on a civ's held land leans to that civ for it: `land`
-/// and `guarded` times the guard share its home holds (a note when it starts). Then, in
+/// `LEANING.floor` go. A clan whose home is on a civ's land leans to that civ for it by `land` a turn
+/// (a note when it starts). Then, in
 /// id order, an unaligned clan whose strongest leaning (ties to the lower civ) is at least
 /// `LEANING.join` joins that civ (`ClanJoined`). Then a civ's clan drawn to a rival for `leave_run`
 /// turns leaves for it (`leave`), as does each living daughter of its old civ. Nothing before
@@ -77,7 +77,7 @@ pub fn lean(w: &mut World) {
     for &id in &ids {
         let home = w.clans[&id].home;
         let Some(civ) = claim::tile_civ(w, home) else { continue };
-        let gain = LEANING.land + LEANING.guarded * claim::guard_on(w, civ, home);
+        let gain = LEANING.land;
         let c = w.clans.get_mut(&id).unwrap();
         let starts = !c.leaning.contains_key(&civ);
         *c.leaning.entry(civ).or_insert(0.0) += gain;

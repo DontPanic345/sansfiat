@@ -56,11 +56,9 @@ pub struct Civ {
     pub gifted: f64,
     /// The tiles the civ has revealed: their hidden trail costs are known to it.
     pub revealed: BTreeSet<usize>,
-    /// The land the civ claims, sorted, with its capital (`claim.rs`); a claim may be paper.
+    /// The land the civ claims, sorted, with its capital (`claim.rs`); every tile of it is its land.
     pub claim: Vec<usize>,
-    /// Each claimed tile's guard share, aligned with `claim`: what its guard and its camps' hold on it.
-    pub guard: Vec<f64>,
-    /// A rival army stands on its capital this turn: its guard is drawn back there (`fight.rs`).
+    /// A rival army stands on its capital this turn (`fight.rs`).
     pub pressed: bool,
     /// Every walkable neighbour of its capital is held or stood on by a rival army: its own clans
     /// there harvest nothing and no levy reaches its store (`fight.rs`).
@@ -134,8 +132,6 @@ struct CivFlat {
     #[serde(default)]
     claim: Vec<usize>,
     #[serde(default)]
-    guard: Vec<f64>,
-    #[serde(default)]
     pressed: bool,
     #[serde(default)]
     besieged: bool,
@@ -164,7 +160,6 @@ impl From<Civ> for CivFlat {
             gifted: c.gifted,
             revealed: c.revealed,
             claim: c.claim,
-            guard: c.guard,
             pressed: c.pressed,
             besieged: c.besieged,
             fallen: c.fallen,
@@ -193,7 +188,6 @@ impl From<CivFlat> for Civ {
             gifted: f.gifted,
             revealed: f.revealed,
             claim: f.claim,
-            guard: f.guard,
             pressed: f.pressed,
             besieged: f.besieged,
             fallen: f.fallen,
@@ -263,7 +257,6 @@ pub fn found(w: &mut World) {
             joined: 0,
             gifted: 0.0,
             claim: vec![capital],
-            guard: vec![0.0],
             pressed: false,
             besieged: false,
             fallen: None,
@@ -352,8 +345,7 @@ pub fn found(w: &mut World) {
     crate::markets::go(w);
     switch_to_capitals(w);
     // Each civ claims its first claim (or its capital alone) and raises its scout, and nothing else: its
-    // army and guard are its own to raise (`founding.md`, The start). Its claim is divided at once, so
-    // the pick's cards read land.
+    // army is its own to raise (`founding.md`, The start). A later civ's claim leaves an earlier one's.
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     for &id in &ids {
         let claim = if claim::may_claim(w, id) { claim::first(w, id) } else { vec![w.civs[&id].capital] };
@@ -361,13 +353,12 @@ pub fn found(w: &mut World) {
     }
     for id in ids {
         units::raise_scout_at_founding(w, id);
-        claim::divide(w, id);
     }
     w.phase = Phase::Choose;
 }
 
 /// `civ`'s capital falls to `by`'s army (`fight.rs` finds it: a rival army on the capital and no
-/// part of `civ` left there). Its claim is cleared and its guard disbands to its own clan; its clans
+/// army of `civ` there). Its claim is cleared; its clans
 /// go unaligned with their leanings cleared; its armies and scouts disband to the nearest clan by
 /// steps; its store fills the packs of `by`'s armies on the tile in id order, and the rest is lost.
 /// Its capital's market is an ordinary festival from then on (`markets::fade`). Notes both civs and
@@ -379,12 +370,8 @@ pub fn fall(w: &mut World, civ: u32, by: u32) {
         let c = w.civs.get_mut(&civ).unwrap();
         c.fallen = Some((turn, by));
         c.claim.clear();
-        c.guard.clear();
         c.pressed = false;
         c.besieged = false;
-    }
-    if let Some(g) = units::guard_of(w, civ).map(|u| u.id) {
-        units::disband(w, g, None, false);
     }
     let clans: Vec<u32> = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| k.id).collect();
     for id in clans {
@@ -419,7 +406,7 @@ pub fn fall(w: &mut World, civ: u32, by: u32) {
     w.emit(Event::new(EventKind::CapitalFell, capital).civ(civ).other(by));
     let (name, taker) = (w.civs[&civ].name.clone(), w.civs[&by].name.clone());
     let at = w.at(capital);
-    w.note(civ, format!("its capital at {at} fell to {taker}'s army: it has no guard, army or militia left there"));
+    w.note(civ, format!("its capital at {at} fell to {taker}'s army: no army of its own stood on it"));
     w.note(by, format!("took {name}'s capital at {at}"));
 }
 
@@ -460,21 +447,14 @@ fn repair(w: &mut World) {
 }
 
 /// The food `civ` keeps in its store out of posting and gifts: what the player set, else what its
-/// camp needs: a full pack for its warriors (a new camp's with none), and 0 with `Config.army` off;
-/// and `GUARD.keep_turns` turns of its guard's food.
+/// camp needs: a full pack for its warriors (a new camp's with none), and 0 with `Config.army` off.
 pub fn keep(w: &World, civ: u32) -> f64 {
     let Some(c) = w.civs.get(&civ).filter(|c| !c.is_out()) else { return 0.0 };
-    let base = match c.keep {
+    match c.keep {
         Some(k) => k,
         None if !w.config.army => 0.0,
         None => units::pack_cap(units::camp(w, civ).map_or(f64::from(UNIT.first), |u| u.people)),
-    };
-    base + guard_keep(w, civ)
-}
-
-/// The guard's share of `civ`'s keep: `GUARD.keep_turns` turns of its guard's food.
-pub fn guard_keep(w: &World, civ: u32) -> f64 {
-    GUARD.keep_turns * UNIT.food * claim::guard_people(w, civ)
+    }
 }
 
 /// The levy at market `mid`: each clan there that is the civ's, or whose home is on the civ's land, pays

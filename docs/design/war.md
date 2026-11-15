@@ -74,16 +74,15 @@ panel (`page.md`).
 
 ## Decided
 
-- A civ's land is the part of its claim its guard holds: a claimed tile whose guard falls under a floor is paper, and counts for nothing. The capital is always held. (#102)
-- A civ raises one guard, which stands at the capital, takes no orders, and eats from the store and then from its clans' stores. Its camp's held tiles add to the guard on its claim. (#102)
-- Where two civs hold the same tile, it is the land of the one with the thicker guard there, and a tie goes to the older civ. A claim can't cover a rival's capital. (#102)
-- A rival unit that ends its turn on paper takes that tile, and with it any part of the claim no longer joined to the capital. (#102)
+- A civ's land is its claim: every claimed tile joined to the capital, held with nobody standing on it. No guard and no militia: neither is raised, fed or counted, so what a wide claim costs is the armies it takes to answer for it. (#336)
+- Claims don't overlap: a claim can't cover a rival's land or its capital, so a rival's tile is had only by taking it. (#102, #336)
+- A rival army that ends its turn on a tile of a civ's land where no army of that civ stands takes it, and with it any part of the claim no longer joined to the capital. The tile joins the taker's claim where it touches it; the part cut off is nobody's. (#102, #336)
 - Standing counts unaligned clans whose homes are on a civ's land. (#102)
-- Every turn, wherever people of two civs stand on one tile, they fight: each side loses a fifth of the other side's strength there in people, and the stronger side left holds the tile. (#104)
-- Only armies, guards and militia fight. Only an army takes unguarded claim; a scout neither fights nor takes land. (#104)
+- Every turn, wherever armies of two or more civs stand on one tile, they fight: each side loses a fifth of the others' strength there in people, and the strongest side left holds the tile. (#104, #291, #336)
+- Only armies fight, and only an army takes land; a scout neither fights nor takes land, and clans don't defend their homes. (#104, #336)
 - A march stops on the first tile where a rival has people. (#104)
 - A capital is besieged while rival armies hold every way into it: its own clans harvest nothing, and no levy reaches the store. (#104)
 - An army that has gone hungry three turns in a row with its line cut, isn't marching and isn't fighting that turn surrenders whole, with its pack, to the nearest clan of the rival whose land cuts it off. (#104)
-- A capital falls when a rival army stands on it and the civ has no guard, no army and less than one person of militia there. The fallen civ's units go home to the nearest clan, its store fills the packs of the armies that took the capital and the rest is lost, and its market becomes an ordinary festival. (#104)
+- A capital falls when a rival army stands on it and no army of its civ does. The fallen civ's units go home to the nearest clan, its store fills the packs of the armies that took the capital and the rest is lost, and its market becomes an ordinary festival. (#104, #336)
 - A game ends by conquest only once two or more civs were founded and at most one capital stands, so a watched game of three goes on after one capital falls. (#152)
 - The AI plays every civ the player doesn't lead with the player's orders and no others. Once a turn it sees to the first of these that wants something: its armies fed, its land held, its Standing grown, its nearest rival hurt, a capital it outweighs taken. This ends the stand-in claim of #102 and the AI's raising no army of #152. (#157)

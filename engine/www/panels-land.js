@@ -37,11 +37,9 @@ export function tileShape(ctx, sel) {
   const t = JSON.parse(sim.tile(i));
   const land = terrain[t.terrain].land;
   const civ = sim.tile_civ(i);
-  const paper = Object.values(v.civs).find((c) => c.claim.includes(i) && !c.land.includes(i));
   const clan = model.clanAt(i);
   let doing;
   if (civ >= 0 && v.civs[civ]) doing = `${civName(ctx, civ)}'s ${v.civs[civ].capital === i ? 'capital' : 'land'}`;
-  else if (paper) doing = `Paper of ${civName(ctx, paper.id)}`;
   else if (clan) doing = `Clan ${clan}'s territory`;
   else doing = "Nobody's";
   const numbers = [];

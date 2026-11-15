@@ -241,20 +241,6 @@
    "h": 64,
    "note": "scout silhouette in opaque white: tinted in the civ's colour and drawn under the figure"
   },
-  "unit.guard": {
-   "x": 256,
-   "y": 740,
-   "w": 64,
-   "h": 64,
-   "note": "guard figure: dark casing and edge, transparent inside (the civ's colour shows through from the mask)"
-  },
-  "unit.guard.mask": {
-   "x": 320,
-   "y": 740,
-   "w": 64,
-   "h": 64,
-   "note": "guard silhouette in opaque white: tinted in the civ's colour and drawn under the figure"
-  },
   "icon.capital": {
    "x": 0,
    "y": 804,

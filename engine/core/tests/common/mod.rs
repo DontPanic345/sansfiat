@@ -141,13 +141,8 @@ pub fn found(w: &mut World, centres: &[u32]) {
     found_civs(w, centres);
 }
 
-/// The guards a civ raised at founding in the tests' fixtures (`armed`, `hold_land`): three, as the
-/// start had them before a civ started with none.
-pub const GUARDS: u32 = 3;
-
-/// Raises the army and guard a civ starts without (`founding.md`, The start), as its own `Raise`s
-/// would: `UNIT.first` warriors at the capital with their pack from the store, then `GUARDS` guards on
-/// its claim. The store first banks the warriors' packs (what a player banks before it raises: the
+/// Raises the army a civ starts without (`founding.md`, The start), as its own `Raise`s
+/// would: `UNIT.first` warriors at the capital with their pack from the store. The store first banks the warriors' packs (what a player banks before it raises: the
 /// endowment's grain less the scout's pack can't fill them). For tests whose subject is not the start.
 pub fn armed(w: &mut World, civ: u32) {
     let pack = units::pack_cap(f64::from(UNIT.first));
@@ -157,10 +152,9 @@ pub fn armed(w: &mut World, civ: u32) {
         let into = units::camp(w, civ).map(|u| u.id);
         units::raise(w, civ, 1, Fighter::Warriors, into).expect("an army from the clans");
     }
-    units::guard::raise(w, civ, GUARDS);
 }
 
-/// Raises the army and guard of every civ in the world (`armed`), as each civ's own Raises would.
+/// Raises the army of every civ in the world (`armed`), as each civ's own Raises would.
 pub fn armed_all(w: &mut World) {
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     for id in ids {
@@ -169,7 +163,7 @@ pub fn armed_all(w: &mut World) {
 }
 
 /// A big world of three civs, each with a clan of 14 on its market's tile (its scout takes its people from it,
-/// and its army and guard the rest), each with its army and guard as `armed` raises them. Returns the
+/// and its army the rest), each with its army as `armed` raises it. Returns the
 /// world, the civs and their clans.
 pub fn three() -> (World, [u32; 3], [u32; 3]) {
     let mut stage = Stage::flat(BIG);
@@ -282,13 +276,8 @@ pub fn keys_in_order(json: &str) -> Vec<String> {
     keys
 }
 
-/// Gives `civ` the land `tiles` (its capital is added): the claim, held by its guard, which is raised
-/// to `GUARDS` people if it has none. Up to about two steps from the capital its guard holds
-/// every tile.
+/// Gives `civ` the land `tiles` (its capital is added): its claim.
 pub fn hold_land(w: &mut World, civ: u32, tiles: &[usize]) {
-    if engine::units::guard_of(w, civ).is_none() {
-        engine::units::guard::raise(w, civ, GUARDS);
-    }
     let claim = engine::claim::check(w, civ, tiles).expect("a claim the civ may hold");
     engine::claim::set(w, civ, claim);
 }
@@ -299,13 +288,4 @@ pub fn no_scout(w: &mut World, civ: u32) {
     if let Some(id) = units::scout(w, civ).map(|u| u.id) {
         w.units.remove(&id);
     }
-}
-
-/// Disbands `civ`'s guard, for a test that counts the civ's store to the last food: the guard eats
-/// from it each turn, and its claim goes with it.
-pub fn no_guard(w: &mut World, civ: u32) {
-    if let Some(id) = units::guard_of(w, civ).map(|u| u.id) {
-        w.units.remove(&id);
-    }
-    engine::claim::divide(w, civ);
 }

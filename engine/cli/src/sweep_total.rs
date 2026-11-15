@@ -55,7 +55,6 @@ pub(crate) struct TotalEconomy {
     pub(crate) turns_at_pack: f64,
     pub(crate) levy_per_turn: f64,
     pub(crate) largest_army: f64,
-    pub(crate) guard_mean: f64,
 }
 
 /// The fight group over the maps, beside the no-fight control's (which has none by construction).
@@ -70,7 +69,7 @@ pub(crate) struct TotalFight {
 }
 
 /// The land group over the maps: festivals summed, shares averaged over the maps that have one, and
-/// each civ's land at +200 (mean tiles and guard people per civ, over the maps).
+/// each civ's land at +200 (mean tiles per civ, over the maps).
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct TotalLand {
     pub(crate) markets_pick: usize,
@@ -83,8 +82,6 @@ pub(crate) struct TotalLand {
     pub(crate) festival_changes_per_100: f64,
     pub(crate) flips_per_100: f64,
     pub(crate) claimed_200: Option<f64>,
-    pub(crate) held_200: Option<f64>,
-    pub(crate) guard_200: Option<f64>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -155,7 +152,6 @@ pub(crate) fn total_economy(maps: &[MapJudged]) -> TotalEconomy {
         turns_at_pack: of(|e| f64::from(e.turns_at_pack)),
         levy_per_turn: of(|e| e.levy_per_turn),
         largest_army: largest(|e| e.largest_army),
-        guard_mean: of(|e| e.guard_mean),
     }
 }
 
@@ -197,7 +193,7 @@ pub(crate) fn total_land(maps: &[MapJudged]) -> TotalLand {
     let flips: u32 = maps.iter().map(|m| m.scores.land.flips).sum();
     let n = maps.len().max(1) as f64;
     let civs: Vec<CivLand> = maps.iter().flat_map(|m| m.scores.land.civs_200.clone()).collect();
-    let mean_civs = |f: fn(&(f64, f64, f64)) -> f64| (!civs.is_empty()).then(|| f(&civ_means(&civs)));
+    let claimed_200 = (!civs.is_empty()).then(|| civ_means(&civs));
     TotalLand {
         markets_pick: maps.iter().map(|m| m.scores.land.at_pick.markets).sum(),
         markets_200: maps.iter().filter_map(|m| m.scores.land.at_200.as_ref()).map(|t| t.markets).sum(),
@@ -208,9 +204,7 @@ pub(crate) fn total_land(maps: &[MapJudged]) -> TotalLand {
         route_trailed: pick(|t| t.route_trailed),
         festival_changes_per_100: engine::judge::per_100(changes, clan_turns),
         flips_per_100: engine::judge::per_100(flips, clan_turns),
-        claimed_200: mean_civs(|m| m.0),
-        held_200: mean_civs(|m| m.1),
-        guard_200: mean_civs(|m| m.2),
+        claimed_200,
     }
 }
 

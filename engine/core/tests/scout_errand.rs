@@ -54,6 +54,8 @@ struct Result {
 fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
     let mut stage = Stage::retro(size, seed).unwrap();
     stage.world_mut().config.fields = false;
+    // The fight is off: the led civ sits idle past the pick and this test is not about war.
+    stage.world_mut().config.fight = false;
     let me = *stage.world().civs.keys().next().unwrap();
     stage.lead(me).unwrap();
     let w = stage.world();
@@ -191,6 +193,8 @@ fn the_ais_scouts_live_to_200() {
     println!("|---|---|---|---|");
     for (size, seed) in MAPS {
         let mut stage = Stage::retro(size, seed).unwrap();
+        // The fight is off: the led civ sits idle past the pick and this test is not about war.
+        stage.world_mut().config.fight = false;
         stage.act(Action::ChooseCiv { civ: None }).unwrap();
         let civs: Vec<u32> = stage.world().civs.keys().copied().collect();
         let at_pick = civs.iter().filter(|&&c| units::scout(stage.world(), c).is_some()).count();

@@ -141,15 +141,16 @@ function unitsHere(u, ctx) {
     .map((o) => ({ select: { kind: 'unit', id: o.id }, label: unitName(o), text: '' }));
 }
 
-/** The claim's counts: claimed, held, paper and the thinnest held guard, from the model. */
+/** The claim's count, from the model: every claimed tile is the civ's land. */
 function claimNumbers(ctx, civ) {
   const c = ctx.model.claims.get(civ);
   if (!c) return [];
   return [
-    { label: 'Claimed', value: c.claimed, tip: 'Tiles the civ claims: its land, and the paper it has not yet held' },
-    { label: 'Held', value: c.held, tip: 'Claimed tiles a guard holds' },
-    { label: 'Paper', value: c.paper, tip: 'Claimed tiles no guard holds yet' },
-    { label: 'Thinnest guard', value: f2(c.thinnest), tip: 'The least guard share on a held tile' },
+    {
+      label: 'Claimed',
+      value: c.claimed,
+      tip: 'Tiles the civ claims, joined to its capital: its land, held with nobody standing on it, and lost to a rival army that ends its turn on one',
+    },
   ];
 }
 
@@ -265,7 +266,7 @@ function raiseInto(u) {
   };
 }
 
-/** Disband…: a count of one kind the army has (an option per kind present), or of the people of a scout or a guard
+/** Disband…: a count of one kind the army has (an option per kind present), or of the people of a scout
  *  (`people`, shown from two people). Disband all is its own button and sends the whole unit, with no count. */
 function disband(u, rules = null) {
   const options = [];
@@ -357,27 +358,6 @@ function scoutShape(ctx, u) {
   };
 }
 
-/** A guard's panel (spec item 16, Guard): its people, its hunger and its civ's claim, and Disband….  */
-function guardShape(ctx, u) {
-  const { v, rules } = ctx;
-  const mine = u.civ === v.player;
-  const c = ctx.model.claims.get(u.civ);
-  const numbers = [
-    { label: 'People', value: f2(u.people), tip: 'The people on the claim' },
-    { label: 'Hunger', value: u.hungry > 0 ? plural(u.hungry, 'turn') : 'fed', tip: `Turns without food; a person is lost at ${rules.hungry_turns}` },
-    ...claimNumbers(ctx, u.civ),
-  ];
-  const doing = c ? `Guarding ${c.claimed} claimed tiles, holding ${c.held}` : 'Guarding';
-  return {
-    name: `${civName(ctx, u.civ)}'s guard`,
-    swatch: v.civs[u.civ]?.color,
-    doing,
-    numbers,
-    reasons: reasonsOf(ctx, u.id),
-    buttons: mine ? disband(u) : [],
-  };
-}
-
 /** The unaligned clans leaning towards civ `id`, strongest first, up to ten: rows that select their clan. */
 function leaningRows(ctx, id) {
   const { v, rules } = ctx;
@@ -396,7 +376,7 @@ function leaningRows(ctx, id) {
 
 /** A civ's panel (spec item 16, Civ): its Standing with the parts in the tooltip, its store, its gifts and
  *  keep, its claim, the leaning clans and its units. Only the player's civ has buttons. Raise… makes a new army
- *  at the capital (warriors or archers), a guard or a scout (build-4). A fallen civ has no buttons. */
+ *  at the capital (warriors or archers) or a scout (build-4). A fallen civ has no buttons. */
 function civShape(ctx, c) {
   const { v, goods, rules, painting } = ctx;
   const mine = c.id === v.player;
@@ -449,14 +429,13 @@ function civShape(ctx, c) {
         options: [
           { label: 'warriors', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', kind: 'camp', fighter: 'warriors', n }) },
           { label: 'archers', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', kind: 'camp', fighter: 'archers', n }) },
-          { label: 'a guard', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', n, kind: 'guard' }) },
           { label: 'a scout', cap: 10, make: (n) => civOrder(c.id, { type: 'raise', n, kind: 'scout' }) },
         ],
       },
     });
     buttons.push({ label: 'Gift −1', action: { type: 'setGift', food: Math.max(0, c.gift - 1) } });
     buttons.push({ label: 'Gift +1', action: { type: 'setGift', food: Math.min(rules.gift_max, c.gift + 1) } });
-    const base = c.keep - c.keep_guard;
+    const base = c.keep;
     buttons.push({ label: 'Keep −1', action: { type: 'setKeep', food: Math.max(0, base - 1) } });
     buttons.push({ label: 'Keep +1', action: { type: 'setKeep', food: base + 1 } });
     if (c.keep_set != null) buttons.push({ label: 'Keep default', action: { type: 'setKeep', food: null } });
@@ -532,7 +511,7 @@ export function describe(ctx, sel) {
   switch (sel.kind) {
     case 'unit': {
       const u = v.units[sel.id];
-      shape = u.kind === 'scout' ? scoutShape(ctx, u) : u.kind === 'guard' ? guardShape(ctx, u) : campShape(ctx, u);
+      shape = u.kind === 'scout' ? scoutShape(ctx, u) : campShape(ctx, u);
       break;
     }
     case 'civ': shape = civShape(ctx, v.civs[sel.civ]); break;

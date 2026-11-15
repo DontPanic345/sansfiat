@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use serde::{Deserialize, Serialize};
 
 use crate::clans::new_clan;
-use crate::data::{size_radius, Config, Fighter, GUARD, N, PLAINS, SEA};
+use crate::data::{size_radius, Config, Fighter, N, PLAINS, SEA};
 use crate::hex::Hex;
 use crate::homes;
 use crate::map::{self, Tile};
@@ -129,10 +129,6 @@ impl Stage {
             let people = spec.people.ok_or("civs need people")?;
             let tiles = spec.civs.iter().map(|r| stage.tile(r)).collect::<Result<Vec<_>, _>>()?;
             ids = stage.civs(&tiles, people);
-        }
-        // A staged civ has the guard it had at founding before the start moved (`GUARD.first`).
-        for &civ in &ids {
-            units::guard::raise(&mut stage.world, civ, GUARD.first);
         }
         if let Some(k) = spec.lead {
             let civ = *ids.get(k).ok_or(format!("lead: there is no civ {k}"))?;

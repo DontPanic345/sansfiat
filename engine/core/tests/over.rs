@@ -22,7 +22,7 @@ fn civs_on_flat(n: usize, people: f64, lead: bool) -> (Stage, Vec<u32>) {
 }
 
 /// Makes `civ`'s capital fall to an army of `people` warriors placed on it by `taker`: the capital's
-/// own clan is cut to a half person (under a militia's one) and the civ has no guard or camp.
+/// own clan is cut to a half person and the civ has no camp.
 fn capital_open_to(s: &mut Stage, civ: u32, taker: u32, people: f64) {
     let cap = s.world().civs[&civ].capital;
     for k in s.world_mut().clans.values_mut().filter(|k| k.home == cap && k.civ == Some(civ)) {

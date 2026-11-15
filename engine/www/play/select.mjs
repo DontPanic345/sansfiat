@@ -78,7 +78,7 @@ try {
     need(p.doing === `${await page.eval(`game.view().civs[${me}].name`)}'s land`, `the bare tile's panel names whose it is ("${p.doing}")`);
   }
 
-  // Clicking again cycles a stack: the capital has the player's camp, scout and guard, then the civ.
+  // Clicking again cycles a stack: the capital has the player's camp and scout, then the civ.
   const seen = [];
   for (let n = 0; n < 4; n++) {
     seen.push(await page.eval("document.body.dataset.selected"));

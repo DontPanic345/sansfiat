@@ -1,4 +1,4 @@
-// The page's panel arm, over staged games (`Sim.stage`): the camp, scout, guard, civ, clan and tile
+// The page's panel arm, over staged games (`Sim.stage`): the camp, scout, civ, clan and tile
 // shapes are checked as data, and Disband all is pressed as the page presses it. Imported at
 // the end of check.mjs, which has already initialised the wasm.
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -70,12 +70,10 @@ function checkButtons(shape, name) {
   const led = view.player;
   const army = Object.values(view.units).find((u) => u.kind === 'camp' && u.civ === led && u.people === 4.6);
   const scout = Object.values(view.units).find((u) => u.kind === 'scout' && u.civ === led);
-  const guard = Object.values(view.units).find((u) => u.kind === 'guard' && u.civ === led);
   const clan = Object.values(view.clans).find((c) => c.civ === led);
   const shapes = {
     camp: shapeOf(sim, { kind: 'unit', id: army.id }),
     scout: shapeOf(sim, { kind: 'unit', id: scout.id }),
-    guard: shapeOf(sim, { kind: 'unit', id: guard.id }),
     civ: shapeOf(sim, { kind: 'civ', civ: led }),
     clan: shapeOf(sim, { kind: 'clan', id: clan.id }),
     tile: shapeOf(sim, { kind: 'tile', tile: army.tile }),
@@ -86,7 +84,6 @@ function checkButtons(shape, name) {
   }
   assert.ok(shapes.camp.buttons.some((b) => b.stepper && b.label === 'Disband…'), 'a camp has Disband…');
   assert.ok(shapes.scout.buttons.some((b) => b.stepper && b.label === 'Disband…'), 'a scout has Disband…');
-  assert.ok(shapes.guard.buttons.some((b) => b.stepper && b.label === 'Disband…'), 'a guard has Disband…');
 }
 
 /** Disband all as the page presses it: the button sends its order with no count, and the whole unit goes home. */
@@ -102,8 +99,8 @@ function pressAll(kind) {
   assert.ok(Math.abs(after.civs[u.civ].people - view.civs[u.civ].people - u.people) < 1e-9, `Disband all sends the ${what}'s ${u.people} people to its clan`);
 }
 
-// Disband all: the camp of 4.6, the scout (2) and the guard (3) each go home whole, and their people go to their clan.
-for (const kind of ['camp', 'scout', 'guard']) pressAll(kind);
+// Disband all: the camp of 4.6, and the scout (2) each go home whole, and their people go to their clan.
+for (const kind of ['camp', 'scout']) pressAll(kind);
 
 // The end: a staged game with a limit of two turns is over after the second EndTurn. Its orders are refused with
 // "the game is over"; the world runs on, so an EndTurn still goes through.
@@ -121,7 +118,7 @@ for (const kind of ['camp', 'scout', 'guard']) pressAll(kind);
   assert.equal(view.standing.length, 3, 'Standing at the pick and after each of the two turns');
   assert.equal(view.standing[0][0], picked, 'the first Standing is the pick\'s turn');
   const army = Object.values(view.units).find((u) => u.kind === 'camp' && u.civ === view.player);
-  const order = JSON.stringify({ type: 'order', civ: view.player, order: { type: 'raise', kind: 'guard', n: 1 } });
+  const order = JSON.stringify({ type: 'order', civ: view.player, order: { type: 'raise', kind: 'scout', n: 1 } });
   assert.equal(sim.check(order), 'the game is over', 'an order is refused once the game is over');
   assert.throws(() => sim.act(order), /the game is over/, 'and an order is not taken');
   sim.act('{"type":"endTurn"}');

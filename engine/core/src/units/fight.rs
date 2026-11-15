@@ -1,14 +1,14 @@
 //! The fight (`docs/design/war.md`): wherever people of two civs stand on one tile, they fight, every
-//! turn, by one rule. Each civ's people on a tile are its side there, a list of parts (an army's
-//! share, a guard's share, and from build-2 militia). Each side loses `FIGHT.rate` people per unit of
+//! turn, by one rule. Each civ's people on a tile are its side there, a list of parts (each army's
+//! share). Only armies fight: a scout and a clan are no part. Each side loses `FIGHT.rate` people per unit of
 //! the others' strength (Lanchester's linear law), capped at its people there; a side far weaker
-//! after the losses retreats (armies only); the stronger holds the tile. Holding between civs is
+//! after the losses retreats; the stronger holds the tile. Holding between civs is
 //! decided here and nowhere else: `hold` spreads each army and decides only between one civ's own.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::line::walkable;
-use super::{name_of, path_between, zone_of, UnitKind, EPS};
+use super::{name_of, path_between, zone_of, EPS};
 use crate::actors::connected;
 use crate::civs;
 use crate::claim;
@@ -17,13 +17,10 @@ use crate::events::{Event, EventKind};
 use crate::land::neighbours;
 use crate::world::World;
 
-/// Who a part of a side is.
+/// Who a part of a side is: an army, by its unit.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Who {
     Army(u32),
-    Guard(u32),
-    /// A clan defending its home (build-2).
-    Militia(u32),
 }
 
 /// One body of a civ's people on a tile: how many, and their strength per person attacking and
@@ -43,74 +40,30 @@ pub fn entrenched(still: u32) -> f64 {
 }
 
 /// The people on each tile, by part: each army's split over the tiles it holds by its guard shares
-/// (all on its own tile when undeployed or marching), each guard's over its civ's held claim by the
-/// guard's own shares (`claim::guard_shares`, all on the capital while pressed), and each clan's
-/// militia on its home where an army of another civ stands (with fighting on). Scouts are never a part.
+/// (all on its own tile when undeployed or marching). Scouts and clans are never a part.
 pub fn presence(w: &World) -> BTreeMap<usize, Vec<Part>> {
     let mut out: BTreeMap<usize, Vec<Part>> = BTreeMap::new();
     for u in w.units.values() {
-        if u.people <= EPS {
-            continue;
-        }
-        match u.kind() {
-            UnitKind::Camp => {
-                let c = u.camp().expect("a camp");
-                let sum: f64 = c.stack.iter().sum();
-                let per = |f: fn(&FighterRules) -> f64| {
-                    if sum <= EPS {
-                        f(&FIGHTERS[0])
-                    } else {
-                        Fighter::ALL.iter().map(|k| c.stack[k.index()] * f(k.rules())).sum::<f64>() / sum
-                    }
-                };
-                let hungry = if u.hungry > 0 { FIGHT.hungry } else { 1.0 };
-                let attack = per(|r| r.attack) * hungry;
-                let defence = per(|r| r.defence) * entrenched(c.still) * hungry;
-                let shares: f64 = c.guard.iter().take(c.held.len()).sum();
-                let spread: Vec<(usize, f64)> = if c.held.contains(&u.home) && shares > EPS {
-                    c.held.iter().zip(&c.guard).map(|(&t, &g)| (t, u.people * g / shares)).collect()
-                } else {
-                    vec![(u.home, u.people)]
-                };
-                for (t, people) in spread.into_iter().filter(|&(_, p)| p > EPS) {
-                    out.entry(t).or_default().push(Part { civ: u.civ, who: Who::Army(u.id), people, attack, defence });
-                }
+        let Some(c) = u.camp().filter(|_| u.people > EPS) else { continue };
+        let sum: f64 = c.stack.iter().sum();
+        let per = |f: fn(&FighterRules) -> f64| {
+            if sum <= EPS {
+                f(&FIGHTERS[0])
+            } else {
+                Fighter::ALL.iter().map(|k| c.stack[k.index()] * f(k.rules())).sum::<f64>() / sum
             }
-            UnitKind::Guard => {
-                let Some(civ) = w.civs.get(&u.civ) else { continue };
-                let shares = claim::guard_shares(w, u.civ);
-                let held = claim::held(w, u.civ);
-                let on: Vec<(usize, f64)> = civ
-                    .claim
-                    .iter()
-                    .zip(&shares)
-                    .filter(|(t, _)| held.binary_search(t).is_ok())
-                    .map(|(&t, &g)| (t, g))
-                    .collect();
-                let sum: f64 = on.iter().map(|&(_, g)| g).sum();
-                let spread = if sum > EPS {
-                    on.into_iter().map(|(t, g)| (t, u.people * g / sum)).collect()
-                } else {
-                    vec![(civ.capital, u.people)]
-                };
-                let (attack, defence) = (FIGHTERS[0].attack, FIGHTERS[0].defence * entrenched(u32::MAX));
-                for (t, people) in spread.into_iter().filter(|&(_, p)| p > EPS) {
-                    out.entry(t).or_default().push(Part { civ: u.civ, who: Who::Guard(u.id), people, attack, defence });
-                }
-            }
-            UnitKind::Scout => {}
-        }
-    }
-    if w.config.fight {
-        let militia = FIGHTERS[0].defence * FIGHT.militia;
-        for k in w.clans.values().filter(|k| k.people > EPS) {
-            let Some(civ) = k.civ else { continue };
-            let army_there =
-                w.units.values().any(|u| u.camp().is_some() && u.home == k.home && u.civ != civ && u.people > EPS);
-            if army_there {
-                let part = Part { civ, who: Who::Militia(k.id), people: k.people, attack: militia, defence: militia };
-                out.entry(k.home).or_default().push(part);
-            }
+        };
+        let hungry = if u.hungry > 0 { FIGHT.hungry } else { 1.0 };
+        let attack = per(|r| r.attack) * hungry;
+        let defence = per(|r| r.defence) * entrenched(c.still) * hungry;
+        let shares: f64 = c.guard.iter().take(c.held.len()).sum();
+        let spread: Vec<(usize, f64)> = if c.held.contains(&u.home) && shares > EPS {
+            c.held.iter().zip(&c.guard).map(|(&t, &g)| (t, u.people * g / shares)).collect()
+        } else {
+            vec![(u.home, u.people)]
+        };
+        for (t, people) in spread.into_iter().filter(|&(_, p)| p > EPS) {
+            out.entry(t).or_default().push(Part { civ: u.civ, who: Who::Army(u.id), people, attack, defence });
         }
     }
     out
@@ -118,8 +71,7 @@ pub fn presence(w: &World) -> BTreeMap<usize, Vec<Part>> {
 
 /// The posture each civ takes this turn, read after the marches and before the fight: `pressed`
 /// when a rival army stands on its capital, `besieged` when every walkable neighbour of its capital is
-/// held or stood on by a rival army. Each change is noted on the civ once, and `pressed` moves the
-/// claim's guard shares (`claim::divide`). With `Config.fight` off neither is set: the control.
+/// held or stood on by a rival army. Each change is noted on the civ once. With `Config.fight` off neither is set: the control.
 pub fn posture(w: &mut World) {
     let civs: Vec<u32> = civs::alive(w).map(|c| c.id).collect();
     for civ in civs {
@@ -137,12 +89,13 @@ pub fn posture(w: &mut World) {
         if pressed != was_pressed {
             w.civs.get_mut(&civ).unwrap().pressed = pressed;
             let text = if pressed {
-                format!("its capital at {at} is pressed: a rival army stands on it, and its guard is drawn back there")
+                format!(
+                    "its capital at {at} is pressed: a rival army stands on it, and only its own army there holds it"
+                )
             } else {
-                format!("its capital at {at} is no longer pressed: its guard is spread over its claim again")
+                format!("its capital at {at} is no longer pressed: no rival army stands on it")
             };
             w.note(civ, text);
-            claim::divide(w, civ);
         }
         if besieged != was_besieged {
             w.civs.get_mut(&civ).unwrap().besieged = besieged;
@@ -238,11 +191,10 @@ pub fn step(w: &mut World, holders: &BTreeMap<usize, u32>) {
         let now: BTreeMap<u32, f64> = civs.iter().map(|&c| (c, strength(&after, c, holder))).collect();
         let total_now: f64 = now.values().sum();
         let wiped = |c: u32| lost[&c] + EPS >= sides[&c];
-        let has_army = |c: u32| parts.iter().any(|p| p.civ == c && matches!(p.who, Who::Army(_)));
         let retreats: Vec<u32> = civs
             .iter()
             .copied()
-            .filter(|&c| fighting && !wiped(c) && has_army(c) && now[&c] < FIGHT.retreat * (total_now - now[&c]))
+            .filter(|&c| fighting && !wiped(c) && now[&c] < FIGHT.retreat * (total_now - now[&c]))
             .collect();
         // The stronger side left holds; a tie stays with the holder, else the lower civ.
         let winner = civs.iter().copied().filter(|&c| !wiped(c) && !retreats.contains(&c)).max_by(|&a, &b| {
@@ -253,7 +205,9 @@ pub fn step(w: &mut World, holders: &BTreeMap<usize, u32>) {
         if !w.contested.contains(&t) {
             let first = holder.filter(|h| civs.contains(h)).unwrap_or(civs[0]);
             let other = civs.iter().copied().find(|&c| c != first).unwrap_or(first);
-            let unit = parts.iter().find_map(|p| if let Who::Army(id) = p.who { Some(id) } else { None });
+            let unit = parts.first().map(|p| match p.who {
+                Who::Army(id) => id,
+            });
             let mut e = Event::new(EventKind::Skirmish, t).civ(first).other(other);
             if let Some(id) = unit {
                 e = e.unit(id);
@@ -261,7 +215,7 @@ pub fn step(w: &mut World, holders: &BTreeMap<usize, u32>) {
             w.emit(e);
         }
 
-        // The outcome for each side's armies and guard.
+        // The outcome for each side's armies.
         let mut outcome: BTreeMap<u32, String> = BTreeMap::new();
         for &c in &civs {
             let text = if Some(c) == winner {
@@ -276,7 +230,7 @@ pub fn step(w: &mut World, holders: &BTreeMap<usize, u32>) {
             outcome.insert(c, text);
         }
         for p in &parts {
-            let Who::Army(id) = p.who else { continue };
+            let Who::Army(id) = p.who;
             if Some(p.civ) == winner || !w.units.contains_key(&id) {
                 continue;
             }
@@ -296,40 +250,22 @@ pub fn step(w: &mut World, holders: &BTreeMap<usize, u32>) {
             }
         }
 
-        // A guard all of whose people there fell loses the tile to an army that beat it.
-        if let Some(by) = winner.filter(|&c| has_army(c)) {
-            let army = parts.iter().find_map(|p| match p.who {
-                Who::Army(id) if p.civ == by => Some(id),
-                _ => None,
-            });
-            for &c in civs.iter().filter(|&&c| c != by && wiped(c)) {
-                let guarded = parts.iter().any(|p| p.civ == c && matches!(p.who, Who::Guard(_)));
-                let civ = &w.civs[&c];
-                if guarded && civ.capital != t && civ.claim.binary_search(&t).is_ok() {
-                    claim::take(w, c, army.unwrap_or(0), by, t, true);
-                }
-            }
-            if holder.is_some_and(|h| h != by && (wiped(h) || retreats.contains(&h))) {
+        // A holder beaten off its tile is a tile the winner took.
+        if let Some(by) = winner {
+            if holder.is_some_and(|h| h != by && (!civs.contains(&h) || wiped(h) || retreats.contains(&h))) {
                 w.civs.get_mut(&by).unwrap().army.taken += 1;
             }
         }
 
-        // The notes: one on each army and on each civ whose guard fought.
+        // The notes: one on each army.
         let at = w.at(t);
         for p in &parts {
             let c = p.civ;
-            let others: Vec<String> = civs
-                .iter()
-                .filter(|&&o| o != c)
-                .map(|&o| format!("{}'s {}", name_of(w, o), side_name(&parts, o)))
-                .collect();
+            let others: Vec<String> =
+                civs.iter().filter(|&&o| o != c).map(|&o| format!("{}'s army", name_of(w, o))).collect();
+            let Who::Army(id) = p.who;
             let ent = if holder == Some(c) {
-                match p.who {
-                    Who::Army(id) => {
-                        w.units.get(&id).and_then(|u| u.camp()).map(|k| entrenched(k.still)).unwrap_or(1.0)
-                    }
-                    _ => entrenched(u32::MAX),
-                }
+                w.units.get(&id).and_then(|u| u.camp()).map(|k| entrenched(k.still)).unwrap_or(1.0)
             } else {
                 1.0
             };
@@ -344,12 +280,7 @@ pub fn step(w: &mut World, holders: &BTreeMap<usize, u32>) {
                 killed,
                 outcome[&c]
             );
-            let subject = match p.who {
-                Who::Army(id) => id,
-                Who::Guard(_) => c,
-                Who::Militia(clan) => clan,
-            };
-            w.note(subject, text);
+            w.note(id, text);
         }
     }
     w.contested = tiles;
@@ -358,38 +289,21 @@ pub fn step(w: &mut World, holders: &BTreeMap<usize, u32>) {
     }
 }
 
-/// A capital falls (`civs::fall`) when a rival army stands on it and its civ has no part left there:
-/// no guard, no army of its own, and under one person of militia (its clans whose home it is).
+/// A capital falls (`civs::fall`) when a rival army stands on it and no army of its civ stands on
+/// it or holds it.
 fn falls(w: &mut World) {
     let civs: Vec<u32> = civs::alive(w).map(|c| c.id).collect();
     for civ in civs {
         let capital = w.civs[&civ].capital;
-        let by = w.units.values().find(|u| u.civ != civ && u.camp().is_some() && u.home == capital && u.people > EPS);
-        let Some(by) = by.map(|u| u.civ) else { continue };
-        let own_army =
-            w.units.values().any(|u| u.civ == civ && u.camp().is_some() && u.home == capital && u.people > EPS);
-        let guard = super::guard_of(w, civ).is_some_and(|g| g.people > EPS);
-        let militia: f64 = w.clans.values().filter(|k| k.civ == Some(civ) && k.home == capital).map(|k| k.people).sum();
-        if own_army || guard || militia + EPS >= 1.0 {
-            continue;
+        let army = |u: &&super::Unit| u.camp().is_some() && u.people > EPS;
+        let by = w.units.values().filter(army).find(|u| u.civ != civ && u.home == capital).map(|u| u.civ);
+        let Some(by) = by.filter(|b| w.civs.get(b).is_some_and(|c| !c.is_out())) else { continue };
+        let own =
+            w.units.values().filter(army).any(|u| u.civ == civ && (u.home == capital || u.held().contains(&capital)));
+        if !own {
+            civs::fall(w, civ, by);
         }
-        civs::fall(w, civ, by);
     }
-}
-
-/// What a side is called in a note: the kinds of its parts there, as "army", "guard", "militia".
-fn side_name(parts: &[Part], civ: u32) -> String {
-    let mut names = Vec::new();
-    if parts.iter().any(|p| p.civ == civ && matches!(p.who, Who::Army(_))) {
-        names.push("army");
-    }
-    if parts.iter().any(|p| p.civ == civ && matches!(p.who, Who::Guard(_))) {
-        names.push("guard");
-    }
-    if parts.iter().any(|p| p.civ == civ && matches!(p.who, Who::Militia(_))) {
-        names.push("militia");
-    }
-    names.join(" and ")
 }
 
 /// `k` of part `p`'s people fall: off its unit (an army's off its stack in proportion), counted in
@@ -398,19 +312,7 @@ fn fall(w: &mut World, p: &Part, k: f64) {
     if k <= 0.0 {
         return;
     }
-    if let Who::Militia(clan) = p.who {
-        if let Some(c) = w.clans.get_mut(&clan) {
-            c.people = (c.people - k).max(0.0);
-        }
-        if let Some(c) = w.civs.get_mut(&p.civ) {
-            c.army.fallen += k;
-        }
-        return;
-    }
-    let id = match p.who {
-        Who::Army(id) | Who::Guard(id) => id,
-        Who::Militia(_) => return,
-    };
+    let Who::Army(id) = p.who;
     let Some(u) = w.units.get_mut(&id) else { return };
     u.take_people(k);
     let gone = u.people <= EPS;
