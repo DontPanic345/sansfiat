@@ -66,6 +66,41 @@ pub fn roots(w: &World, civ: u32) -> Vec<usize> {
     w.civs.get(&civ).map(|c| c.capital).into_iter().chain(of(w, civ).map(|s| s.tile)).collect()
 }
 
+/// `civ`'s store on `tile`: the capital's, or a settlement's of its own there.
+pub fn store(w: &World, civ: u32, tile: usize) -> Option<&Basket> {
+    let c = w.civs.get(&civ)?;
+    if c.capital == tile {
+        return Some(&c.store);
+    }
+    of(w, civ).find(|s| s.tile == tile).map(|s| &s.store)
+}
+
+/// As `store`, to draw on or fill.
+pub fn store_mut(w: &mut World, civ: u32, tile: usize) -> Option<&mut Basket> {
+    if w.civs.get(&civ)?.capital == tile {
+        return w.civs.get_mut(&civ).map(|c| &mut c.store);
+    }
+    w.settlements.values_mut().find(|s| s.civ == civ && s.tile == tile).map(|s| &mut s.store)
+}
+
+/// The market of `civ`'s store on `tile`: the capital's, or the settlement's.
+pub fn store_market(w: &World, civ: u32, tile: usize) -> Option<u32> {
+    let c = w.civs.get(&civ)?;
+    if c.capital == tile {
+        return Some(c.market);
+    }
+    of(w, civ).find(|s| s.tile == tile).map(|s| s.market)
+}
+
+/// What `civ`'s store on `tile` is called: "its capital", or "its settlement at (q, r)".
+pub fn store_name(w: &World, civ: u32, tile: usize) -> String {
+    if w.civs.get(&civ).is_some_and(|c| c.capital == tile) {
+        "its capital".to_string()
+    } else {
+        format!("its settlement at {}", w.at(tile))
+    }
+}
+
 /// Every standing civ's capital and every settlement: the seats a signpost keeps its distance from.
 fn seats(w: &World) -> Vec<usize> {
     crate::civs::alive(w).map(|c| c.capital).chain(w.settlements.values().map(|s| s.tile)).collect()

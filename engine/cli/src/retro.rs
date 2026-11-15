@@ -101,6 +101,7 @@ pub(crate) fn after_run(
                         kind: units::UnitKind::Camp,
                         fighter: Default::default(),
                         into: None,
+                        at: None,
                     },
                 });
             }

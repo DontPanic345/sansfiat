@@ -51,9 +51,12 @@ fn the_default_keep_is_the_camps_full_pack() {
     for k in 0..4 {
         let t = at_big(-5 + k, 1);
         let id = put(&mut w, &[t], 6.0);
-        w.clans.get_mut(&id).unwrap().civ = Some(civ);
+        let market = Some(w.civs[&civ].market);
+        let k = w.clans.get_mut(&id).unwrap();
+        k.civ = Some(civ);
+        k.market = market;
     }
-    units::raise(&mut w, civ, UNIT.first, Fighter::Warriors, None).unwrap();
+    units::raise(&mut w, civ, UNIT.first, Fighter::Warriors, None, None).unwrap();
     let warriors = units::camp(&w, civ).unwrap().people;
     assert!(warriors > 0.0);
     assert_eq!(civs::keep(&w, civ), units::pack_cap(warriors));

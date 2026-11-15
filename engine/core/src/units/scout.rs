@@ -191,8 +191,9 @@ fn rival_tile(w: &World, id: u32, t: usize) -> bool {
 /// carries. `None` when the store holds nothing to bring, or no line reaches it.
 fn line_price(w: &World, id: u32) -> Option<f64> {
     let civ = w.units[&id].civ;
-    let (_, cost, _) = line(w, id)?;
-    (total(&w.civs[&civ].store) > EPS).then_some(cost / UNIT.carry)
+    let (path, cost, _) = line(w, id)?;
+    let store = path.last().copied().unwrap_or(w.units[&id].home);
+    crate::settle::store(w, civ, store).is_some_and(|s| total(s) > EPS).then_some(cost / UNIT.carry)
 }
 
 /// One tile's take in a foraging round: the walk to it and back, the food, and the rate it comes at.
@@ -491,7 +492,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     // The line, for the page.
     let line_now = line(w, id);
     let routes = match &line_now {
-        Some((p, cost, _)) if !p.is_empty() => vec![Route { to: w.civs[&civ].capital, path: p.clone(), cost: *cost }],
+        Some((p, cost, _)) if !p.is_empty() => vec![Route { to: p[p.len() - 1], path: p.clone(), cost: *cost }],
         _ => Vec::new(),
     };
     w.units.get_mut(&id).unwrap().actor.routes = routes;

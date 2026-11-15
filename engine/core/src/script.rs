@@ -11,7 +11,7 @@ use crate::{land, units, Order, World};
 ///
 /// 1. At `Choose`: lead the lowest civ id.
 /// 2. In `Main`, at `n == 0`, if it has no camp: `Order::Raise { n: UNIT.first, kind: UnitKind::Camp }`, its
-///    first army (a refusal is ignored). When `n > 0 && n.is_multiple_of(20)`: `Order::Raise { n: 1, kind: UnitKind::Camp, into }` into its army, if it has one (a refusal is ignored).
+///    first army (a refusal is ignored). When `n > 0 && n.is_multiple_of(20)`: `Order::Raise { n: 1, kind: UnitKind::Camp, into, at: None }` into its army, if it has one (a refusal is ignored).
 /// 3. When `n == 30`: `Order::Switches` both off; when `n == 40`: both on. When `n > 0 &&
 ///    n.is_multiple_of(25)`: `Order::Resupply` (a refusal is ignored).
 /// 4. If the player's camp has no `dest`: `Order::Move` to the first accepted of the other civs'
@@ -51,11 +51,12 @@ impl Lead {
                 kind: units::UnitKind::Camp,
                 fighter: Fighter::Warriors,
                 into: None,
+                at: None,
             }));
         }
         if n > 0 && n.is_multiple_of(20) {
             let into = camp(w);
-            let _ = w.act(order(Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Fighter::Warriors, into }));
+            let _ = w.act(order(Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Fighter::Warriors, into, at: None }));
         }
         if let (30, Some(unit)) = (n, camp(w)) {
             let _ = w.act(order(Order::Switches { unit, forage: false, supply: false }));

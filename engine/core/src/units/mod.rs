@@ -34,7 +34,9 @@ use crate::world::World;
 pub use ai::{ai, claim_plan, outweighs, plan, post, signpost_plan, signpost_sites, Decision, Give};
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
-pub use line::{cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, route, turns};
+pub use line::{
+    cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, ring_capital, route, store_of, turns,
+};
 pub use scout::{ground_worth, rich_ground, Hunger, ScoutState};
 pub use search::{route_plan, search_view, Plan, SearchView};
 
@@ -42,7 +44,8 @@ use camp::{camp_march, camp_turn, hold};
 use forage::room;
 pub(crate) use muster::make_camp;
 pub use muster::{
-    disband, disband_kind, give_up, givers, nearest_clan, raise, raise_scout, raise_scout_at_founding, surrender,
+    can_raise, disband, disband_kind, give_up, givers, givers_at, nearest_clan, raise, raise_scout,
+    raise_scout_at_founding, raise_store, surrender,
 };
 use scout::scout_turn;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

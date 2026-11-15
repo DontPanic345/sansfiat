@@ -150,7 +150,7 @@ pub fn armed(w: &mut World, civ: u32) {
     // One warrior at a time: `raise` takes at most one person from each clan, and a civ may have one.
     for _ in 0..UNIT.first {
         let into = units::camp(w, civ).map(|u| u.id);
-        units::raise(w, civ, 1, Fighter::Warriors, into).expect("an army from the clans");
+        units::raise(w, civ, 1, Fighter::Warriors, into, None).expect("an army from the clans");
     }
 }
 

@@ -231,10 +231,8 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
     let by = if cut && !cut_by(w, id, false) { Some(cutter(w, id)) } else { None };
     {
         let u = w.units.get_mut(&id).unwrap();
-        u.actor.routes = match (&line_now, w.civs.get(&civ)) {
-            (Some((p, cost, _)), Some(c)) if !p.is_empty() => {
-                vec![Route { to: c.capital, path: p.clone(), cost: *cost }]
-            }
+        u.actor.routes = match &line_now {
+            Some((p, cost, _)) if !p.is_empty() => vec![Route { to: p[p.len() - 1], path: p.clone(), cost: *cost }],
             _ => Vec::new(),
         };
     }

@@ -354,17 +354,17 @@ fn feed(w: &World, me: u32, since: usize) -> String {
 fn legal(w: &World, me: u32) -> String {
     let ok = |o: Order| w.validate(&Action::Order { civ: me, order: o }).is_ok();
     let mut out = String::from("legal orders:\n");
-    if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None }) {
+    if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None, at: None }) {
         out += "  {\"type\":\"raise\",\"n\":1}  warriors, into a new army at your capital\n";
     }
-    if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None }) {
+    if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None, at: None }) {
         out += "  {\"type\":\"raise\",\"n\":1,\"fighter\":\"archers\"}  archers, into a new army at your capital\n";
     }
     for u in w.units.values().filter(|u| u.civ == me && u.kind() == UnitKind::Camp) {
         let id = u.id;
         for f in Fighter::ALL {
             let name = f.rules().name;
-            let order = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: f, into: Some(id) };
+            let order = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: f, into: Some(id), at: None };
             if ok(order) {
                 let fighter = if f == Fighter::Warriors { String::new() } else { format!(",\"fighter\":\"{name}\"") };
                 out += &format!("  {{\"type\":\"raise\",\"n\":1{fighter},\"into\":{id}}}  {name} into army {id}\n");

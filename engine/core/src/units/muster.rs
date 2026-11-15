@@ -12,6 +12,7 @@ use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::steps;
 use crate::market::{add, take, total, Basket};
+use crate::settle;
 use crate::world::World;
 
 impl Unit {
@@ -61,6 +62,49 @@ pub fn givers(w: &World, civ: u32) -> Vec<u32> {
     ids
 }
 
+/// The clans a unit raised at `civ`'s store on `store` comes from: its `givers` that go to that
+/// store's market, in their order.
+pub fn givers_at(w: &World, civ: u32, store: usize) -> Vec<u32> {
+    let market = settle::store_market(w, civ, store);
+    givers(w, civ).into_iter().filter(|id| market.is_some() && w.clans[id].market == market).collect()
+}
+
+/// The store a raise draws on, by its tile: the one army `into`'s line ends at, else the store on
+/// `at`, else the capital. `Err` when `at` is no store of the civ, or the army has no line.
+pub fn raise_store(w: &World, civ: u32, into: Option<u32>, at: Option<usize>) -> Result<usize, String> {
+    let c = w.civs.get(&civ).ok_or_else(|| format!("{civ} is not a civ"))?;
+    if let Some(id) = into {
+        return super::line::store_of(w, id).ok_or_else(|| "its line is cut: raise at a store".to_string());
+    }
+    match at {
+        None => Ok(c.capital),
+        Some(t) if settle::store(w, civ, t).is_some() => Ok(t),
+        Some(_) => Err("raise at a store: your capital or a settlement of yours".to_string()),
+    }
+}
+
+/// How many of `n` people `civ`'s store on `store` can raise: one from each clan at its market able
+/// to give, their packs filled from it. `Err` says what is short.
+pub fn can_raise(w: &World, civ: u32, n: u32, store: usize) -> Result<Vec<u32>, String> {
+    let from: Vec<u32> = givers_at(w, civ, store).into_iter().take(n as usize).collect();
+    let capital = w.civs.get(&civ).is_some_and(|c| c.capital == store);
+    if from.is_empty() {
+        return Err(if capital {
+            "no clan has a person to spare".to_string()
+        } else {
+            "no clan at that settlement's market has a person to spare".to_string()
+        });
+    }
+    if settle::store(w, civ, store).map_or(0.0, total) + EPS < pack_cap(from.len() as f64) {
+        return Err(if capital {
+            "the store can't fill their packs".to_string()
+        } else {
+            "that settlement's store can't fill their packs".to_string()
+        });
+    }
+    Ok(from)
+}
+
 /// The clan a disbanded warrior goes to: the civ's own, else its biggest.
 fn home_clan(w: &World, civ: u32) -> Option<u32> {
     let own = w.civs.get(&civ)?.clan;
@@ -75,10 +119,9 @@ fn home_clan(w: &World, civ: u32) -> Option<u32> {
 }
 
 /// Adds `k` people of `fighter` (each with the pack share taken from the store) to `civ`'s army
-/// `into`, or to a new army at the capital with none. The people have already been taken from
-/// their clans.
-fn join(w: &mut World, civ: u32, k: f64, pack: Basket, fighter: Fighter, into: Option<u32>) -> u32 {
-    let capital = w.civs[&civ].capital;
+/// `into`, or to a new army at the store on `capital` with none. The people have already been taken
+/// from their clans.
+fn join(w: &mut World, civ: u32, k: f64, pack: Basket, fighter: Fighter, into: Option<u32>, capital: usize) -> u32 {
     let existing = into.filter(|id| w.units.get(id).is_some_and(|u| u.civ == civ && u.camp().is_some()));
     let id = match existing {
         Some(id) => {
@@ -163,14 +206,14 @@ pub fn raise_scout_at_founding(w: &mut World, civ: u32) {
     if k == 0.0 {
         return;
     }
-    make_scout(w, civ, k);
+    let capital = w.civs[&civ].capital;
+    make_scout(w, civ, k, capital);
 }
 
-/// Makes a scout of `k` people (already taken from their clans) at `civ`'s capital, its pack from
-/// the store. Returns its id.
-fn make_scout(w: &mut World, civ: u32, k: f64) -> u32 {
-    let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
-    let capital = w.civs[&civ].capital;
+/// Makes a scout of `k` people (already taken from their clans) at `civ`'s store on `capital`, its
+/// pack from that store. Returns its id.
+fn make_scout(w: &mut World, civ: u32, k: f64, capital: usize) -> u32 {
+    let pack = settle::store_mut(w, civ, capital).map(|s| take(s, pack_cap(k))).unwrap_or_default();
     let mut actor = Actor::new(capital, k);
     actor.store = pack;
     let id = w.next_id;
@@ -180,24 +223,19 @@ fn make_scout(w: &mut World, civ: u32, k: f64) -> u32 {
     id
 }
 
-/// Raises a scout of up to `n` people for `civ`: one person from each of the `n` biggest clans able
-/// to give, at the capital, their pack from the store. A civ may have any number of scouts. Returns
-/// how many people it has.
-pub fn raise_scout(w: &mut World, civ: u32, n: u32) -> Result<u32, String> {
-    let from: Vec<u32> = givers(w, civ).into_iter().take(n as usize).collect();
-    if from.is_empty() {
-        return Err("no clan has a person to spare".to_string());
-    }
+/// Raises a scout of up to `n` people for `civ` at its store on `at` (the capital with none): one
+/// person from each of the `n` biggest clans at that store's market able to give, their pack from
+/// it. A civ may have any number of scouts. Returns how many people it has.
+pub fn raise_scout(w: &mut World, civ: u32, n: u32, at: Option<usize>) -> Result<u32, String> {
+    let store = raise_store(w, civ, None, at)?;
+    let from = can_raise(w, civ, n, store)?;
     let k = from.len() as f64;
-    if total(&w.civs[&civ].store) + EPS < pack_cap(k) {
-        return Err("the store can't fill their packs".to_string());
-    }
     let name = name_of(w, civ);
     for id in &from {
         w.clans.get_mut(id).unwrap().people -= 1.0;
         w.note(*id, format!("gave a person to {name}'s scout"));
     }
-    let id = make_scout(w, civ, k);
+    let id = make_scout(w, civ, k, store);
     let tile = w.units[&id].home;
     w.emit(Event::new(EventKind::ScoutRaised, tile).civ(civ).unit(id));
     w.note(id, format!("raised at {} with {k:.0} people from its clans", w.at(tile)));
@@ -242,26 +280,29 @@ pub fn surrender(w: &mut World, id: u32, by: u32) -> bool {
     true
 }
 
-/// Raises up to `n` of `fighter` for `civ`, into army `into` or a new one at the capital: one person
-/// from each of the `n` biggest clans able to give, wherever they live, each with its share of the
-/// pack from the store. Archers make their bows on the army they join or make: it marches nothing
+/// Raises up to `n` of `fighter` for `civ`, into army `into` or a new one at its store on `at` (the
+/// capital with none): one person from each of the `n` biggest clans able to give that go to the
+/// store's market, each with its share of the pack from that store. An army is added to from the
+/// store its line ends at. Archers make their bows on the army they join or make: it marches nothing
 /// the turn they are raised (`CampState.bows`). Returns how many.
-pub fn raise(w: &mut World, civ: u32, n: u32, fighter: Fighter, into: Option<u32>) -> Result<u32, String> {
-    let from: Vec<u32> = givers(w, civ).into_iter().take(n as usize).collect();
-    if from.is_empty() {
-        return Err("no clan has a person to spare".to_string());
-    }
+pub fn raise(
+    w: &mut World,
+    civ: u32,
+    n: u32,
+    fighter: Fighter,
+    into: Option<u32>,
+    at: Option<usize>,
+) -> Result<u32, String> {
+    let store = raise_store(w, civ, into, at)?;
+    let from = can_raise(w, civ, n, store)?;
     let k = from.len() as f64;
-    if total(&w.civs[&civ].store) + EPS < pack_cap(k) {
-        return Err("the store can't fill their packs".to_string());
-    }
     let name = name_of(w, civ);
     for id in &from {
         w.clans.get_mut(id).unwrap().people -= 1.0;
         w.note(*id, format!("gave a person to {name}'s warriors"));
     }
-    let pack = take(&mut w.civs.get_mut(&civ).unwrap().store, pack_cap(k));
-    let id = join(w, civ, k, pack, fighter, into);
+    let pack = settle::store_mut(w, civ, store).map(|s| take(s, pack_cap(k))).unwrap_or_default();
+    let id = join(w, civ, k, pack, fighter, into, store);
     if fighter == Fighter::Archers {
         w.units.get_mut(&id).unwrap().camp_mut().expect("an army").bows = true;
         let tile = w.units[&id].home;

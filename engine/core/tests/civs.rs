@@ -441,7 +441,7 @@ fn a_capital_a_rival_army_stands_on_with_no_army_of_its_own_falls_and_its_civ_is
     );
     // Its orders are refused, and the game goes on.
     let refused =
-        w.check_order(blue, &Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None });
+        w.check_order(blue, &Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None, at: None });
     assert_eq!(refused, Err("your civ has fallen".to_string()));
     end_turn(&mut w);
     end_turn(&mut w);

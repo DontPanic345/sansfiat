@@ -159,7 +159,7 @@ impl Story {
         let mut into = self.camp().map(|u| u.id);
         loop {
             let n = self.fillable();
-            if n == 0 || !self.give(Order::Raise { n, kind: UnitKind::Camp, fighter: Fighter::Warriors, into }) {
+            if n == 0 || !self.give(Order::Raise { n, kind: UnitKind::Camp, fighter: Fighter::Warriors, into, at: None }) {
                 break;
             }
             raised += n;
@@ -414,7 +414,7 @@ fn surrender(s: &mut Story) {
     if s.n() > 0 {
         return;
     }
-    s.give(Order::Raise { n: UNIT.first, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None });
+    s.give(Order::Raise { n: UNIT.first, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None, at: None });
     let way = s.way();
     let theirs = s.w.civs[&s.rival].claim.clone();
     let first = way.iter().position(|t| theirs.contains(t)).unwrap_or(way.len().saturating_sub(2));

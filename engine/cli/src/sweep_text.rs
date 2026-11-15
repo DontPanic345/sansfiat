@@ -148,7 +148,7 @@ pub(crate) fn print_text(r: &Report) {
     let u = &t.supply;
     let c = &u.counts;
     println!(
-        "total supply: ring tiles {} at the pick ({} held), {} at +200 ({} held); army-turns inside {} ({} hungry), outside {} ({} hungry); scout-turns inside {} ({} hungry), outside {} ({} hungry); clan territory {:.2} at the pick, {} at +200",
+        "total supply: ring tiles {} at the pick ({} held), {} at +200 ({} held); army-turns inside {} ({} hungry), outside {} ({} hungry), outside the capital's ring {} ({} hungry); scout-turns inside {} ({} hungry), outside {} ({} hungry); clan territory {:.2} at the pick, {} at +200",
         c.ring_pick,
         c.held_ring_pick,
         c.ring_200,
@@ -157,6 +157,8 @@ pub(crate) fn print_text(r: &Report) {
         c.army_inside_hungry,
         c.army_outside,
         c.army_outside_hungry,
+        c.army_far,
+        c.army_far_hungry,
         c.scout_inside,
         c.scout_inside_hungry,
         c.scout_outside,
