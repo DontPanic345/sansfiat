@@ -695,7 +695,7 @@ pub const SETTLE: SettleRules = SettleRules {
     note: "Three signposts are a few. A clan walks as far to a signpost as to a festival (`MARKET.reach_walk`), \
            and the site must feed it as a daughter's own site must (`CLAN.settle_fed`). A settlement's store \
            holds half the capital's. Spacing 4 keeps a settlement's land clear of the capital's first claim. \
-           The draw and the walk are tuned on the retro maps (relay/specs/353/scores.md).",
+           The draw and the walk are first numbers, not yet tuned on the retro maps (relay/specs/353/scores.md).",
 };
 
 /// The planner (`units/ai.rs`): what the AI's civs, and the automatic player, weigh each turn.

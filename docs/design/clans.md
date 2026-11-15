@@ -133,3 +133,4 @@ placing them?
 - A clan whose home is on a civ's land is that civ's from that turn, and changes civ with its tile; only a civ's own clan stays whatever land it is on. (#352)
 - A clan whose home is on nobody's land leans by gifts and trade and joins the civ it leans to most. A civ's clan off its land stays until it leans to a rival. (#102, #352)
 - A clan's home is where it lives, not land it holds: many clans may live on one tile. A clan gathers only the tiles it claims, and never claims a tile another clan holds. (#156)
+- A daughter, or a clan moving on, may go to its civ's signpost instead of its own best site, by chance weighted by the walk and the tile's worth; a clan that can't get there doesn't try, and the first of the civ's clans to live on a signpost founds a settlement there. Nobody is sent: the signpost is a draw, not an order. (#353)
