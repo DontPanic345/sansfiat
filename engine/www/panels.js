@@ -516,7 +516,7 @@ function clanShape(ctx, k) {
   return {
     name: `Clan ${k.id}`,
     swatch: civ?.color,
-    doing: `${civ ? `${civ.name}’s clan` : 'Of no civ'}: ${doing.charAt(0).toLowerCase()}${doing.slice(1)}`,
+    doing,
     numbers,
     reasons: reasonsOf(ctx, k.id),
     buttons: [],

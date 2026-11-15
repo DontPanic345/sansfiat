@@ -61,7 +61,7 @@ says.
 - The levy is a share of the food civ clans bring to the capital's festival, until the store is full. (#72)
 - A civ gives its spare food at its festival to win clans; how much it gives is the player's choice. (#81)
 - A civ can lose clans and people to its rivals. (#58, #63, M3 answer 2)
-- Unaligned clans whose homes are on a civ's land pay its levy at its festival, as its own clans do. (#102)
+- A civ's clans pay its levy at its festival, and no others do. A clan whose home is on a civ's first claim is that civ's from the pick, whichever capital is nearer. (#102, #352)
 - A civ's gifts go to every clan at its festival that isn't its own, a rival's clans included. Trade leaning reaches its own clans too. (#102)
 - A civ may have any number of armies, of warriors and archers. Raising names a kind and a place: a new army at the capital, or into an army. Disbanding names a kind, or takes all kinds in proportion. (#104)
 - A civ starts with its scout alone: no army and no guard. The scout's pack comes from the store, and the rest of the boon year's food stays there. (#152)

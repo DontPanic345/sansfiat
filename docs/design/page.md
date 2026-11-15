@@ -60,3 +60,4 @@ mechanic; one panel component fed a selection; one play driver for the scripts.
 ## Decided
 
 - A button that can't act now is greyed, and its tooltip says why. Raise… and Disband… open a count with Go. (#103)
+- The map fills a clan's circle in its civ's colour, pale for a clan of no civ. The feed says what brought a clan to a civ: land, gifts or trade. (#352)

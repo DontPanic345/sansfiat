@@ -130,5 +130,6 @@ placing them?
 ## Decided
 
 - Clans grow from this turn's harvest beyond need, not from the store. (#58)
-- Every clan leans to civs, a civ's own clans included. A clan whose home is on a civ's land leans to that civ every turn, by the same amount wherever on the land it is. (#102, #336)
+- A clan whose home is on a civ's land is that civ's from that turn, and changes civ with its tile; only a civ's own clan stays whatever land it is on. (#352)
+- A clan whose home is on nobody's land leans by gifts and trade and joins the civ it leans to most. A civ's clan off its land stays until it leans to a rival. (#102, #352)
 - A clan's home is where it lives, not land it holds: many clans may live on one tile. A clan gathers only the tiles it claims, and never claims a tile another clan holds. (#156)
