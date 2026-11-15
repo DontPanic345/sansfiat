@@ -24,6 +24,7 @@ import * as towns from './layers/towns.js';
 import * as leanings from './layers/leanings.js';
 import * as centres from './layers/centres.js';
 import * as capitals from './layers/capitals.js';
+import * as settle from './layers/settle.js';
 import * as units from './layers/units.js';
 import * as ring from './layers/ring.js';
 import * as routes from './layers/routes.js';
@@ -32,11 +33,11 @@ import * as overlay from './layers/overlay.js';
 import { CORNER, EDGE_DIR } from './geom.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, festivalRoutes, festivals, land, held, lines, clans, towns, leanings, centres, capitals, ring, units, routes, overlay];
+export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, festivalRoutes, festivals, land, held, lines, clans, towns, leanings, centres, capitals, settle, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */
-const GROUPS = { civs: ['land', 'held', 'lines', 'capitals', 'ring', 'units', 'routes'], markets: ['festivals', 'centres'] };
+const GROUPS = { civs: ['land', 'held', 'lines', 'capitals', 'settle', 'ring', 'units', 'routes'], markets: ['festivals', 'centres'] };
 
 const SQRT3 = Math.sqrt(3);
 const MAX_K = 35; // px per world unit: a tile is ~60 px wide

@@ -137,7 +137,16 @@ impl Stage {
         for k in &spec.clans {
             let home = stage.tile(&k.home)?;
             let tiles = k.tiles.iter().map(|r| stage.tile(r)).collect::<Result<Vec<_>, _>>()?;
-            stage.living_clan(home, &tiles, k.people);
+            let id = stage.living_clan(home, &tiles, k.people);
+            if let Some(n) = k.civ {
+                let civ = *ids.get(n).ok_or(format!("clans: there is no civ {n}"))?;
+                stage.world.clans.get_mut(&id).unwrap().civ = Some(civ);
+            }
+        }
+        for p in &spec.signposts {
+            let civ = *ids.get(p.civ).ok_or(format!("signposts: there is no civ {}", p.civ))?;
+            let tile = stage.tile(&p.at)?;
+            crate::settle::post(&mut stage.world, civ, tile);
         }
         for a in &spec.armies {
             let civ = *ids.get(a.civ).ok_or(format!("armies: there is no civ {}", a.civ))?;
@@ -448,6 +457,16 @@ pub struct ClanSpec {
     pub home: TileRef,
     pub tiles: Vec<TileRef>,
     pub people: f64,
+    /// The civ (by its place in `civs`) the clan belongs to, or none.
+    #[serde(default)]
+    pub civ: Option<usize>,
+}
+
+/// A signpost of civ `civ` (by its place in `civs`) on `at`, posted without the order's checks.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SignpostSpec {
+    pub civ: usize,
+    pub at: TileRef,
 }
 
 /// A retro pick: a size from `RETRO` and a seed.
@@ -513,6 +532,9 @@ pub struct StageSpec {
     /// Clans living on a home, placed after the civs: a home may be shared (`towns`).
     #[serde(default)]
     pub clans: Vec<ClanSpec>,
+    /// Signposts, posted after the clans.
+    #[serde(default)]
+    pub signposts: Vec<SignpostSpec>,
     /// The turn limit after the pick, which replaces the size's (`Config.limit`); `None` is the size's.
     #[serde(default)]
     pub limit: Option<u32>,

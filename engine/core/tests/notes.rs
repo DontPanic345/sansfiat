@@ -127,7 +127,8 @@ fn a_merged_clan_has_no_reasons_once_it_is_gone() {
         w.notes.keys().all(|id| w.clans.contains_key(id)
             || w.markets.contains_key(id)
             || w.civs.contains_key(id)
-            || w.units.contains_key(id)),
+            || w.units.contains_key(id)
+            || w.settlements.contains_key(id)),
         "every reason's subject is alive"
     );
 }

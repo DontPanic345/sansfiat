@@ -15,6 +15,7 @@ use crate::data::*;
 use crate::land::{neighbours, steps};
 use crate::market::total;
 use crate::orders::Order;
+use crate::settle;
 use crate::world::World;
 
 /// What the planner gives: an order to a unit or the claim, or the civ's gift a turn.
@@ -96,6 +97,7 @@ pub fn plan(w: &mut World, civ: u32, give: Give) {
         gift(w, civ, give);
     }
     land(w, civ, give);
+    signposts(w, civ, give);
     if !w.config.army {
         return;
     }
@@ -156,6 +158,55 @@ fn land(w: &mut World, civ: u32, give: Give) {
     }
 }
 
+/// The signposts: a signpost nobody has settled in `SETTLE.plan_stale` turns is removed; and every
+/// `SETTLE.plan_every` turns, while the civ keeps fewer than `SETTLE.signposts`, one is posted on the
+/// site the planner likes best (`signpost_plan`).
+fn signposts(w: &mut World, civ: u32, give: Give) {
+    if !settle::open(w) {
+        return;
+    }
+    let stale: Vec<usize> =
+        w.civs[&civ].signposts.iter().filter(|s| s.turn + SETTLE.plan_stale <= w.turn).map(|s| s.tile).collect();
+    for tile in stale {
+        let _ = give(w, civ, Decision::Order(Order::Unpost { tile }));
+    }
+    if !(w.turn + civ).is_multiple_of(SETTLE.plan_every) || w.civs[&civ].signposts.len() >= SETTLE.signposts {
+        return;
+    }
+    if let Some(tile) = signpost_plan(w, civ) {
+        let _ = give(w, civ, Decision::Order(Order::Signpost { tile }));
+    }
+}
+
+/// The sites the planner weighs for `civ`'s next signpost, best first: the tiles a signpost may stand
+/// on within `SETTLE.plan_range` steps of its capital or a settlement, at least `SETTLE.spacing` steps
+/// from its other signposts, that nobody holds and that a clan can walk to from one of those seats
+/// within `SETTLE.reach`, each with its worth as a site (`settle::worth`, above `SETTLE.fed`); ties to
+/// the nearer a seat and then the lower tile.
+pub fn signpost_sites(w: &World, civ: u32) -> Vec<(f64, usize)> {
+    let c = &w.civs[&civ];
+    let roots = settle::roots(w, civ);
+    let near = crate::land::cost_map(w, &roots, SETTLE.reach, |i| crate::land::passable(w, i));
+    let mut sites: Vec<(f64, usize)> = near
+        .keys()
+        .copied()
+        .filter(|&t| w.tiles[t].claim.is_none())
+        .filter(|&t| roots.iter().any(|&r| steps(w, r, t) <= SETTLE.plan_range))
+        .filter(|&t| c.signposts.iter().all(|s| steps(w, s.tile, t) >= SETTLE.spacing))
+        .filter(|&t| settle::check_post(w, civ, t).is_ok())
+        .map(|t| (settle::worth(w, t), t))
+        .filter(|&(v, _)| v > SETTLE.fed)
+        .collect();
+    let d = |t: usize| roots.iter().map(|&r| steps(w, r, t)).min();
+    sites.sort_by(|a, b| b.0.total_cmp(&a.0).then(d(a.1).cmp(&d(b.1))).then(a.1.cmp(&b.1)));
+    sites
+}
+
+/// The tile the planner would post `civ`'s next signpost on: the best of `signpost_sites`.
+pub fn signpost_plan(w: &World, civ: u32) -> Option<usize> {
+    signpost_sites(w, civ).first().map(|&(_, t)| t)
+}
+
 /// The people of `civ`'s armies.
 fn armed(w: &World, civ: u32) -> f64 {
     w.units.values().filter(|u| u.civ == civ && u.camp().is_some()).map(|u| u.people).sum()
@@ -196,7 +247,7 @@ pub fn claim_plan(w: &World, civ: u32) -> Vec<usize> {
     }
     tiles.sort_unstable();
     tiles.dedup();
-    claim::connected_part(w, c.capital, &tiles)
+    claim::connected_part(w, civ, &tiles)
 }
 
 /// The army's size. A hungry army at its capital, or a store that can't feed the civ's mouths a

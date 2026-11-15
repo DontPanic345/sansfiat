@@ -33,6 +33,8 @@ export function legendHtml(country) {
     [sw('background:hsl(120,70%,55%);border:2px solid #ff2a2a;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'clan (red ring: starving)'],
     [sw('background:hsl(120,70%,55%);border:3px solid #d6a63b;border-radius:50%;width:10px;height:10px;margin:2px 3px;box-shadow:0 0 0 1px #000'), 'civ clan (ring in the civ colour)'],
     [sw('background:#d64545;border:2px solid #fff;outline:2px solid #000;width:10px;height:10px;margin:2px 4px;clip-path:polygon(0 25%,50% 0,100% 25%,100% 100%,0 100%)'), 'capital'],
+    [sw('background:#d64545;border:2px solid #222;width:10px;height:10px;margin:2px 4px;clip-path:polygon(0 35%,50% 0,100% 35%,100% 100%,0 100%)'), 'settlement'],
+    [sw('background:#d64545;border:2px solid #222;width:6px;height:12px;margin:0 6px'), 'signpost'],
     [sw('background:transparent;border:3px solid #3b6fd6;box-shadow:0 0 0 1px #000;width:12px;height:12px;margin:1px 3px'), 'civ land (its claim)'],
     [sw('background:linear-gradient(90deg,hsl(120,70%,55%),#3b6fd6);border:2px solid #000;width:12px;height:12px;margin:1px 3px'), 'unaligned clan tinted by the civ it leans to'],
     [sw('background:#3b6fd6;border:2px solid #000;width:10px;height:12px;margin:0 4px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)'), 'warrior'],

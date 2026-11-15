@@ -1,0 +1,41 @@
+{"turn":262,"line":"note meant: get clans to settle a far site and raise gift did: signpost on 235 (the listed good site) and gift 6 surprised: 0 of 200 turns, store only 10 and no levy paid","result":"noted"}
+{"turn":262,"line":"{\"type\":\"signpost\",\"tile\":235}","result":"ok"}
+{"turn":262,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":267,"line":"end 5","result":"ok"}
+{"turn":267,"line":"note meant: let gift and signpost work did: end 10 surprised: nothing","result":"noted"}
+{"turn":277,"line":"end 10","result":"ok"}
+{"turn":277,"line":"map","result":"ok"}
+{"turn":277,"line":"note meant: pull unaligned clans (44,107,185) in by claim, since claim covering a home joins at once did: claim existing 37 tiles plus 185,107,44 surprised: standing fell to 5.9 while rivals grew","result":"noted"}
+{"turn":277,"line":"{\"type\":\"claim\",\"tiles\":[29,30,31,32,33,46,47,48,49,50,51,66,67,68,69,70,71,86,87,89,90,91,92,109,111,112,113,114,134,135,136,137,138,159,160,161,184,185,107,44,205]}","result":"refused: a claim must be joined to the capital or a settlement"}
+{"turn":277,"line":"note meant: claim 185 to take clan 182 did: claim 37 tiles plus 185 (adjacent to my land) surprised: first try refused as 44/107 are not joined","result":"noted"}
+{"turn":277,"line":"{\"type\":\"claim\",\"tiles\":[29,30,31,32,33,46,47,48,49,50,51,66,67,68,69,70,71,86,87,89,90,91,92,109,111,112,113,114,134,135,136,137,138,159,160,161,184,185]}","result":"ok"}
+{"turn":277,"line":"raise 1","result":"unknown"}
+{"turn":277,"line":"note meant: raise an army to try the army lever did: raise 1 warriors surprised: nothing","result":"noted"}
+{"turn":277,"line":"{\"type\":\"raise\",\"n\":1}","result":"ok"}
+{"turn":277,"line":"note meant: let claim and gift work did: end 10 surprised: clans joined rose to 2 after claim","result":"noted"}
+{"turn":287,"line":"end 10","result":"ok"}
+{"turn":287,"line":"note meant: watch standing did: end 10 surprised: nothing yet","result":"noted"}
+{"turn":297,"line":"end 10","result":"ok"}
+{"turn":297,"line":"note meant: see if signpost ever draws a clan, and why standing slips did: why on civ 426 surprised: signpost tile now feeds 0% of need yet legal orders say no good sites","result":"noted"}
+{"turn":297,"line":"why 426","result":"ok"}
+{"turn":297,"line":"note meant: let time pass did: end 20 surprised: nothing","result":"noted"}
+{"turn":317,"line":"end 20","result":"ok"}
+{"turn":317,"line":"note meant: try scout lever did: view orders for scout surprised: nothing","result":"noted"}
+{"turn":317,"line":"view","result":"ok"}
+{"turn":317,"line":"note meant: stop the standing slide by feeding more; raise gift to 15 did: setGift 15 surprised: raise orders vanished from legal list, my earlier raise left no army","result":"noted"}
+{"turn":317,"line":"{\"type\":\"setGift\",\"food\":15}","result":"ok"}
+{"turn":332,"line":"end 15","result":"ok"}
+{"turn":332,"line":"note meant: use the army lever, move army 481 to 112 and scout route did: move 481 and route scout to 318 surprised: army exists after all","result":"noted"}
+{"turn":332,"line":"{\"type\":\"move\",\"unit\":481,\"to\":112}","result":"ok"}
+{"turn":332,"line":"{\"type\":\"route\",\"unit\":429,\"from\":349,\"to\":318}","result":"ok"}
+{"turn":342,"line":"end 10","result":"ok"}
+{"turn":342,"line":"note meant: disband the army to try the last army order did: disband 481 surprised: nothing","result":"noted"}
+{"turn":342,"line":"{\"type\":\"disband\",\"unit\":481}","result":"ok"}
+{"turn":352,"line":"end 10","result":"ok"}
+{"turn":352,"line":"note meant: finish the 100 turns did: end 10 surprised: signpost never drew a clan in 98 turns","result":"noted"}
+{"turn":362,"line":"end 10","result":"ok"}
+{"turn":362,"line":"note could not tell: gift: what gave counts, it stayed 0.0 for 100 turns with posted 55","result":"noted"}
+{"turn":362,"line":"note could not tell: signpost: why no clan went, tile fell from 106% to 0% of need and no good site was listed after","result":"noted"}
+{"turn":362,"line":"note could not tell: land: which tiles join; 107 and 44 were refused with no reason by tile","result":"noted"}
+{"turn":362,"line":"note could not tell: army: what a lone warrior does for standing","result":"noted"}
+{"turn":362,"line":"note could not tell: scout: no route result or what it found","result":"noted"}

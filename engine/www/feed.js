@@ -47,6 +47,8 @@ export const KINDS = {
   archersRaised: { icon: '↑', color: '#8fd18f', label: 'Archers raised' },
   armySurrendered: { icon: '⚐', color: '#ffb347', label: 'Armies surrender' },
   capitalFell: { icon: '♜', color: '#ff2a2a', label: 'Capitals fall' },
+  settlementFounded: { icon: '⌂', color: '#8fd18f', label: 'Settlements founded' },
+  settlementTaken: { icon: '▣', color: '#ff2a2a', label: 'Settlements taken' },
 };
 /** Rare, important kinds: the last ones trimmed from the DOM. */
 const PINNED = new Set(['centreFormed', 'pregameEnded', 'civFounded']);

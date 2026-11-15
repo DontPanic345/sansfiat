@@ -51,6 +51,8 @@ pub enum EventKind {
     ArmySurrendered,
     CapitalFell,
     GameOver,
+    SettlementFounded,
+    SettlementTaken,
 }
 
 /// What brought a clan to a civ (`ClanJoined`, `ClanLeft`).
@@ -127,6 +129,13 @@ impl Event {
             EventKind::MarketFaded => format!("Market {market} fades"),
             EventKind::TownFormed => {
                 format!("A town forms at {at}: {} clans live by the festival", self.amount.unwrap_or(0.0) as u32)
+            }
+            EventKind::SettlementFounded => {
+                format!("{} founds a settlement at {at}: clan {clan} settled at the signpost", self.civ_name(w))
+            }
+            EventKind::SettlementTaken => {
+                let by = self.other.and_then(|id| w.civs.get(&id)).map_or("A rival", |c| c.name.as_str());
+                format!("{by}'s army takes {}'s settlement at {at}, with its store", self.civ_name(w))
             }
             EventKind::HearthTamed => format!("A hearth is tamed at {at}"),
             EventKind::CentreFormed => match self.clan {

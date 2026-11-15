@@ -3,7 +3,7 @@
 // lines. The screen hands each call its host: {view (MapView), v (Sim.view()), order (sends an order), panelDraw
 // (redraws the panel)}.
 
-import { f2, unitOrder } from '../panels.js';
+import { civOrder, f2, unitOrder } from '../panels.js';
 
 /** The selected unit's armed click: `arm` is 'move', 'start', 'to' or null; `start` is a route's start tile (or
  *  null); `unit` is the unit they belong to. */
@@ -77,6 +77,10 @@ export function armedPick(i, h) {
     routing.start = i;
     h.panelDraw();
     syncArm(h);
+    return;
+  }
+  if (kind === 'signpost') {
+    if (h.v.player != null) h.order(civOrder(h.v.player, { type: 'signpost', tile: i }));
     return;
   }
   const u = h.v.units[routing.unit];

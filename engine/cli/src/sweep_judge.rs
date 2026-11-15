@@ -81,6 +81,9 @@ pub(crate) struct MapJudged {
     /// The same map with `Config.towns` off, and the run read against it (`sweep_towns`).
     pub(crate) no_towns: Scores,
     pub(crate) towns_vs_control: MapTowns,
+    /// The same map with `Config.signposts` off, and the run read against it (`sweep_settle`).
+    pub(crate) no_signposts: Scores,
+    pub(crate) settle_vs_control: crate::sweep_settle::MapSettle,
     /// Each civ led by the planner and led idle, to the game's end (`sweep_led`).
     pub(crate) led: Vec<LedGame>,
     /// Each civ's name, for the text (the ids are not the names' places in `CIVS`).
@@ -161,6 +164,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
         Config { fight: false, ..base },
         Config { fields: false, ..base },
         Config { towns: false, ..base },
+        Config { signposts: false, ..base },
     ];
     let mut runs = played_all(&configs, draws).into_iter();
     let (w, watch) = runs.next().expect("the army run");
@@ -170,6 +174,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
     let (calm, calm_watch) = runs.next().expect("the control with no fighting");
     let (bare, bare_watch) = runs.next().expect("the control with no fields");
     let (towns_off, towns_off_watch) = runs.next().expect("the control with no towns");
+    let (unposted, unposted_watch) = runs.next().expect("the control with no signposts");
     let civs: Vec<u32> = w.civs.keys().copied().collect();
     let kept = civs.iter().filter(|&&c| kept_camp(&w, c)).count() as u32;
     let people = |w: &World| stats::summary(w).people;
@@ -200,6 +205,8 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
     let (scores, no_fields) = (watch.scores(&w, &civs), bare_watch.scores(&bare, &civs));
     let no_towns = towns_off_watch.scores(&towns_off, &civs);
     let towns_vs_control = map_towns(&scores, &no_towns);
+    let no_signposts = unposted_watch.scores(&unposted, &civs);
+    let settle_vs_control = crate::sweep_settle::map_settle(&scores, &no_signposts, people(&w), people(&unposted));
     MapJudged {
         led: map_led(base, &civs, draws),
         size: name.to_string(),
@@ -212,6 +219,8 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
         no_fields,
         no_towns,
         towns_vs_control,
+        no_signposts,
+        settle_vs_control,
         names: w.civs.iter().map(|(&id, c)| (id, c.name.clone())).collect(),
         solo,
         armies,
@@ -318,6 +327,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
         },
         fields_vs_control: total_fields(maps),
         towns_vs_control: total_towns(maps),
+        settle_vs_control: crate::sweep_settle::total_settle(maps),
         led: total_led(maps),
     }
 }

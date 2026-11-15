@@ -40,5 +40,7 @@
   "tileTaken": "tile-taken.ogg",
   "archersRaised": "archers-raised.ogg",
   "armySurrendered": "army-surrendered.ogg",
-  "capitalFell": "capital-fell.ogg"
+  "capitalFell": "capital-fell.ogg",
+  "settlementFounded": "settlement-founded.ogg",
+  "settlementTaken": "settlement-taken.ogg"
 }

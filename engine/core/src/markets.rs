@@ -111,14 +111,16 @@ fn worths_from(w: &World, clan: &Clan, festivals: &[Festival]) -> Vec<(u32, f64,
     let b: Basket = std::array::from_fn(|f| clan.store[f] + clan.harvest[f]);
     let walkers = walkers(clan);
     let surplus = clan.store.iter().sum::<f64>() >= MARKET.surplus_at * clan.people;
-    // A civ clan is drawn to its capital's market.
+    // A civ clan is drawn to its capital's market, and to its civ's settlements'.
     let capital = clan.civ.and_then(|c| w.civs.get(&c)).map(|c| c.market);
+    let settled =
+        |m: u32| clan.civ.is_some() && crate::settle::of_market(w, m).is_some_and(|s| Some(s.civ) == clan.civ);
     festivals
         .iter()
         .map(|f| {
             let m = &w.markets[&f.market];
             let cost = walk_cost(f.cost, 1.0) * walkers;
-            let pull = if Some(m.id) == capital { CIV.pull } else { 0.0 };
+            let pull = if Some(m.id) == capital || settled(m.id) { CIV.pull } else { 0.0 };
             (m.id, gain(m, &b, clan.people) * CLAN.harvest_labour + desire(m, surplus) + pull - cost, cost)
         })
         .collect()
@@ -221,6 +223,7 @@ pub fn trade(w: &mut World) {
     }
     w.traded.clear();
     w.levied.clear();
+    w.settle_levied.clear();
     let index = by_market(w);
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {
@@ -424,6 +427,7 @@ pub fn fade(w: &mut World) {
     let mut kept = w.end.as_ref().map(|e| e.centres.clone()).unwrap_or_default();
     kept.retain(|m| !fallen.contains(m));
     kept.extend(crate::civs::alive(w).map(|c| c.market));
+    kept.extend(w.settlements.values().map(|s| s.market));
     let gone: Vec<u32> = w
         .markets
         .values()

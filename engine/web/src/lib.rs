@@ -1,4 +1,4 @@
-use engine::data::{CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::over::{self, Why};
 use engine::script::Lead;
@@ -289,6 +289,16 @@ impl Sim {
             .iter()
             .map(|t| serde_json::json!({ "tile": t.tile, "market": t.market, "clans": t.clans }))
             .collect();
+        // Each settlement's panel, and each civ's signposts with what the tile is worth as a site.
+        let settlements = engine::settle::panels(w);
+        let signposts: Vec<serde_json::Value> = w
+            .civs
+            .values()
+            .flat_map(|c| c.signposts.iter().map(move |s| (c.id, s)))
+            .map(|(civ, s)| {
+                serde_json::json!({ "civ": civ, "tile": s.tile, "turn": s.turn, "worth": engine::settle::worth(w, s.tile) })
+            })
+            .collect();
         serde_json::json!({
             "turn": w.turn,
             "end": w.end,
@@ -297,6 +307,8 @@ impl Sim {
             "clans": clans,
             "markets": markets,
             "towns": towns,
+            "settlements": settlements,
+            "signposts": signposts,
             "trails": trails,
             "trail_work": trail_work,
             "revealed": revealed,
@@ -492,6 +504,7 @@ pub fn rules() -> String {
         "fighters": FIGHTERS.iter().map(|f| serde_json::json!({ "name": f.name, "attack": f.attack, "defence": f.defence })).collect::<Vec<_>>(),
         "fight": { "entrench": FIGHT.entrench, "entrench_cap": FIGHT.entrench_cap, "hungry": FIGHT.hungry, "surrender": FIGHT.surrender },
         "field": { "farmer": FIELD.farmer },
+        "signposts": SETTLE.signposts,
     })
     .to_string()
 }

@@ -44,6 +44,11 @@ pub enum Order {
     /// Replace the civ's claim: the tiles it paints out from its capital, which is added. Every tile
     /// of it is the civ's land at once. `{"type":"claim","tiles":[58,59]}`
     Claim { tiles: Vec<usize> },
+    /// Post a signpost on a tile a clan can live on: the civ's clans that divide or move on weigh
+    /// it as a site, and the first to settle there founds a settlement. `{"type":"signpost","tile":58}`
+    Signpost { tile: usize },
+    /// Remove the civ's signpost on a tile. `{"type":"unpost","tile":58}`
+    Unpost { tile: usize },
     /// Send the camp to a tile; it moves when the turn ends. `{"type":"move","unit":12,"to":5}`
     Move { unit: u32, to: usize },
     /// Spread the camp over a zone: the painted tiles (the camp's own may be left out), which replace
@@ -77,6 +82,8 @@ impl Order {
             Order::Raise { .. } => "raise",
             Order::Disband { .. } => "disband",
             Order::Claim { .. } => "claim",
+            Order::Signpost { .. } => "signpost",
+            Order::Unpost { .. } => "unpost",
             Order::Move { .. } => "move",
             Order::Zone { .. } => "zone",
             Order::Switches { .. } => "switches",
@@ -102,6 +109,8 @@ impl World {
         match order {
             Order::Raise { n, kind, fighter, into } => check_raise(self, civ, *n, *kind, *fighter, *into),
             Order::Claim { tiles } => claim::check(self, civ, tiles).map(|_| ()),
+            Order::Signpost { tile } => crate::settle::check_post(self, civ, *tile),
+            Order::Unpost { tile } => crate::settle::check_unpost(self, civ, *tile),
             Order::Disband { unit, n, fighter } => {
                 let u = unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout])?;
                 if let Some(f) = fighter {
@@ -189,6 +198,8 @@ fn apply(w: &mut World, civ: u32, order: Order) {
             w.note(civ, text);
             crate::leaning::land(w, false);
         }
+        Order::Signpost { tile } => crate::settle::post(w, civ, tile),
+        Order::Unpost { tile } => crate::settle::unpost(w, civ, tile),
         Order::Move { unit, to } => {
             order_move(w, unit, to);
             if let Some(c) = w.units.get_mut(&unit).and_then(|u| u.camp_mut()) {

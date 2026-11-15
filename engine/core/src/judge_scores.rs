@@ -29,6 +29,8 @@ pub struct Scores {
     pub fields: FieldScores,
     /// Towns that form, and what town clans, farmers outside towns and all clans walk, trade and starve at.
     pub towns: TownScores,
+    /// Signposts posted, settlements founded and taken, and what each civ has at +100 and +200.
+    pub settle: crate::judge_settle::SettleScores,
     pub end: EndScores,
 }
 

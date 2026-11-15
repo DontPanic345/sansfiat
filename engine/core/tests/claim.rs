@@ -158,7 +158,7 @@ fn replaying_a_save_with_claims_rebuilds_the_same_world() {
     w.act(Action::ChooseCiv { civ: Some(red) }).unwrap();
     let cap = w.civs[&red].capital;
     let land: Vec<usize> = within(&w, cap, 2).into_iter().filter(|&t| TERRAIN[w.tiles[t].terrain].land).collect();
-    let tiles = claim::connected_part(&w, cap, &land);
+    let tiles = claim::connected_part(&w, red, &land);
     w.act(led_order(&w, Order::Claim { tiles })).unwrap();
     for _ in 0..30 {
         w.act(Action::EndTurn).unwrap();

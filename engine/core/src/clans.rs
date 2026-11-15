@@ -463,9 +463,12 @@ pub fn eat(w: &mut World) {
         // The land it holds: a home another clan holds is not its to divide.
         let held = c.territory.iter().filter(|&&t| homes::gathers(w, id, t)).count();
         if c.people >= CLAN.split_at && held >= 2 {
-            dividing::divide_land(w, id);
+            // A daughter may go to her civ's signpost; else the clan divides its land.
+            if !dividing::split(w, id, true) {
+                dividing::divide_land(w, id);
+            }
         } else if c.people >= CLAN.split_at || (c.starving && c.people >= CLAN.hungry_split) {
-            dividing::split(w, id);
+            dividing::split(w, id, false);
         }
     }
 }
@@ -532,15 +535,25 @@ pub fn pick_site(w: &mut World, scored: &[(usize, f64)], min: f64) -> Option<usi
 }
 
 /// Moving on: after `patience` starving turns, a clan settles a site within `move_range` worth
-/// more than its territory by `move_margin`. It frees its territory; home and territory become
+/// more than its territory by `move_margin`. A civ's clan weighs its civ's signposts first
+/// (`settle::draw`), and goes to one by chance where it is worth that much more. It frees its territory; home and territory become
 /// the site.
 fn move_on(w: &mut World, c: &Clan, now: f64) -> bool {
-    let scored: Vec<(usize, f64)> =
-        sites(w, c, CLAN.move_range).into_iter().map(|s| (s, site_value(w, c.id, s, c.people, &c.store))).collect();
     let min = now + CLAN.move_margin;
-    let Some(site) = pick_site(w, &scored, min) else { return false };
-    let worth = scored.iter().find(|s| s.0 == site).map_or(0.0, |s| s.1);
+    let posted = crate::settle::draw(w, c.civ, c.id, c.home, c.people, &c.store, min.max(SETTLE.fed));
+    let (site, worth) = match posted {
+        Some(found) => found,
+        None => {
+            let scored: Vec<(usize, f64)> = sites(w, c, CLAN.move_range)
+                .into_iter()
+                .map(|s| (s, site_value(w, c.id, s, c.people, &c.store)))
+                .collect();
+            let Some(site) = pick_site(w, &scored, min) else { return false };
+            (site, scored.iter().find(|s| s.0 == site).map_or(0.0, |s| s.1))
+        }
+    };
     let (from, to) = (w.at(c.home), w.at(site));
+    let to = if posted.is_some() { format!("its civ's signpost at {to}") } else { to };
     free(w, c.id, &c.territory);
     homes::claim_land(w, c.id, &[site]);
     let m = w.clans.get_mut(&c.id).unwrap();

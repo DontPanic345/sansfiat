@@ -66,3 +66,4 @@ says.
 - A civ may have any number of armies, of warriors and archers. Raising names a kind and a place: a new army at the capital, or into an army. Disbanding names a kind, or takes all kinds in proportion. (#104)
 - A civ starts with its scout alone: no army and no guard. The scout's pack comes from the store, and the rest of the boon year's food stays there. (#152)
 - Winning and losing are in: a civ loses when its capital falls (`vision.md`, Winning). (#152)
+- A settlement is a market that never fades and a store of its own, which only the levy of its civ's clans at that market fills; it holds half the capital's, and nothing draws on it yet. A claim holds where it joins the capital or a settlement, and a settlement a rival army stands on, with no army of its civ there, is taken with its store. (#353)

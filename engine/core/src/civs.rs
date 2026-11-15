@@ -66,6 +66,8 @@ pub struct Civ {
     /// The turn its capital fell, and the civ that took it. A fallen civ has no land, no Standing,
     /// no turn and no orders (`fall`).
     pub fallen: Option<(u32, u32)>,
+    /// Its signposts, by tile (`settle.rs`): at most `SETTLE.signposts`.
+    pub signposts: Vec<crate::settle::Signpost>,
     /// The food the market levy has paid into its store this turn: `trade` zeroes it at the turn's
     /// start and `levy` adds to it. Derived, not saved: `CivFlat` leaves it out and a loaded civ
     /// has 0. A replay recomputes it, so a live world equals its replay, but a live world does not
@@ -137,6 +139,8 @@ struct CivFlat {
     besieged: bool,
     #[serde(default)]
     fallen: Option<(u32, u32)>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    signposts: Vec<crate::settle::Signpost>,
 }
 
 impl From<Civ> for CivFlat {
@@ -163,6 +167,7 @@ impl From<Civ> for CivFlat {
             pressed: c.pressed,
             besieged: c.besieged,
             fallen: c.fallen,
+            signposts: c.signposts,
         }
     }
 }
@@ -191,6 +196,7 @@ impl From<CivFlat> for Civ {
             pressed: f.pressed,
             besieged: f.besieged,
             fallen: f.fallen,
+            signposts: f.signposts,
             levied: 0.0,
         }
     }
@@ -260,6 +266,7 @@ pub fn found(w: &mut World) {
             pressed: false,
             besieged: false,
             fallen: None,
+            signposts: Vec::new(),
             levied: 0.0,
         };
         w.civs.insert(id, civ);
@@ -374,6 +381,7 @@ pub fn fall(w: &mut World, civ: u32, by: u32) {
         c.pressed = false;
         c.besieged = false;
     }
+    crate::settle::fallen(w, civ);
     let clans: Vec<u32> = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| k.id).collect();
     for id in clans {
         let k = w.clans.get_mut(&id).unwrap();
@@ -458,9 +466,10 @@ pub fn keep(w: &World, civ: u32) -> f64 {
     }
 }
 
-/// The levy at market `mid`: each clan there that is the civ's pays
-/// `CIV.levy` of what it brought (its basket) into the civ's store, in id order until the store is
-/// at `CIV.store_cap`; its harvest drops by the same share, so that growth, which `eat` reckons on
+/// The levy at market `mid`, a capital's or a settlement's: each clan there that is the civ's pays
+/// `CIV.levy` of what it brought (its basket) into the store there (the civ's at its capital, the
+/// settlement's own), in id order until the store is at its cap (`CIV.store_cap`,
+/// `SETTLE.store_cap`); its harvest drops by the same share, so that growth, which `eat` reckons on
 /// the harvest, sees less. (A share of only the harvest beyond need brings next to nothing: clans
 /// grow until their harvest just feeds them.) Called by `markets::trade` before the market clears.
 /// Nothing with `Config.army` off.
@@ -468,13 +477,20 @@ pub fn levy(w: &mut World, mid: u32) {
     if !w.config.army {
         return;
     }
-    let Some(civ) = alive(w).find(|c| c.market == mid).map(|c| c.id) else { return };
-    if w.civs[&civ].besieged {
+    let seat = crate::settle::of_market(w, mid).map(|s| (s.civ, Some(s.id)));
+    let Some((civ, settlement)) = seat.or_else(|| alive(w).find(|c| c.market == mid).map(|c| (c.id, None))) else {
+        return;
+    };
+    if w.civs.get(&civ).is_none_or(|c| c.is_out() || (settlement.is_none() && c.besieged)) {
         return;
     }
     let ids: Vec<u32> =
         w.clans.values().filter(|c| c.market == Some(mid) && c.civ == Some(civ)).map(|c| c.id).collect();
-    let mut room = (CIV.store_cap - w.civs[&civ].store.iter().sum::<f64>()).max(0.0);
+    let (held, cap) = match settlement {
+        Some(s) => (total(&w.settlements[&s].store), SETTLE.store_cap),
+        None => (total(&w.civs[&civ].store), CIV.store_cap),
+    };
+    let mut room = (cap - held).max(0.0);
     let mut paid_by = Vec::new();
     for id in ids {
         let c = w.clans.get_mut(&id).unwrap();
@@ -485,25 +501,38 @@ pub fn levy(w: &mut World, mid: u32) {
         let share = CIV.levy.min(room / total);
         room -= share * total;
         let paid = c.basket.map(|v| v * share);
-        let civ_state = w.civs.get_mut(&civ).unwrap();
         for (f, &p) in paid.iter().enumerate() {
             c.harvest[f] *= 1.0 - share;
             c.basket[f] -= p;
-            civ_state.store[f] += p;
-            civ_state.levied += p;
         }
-        w.levied.insert(id, paid.iter().sum());
+        let sum: f64 = paid.iter().sum();
+        match settlement {
+            Some(s) => {
+                add(&mut w.settlements.get_mut(&s).unwrap().store, &paid);
+                *w.settle_levied.entry(s).or_insert(0.0) += sum;
+            }
+            None => {
+                let civ_state = w.civs.get_mut(&civ).unwrap();
+                for (f, &p) in paid.iter().enumerate() {
+                    civ_state.store[f] += p;
+                    civ_state.levied += p;
+                }
+            }
+        }
+        w.levied.insert(id, sum);
         paid_by.push((id, share < CIV.levy));
     }
+    let place = if settlement.is_some() { "a settlement's market" } else { "its market" };
     if !paid_by.is_empty() {
-        w.note(civ, "collected its levy at its market".to_string());
+        w.note(civ, format!("collected its levy at {place}"));
     }
     let name = w.civs[&civ].name.clone();
+    let whose = if settlement.is_some() { format!("{name}'s settlement") } else { name };
     for (id, cut) in paid_by {
         let text = if cut {
-            format!("paid a cut levy to {name}: its store is at the cap")
+            format!("paid a cut levy to {whose}: its store is at the cap")
         } else {
-            format!("paid a levy to {name}")
+            format!("paid a levy to {whose}")
         };
         w.note(id, text);
     }
@@ -513,6 +542,7 @@ pub fn levy(w: &mut World, mid: u32) {
 /// over the cap is lost.
 pub fn upkeep(w: &mut World) {
     repair(w);
+    crate::settle::upkeep(w);
     let ids: Vec<u32> = alive(w).map(|c| c.id).collect();
     for id in ids {
         let civ = w.civs.get_mut(&id).unwrap();

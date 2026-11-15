@@ -14,6 +14,7 @@ assert.deepEqual(SIZES.map((s) => s.name), ['small', 'medium', 'large']);
 const TERRAIN = JSON.parse(terrain());
 const RULES = JSON.parse(rules());
 assert.ok(RULES.tame_turns > 0 && RULES.players === 3);
+assert.ok(RULES.signposts > 0, 'rules.signposts');
 for (const key of ['unit_labour', 'unit_food', 'hungry_turns', 'store_cap']) assert.ok(RULES[key] > 0, `rules.${key}`);
 const GOODS = JSON.parse(goods());
 
@@ -60,7 +61,7 @@ assert.ok(sim.ended(), 'the pre-game ends');
 const all = JSON.parse(sim.events(0));
 assert.deepEqual(all, events, 'events(0) is what the cursor collected');
 assert.ok(all.length > 0);
-const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanFarming', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'townFormed', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell']);
+const KINDS = new Set(['clanDivided', 'clanStarving', 'clanMoved', 'clanFarming', 'clanMerged', 'peopleLeft', 'marketFormed', 'marketFaded', 'townFormed', 'hearthTamed', 'centreFormed', 'pregameEnded', 'civFounded', 'campRaised', 'warriorsRaised', 'warriorsDisbanded', 'campResupplied', 'campCutOff', 'campHungry', 'warriorsStarved', 'campForaged', 'campPillaged', 'scoutRouteFound', 'scoutNoRoute', 'scoutTrailBuilt', 'scoutPassFound', 'scoutBlocked', 'scoutHungry', 'scoutStarved', 'clanJoined', 'deployed', 'held', 'lineCut', 'clanLeft', 'claimTaken', 'scoutRaised', 'skirmish', 'retreated', 'tileTaken', 'archersRaised', 'armySurrendered', 'capitalFell', 'settlementFounded', 'settlementTaken']);
 let lastTurn = 0;
 for (const e of all) {
   assert.ok(KINDS.has(e.kind), `known kind ${e.kind}`);
@@ -366,9 +367,9 @@ const claimOrder = (civ, tiles) => JSON.stringify({ type: 'order', civ, order: {
   assert.match(sim.check(claimOrder(w.player, [...wider, water])), /land/, 'a claim over water is refused, with its reason');
   assert.match(sim.check(claimOrder(w.player, [...wider, n + 4])), /not a tile/, 'a claim off the map is refused');
   // A land tile no walk from the capital reaches: a claim that is not connected is refused.
-  const cut = [...Array(n).keys()].find((i) => landOf(i) && !wider.includes(i) && sim.check(claimOrder(w.player, [...wider, i])).includes('connected'));
+  const cut = [...Array(n).keys()].find((i) => landOf(i) && !wider.includes(i) && sim.check(claimOrder(w.player, [...wider, i])).includes('joined'));
   assert.ok(cut !== undefined, 'some land is cut off from the capital');
-  assert.match(sim.check(claimOrder(w.player, [...wider, cut])), /connected to the capital/, 'a claim not connected to the capital is refused');
+  assert.match(sim.check(claimOrder(w.player, [...wider, cut])), /joined to the capital/, 'a claim not connected to the capital is refused');
   sim.act(claimOrder(w.player, wider));
   w = JSON.parse(sim.view());
   assert.deepEqual(w.civs[w.player].claim, [...new Set([...wider, c0.capital])].sort((a, b) => a - b), 'the claim is the order\'s');
@@ -481,7 +482,7 @@ for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.
 
 // A save carries its version, and one without it is refused with a reason that names the version.
 const save = JSON.parse(sim.save());
-assert.equal(save.version, 21, 'a save carries its version');
+assert.equal(save.version, 22, 'a save carries its version');
 assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
 const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');

@@ -30,19 +30,18 @@ const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationF
 // ---- the staged map: radius 3, sea on the rim, the inner ring plains with a forest and a hill ----------------
 
 const R = 3;
-const SPAN = (r) => ({ lo: Math.max(-R, -r - R), hi: Math.min(R, -r + R) });
 const dist = (q, r) => Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
 /** The tile index of (q, r), as `map::index` numbers it: column by column from the left, each from the top. */
-function indexOf(q, r) {
+function indexOf(q, r, R = 3) {
   let i = 0;
   for (let c = -R; c < q; c++) i += 2 * R + 1 - Math.abs(c);
   return i + r - Math.max(-R, -q - R);
 }
 /** A grid's text (as `map::ascii` draws one): `cell(q, r)` gives each tile's character. */
-function gridText(cell) {
+function gridText(cell, R = 3) {
   let text = '';
   for (let r = -R; r <= R; r++) {
-    const { lo, hi } = SPAN(r);
+    const { lo, hi } = { lo: Math.max(-R, -r - R), hi: Math.min(R, -r + R) };
     text += ' '.repeat(2 * lo + r + 2 * R);
     const row = [];
     for (let q = lo; q <= hi; q++) row.push(cell(q, r));
@@ -79,6 +78,18 @@ function specFor(armyAt = 'F', rivalFirst = false) {
     ],
   };
 }
+// The signpost game: radius 8 of plains, the capitals at (-4, 0) and (4, 0), the post at (0, 0): four steps from
+// each, as far from a capital as a signpost must stand. (The radius-3 map has no such tile.)
+const BIG = 8;
+const POSTAT = [0, 0];
+const POST = indexOf(...POSTAT, BIG);
+const specPost = () => ({
+  map: gridText((q, r) => (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) === BIG ? '~' : '.'), BIG),
+  marks: gridText((q, r) => ((q === -4 && r === 0) ? 'A' : (q === 4 && r === 0) ? 'B' : '.'), BIG),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+});
 const T = indexOf(...MARK.T);
 const S = indexOf(...MARK.S);
 const N = indexOf(...MARK.N);
@@ -150,6 +161,8 @@ async function select(kind) {
       return selectKey(`festival:${w.market}`, w.v.markets[w.market].tile);
     case 'tile':
       return selectKey(`tile:${T}`, T);
+    case 'post':
+      return selectKey(`tile:${POST}`, POST);
     case 'camp':
       return selectKey(`unit:${w.camp.id}`, w.v.units[w.camp.id].tile);
     case 'scout':
@@ -277,6 +290,21 @@ const CASES = {
     need(await press('Stop'), `Stop is pressed on the marching ${kind}`);
     const u = (await live()).v.units[kind === 'camp' ? w.camp.id : w.scout.id];
     need(u.dest == null || u.dest === u.tile, `Stop leaves the ${kind} with no march (dest ${u.dest})`);
+  },
+  'Signpost…': async () => {
+    await select('civ');
+    need((await live()).v.signposts.length === 0, 'no signpost stands yet');
+    await armAndClick('Signpost…', POST);
+    const w = await live();
+    need(w.v.signposts.some((p) => p.civ === w.me && p.tile === POST), `Signpost… then a click posts the civ's signpost on ${POST}`);
+  },
+  'Remove signpost': async () => {
+    await select('civ');
+    await armAndClick('Signpost…', POST);
+    need((await live()).v.signposts.length === 1, 'a signpost stands');
+    await select('post');
+    need(await press('Remove signpost'), 'Remove signpost is pressed on the signposted tile');
+    need((await live()).v.signposts.length === 0, 'Remove signpost takes the signpost down');
   },
   'Paint (P)': async () => {
     await select('camp');
@@ -501,6 +529,7 @@ const PANELS = [
   { name: 'camp, marching', sel: 'camp', kind: 'camp', setup: async () => { await page.command(T); await page.eval(frames); } },
   { name: 'camp, deployed', sel: 'camp', kind: 'camp', setup: async () => { await paintTile('Paint (P)', N); } },
   { name: 'civ, keep set', sel: 'civ', kind: 'civ', setup: async () => { await press('Keep +1'); } },
+  { name: 'tile, signposted', sel: 'post', kind: 'tile', spec: specPost, setup: async () => { await select('civ'); await armAndClick('Signpost…', POST); await select('post'); } },
   { name: 'scout', sel: 'scout', kind: 'scout', setup: async () => {} },
   { name: 'scout, moving', sel: 'scout', kind: 'scout', setup: async () => { await armAndClick('Move to…', T); } },
   { name: 'scout, routed', sel: 'scout', kind: 'scout', setup: async () => { await armAndClick('Route to…', T); } },
@@ -510,8 +539,8 @@ const PANELS = [
 const pairs = new Map();
 for (const p of PANELS) {
   try {
-    await stage();
-    await select(p.sel);
+    await stage(p.spec?.());
+    if (!p.spec) await select(p.sel);
     await p.setup();
     await page.eval(frames);
     const names = namesOf(await shape());
@@ -539,7 +568,7 @@ for (const key of pairs.keys()) {
   const label = keyOf(name);
   const c = CASES[label];
   if (!c) continue;
-  await stage(label === 'Pillage' ? specFor('P', true) : specFor());
+  await stage(label === 'Pillage' ? specFor('P', true) : label === 'Signpost…' || label === 'Remove signpost' ? specPost() : specFor());
   try {
     console.log(`case    ${kind}: ${name}`);
     await c(kind);

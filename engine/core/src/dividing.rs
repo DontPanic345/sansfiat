@@ -106,8 +106,10 @@ pub fn divide_land(w: &mut World, id: u32) {
 }
 
 /// A clan with no land to divide, or a starving one, sends a daughter of `min(people, split_at) /
-/// 2` people to a site within `scout_range` that would feed her at least `settle_fed`.
-pub fn split(w: &mut World, id: u32) {
+/// 2` people to a site within `scout_range` that would feed her at least `settle_fed`. A civ's clan
+/// weighs its civ's signposts first (`settle::draw`): she goes to one by chance, over her own best
+/// site. With `posted_only` she goes to a signpost or not at all. Returns whether she went.
+pub fn split(w: &mut World, id: u32, posted_only: bool) -> bool {
     let c = w.clans[&id].clone();
     let people = c.people.min(CLAN.split_at) / 2.0;
     let share = people / c.people;
@@ -118,9 +120,19 @@ pub fn split(w: &mut World, id: u32) {
     d.parent = Some(id);
     d.store = c.store.map(|v| v * share);
     d.fields = c.fields;
-    let scored: Vec<(usize, f64)> =
-        sites(w, &c, CLAN.scout_range).into_iter().map(|s| (s, site_value(w, d.id, s, people, &d.store))).collect();
-    let Some(site) = pick_site(w, &scored, CLAN.settle_fed) else { return };
+    let posted = crate::settle::draw(w, c.civ, d.id, c.home, people, &d.store, SETTLE.fed).map(|(site, _)| site);
+    let site = match posted {
+        Some(site) => site,
+        None if posted_only => return false,
+        None => {
+            let scored: Vec<(usize, f64)> = sites(w, &c, CLAN.scout_range)
+                .into_iter()
+                .map(|s| (s, site_value(w, d.id, s, people, &d.store)))
+                .collect();
+            let Some(site) = pick_site(w, &scored, CLAN.settle_fed) else { return false };
+            site
+        }
+    };
     w.next_id += 1;
     d.home = site;
     d.territory = vec![site];
@@ -130,9 +142,17 @@ pub fn split(w: &mut World, id: u32) {
     m.store = std::array::from_fn(|f| m.store[f] - d.store[f]);
     m.hungry = 0;
     w.emit(Event::new(EventKind::ClanDivided, site).clan(id).other(d.id));
-    let why = if c.starving { "it is starving" } else { "it has no land to divide" };
+    let why = if posted.is_some() {
+        "to its civ's signpost"
+    } else if c.starving {
+        "it is starving"
+    } else {
+        "it has no land to divide"
+    };
     let at = w.at(site);
     w.note(id, format!("sent clan {} to {at} with {people:.0} people: {why}", d.id));
-    w.note(d.id, format!("set out from clan {id} with {people:.0} people"));
+    let to = if posted.is_some() { " for the signpost" } else { "" };
+    w.note(d.id, format!("set out from clan {id}{to} with {people:.0} people"));
     w.clans.insert(d.id, d);
+    true
 }

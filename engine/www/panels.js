@@ -6,7 +6,7 @@
 // {kind: 'tile', tile}. `ctx` is what the page knows: {v (Sim.view), model (model.js), layout, terrain,
 // goods, rules, sim, view (MapView), routing, outcome, painting}.
 
-import { festivalShape, tileShape } from './panels-land.js';
+import { festivalShape, settlementShape, tileShape } from './panels-land.js';
 
 export const f2 = (x) => (Math.round(x * 100) / 100).toString();
 const ZONES = ['', 'valley', 'sealed valley', 'neck'];
@@ -32,6 +32,7 @@ export function keyOf(sel) {
     case 'civ': return `civ:${sel.civ}`;
     case 'clan': return `clan:${sel.id}`;
     case 'festival': return `festival:${sel.id}`;
+    case 'settlement': return `settlement:${sel.id}`;
     default: return `tile:${sel.tile}`;
   }
 }
@@ -45,6 +46,7 @@ export function tileOf(ctx, sel) {
     case 'civ': return v.civs[sel.civ]?.capital ?? -1;
     case 'clan': return v.clans[sel.id]?.home ?? -1;
     case 'festival': return v.markets[sel.id]?.tile ?? -1;
+    case 'settlement': return v.settlements?.find((x) => x.id === sel.id)?.tile ?? -1;
     default: return v.units[sel.id]?.tile ?? -1;
   }
 }
@@ -58,6 +60,7 @@ export function alive(ctx, sel) {
     case 'civ': return sel.civ in v.civs;
     case 'clan': return sel.id in v.clans;
     case 'festival': return sel.id in v.markets;
+    case 'settlement': return !!v.settlements?.some((x) => x.id === sel.id);
     default: return true;
   }
 }
@@ -72,6 +75,7 @@ export function candidates(ctx, i) {
   const out = here.filter((u) => u.civ === v.player).map((u) => ({ kind: 'unit', id: u.id }));
   for (const c of Object.values(v.civs)) if (c.capital === i) out.push({ kind: 'civ', civ: c.id });
   for (const k of Object.values(v.clans)) if (k.home === i) out.push({ kind: 'clan', id: k.id });
+  for (const s of v.settlements ?? []) if (s.tile === i) out.push({ kind: 'settlement', id: s.id });
   const m = marketOn(ctx, i);
   if (m) out.push({ kind: 'festival', id: m.id });
   for (const u of here) if (u.civ !== v.player) out.push({ kind: 'unit', id: u.id });
@@ -85,6 +89,8 @@ export function subjectOf(ctx, item) {
   if (item.unit != null && item.unit in v.units) return { kind: 'unit', id: item.unit };
   if ((item.kind === 'civFounded' || item.kind === 'capitalFell') && item.civ != null && item.civ in v.civs) return { kind: 'civ', civ: item.civ };
   if (item.clan != null && item.clan in v.clans) return { kind: 'clan', id: item.clan };
+  const st = item.tile != null && v.settlements?.find((x) => x.tile === item.tile);
+  if ((item.kind === 'settlementFounded' || item.kind === 'settlementTaken') && st) return { kind: 'settlement', id: st.id };
   if (item.market != null && item.market in v.markets) return { kind: 'festival', id: item.market };
   return { kind: 'tile', tile: item.tile };
 }
@@ -449,11 +455,15 @@ function civShape(ctx, c) {
     buttons.push({ label: 'Keep +1', action: { type: 'setKeep', food: base + 1 } });
     if (c.keep_set != null) buttons.push({ label: 'Keep default', action: { type: 'setKeep', food: null } });
     buttons.push({ label: 'Claim (P)', paint: 'claim' }, { label: 'Unclaim (U)', paint: 'unclaim' });
+    const posts = (v.signposts ?? []).filter((s) => s.civ === c.id).length;
+    const full = posts >= rules.signposts ? `A civ keeps ${rules.signposts} signposts at a time: remove one first` : '';
+    buttons.push({ label: 'Signpost…', arm: 'signpost', why: full });
   }
   const units = Object.values(v.units).filter((u) => u.civ === c.id).sort((a, b) => a.id - b.id);
   const unitRows = units.map((u) => ({ select: { kind: 'unit', id: u.id }, label: unitName(u), text: `(${hex(ctx, u.tile)})` }));
   let hint = null;
   if (painting === 'claim' || painting === 'unclaim') hint = 'Click or drag on the map; Esc stops';
+  else if (ctx.routing.arm === 'signpost') hint = 'Click the map where the signpost stands; Esc cancels';
   return {
     name: c.name,
     swatch: c.color,
@@ -538,6 +548,7 @@ export function describe(ctx, sel) {
     case 'civ': shape = civShape(ctx, v.civs[sel.civ]); break;
     case 'clan': shape = clanShape(ctx, v.clans[sel.id]); break;
     case 'festival': shape = festivalShape(ctx, v.markets[sel.id]); break;
+    case 'settlement': shape = settlementShape(ctx, v.settlements.find((x) => x.id === sel.id)); break;
     default: shape = tileShape(ctx, sel);
   }
   return { ...shape, key };
