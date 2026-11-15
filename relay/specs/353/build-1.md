@@ -50,7 +50,7 @@ civ's button row, one panel shape for everything, a greyed button says why).
    saves one screenshot to `relay/specs/353/screens/settle.png`.
    If a staged `Sim` cannot place a signpost or a clan where you need it, extend `StageSpec`
    (`core/src/stage.rs`) minimally.
-5. `engine/CLAUDE.md`'s layout table names the new files (it must stay under 8 KB), and
+5. `engine/CLAUDE.md`'s layout table names the new files (it must stay under 8 KB and has about 100 bytes of room: shorten a row to fit), and
    `relay/specs/353/progress.md` item 6 is ticked.
 
 ## Done

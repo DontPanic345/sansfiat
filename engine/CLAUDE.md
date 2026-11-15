@@ -37,6 +37,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/claim.rs` | A civ's claim, which is its land: `check`, `held`, `tile_civ`, `change`, and the `claim` step, where a rival army takes a tile. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
+| `core/src/settle.rs`, `judge_settle.rs` | Signposts and settlements: `draw`, `found`, `take`, `roots`; the `settle` group. |
 | `core/src/units/` | `line.rs` (paths, cuts, `ring`), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats; `Ladder`), `muster.rs`, `search.rs` (the route search), `scout.rs`, `ai.rs` (the planner), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game; `Auto`, the planner as a led player. |
@@ -44,7 +45,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
 | `core/src/judge.rs`, `judge_scores.rs` | `Watch`: a game scored from its pick in the score groups, the end group included; `judge_scores.rs` holds the score structs. Reads the world only. |
 | `core/src/judge_ring.rs` | The `supply` group: each civ's ring, the armies and scouts inside it, hungry turns, clan territory. |
-| `core/src/judge_fields.rs` | The `fields` group: field tiles, farming share, farmers, store turns at a pack, and settled farmers' and gatherers' moves and starving. |
+| `core/src/judge_fields.rs` | The `fields` group: field tiles, farmers, store turns at a pack, moves and starving. |
 | `core/src/towns.rs`, `judge_towns.rs` | Towns: `towns` (a festival with `TOWN.homes` homes on its tile) and `check`, which keeps `Market.town` and `TownFormed`; the `towns` group: towns, town clans and their walk, trade and starving, and home moves. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
 | `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields against the no-fields control), `sweep_towns.rs` (towns against the no-towns control), `sweep_led.rs` (led games beside idle), `sweep_total.rs` (its totals), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view), `story.rs` (the scripted stories of war). |

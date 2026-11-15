@@ -170,7 +170,7 @@ fn signposts(w: &mut World, civ: u32, give: Give) {
     for tile in stale {
         let _ = give(w, civ, Decision::Order(Order::Unpost { tile }));
     }
-    if (w.turn + civ) % SETTLE.plan_every != 0 || w.civs[&civ].signposts.len() >= SETTLE.signposts {
+    if !(w.turn + civ).is_multiple_of(SETTLE.plan_every) || w.civs[&civ].signposts.len() >= SETTLE.signposts {
         return;
     }
     if let Some(tile) = signpost_plan(w, civ) {
