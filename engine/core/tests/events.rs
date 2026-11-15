@@ -174,6 +174,7 @@ fn a_market_that_fades_is_an_event() {
             unit: None,
             cost: None,
             amount: None,
+            by: None,
             alert: false,
         }]
     );

@@ -220,6 +220,7 @@ pub fn trade(w: &mut World) {
         c.levied = 0.0;
     }
     w.traded.clear();
+    w.levied.clear();
     let index = by_market(w);
     let mids: Vec<u32> = w.markets.keys().copied().collect();
     for mid in mids {

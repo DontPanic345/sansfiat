@@ -43,9 +43,9 @@ try {
   let p = await page.panel();
   need(p?.name === name, `the civ's panel is named ${name}`);
 
-  // Standing with its parts in the tooltip, and the claim's counts.
+  // Standing with who it counts in the tooltip, and the claim's counts.
   const standing = p.numbers.find((n) => n.label === 'Standing');
-  need(standing && /clans and units/i.test(standing.tip) && /unaligned clans on its land/.test(standing.tip), 'Standing shows its two parts in its tooltip');
+  need(standing && /clans and units/i.test(standing.tip) && /home is on its land/.test(standing.tip), 'Standing says whose people it counts in its tooltip');
   const claimedRow = p.numbers.find((n) => n.label === 'Claimed');
   need(claimedRow && /nobody standing on it/.test(claimedRow.tip) && /rival army/.test(claimedRow.tip), 'the panel shows Claimed, and its tooltip says what a claim is');
 

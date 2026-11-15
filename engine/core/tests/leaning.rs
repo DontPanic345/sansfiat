@@ -3,9 +3,10 @@ mod common;
 use common::*;
 use engine::clans::eat;
 use engine::data::*;
+use engine::events::By;
 use engine::leaning::{gift_leaning, lean};
 use engine::markets::trade;
-use engine::{civs, units, Action, Basket, Config, End, EventKind, Phase, World};
+use engine::{civs, claim, stats, units, Action, Basket, Config, End, EventKind, Order, Phase, World};
 
 /// Three civs founded by hand on the big world, in `Phase::Main`; the first civ's id and market.
 /// No clans, so no camp; the first civ's store holds the endowment (20 of good 1).
@@ -239,10 +240,10 @@ fn a_clan_joins_the_civ_it_leans_to_most_and_a_tie_goes_to_the_lower_id() {
     let (mut w, civ, _) = scene();
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     let strong = LEANING.join / (1.0 - LEANING.fade) * 1.001;
-    let a = put(&mut w, &[at_big(-5, 1)], 6.0);
-    let b = put(&mut w, &[at_big(-4, 1)], 6.0);
-    let c = put(&mut w, &[at_big(-3, 1)], 6.0);
-    let d = put(&mut w, &[at_big(-2, 1)], 6.0);
+    let a = put(&mut w, &[at_big(-5, 3)], 6.0);
+    let b = put(&mut w, &[at_big(-4, 3)], 6.0);
+    let c = put(&mut w, &[at_big(-3, 3)], 6.0);
+    let d = put(&mut w, &[at_big(-2, 3)], 6.0);
     // a: leans to two, the second stronger. b: a tie. c: under join. d: aligned already.
     w.clans.get_mut(&a).unwrap().leaning.extend([(ids[0], strong), (ids[2], strong * 1.5)]);
     w.clans.get_mut(&b).unwrap().leaning.extend([(ids[1], strong), (ids[2], strong)]);
@@ -263,7 +264,8 @@ fn a_clan_joins_the_civ_it_leans_to_most_and_a_tie_goes_to_the_lower_id() {
     let joined: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::ClanJoined).collect();
     assert_eq!(joined.len(), 2);
     assert_eq!((joined[0].clan, joined[0].civ, joined[0].tile), (Some(a), Some(ids[2]), w.clans[&a].home));
-    assert_eq!(joined[0].text(&w), format!("Clan {a} joins {}", w.civs[&ids[2]].name));
+    let name = &w.civs[&ids[2]].name;
+    assert_eq!(joined[0].text(&w), format!("Clan {a} joins {name}: won by trade at {name}'s market"));
     // It stays with its civ, and as a civ clan its leaning to it only fades (`lean`).
     lean(&mut w);
     assert_eq!(w.clans[&a].civ, Some(ids[2]));
@@ -380,28 +382,153 @@ fn a_small_seed_runs_a_hundred_turns_past_the_pick_with_leanings_rising_and_a_fo
 }
 
 #[test]
-fn a_home_on_a_civs_land_leans_to_it_by_the_land_gain_a_turn() {
+fn a_home_on_a_civs_land_makes_the_clan_that_civs_the_same_turn() {
     let (mut w, civ, _) = scene();
     let (on, off) = (at_big(-5, 1), at_big(-4, 2));
     hold_land(&mut w, civ, &[on]);
     let a = put(&mut w, &[on], 6.0);
     let b = put(&mut w, &[off], 6.0);
     lean(&mut w);
-    let pull = |id: u32| w.clans[&id].leaning.get(&civ).copied().unwrap_or(0.0);
-    assert!((pull(a) - pull(b) - LEANING.land).abs() < 1e-9, "on its land: {} against {}", pull(a), pull(b));
+    assert_eq!(w.clans[&a].civ, Some(civ), "on its land: the civ's, with no leaning to wait for");
+    assert_eq!(w.clans[&a].leaning.get(&civ), Some(&LEANING.join));
+    assert_eq!(w.clans[&b].civ, None, "off its land: unaligned, and leaning to nobody");
+    assert!(w.clans[&b].leaning.is_empty());
+    let joined: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::ClanJoined).collect();
+    assert_eq!(joined.len(), 1);
+    assert_eq!((joined[0].clan, joined[0].civ, joined[0].by), (Some(a), Some(civ), Some(By::Land)));
+    let name = w.civs[&civ].name.clone();
+    assert_eq!(joined[0].text(&w), format!("Clan {a} joins {name}: its home is on {name}'s land"));
+    assert_eq!(w.civs[&civ].joined, 1);
 }
 
 #[test]
-fn a_civ_clan_drawn_to_a_rival_for_leave_run_turns_leaves_with_its_daughter_and_its_own_clan_does_not() {
+fn a_claim_order_over_a_clans_home_makes_it_the_civs_at_once_and_it_pays_the_levy() {
+    let (mut w, ids, _) = led();
+    let red = ids[0];
+    let (cap, mid) = (w.civs[&red].capital, w.civs[&red].market);
+    let home = at_big(-3, 0);
+    let k = visitor(&mut w, mid, home, 6.0, [4.0, 0.0, 0.0, 0.0, 0.0]);
+    let before = stats::standing(&w)[&red];
+    w.civs.get_mut(&red).unwrap().store = [0.0; N];
+    civs::levy(&mut w, mid);
+    assert_eq!(w.clans[&k].basket[0], 4.0, "an unaligned clan off the land pays nothing");
+    w.act(led_order(&w, Order::Claim { tiles: vec![cap, at_big(-4, 0), home] })).unwrap();
+    assert_eq!(w.clans[&k].civ, Some(red), "the order alone makes it Red's");
+    assert!(
+        stats::standing(&w)[&red] > before,
+        "and it counts to Red's Standing: {} from {before}, claim {:?}",
+        stats::standing(&w)[&red],
+        w.civs[&red].claim
+    );
+    civs::levy(&mut w, mid);
+    assert!((w.clans[&k].basket[0] - 4.0 * (1.0 - CIV.levy)).abs() < 1e-9, "it pays the levy");
+    assert!(units::givers(&w, red).contains(&k), "and Red can raise from it");
+}
+
+#[test]
+fn a_clan_whose_home_tile_is_taken_changes_civ_with_the_tile() {
     let (mut w, ids, _) = led();
     let (red, blue) = (ids[0], ids[1]);
-    // Red's land at (-4, 0): a Blue clan's home on it leans to Red by the land.
-    hold_land(&mut w, red, &[at_big(-4, 0)]);
-    let k = put(&mut w, &[at_big(-4, 0)], 6.0);
+    hold_land(&mut w, blue, &(-2..=4).map(|q| at_big(q, 0)).collect::<Vec<_>>());
+    w.order(red, Order::Claim { tiles: vec![at_big(-4, 0), at_big(-3, 0)] }).unwrap();
+    let k = put(&mut w, &[at_big(-3, 0)], 6.0);
+    lean(&mut w);
+    assert_eq!(w.clans[&k].civ, Some(red));
+    put_camp(&mut w, blue, at_big(-3, 0));
+    w.events.clear();
+    claim::step(&mut w);
+    assert_eq!(claim::tile_civ(&w, at_big(-3, 0)), Some(blue), "the tile joins Blue's land");
+    assert_eq!(w.clans[&k].civ, Some(blue), "and the clan is Blue's with it");
+    let left: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::ClanLeft).collect();
+    assert_eq!(left.len(), 1);
+    assert_eq!((left[0].civ, left[0].other, left[0].by), (Some(red), Some(blue), Some(By::Land)));
+    let (old, new) = (w.civs[&red].name.clone(), w.civs[&blue].name.clone());
+    assert_eq!(left[0].text(&w), format!("Clan {k} leaves {old} for {new}: its home is on {new}'s land"));
+}
+
+#[test]
+fn a_clan_on_its_civs_land_never_leaves_and_one_whose_tile_is_nobodys_stays_until_it_leans_elsewhere() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    let cap = w.civs[&red].capital;
+    let home = at_big(-4, 0);
+    w.order(red, Order::Claim { tiles: vec![home] }).unwrap();
+    let k = put(&mut w, &[home], 6.0);
+    lean(&mut w);
+    assert_eq!(w.clans[&k].civ, Some(red));
+    // Drawn hard to Blue, on Red's land: it stays.
+    for _ in 0..(LEANING.leave_run * 2) {
+        w.clans.get_mut(&k).unwrap().leaning.insert(blue, 5.0);
+        lean(&mut w);
+    }
+    assert_eq!((w.clans[&k].civ, w.clans[&k].drawn), (Some(red), 0), "its home is on Red's land");
+    // Red drops the tile: the clan is still Red's.
+    w.clans.get_mut(&k).unwrap().leaning.remove(&blue);
+    w.order(red, Order::Claim { tiles: vec![cap] }).unwrap();
+    lean(&mut w);
+    assert_eq!(w.clans[&k].civ, Some(red), "off the land it stays until it leans elsewhere");
+    // Blue's gifts draw it: after `leave_run` turns it leaves, won by gifts.
+    w.events.clear();
+    for _ in 0..LEANING.leave_run {
+        let c = w.clans.get_mut(&k).unwrap();
+        c.leaning.insert(blue, 5.0);
+        c.gifts.insert(blue, 4.0);
+        lean(&mut w);
+    }
+    assert_eq!(w.clans[&k].civ, Some(blue));
+    let left: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::ClanLeft).collect();
+    assert_eq!(left[0].by, Some(By::Gift));
+    let (old, new) = (w.civs[&red].name.clone(), w.civs[&blue].name.clone());
+    assert_eq!(left[0].text(&w), format!("Clan {k} leaves {old} for {new}: won by {new}'s gifts"));
+}
+
+#[test]
+fn a_clan_on_nobodys_land_joins_by_its_leaning_and_the_feed_says_gift_or_trade() {
+    let (mut w, civ, _) = scene();
+    let name = w.civs[&civ].name.clone();
+    let strong = LEANING.join / (1.0 - LEANING.fade) * 1.001;
+    let a = put(&mut w, &[at_big(-4, 2)], 6.0);
+    let b = put(&mut w, &[at_big(-3, 3)], 6.0);
+    w.clans.get_mut(&a).unwrap().leaning.insert(civ, strong);
+    w.clans.get_mut(&a).unwrap().gifts.insert(civ, strong * 0.8);
+    w.clans.get_mut(&b).unwrap().leaning.insert(civ, strong);
+    w.clans.get_mut(&b).unwrap().gifts.insert(civ, strong * 0.2);
+    lean(&mut w);
+    let joined: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::ClanJoined).collect();
+    assert_eq!(
+        joined.iter().map(|e| (e.clan, e.by)).collect::<Vec<_>>(),
+        vec![(Some(a), Some(By::Gift)), (Some(b), Some(By::Trade))]
+    );
+    assert_eq!(joined[0].text(&w), format!("Clan {a} joins {name}: won by {name}'s gifts"));
+    assert_eq!(joined[1].text(&w), format!("Clan {b} joins {name}: won by trade at {name}'s market"));
+    assert!(w.clans[&a].gifts.is_empty(), "a joined clan's gift parts are cleared");
+}
+
+#[test]
+fn a_gift_adds_to_the_gift_part_of_a_leaning_and_trade_does_not() {
+    let (mut w, civ, mid) = scene();
+    let a = visitor(&mut w, mid, at_big(-4, 2), 6.0, [0.0, 2.0, 0.0, 0.0, 0.0]);
+    trade(&mut w);
+    let c = &w.clans[&a];
+    let (lean_to, gift) = (c.leaning.get(&civ).copied().unwrap_or(0.0), c.gifts.get(&civ).copied().unwrap_or(0.0));
+    assert!(gift > 0.0 && gift <= lean_to + 1e-12, "gift part {gift} of leaning {lean_to}");
+    lean(&mut w);
+    let c = &w.clans[&a];
+    if c.civ.is_none() {
+        assert!((c.gifts[&civ] - gift * (1.0 - LEANING.fade)).abs() < 1e-12, "the gift part fades with the leaning");
+    }
+}
+
+#[test]
+fn a_civ_clan_off_its_land_drawn_to_a_rival_for_leave_run_turns_leaves_with_its_daughter_and_its_own_clan_does_not() {
+    let (mut w, ids, _) = led();
+    let (red, blue) = (ids[0], ids[1]);
+    // A Blue clan on nobody's land, drawn to Red.
+    let k = put(&mut w, &[at_big(-2, 3)], 6.0);
     w.clans.get_mut(&k).unwrap().civ = Some(blue);
     w.clans.get_mut(&k).unwrap().leaning = [(red, 1.0)].into_iter().collect();
     // Its daughter, far off, leaves with it.
-    let d = put(&mut w, &[at_big(-8, 0)], 2.0);
+    let d = put(&mut w, &[at_big(-8, 3)], 2.0);
     {
         let c = w.clans.get_mut(&d).unwrap();
         c.civ = Some(blue);
@@ -412,6 +539,7 @@ fn a_civ_clan_drawn_to_a_rival_for_leave_run_turns_leaves_with_its_daughter_and_
     w.clans.get_mut(&own).unwrap().leaning = [(red, 1.0)].into_iter().collect();
     w.events.clear();
     for turn in 1..=LEANING.leave_run {
+        w.clans.get_mut(&k).unwrap().leaning.insert(red, 1.0);
         lean(&mut w);
         if turn < LEANING.leave_run {
             assert_eq!(w.clans[&k].civ, Some(blue), "not before {} turns in a row", LEANING.leave_run);
@@ -422,8 +550,7 @@ fn a_civ_clan_drawn_to_a_rival_for_leave_run_turns_leaves_with_its_daughter_and_
     assert_eq!(w.clans[&own].civ, Some(blue), "a civ's own clan never leaves");
     let left: Vec<_> = w.events.iter().filter(|e| e.kind == EventKind::ClanLeft).collect();
     assert_eq!(left.len(), 2, "one event for each clan that left");
-    assert!(left.iter().all(|e| e.civ == Some(blue) && e.other == Some(red)));
-    assert_eq!(left[0].text(&w), format!("Clan {k} leaves {} for {}", w.civs[&blue].name, w.civs[&red].name));
+    assert!(left.iter().all(|e| e.civ == Some(blue) && e.other == Some(red) && e.by == Some(By::Trade)));
     assert_eq!(w.civs[&red].joined, 2, "both joined Red");
 }
 

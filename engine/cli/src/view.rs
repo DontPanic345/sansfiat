@@ -45,6 +45,16 @@ fn ranked(w: &World) -> Vec<(u32, f64)> {
     rows
 }
 
+/// What a civ's clan paid in levy last turn, or why it paid nothing.
+fn levy_text(w: &World, k: &Clan) -> String {
+    let capital = k.civ.and_then(|c| w.civs.get(&c)).map(|c| c.market);
+    match w.levied.get(&k.id) {
+        Some(paid) => format!("paid {paid:.2} food in levy"),
+        None if k.market.is_some() && k.market == capital => "paid no levy".to_string(),
+        None => "pays no levy: it doesn't trade at the capital's market".to_string(),
+    }
+}
+
 /// Whether event `e` is about civ `me`: its civ, one of its units, or one of its clans.
 fn about(w: &World, me: u32, e: &Event) -> bool {
     e.civ == Some(me)
@@ -117,27 +127,34 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     let mut clans: Vec<&Clan> = w.clans.values().filter(|k| k.civ == Some(me)).collect();
     clans.sort_by(|a, b| b.people.total_cmp(&a.people).then(a.id.cmp(&b.id)));
     let people: f64 = clans.iter().map(|k| k.people).sum();
-    out += &format!("clans: {} with {people:.1} people; the largest:\n", clans.len());
+    let on_land = clans.iter().filter(|k| claim::tile_civ(w, k.home) == Some(me)).count();
+    let levy = clans.iter().filter_map(|k| w.levied.get(&k.id)).fold(0.0, |a, p| a + p);
+    out += &format!(
+        "clans: {} with {people:.1} people, {on_land} with their home on your land (a home on your land makes a clan yours); they paid {levy:.1} food in levy last turn; the largest:\n",
+        clans.len()
+    );
     for k in clans.iter().take(CLANS_NAMED) {
+        let home = if claim::tile_civ(w, k.home) == Some(me) { "on your land" } else { "off your land" };
         out += &format!(
-            "  clan {} at {}: {:.1} people, fed {:.2}{}\n",
+            "  clan {} at {}: {:.1} people, fed {:.2}{}, {home}, {}\n",
             k.id,
             tile(w, k.home),
             k.people,
             k.fed_ratio,
-            fields_text(w, k)
+            fields_text(w, k),
+            levy_text(w, k)
         );
     }
 
     out += &town_lines(w, me);
-    out += &format!("unaligned clans in reach of your market, leaning to each civ (join at {:.1}; a gift reaches only those that trade there):\n", LEANING.join);
+    out += &format!("unaligned clans in reach of your market, leaning to each civ (join at {:.1}, or at once when your claim covers their home; a gift reaches only those that trade there):\n", LEANING.join);
     let reach = w.markets.get(&c.market).map(|m| markets::in_reach(w, m.tile).0).unwrap_or_default();
     let mut loose: Vec<(f64, u32)> = reach
         .iter()
         .filter_map(|id| {
             let k = &w.clans[id];
-            let best = k.leaning.values().copied().fold(f64::NEG_INFINITY, f64::max);
-            (k.civ.is_none() && !k.leaning.is_empty()).then_some((best, *id))
+            let best = k.leaning.values().copied().fold(0.0, f64::max);
+            k.civ.is_none().then_some((best, *id))
         })
         .collect();
     loose.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
@@ -194,8 +211,8 @@ fn town_lines(w: &World, me: u32) -> String {
     out
 }
 
-/// The led civ's land: its claim's size and tiles, what holds it, its posture, and the unaligned
-/// clans whose homes are on it.
+/// The led civ's land: its claim's size and tiles, what holds it, its posture, and what it does to
+/// the clans whose homes are on it.
 fn claim_lines(w: &World, me: u32) -> String {
     let c = &w.civs[&me];
     let posture = [(c.pressed, "pressed"), (c.besieged, "besieged")]
@@ -213,10 +230,6 @@ fn claim_lines(w: &World, me: u32) -> String {
     if let Some(n) = w.notes.get(&me).and_then(|l| l.iter().rev().find(|n| n.text.starts_with("the claim "))) {
         out += &format!("  last claim order, turn {}: {}\n", n.turn, n.text);
     }
-    let on_land: Vec<&Clan> =
-        w.clans.values().filter(|k| k.civ.is_none() && claim::tile_civ(w, k.home) == Some(me)).collect();
-    let people = on_land.iter().fold(0.0, |p, k| p + k.people);
-    out += &format!("unaligned clans on your land: {} with {people:.1} people\n", on_land.len());
     out
 }
 

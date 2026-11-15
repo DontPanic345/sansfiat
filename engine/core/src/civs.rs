@@ -472,12 +472,8 @@ pub fn levy(w: &mut World, mid: u32) {
     if w.civs[&civ].besieged {
         return;
     }
-    let ids: Vec<u32> = w
-        .clans
-        .values()
-        .filter(|c| c.market == Some(mid) && c.civ == Some(civ))
-        .map(|c| c.id)
-        .collect();
+    let ids: Vec<u32> =
+        w.clans.values().filter(|c| c.market == Some(mid) && c.civ == Some(civ)).map(|c| c.id).collect();
     let mut room = (CIV.store_cap - w.civs[&civ].store.iter().sum::<f64>()).max(0.0);
     let mut paid_by = Vec::new();
     for id in ids {
@@ -496,6 +492,7 @@ pub fn levy(w: &mut World, mid: u32) {
             civ_state.store[f] += p;
             civ_state.levied += p;
         }
+        w.levied.insert(id, paid.iter().sum());
         paid_by.push((id, share < CIV.levy));
     }
     if !paid_by.is_empty() {

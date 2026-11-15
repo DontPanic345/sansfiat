@@ -41,6 +41,9 @@ pub struct World {
     /// derived, not saved, and a clan at no market that cleared has none.
     #[serde(skip)]
     pub traded: BTreeMap<u32, f64>,
+    /// The food each clan paid in levy this turn, as `civs::levy` writes it (the views read it, no rule).
+    #[serde(skip)]
+    pub levied: BTreeMap<u32, f64>,
     pub markets: BTreeMap<u32, Market>,
     /// People moved between clans at festivals, over the whole run.
     pub moved: f64,
@@ -169,7 +172,7 @@ pub const TURN: &[Step] = &[
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
 /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
 /// into a different world.
-pub const SAVE_VERSION: u32 = 20;
+pub const SAVE_VERSION: u32 = 21;
 
 /// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -192,6 +195,7 @@ impl World {
             clans: BTreeMap::new(),
             sowers: Vec::new(),
             traded: BTreeMap::new(),
+            levied: BTreeMap::new(),
             markets: BTreeMap::new(),
             moved: 0.0,
             people_seen: Vec::new(),

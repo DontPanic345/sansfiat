@@ -108,7 +108,8 @@ impl Sim {
     /// (the people of all its units: camps and scouts))}}`. Each
     /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ), `routes`
     /// (its festival route: `[{to, path, cost}]`, the path from home, so its walk is home then the path),
-    /// `fields` (its share of its days on fields) and `plots` (`[[tile, days, grain]]`, its field tiles
+    /// `levied` (the food it paid in levy this turn, null when it paid none), `land` (the civ whose land
+    /// its home is on, or null), `fields` (its share of its days on fields) and `plots` (`[[tile, days, grain]]`, its field tiles
     /// this turn, from `fields::plots`).
     /// `markets` is `{id: market}`, each market with `clans` (the clans whose festival it is).
     /// `rules()` gives `join`, the leaning a clan joins a civ at, for the tints. `units` is the camps,
@@ -267,6 +268,8 @@ impl Sim {
                 let mut row = serde_json::to_value(k).unwrap();
                 row["fields"] = k.fields.into();
                 row["plots"] = serde_json::to_value(fields::plots(w, k)).unwrap();
+                row["levied"] = w.levied.get(&k.id).copied().into();
+                row["land"] = engine::claim::tile_civ(w, k.home).into();
                 (k.id, row)
             })
             .collect();
@@ -465,8 +468,8 @@ pub fn goods() -> String {
 }
 
 /// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
-/// hungry_turns, store_cap, join, gift_max, notes_shown, save_version, fighters, fight}`. `join` is the
-/// leaning at which a clan joins a civ; `gift_max` is the most a civ can give a turn (its store cap);
+/// hungry_turns, store_cap, join, levy, gift_max, notes_shown, save_version, fighters, fight}`. `join` is the
+/// leaning at which a clan joins a civ and `levy` the share of what it brings to market a civ's clan pays; `gift_max` is the most a civ can give a turn (its store cap);
 /// `notes_shown` is how many reasons the panel shows. `fighters` is `[{name, attack, defence}]` in
 /// `Fighter` order (strength per person attacking and defending); `fight` is `{entrench, entrench_cap,
 /// hungry, surrender}`: a defender's strength gained per turn still and its cap, the factor on an army
@@ -482,6 +485,7 @@ pub fn rules() -> String {
         "hungry_turns": UNIT.hungry_turns,
         "store_cap": CIV.store_cap,
         "join": LEANING.join,
+        "levy": CIV.levy,
         "gift_max": CIV.store_cap,
         "notes_shown": NOTES.shown,
         "save_version": engine::world::SAVE_VERSION,
