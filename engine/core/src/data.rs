@@ -621,8 +621,6 @@ pub struct LeaningRules {
     pub gift_default: f64,
     /// A leaning under this is dropped.
     pub floor: f64,
-    /// Leaning a clan gains each turn towards the civ whose held land its home is on.
-    pub land: f64,
     /// Turns in a row a civ clan must be drawn to a rival before it leaves for it.
     pub leave_run: u32,
     /// The leaning to a rival a civ clan must reach to be drawn to it at all; below it, it never leaves.
@@ -638,9 +636,6 @@ pub const LEANING: LeaningRules = LeaningRules {
     join: 1.0,
     gift_default: 2.0,
     floor: 0.001,
-    // A clan whose home is on a civ's land gains `land` a turn, against a fade of 0.03: it settles at
-    // 3.3, past the join line, so such a clan joins in about 11 turns (canvas.md).
-    land: 0.1,
     // Leaving after 3 turns drawn at 0.05: 5 turns at 0.1 left 2 to 4 clans over the seven retro maps with the
     // planner playing, 3 at 0.05 leaves 8 (relay/specs/157/canvas.md); 10/0.3 left none.
     leave_run: 3,

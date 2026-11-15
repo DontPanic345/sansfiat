@@ -150,6 +150,7 @@ pub fn step(w: &mut World) {
         }
         take(w, owner, unit, by, tile);
     }
+    crate::leaning::land(w, false);
 }
 
 /// Takes `tile` out of `owner`'s claim, with the claim's tiles cut off from its capital. The tile

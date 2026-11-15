@@ -358,6 +358,15 @@ function scoutShape(ctx, u) {
   };
 }
 
+/** Why clan `k` is `civ`'s, or of no civ: where its home is. */
+function whose(ctx, k, civ) {
+  const land = k.land != null ? ctx.v.civs[k.land] : null;
+  if (!civ) return 'Its home is on nobody’s land: it joins the civ it leans to most, or the civ whose claim covers its home';
+  if (land && land.id === civ.id) return `Its home is on ${civ.name}’s land, so it is ${civ.name}’s`;
+  if (civ.clan === k.id) return `${civ.name}’s own clan`;
+  return `Its home is off ${civ.name}’s land: it stays ${civ.name}’s until it leans to a rival, or a rival’s claim covers its home`;
+}
+
 /** The unaligned clans leaning towards civ `id`, strongest first, up to ten: rows that select their clan. */
 function leaningRows(ctx, id) {
   const { v, rules } = ctx;
@@ -398,7 +407,7 @@ function civShape(ctx, c) {
   const doing = `${mine ? `You lead ${c.name}: ` : ''}Standing ${pct(s.total)}, ${ORD(s.rank)} of ${civs}${posture}`;
   const stored = goods.map((g, f) => (c.store[f] > 0.005 ? `${g} ${f2(c.store[f])}` : null)).filter(Boolean);
   const numbers = [
-    { label: 'Standing', value: pct(s.total), tip: `Clans and units ${pct(s.clans)}, unaligned clans on its land ${pct(s.land)}` },
+    { label: 'Standing', value: pct(s.total), tip: 'The people of its clans and units, as a share of everyone. A clan whose home is on its land is its clan' },
     { label: 'People', value: f2(c.people), tip: 'The people in its clans' },
     {
       label: 'Living',
@@ -476,6 +485,7 @@ function clanShape(ctx, k) {
     .sort(([, a], [, b]) => b - a)
     .map(([civ, x]) => `${civName(ctx, +civ)} ${Math.round((100 * x) / rules.join)}%`);
   const numbers = [
+    { label: 'Civ', value: civ ? civ.name : 'None', tip: whose(ctx, k, civ) },
     { label: 'People', value: f2(k.people), tip: 'The people in the clan' },
     { label: 'Fed', value: `${Math.round(100 * k.fed_ratio)}%`, tip: 'The share of its food need the clan met last turn' },
     { label: 'Territory', value: `${k.territory.length} tiles`, tip: 'Tiles of the clan’s territory' },
@@ -488,6 +498,17 @@ function clanShape(ctx, k) {
       label: 'Fields',
       value: `${plural(k.plots.length, 'tile')} · ${f1(days)} days · ${f1(grain)} grain`,
       tip: `Days a turn on fields, and the grain they yielded${each.length ? `: ${each.join('; ')}` : ''}`,
+    });
+  }
+  if (civ) {
+    const share = `${Math.round(100 * rules.levy)}%`;
+    const atCapital = k.market != null && k.market === civ.market;
+    numbers.push({
+      label: 'Levy',
+      value: k.levied != null ? `${f2(k.levied)} food a turn` : 'none',
+      tip: atCapital
+        ? `It pays ${civ.name} ${share} of what it brings to the capital’s festival, less when ${civ.name}’s store is full`
+        : `It pays ${civ.name} no levy: it doesn’t walk to the capital’s festival`,
     });
   }
   if (k.market != null) numbers.push({ label: 'Route', value: `${f2(cost)} days a turn`, tip: `Days a turn to walk to festival ${k.market}` });

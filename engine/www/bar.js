@@ -149,7 +149,7 @@ function chips(v, model, selectedCiv) {
     .map((c) => {
       const s = model.standing.get(c.id);
       const mine = c.id === v.player;
-      const tip = `Standing ${pct(s.total)}: ${c.name}'s clans and units ${pct(s.clans)}, unaligned clans on its land ${pct(s.land)}; ${ORD(s.rank)} of ${civs.length}`;
+      const tip = `Standing ${pct(s.total)}: the people of ${c.name}'s clans and units, as a share of everyone; ${ORD(s.rank)} of ${civs.length}`;
       return `<button type="button" class="chip${mine ? ' mine' : ''}" data-civ="${c.id}" aria-pressed="${selectedCiv === c.id}" title="${esc(tip)}"><i class="sw" style="background:${esc(c.color)}"></i><b>${esc(c.name)}</b> <span>${pct(s.total)}</span>${mine ? '<em>you</em>' : ''}${model.leader === c.id ? '<i class="lead" title="Leads the Standing">▲</i>' : ''}</button>`;
     })
     .join('');

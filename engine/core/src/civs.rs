@@ -351,6 +351,7 @@ pub fn found(w: &mut World) {
         let claim = if claim::may_claim(w, id) { claim::first(w, id) } else { vec![w.civs[&id].capital] };
         w.civs.get_mut(&id).unwrap().claim = claim;
     }
+    crate::leaning::land(w, true);
     for id in ids {
         units::raise_scout_at_founding(w, id);
     }
@@ -457,7 +458,7 @@ pub fn keep(w: &World, civ: u32) -> f64 {
     }
 }
 
-/// The levy at market `mid`: each clan there that is the civ's, or whose home is on the civ's land, pays
+/// The levy at market `mid`: each clan there that is the civ's pays
 /// `CIV.levy` of what it brought (its basket) into the civ's store, in id order until the store is
 /// at `CIV.store_cap`; its harvest drops by the same share, so that growth, which `eat` reckons on
 /// the harvest, sees less. (A share of only the harvest beyond need brings next to nothing: clans
@@ -471,12 +472,8 @@ pub fn levy(w: &mut World, mid: u32) {
     if w.civs[&civ].besieged {
         return;
     }
-    let ids: Vec<u32> = w
-        .clans
-        .values()
-        .filter(|c| c.market == Some(mid) && (c.civ == Some(civ) || tile_civ(w, c.home) == Some(civ)))
-        .map(|c| c.id)
-        .collect();
+    let ids: Vec<u32> =
+        w.clans.values().filter(|c| c.market == Some(mid) && c.civ == Some(civ)).map(|c| c.id).collect();
     let mut room = (CIV.store_cap - w.civs[&civ].store.iter().sum::<f64>()).max(0.0);
     let mut paid_by = Vec::new();
     for id in ids {
@@ -495,6 +492,7 @@ pub fn levy(w: &mut World, mid: u32) {
             civ_state.store[f] += p;
             civ_state.levied += p;
         }
+        w.levied.insert(id, paid.iter().sum());
         paid_by.push((id, share < CIV.levy));
     }
     if !paid_by.is_empty() {

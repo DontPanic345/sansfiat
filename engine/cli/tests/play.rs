@@ -194,7 +194,7 @@ fn the_view_at_the_pick_lists_the_claim_and_its_new_legal_orders() {
     let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
     assert!(made.lines().any(|l| l.starts_with("land: ") && l.contains(" tiles, your claim:")), "{made}");
     assert!(made.contains("nobody stands on it:"), "{made}");
-    assert!(made.contains("unaligned clans on your land:"), "{made}");
+    assert!(made.lines().any(|l| l.starts_with("clans: ") && l.contains("with their home on your land")), "{made}");
     assert!(made.contains(r#"  {"type":"claim","tiles":"#), "{made}");
     assert!(made.lines().count() < 80, "{} lines", made.lines().count());
     let map = sansfiat(&["play", "--game", &game], "map\n");

@@ -100,7 +100,7 @@ fn a_clan_joins_the_cheaper_market_and_a_tie_goes_to_the_lower_civ() {
     found(&mut w, &ms);
     let [r, b, g] = [0, 1, 2].map(|k| w.civs.keys().nth(k).copied());
     assert_eq!([civ_of(&w, red), civ_of(&w, blue), civ_of(&w, gold)], [r, b, g]);
-    assert_eq!(civ_of(&w, tie), r, "ties to the lower civ");
+    assert_eq!(civ_of(&w, tie), b, "a tie goes to the lower civ, but its home is on Blue's first claim: Blue's");
     assert_eq!(civ_of(&w, far), None);
 }
 
@@ -118,7 +118,8 @@ fn a_civ_with_no_clan_takes_the_nearest_unaligned_one() {
     let ids: Vec<u32> = w.civs.keys().copied().collect();
     assert_eq!([civ_of(&w, red), civ_of(&w, blue)], [Some(ids[0]), Some(ids[1])]);
     assert_eq!(civ_of(&w, near), Some(ids[2]), "ties to the lower clan id");
-    assert_eq!([civ_of(&w, also), civ_of(&w, far)], [None, None]);
+    assert_eq!(civ_of(&w, also), Some(ids[1]), "its home is on Blue's first claim");
+    assert_eq!(civ_of(&w, far), None);
 }
 
 #[test]

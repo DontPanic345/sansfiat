@@ -99,7 +99,7 @@ fn the_gift_follows_who_comes_to_the_festival() {
     planned(&mut w, red);
     assert_eq!(w.civs[&red].gift, 0.0);
     // An unaligned clan comes: the default.
-    let k = put(&mut w, &[at_big(-3, 0)], 6.0);
+    let k = put(&mut w, &[at_big(-1, 3)], 6.0);
     w.clans.get_mut(&k).unwrap().market = Some(w.civs[&red].market);
     let seen = planned(&mut w, red);
     assert!(seen.contains(&Decision::Gift(LEANING.gift_default)), "{seen:?}");

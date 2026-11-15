@@ -287,6 +287,8 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
             land_changed: maps.iter().map(|m| m.scores.motion.land_changed).sum(),
             clans_left: maps.iter().map(|m| m.scores.motion.clans_left).sum(),
             clans_joined: maps.iter().map(|m| m.scores.motion.clans_joined).sum(),
+            land_joins: maps.iter().map(|m| m.scores.motion.land_joins).sum(),
+            land_wait: maps.iter().map(|m| m.scores.motion.land_wait).sum(),
             claim_taken: maps.iter().map(|m| m.scores.motion.claim_taken).sum(),
         },
         land: total_land(maps),

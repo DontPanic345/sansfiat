@@ -59,16 +59,6 @@ const SPEC = {
   ],
 };
 
-// ---- colours: a clan's hue (`map/geom.js`'s hsl) as RGB, to find its pixels --------------------------------------
-const hslToRgb = (h, s, l) => {
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - c / 2;
-  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
-  return [r + m, g + m, b + m].map((v) => Math.round(v * 255));
-};
-const rgbOf = (id) => hslToRgb((id * 137.508) % 360, 0.7, 0.55);
-
 const page = await open('');
 try {
   await page.eval(`game.stage(${JSON.stringify(SPEC)})`);
@@ -123,8 +113,9 @@ try {
   };
   const px = await around(tile, 24);
   for (const id of town.clans) {
-    const n = count(px, rgbOf(id));
-    need(n >= 8, `clan ${id} is drawn on the tile (${n} pixels in its colour)`);
+    const hex = await page.eval(`(async () => { const v = game.view(); const civ = v.clans[${id}].civ; return civ != null ? v.civs[civ].color : (await import('./map/layers/clans.js')).UNALIGNED; })()`);
+    const n = count(px, [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16)));
+    need(n >= 8, `clan ${id} is drawn on the tile (${n} pixels in its civ's colour)`);
   }
 
   // The town mark: on with the layer, gone with it off.
