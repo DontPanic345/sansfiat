@@ -26,9 +26,9 @@
 
 Small 2 as civ 1, through `sansfiat play`: a claim order that adds (5, 6) and (5, 7), the home of
 unaligned clan 138, and one turn. The feed reads "Clan 138 joins Red: its home is on Red's land"
-and `why 138` gives the same reason. The crew's play step plays the hundred turns.
+and `why 138` gives the same reason. The hundred turns were not played.
 
-## For the review and the owner
+## For the owner
 
 - **Doubt fell.** Lead changes go from 13 to 6 over the seven maps and swings from 16 to 9
   (`scores.md`). Joining at once makes Standing follow the claim, and the planner's claims grow at
@@ -40,6 +40,6 @@ and `why 138` gives the same reason. The crew's play step plays the hundred turn
   capital's market is nearer. A led civ starts with about twice the clans it had on main.
 - The page's clan colours and panel rows are checked as data, not by eye.
 
-## Handed on
+## Verdict
 
-`steps.json`: the review. The crew adds the play step.
+Merge, by the owner, with no play step and no review.
