@@ -84,6 +84,7 @@ pub fn divide_land(w: &mut World, id: u32) {
     d.fed_ratio = c.fed_ratio;
     d.civ = c.civ;
     d.leaning = c.leaning.clone();
+    d.gifts = c.gifts.clone();
     d.parent = Some(id);
     d.fields = c.fields;
     let took = hers.len();
@@ -113,6 +114,7 @@ pub fn split(w: &mut World, id: u32) {
     let mut d = new_clan(w.next_id, c.home, people);
     d.civ = c.civ;
     d.leaning = c.leaning.clone();
+    d.gifts = c.gifts.clone();
     d.parent = Some(id);
     d.store = c.store.map(|v| v * share);
     d.fields = c.fields;

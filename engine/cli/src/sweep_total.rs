@@ -116,6 +116,8 @@ pub(crate) struct TotalMotion {
     pub(crate) land_changed: u32,
     pub(crate) clans_left: u32,
     pub(crate) clans_joined: u32,
+    pub(crate) land_joins: u32,
+    pub(crate) land_wait: u32,
     pub(crate) claim_taken: u32,
 }
 

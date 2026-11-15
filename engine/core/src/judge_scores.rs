@@ -203,6 +203,10 @@ pub struct MotionScores {
     pub clans_left: u32,
     /// Unaligned clans that joined a civ (`ClanJoined`).
     pub clans_joined: u32,
+    /// Clans that came to a civ while their home was on its land.
+    pub land_joins: u32,
+    /// The turns those clans' homes had been on that land before they came, summed.
+    pub land_wait: u32,
     /// Tiles of claims a rival's unit took (`ClaimTaken`).
     pub claim_taken: u32,
 }

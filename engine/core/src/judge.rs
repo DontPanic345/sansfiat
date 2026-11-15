@@ -136,6 +136,11 @@ pub struct Watch {
     event_mark: usize,
     clans_left: u32,
     clans_joined: u32,
+    /// Each clan whose home is on the land of a civ it isn't of: that civ, and the turn it came to be so.
+    on_land: BTreeMap<u32, (u32, u32)>,
+    /// Clans that came to a civ with their home on its land, and the turns they had waited there.
+    land_joins: u32,
+    land_wait: u32,
     /// Tiles of claims lost to a rival's unit (`ClaimTaken`).
     claim_taken: u32,
     /// Capitals taken after the pick (`CapitalFell`).
@@ -177,6 +182,9 @@ impl Watch {
             event_mark: w.events.len(),
             clans_left: 0,
             clans_joined: 0,
+            on_land: BTreeMap::new(),
+            land_joins: 0,
+            land_wait: 0,
             claim_taken: 0,
             capitals_fallen: 0,
             parts_200: None,
@@ -214,6 +222,18 @@ impl Watch {
                 }
             }
         }
+        let mut on_land = BTreeMap::new();
+        for (&id, k) in &w.clans {
+            let Some(civ) = tile_civ(w, k.home) else { continue };
+            let since = self.on_land.get(&id).filter(|&&(c, _)| c == civ).map(|&(_, t)| t);
+            if k.civ != Some(civ) {
+                on_land.insert(id, (civ, since.unwrap_or(w.turn)));
+            } else if self.clan_civ.get(&id).is_some_and(|&was| was != Some(civ)) {
+                self.land_joins += 1;
+                self.land_wait += since.map_or(0, |t| w.turn - t);
+            }
+        }
+        self.on_land = on_land;
         self.clan_civ = clan_civs(w);
 
         let land = land_civs(w);
@@ -389,6 +409,8 @@ impl Watch {
                 land_changed: self.land_changed,
                 clans_left: self.clans_left,
                 clans_joined: self.clans_joined,
+                land_joins: self.land_joins,
+                land_wait: self.land_wait,
                 claim_taken: self.claim_taken,
             },
             land: LandScores {

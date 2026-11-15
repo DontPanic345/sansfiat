@@ -187,6 +187,7 @@ fn apply(w: &mut World, civ: u32, order: Order) {
             let text = claim::change(w, &was, &claim);
             claim::set(w, civ, claim);
             w.note(civ, text);
+            crate::leaning::land(w, false);
         }
         Order::Move { unit, to } => {
             order_move(w, unit, to);

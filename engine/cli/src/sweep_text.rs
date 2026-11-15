@@ -112,12 +112,14 @@ pub(crate) fn print_text(r: &Report) {
         t.decisions.levers_repeated
     );
     println!(
-        "total motion: clans changed {}, people {:.1}, land tiles {}; clans left {}, joined {}; claimed tiles taken {}",
+        "total motion: clans changed {}, people {:.1}, land tiles {}; clans left {}, joined {}, {} on a civ's land after {:.1} turns there; claimed tiles taken {}",
         t.motion.clans_changed,
         t.motion.people_changed,
         t.motion.land_changed,
         t.motion.clans_left,
         t.motion.clans_joined,
+        t.motion.land_joins,
+        f64::from(t.motion.land_wait) / f64::from(t.motion.land_joins.max(1)),
         t.motion.claim_taken
     );
     let l = &t.land;

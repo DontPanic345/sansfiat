@@ -53,6 +53,29 @@ pub enum EventKind {
     GameOver,
 }
 
+/// What brought a clan to a civ (`ClanJoined`, `ClanLeft`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum By {
+    /// Its home is on the civ's land.
+    Land,
+    /// Most of its leaning came from the civ's gifts.
+    Gift,
+    /// Most of its leaning came from trade at the civ's market.
+    Trade,
+}
+
+impl By {
+    /// The reason as the feed and a clan's notes word it, for the civ named `civ`.
+    pub fn words(self, civ: &str) -> String {
+        match self {
+            By::Land => format!("its home is on {civ}'s land"),
+            By::Gift => format!("won by {civ}'s gifts"),
+            By::Trade => format!("won by trade at {civ}'s market"),
+        }
+    }
+}
+
 /// Something that happened in a turn. `tile` is where; `other` is the daughter of a division, a
 /// zone's size (`Deployed`, `Held`), the civ whose army cut a line (`LineCut`), the civ a clan left
 /// for (`ClanLeft`, whose `civ` is the one it left) or the civ whose unit took a tile (`ClaimTaken`,
@@ -78,6 +101,9 @@ pub struct Event {
     /// A number of people, for `PeopleLeft`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub amount: Option<f64>,
+    /// What brought the clan, for `ClanJoined` and `ClanLeft`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub by: Option<By>,
     #[serde(default)]
     pub alert: bool,
 }
@@ -136,7 +162,10 @@ impl Event {
             EventKind::ScoutHungry => format!("{}'s scout at {at} goes hungry", self.civ_name(w)),
             EventKind::ScoutRaised => format!("{} raises a scout at {at}", self.civ_name(w)),
             EventKind::ScoutStarved => format!("{}'s scout at {at} loses a person to hunger", self.civ_name(w)),
-            EventKind::ClanJoined => format!("Clan {clan} joins {}", self.civ_name(w)),
+            EventKind::ClanJoined => {
+                let civ = self.civ_name(w);
+                format!("Clan {clan} joins {civ}{}", self.by.map_or(String::new(), |b| format!(": {}", b.words(civ))))
+            }
             EventKind::PeopleLeft => {
                 format!("{:.1} people leave {}'s clans for others", self.amount.unwrap_or(0.0), self.civ_name(w))
             }
@@ -150,11 +179,11 @@ impl Event {
                 let by = self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str());
                 format!("{}'s army's line is cut by {by}'s army", self.civ_name(w))
             }
-            EventKind::ClanLeft => format!(
-                "Clan {clan} leaves {} for {}",
-                self.civ_name(w),
-                self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str())
-            ),
+            EventKind::ClanLeft => {
+                let to = self.other.and_then(|id| w.civs.get(&id)).map_or("a rival", |c| c.name.as_str());
+                let why = self.by.map_or(String::new(), |b| format!(": {}", b.words(to)));
+                format!("Clan {clan} leaves {} for {to}{why}", self.civ_name(w))
+            }
             EventKind::ClaimTaken => format!(
                 "{}'s land at {at} is taken by {}'s army: {:.0} tile(s) lost",
                 self.civ_name(w),
@@ -245,6 +274,7 @@ impl Event {
             unit: None,
             cost: None,
             amount: None,
+            by: None,
             alert: false,
         }
     }
@@ -284,6 +314,14 @@ impl Event {
     /// A number of people.
     pub fn amount(mut self, a: impl Into<Option<f64>>) -> Event {
         self.amount = a.into();
+        self
+    }
+}
+
+impl Event {
+    /// What brought a clan to a civ.
+    pub fn by(mut self, b: impl Into<Option<By>>) -> Event {
+        self.by = b.into();
         self
     }
 }

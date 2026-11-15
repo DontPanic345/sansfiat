@@ -44,6 +44,9 @@ pub struct Clan {
     /// belongs to one.
     #[serde(default)]
     pub leaning: BTreeMap<u32, f64>,
+    /// The part of each leaning that gifts bought (`leaning::give`); it fades with the leaning.
+    #[serde(default)]
+    pub gifts: BTreeMap<u32, f64>,
     /// Turns in a row it has gone to its current festival; 0 with none.
     #[serde(default)]
     pub market_turns: u32,
@@ -134,6 +137,7 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         walk: 0.0,
         civ: None,
         leaning: BTreeMap::new(),
+        gifts: BTreeMap::new(),
         market_turns: 0,
         drawn: 0,
         parent: None,
