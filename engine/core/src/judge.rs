@@ -156,6 +156,8 @@ pub struct Watch {
     fields: Fields,
     /// Towns and the clans in them (`judge_towns`).
     towns: Towns,
+    /// Signposts and settlements (`judge_settle`).
+    settle: crate::judge_settle::Settle,
 }
 
 impl Watch {
@@ -193,6 +195,7 @@ impl Watch {
             supply: Supply::pick(w),
             fields: Fields::pick(w),
             towns: Towns::pick(w),
+            settle: crate::judge_settle::Settle::pick(w),
         }
     }
 
@@ -267,6 +270,7 @@ impl Watch {
         self.supply.turn(w);
         self.fields.turn(w);
         self.towns.turn(w);
+        self.settle.turn(w);
 
         let now = self.turns();
         let mut festival = BTreeMap::new();
@@ -428,6 +432,7 @@ impl Watch {
             supply: self.supply.scores(),
             fields: self.fields.scores(),
             towns: self.towns.scores(),
+            settle: self.settle.scores(),
             end: self.end_scores(w),
         }
     }

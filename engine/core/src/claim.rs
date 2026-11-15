@@ -4,7 +4,7 @@
 //! the capital, no tile of it a rival's. Every tile of it is the civ's land (`held`, `tile_civ`), with
 //! nobody standing on it. A rival army that ends its turn on a tile of it, where no army of the civ
 //! holds, takes the tile (`step`): it leaves the claim with the tiles no longer joined to the
-//! capital, and joins the taker's claim where it touches it.
+//! capital or a settlement (`settle::roots`), and joins the taker's claim where it touches it.
 
 use crate::actors;
 use crate::data::*;
@@ -21,20 +21,40 @@ pub fn may_claim(w: &World, civ: u32) -> bool {
     }
 }
 
-/// `tiles` (sorted) with `capital` added, cut to the tiles a walk over them reaches from the
-/// capital: the claim's tiles still joined to it, sorted.
-pub fn connected_part(w: &World, capital: usize, tiles: &[usize]) -> Vec<usize> {
+/// `tiles` with `civ`'s roots added (its capital and its settlements, `settle::roots`), cut to the
+/// tiles a walk over them reaches from a root: the claim's tiles still joined to one, sorted.
+pub fn connected_part(w: &World, civ: u32, tiles: &[usize]) -> Vec<usize> {
+    let roots = crate::settle::roots(w, civ);
     let mut all = tiles.to_vec();
-    all.push(capital);
+    all.extend(&roots);
     all.sort_unstable();
     all.dedup();
-    let walks = actors::Walks::new(w, capital, &all);
-    all.iter().zip(&walks.cost).filter(|(_, c)| c.is_finite()).map(|(&t, _)| t).collect()
+    let mut joined = vec![false; all.len()];
+    for root in roots {
+        let walks = actors::Walks::new(w, root, &all);
+        for (j, c) in joined.iter_mut().zip(&walks.cost) {
+            *j |= c.is_finite();
+        }
+    }
+    all.iter().zip(joined).filter(|&(_, j)| j).map(|(&t, _)| t).collect()
 }
 
-/// Checks a claim of `tiles` for `civ` (its capital may be left out): `civ` may claim, the tiles are
-/// on the map and land, none is a rival's land, and they are connected to the capital. Returns
-/// the claim, sorted, with the capital.
+/// Adds `tile` to `civ`'s claim, and takes it from any other civ's.
+pub fn join(w: &mut World, civ: u32, tile: usize) {
+    for c in w.civs.values_mut() {
+        if c.id != civ {
+            c.claim.retain(|&t| t != tile);
+        }
+    }
+    let claim = &mut w.civs.get_mut(&civ).unwrap().claim;
+    if let Err(k) = claim.binary_search(&tile) {
+        claim.insert(k, tile);
+    }
+}
+
+/// Checks a claim of `tiles` for `civ` (its capital and settlements may be left out): `civ` may claim,
+/// the tiles are on the map and land, none is a rival's land, and each is joined to the capital or a
+/// settlement. Returns the claim, sorted, with the capital and the settlements.
 pub fn check(w: &World, civ: u32, tiles: &[usize]) -> Result<Vec<usize>, String> {
     let c = w.civs.get(&civ).ok_or_else(|| format!("{civ} is not a civ"))?;
     if !may_claim(w, civ) {
@@ -53,11 +73,11 @@ pub fn check(w: &World, civ: u32, tiles: &[usize]) -> Result<Vec<usize>, String>
         return Err("a claim can't cover a rival's land: an army that ends its turn on it takes it".to_string());
     }
     let mut all = tiles.to_vec();
-    all.push(c.capital);
+    all.extend(crate::settle::roots(w, civ));
     all.sort_unstable();
     all.dedup();
-    if connected_part(w, c.capital, &all).len() != all.len() {
-        return Err("a claim must be connected to the capital".to_string());
+    if connected_part(w, civ, &all).len() != all.len() {
+        return Err("a claim must be joined to the capital or a settlement".to_string());
     }
     Ok(all)
 }
@@ -121,11 +141,12 @@ pub fn first(w: &World, civ: u32) -> Vec<usize> {
     tiles.retain(|t| !rival.contains(t));
     tiles.sort_unstable();
     tiles.dedup();
-    connected_part(w, c.capital, &tiles)
+    connected_part(w, civ, &tiles)
 }
 
 /// The `claim` step, after `units`: each army (never a scout) that ends its turn on a tile of a
-/// rival's claim, not its capital, where no army of that rival holds, takes it (`take`). With
+/// rival's claim, not its capital, where no army of that rival holds, takes it (`take`); on a rival's
+/// settlement, it takes the settlement (`settle::take`). With
 /// `Config.fight` off no land is taken: the control.
 pub fn step(w: &mut World) {
     if !w.config.fight {
@@ -138,14 +159,21 @@ pub fn step(w: &mut World) {
         .map(|u| (u.id, u.civ, u.home))
         .collect();
     for (unit, by, tile) in standing {
+        let army_of = |civ: u32| {
+            w.units.values().any(|u| u.civ == civ && u.camp().is_some() && (u.home == tile || u.held().contains(&tile)))
+        };
+        // A rival's settlement with no army of its civ there is taken, with its store.
+        if let Some((id, owner)) = crate::settle::at(w, tile).map(|s| (s.id, s.civ)) {
+            if owner != by && w.civs.get(&by).is_some_and(|c| !c.is_out()) && !army_of(owner) {
+                crate::settle::take(w, id, by, unit);
+            }
+            continue;
+        }
         let Some(owner) = tile_civ(w, tile).filter(|&o| o != by) else { continue };
         if w.civs[&owner].capital == tile || w.civs.get(&by).is_none_or(|c| c.is_out()) {
             continue;
         }
-        if w.units
-            .values()
-            .any(|u| u.civ == owner && u.camp().is_some() && (u.home == tile || u.held().contains(&tile)))
-        {
+        if army_of(owner) {
             continue;
         }
         take(w, owner, unit, by, tile);
@@ -153,13 +181,13 @@ pub fn step(w: &mut World) {
     crate::leaning::land(w, false);
 }
 
-/// Takes `tile` out of `owner`'s claim, with the claim's tiles cut off from its capital. The tile
+/// Takes `tile` out of `owner`'s claim, with the claim's tiles cut off from its capital and settlements. The tile
 /// joins `by`'s claim when it touches it and `by` may claim; the tiles cut off are nobody's. Emits
 /// `ClaimTaken` with the tiles lost, and notes it on both civs.
 pub(crate) fn take(w: &mut World, owner: u32, unit: u32, by: u32, tile: usize) {
-    let (capital, claim) = (w.civs[&owner].capital, w.civs[&owner].claim.clone());
+    let claim = w.civs[&owner].claim.clone();
     let without: Vec<usize> = claim.iter().copied().filter(|&t| t != tile).collect();
-    let kept = connected_part(w, capital, &without);
+    let kept = connected_part(w, owner, &without);
     let lost = claim.len() - kept.len();
     set(w, owner, kept);
     let mine = w.civs[&by].claim.clone();

@@ -61,6 +61,12 @@ pub struct World {
     pub player: Option<u32>,
     pub civs: BTreeMap<u32, Civ>,
     pub units: BTreeMap<u32, Unit>,
+    /// The settlements, by id (`settle.rs`).
+    #[serde(default)]
+    pub settlements: BTreeMap<u32, crate::settle::Settlement>,
+    /// The levy each settlement's store took this turn, by settlement: derived, as `levied` is.
+    #[serde(skip)]
+    pub settle_levied: BTreeMap<u32, f64>,
     /// Every action applied, in order.
     pub log: Vec<Action>,
     /// What happened, in order: derived from the turns, so not saved; a replay rebuilds it.
@@ -156,6 +162,7 @@ pub const TURN: &[Step] = &[
     Step { name: "harvest", run: clans::harvest },
     Step { name: "trade", run: markets::trade },
     Step { name: "eat", run: clans::eat },
+    Step { name: "settle", run: crate::settle::step },
     Step { name: "people", run: markets::people },
     Step { name: "lean", run: leaning::lean },
     Step { name: "wear", run: land::wear },
@@ -172,7 +179,7 @@ pub const TURN: &[Step] = &[
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
 /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
 /// into a different world.
-pub const SAVE_VERSION: u32 = 21;
+pub const SAVE_VERSION: u32 = 22;
 
 /// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -205,6 +212,8 @@ impl World {
             player: None,
             civs: BTreeMap::new(),
             units: BTreeMap::new(),
+            settlements: BTreeMap::new(),
+            settle_levied: BTreeMap::new(),
             log: Vec::new(),
             events: Vec::new(),
             centres_seen: Vec::new(),
@@ -337,8 +346,13 @@ impl World {
     /// scout disbanded).
     fn sweep_notes(&mut self) {
         let (clans, markets, civs, units) = (&self.clans, &self.markets, &self.civs, &self.units);
+        let settlements = &self.settlements;
         self.notes.retain(|id, _| {
-            clans.contains_key(id) || markets.contains_key(id) || civs.contains_key(id) || units.contains_key(id)
+            clans.contains_key(id)
+                || markets.contains_key(id)
+                || civs.contains_key(id)
+                || units.contains_key(id)
+                || settlements.contains_key(id)
         });
     }
 
@@ -356,7 +370,7 @@ impl World {
             | EventKind::ScoutStarved
             | EventKind::PeopleLeft => e.civ == Some(me),
             EventKind::ClanJoined => e.civ.is_some_and(|c| c != me),
-            EventKind::ClanLeft | EventKind::ClaimTaken => e.civ == Some(me) || e.other == Some(me),
+            EventKind::ClanLeft | EventKind::ClaimTaken | EventKind::SettlementTaken => e.civ == Some(me) || e.other == Some(me),
             // A skirmish on the led civ's land or by its army, its army's retreat, a tile it lost, a
             // surrender it is party to, and any fallen capital.
             EventKind::Skirmish | EventKind::ArmySurrendered => e.civ == Some(me) || e.other == Some(me),

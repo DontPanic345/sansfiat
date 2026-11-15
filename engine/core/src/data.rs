@@ -654,6 +654,50 @@ pub struct ClaimRules {
 // Ring 1 and reach 4 keep the first claim near the capital and its clans (canvas.md).
 pub const CLAIM: ClaimRules = ClaimRules { ring: 1, reach: 4 };
 
+/// Signposts and settlements (`settle.rs`).
+pub struct SettleRules {
+    /// Signposts a civ keeps at a time.
+    pub signposts: usize,
+    /// Hex steps: a signpost stands at least this far from every capital and settlement.
+    pub spacing: i32,
+    /// Days: the longest walk from a clan's home to a signpost it would go to.
+    pub reach: f64,
+    /// The chance a daughter, or a clan moving on, goes to a signpost at its door that would feed it in
+    /// full; it falls with the walk and the tile's worth.
+    pub draw: f64,
+    /// Days: the walk over which the chance falls to 1/e.
+    pub walk: f64,
+    /// A signpost's tile must feed the clan this well for it to go.
+    pub fed: f64,
+    /// The most goods, in all, a settlement's store holds; the excess is lost.
+    pub store_cap: f64,
+    /// Hex steps from its capital or a settlement within which the planner posts.
+    pub plan_range: i32,
+    /// Turns between the planner's looks for a site.
+    pub plan_every: u32,
+    /// Turns a signpost nobody has settled stands before the planner removes it.
+    pub plan_stale: u32,
+    /// Why these numbers: where they came from.
+    pub note: &'static str,
+}
+
+pub const SETTLE: SettleRules = SettleRules {
+    signposts: 3,
+    spacing: 4,
+    reach: 14.0 * DAY,
+    draw: 0.8,
+    walk: 7.0 * DAY,
+    fed: 0.9,
+    store_cap: 30.0,
+    plan_range: 8,
+    plan_every: 5,
+    plan_stale: 40,
+    note: "Three signposts are a few. A clan walks as far to a signpost as to a festival (`MARKET.reach_walk`), \
+           and the site must feed it as a daughter's own site must (`CLAN.settle_fed`). A settlement's store \
+           holds half the capital's. Spacing 4 keeps a settlement's land clear of the capital's first claim. \
+           The draw and the walk are tuned on the retro maps (relay/specs/353/scores.md).",
+};
+
 /// The planner (`units/ai.rs`): what the AI's civs, and the automatic player, weigh each turn.
 pub struct PlanRules {
     /// A share: the levy a turn must cover the civ's mouths and one more this many times over before
@@ -911,6 +955,10 @@ pub struct Config {
     /// share a home. Old saves load with it on.
     #[serde(default = "yes")]
     pub towns: bool,
+    /// Whether civs post signposts (`settle.rs`): off is the control, in which the planner posts none
+    /// and the order is refused, so no settlement is founded. Old saves load with it on.
+    #[serde(default = "yes")]
+    pub signposts: bool,
 }
 
 fn yes() -> bool {
@@ -931,6 +979,7 @@ impl Default for Config {
             limit: None,
             fields: true,
             towns: true,
+            signposts: true,
         }
     }
 }
