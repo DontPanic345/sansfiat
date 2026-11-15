@@ -1,0 +1,3 @@
+[
+  { "id": "review", "title": "Review the piece", "model": "sonnet", "effort": "high", "points": 9, "why": "Open 2, New 2, Miss 2, Importance 2, Reach 1 = 9. A cold read of a rule its author also judged: the diff against main, each Goal clause and Decided line against core/tests/stores.rs, scores.md against the sweep files, and the played games. Open for it to weigh: the question moves only where a settlement stands near a front (small 2), nothing was tuned, the settlement panel's Raise… is pressed by no play script, and raising only from a market's clans changes every game from its first army." }
+]
