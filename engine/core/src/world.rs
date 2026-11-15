@@ -370,7 +370,9 @@ impl World {
             | EventKind::ScoutStarved
             | EventKind::PeopleLeft => e.civ == Some(me),
             EventKind::ClanJoined => e.civ.is_some_and(|c| c != me),
-            EventKind::ClanLeft | EventKind::ClaimTaken | EventKind::SettlementTaken => e.civ == Some(me) || e.other == Some(me),
+            EventKind::ClanLeft | EventKind::ClaimTaken | EventKind::SettlementTaken => {
+                e.civ == Some(me) || e.other == Some(me)
+            }
             // A skirmish on the led civ's land or by its army, its army's retreat, a tile it lost, a
             // surrender it is party to, and any fallen capital.
             EventKind::Skirmish | EventKind::ArmySurrendered => e.civ == Some(me) || e.other == Some(me),

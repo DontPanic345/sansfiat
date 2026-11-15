@@ -206,8 +206,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
     let no_towns = towns_off_watch.scores(&towns_off, &civs);
     let towns_vs_control = map_towns(&scores, &no_towns);
     let no_signposts = unposted_watch.scores(&unposted, &civs);
-    let settle_vs_control =
-        crate::sweep_settle::map_settle(&scores, &no_signposts, people(&w), people(&unposted));
+    let settle_vs_control = crate::sweep_settle::map_settle(&scores, &no_signposts, people(&w), people(&unposted));
     MapJudged {
         led: map_led(base, &civs, draws),
         size: name.to_string(),

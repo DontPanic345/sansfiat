@@ -11,7 +11,7 @@ use engine::land::steps;
 use engine::map::index;
 use engine::market::total;
 use engine::stage::Stage;
-use engine::{civs, dividing, markets, settle, towns, Order, World};
+use engine::{civs, dividing, markets, settle, towns, Action, Order, World};
 
 const RADIUS: i32 = 9;
 
@@ -29,11 +29,18 @@ fn stage() -> (Stage, u32, u32) {
     let mut stage = Stage::flat(RADIUS);
     let ids = stage.civs(&[tile(-6, 0), tile(6, 0)], 5.0);
     let w = stage.world_mut();
+    w.act(Action::ChooseCiv { civ: None }).unwrap();
     w.clans.clear();
     for t in &mut w.tiles {
         t.claim = None;
     }
     (stage, ids[0], ids[1])
+}
+
+/// Makes tile `t` rich: every food at 6, so it feeds a daughter in full.
+fn rich(w: &mut World, t: usize) {
+    let tile = &mut w.tiles[t];
+    (tile.cap, tile.unworn, tile.stock) = ([6.0; 5], [6.0; 5], [6.0; 5]);
 }
 
 /// A clan of `civ` with `people` living on `home`, which it holds.
@@ -88,8 +95,15 @@ fn the_nearer_and_the_richer_the_likelier() {
 fn a_daughter_goes_to_the_signpost_by_chance_and_a_clan_that_cannot_get_there_does_not_try() {
     let (mut w, red, _) = staged();
     let post = tile(-2, 0);
+    rich(&mut w, post);
     w.order(red, Order::Signpost { tile: post }).unwrap();
-    let far = clan(&mut w, red, tile(9, -9), CLAN.split_at);
+    // A clan ringed by ground nobody can walk has no way there.
+    let far = clan(&mut w, red, tile(5, -5), CLAN.split_at);
+    let wall = engine::TERRAIN.iter().position(|t| t.move_cost.is_none()).unwrap();
+    let ring: Vec<usize> = engine::land::neighbours(&w, tile(5, -5)).collect();
+    for n in ring {
+        w.tiles[n].terrain = wall;
+    }
     let rng = w.rng;
     assert!(!dividing::split(&mut w, far, true), "a signpost past its reach is not weighed");
     assert_eq!(w.rng, rng, "and no chance is drawn");
@@ -192,7 +206,11 @@ fn a_rival_army_on_an_unguarded_settlement_takes_it_with_its_store() {
 #[test]
 fn the_planner_posts_a_signpost_a_clan_can_reach_clear_of_every_seat() {
     let (mut w, red, _) = staged();
-    let t = engine::units::signpost_plan(&w, red).expect("a site on bare plains");
+    assert_eq!(engine::units::signpost_plan(&w, red), None, "bare plains feed no daughter");
+    for t in 0..w.tiles.len() {
+        rich(&mut w, t);
+    }
+    let t = engine::units::signpost_plan(&w, red).expect("a site on rich plains");
     let capital = w.civs[&red].capital;
     assert!(steps(&w, capital, t) >= SETTLE.spacing && steps(&w, capital, t) <= SETTLE.plan_range);
     w.order(red, Order::Signpost { tile: t }).unwrap();
