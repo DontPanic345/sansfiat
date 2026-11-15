@@ -99,7 +99,8 @@ export function render(slot, shape, hooks) {
   const row = TAG('div', { class: 'actions', role: 'toolbar', 'aria-label': 'Actions' });
   for (const b of shape.buttons) {
     if (b.arm) {
-      row.append(TAG('button', { type: 'button', text: b.label, 'aria-pressed': String(hooks.armed === b.arm), onclick: () => hooks.arm(b.arm) }));
+      if (b.why) refused.push(`${b.label}: ${b.why}`);
+      row.append(TAG('button', { type: 'button', text: b.label, 'aria-pressed': String(hooks.armed === b.arm), disabled: !!b.why, title: b.why || null, onclick: () => hooks.arm(b.arm) }));
     } else if (b.paint) {
       row.append(TAG('button', { type: 'button', text: b.label, 'aria-pressed': String(hooks.painting === b.paint), onclick: () => hooks.paint(b.paint) }));
     } else if (b.action) {

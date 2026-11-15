@@ -1,4 +1,4 @@
-use engine::data::{CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::over::{self, Why};
 use engine::script::Lead;
@@ -504,6 +504,7 @@ pub fn rules() -> String {
         "fighters": FIGHTERS.iter().map(|f| serde_json::json!({ "name": f.name, "attack": f.attack, "defence": f.defence })).collect::<Vec<_>>(),
         "fight": { "entrench": FIGHT.entrench, "entrench_cap": FIGHT.entrench_cap, "hungry": FIGHT.hungry, "surrender": FIGHT.surrender },
         "field": { "farmer": FIELD.farmer },
+        "signposts": SETTLE.signposts,
     })
     .to_string()
 }

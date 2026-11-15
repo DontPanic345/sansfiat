@@ -105,14 +105,15 @@ pub(crate) fn text(w: &World, since: usize) -> String {
         None => "the default, the camp's full pack".to_string(),
     };
     out += &format!(
-        "keep {:.1} in force ({set}); gift {:.1} a turn, the most {:.0}\n",
+        "keep {:.1} in force ({set}); gift {:.1} a turn, the most {:.0}; last turn posted {:.1}, gave {:.1}; since \
+         founding gave {:.1}, clans joined {}\n",
         civs::keep(w, me),
         c.gift,
-        CIV.store_cap
-    );
-    out += &format!(
-        "last turn posted {:.1}, gave {:.1}; since founding gave {:.1}, clans joined {}\n",
-        c.posted, c.given, c.gifted, c.joined
+        CIV.store_cap,
+        c.posted,
+        c.given,
+        c.gifted,
+        c.joined
     );
 
     let units: Vec<&Unit> = w.units.values().filter(|u| u.civ == me).collect();

@@ -464,7 +464,8 @@ function select(sel, { fromFeed = false } = {}) {
 function syncSelection() {
   view.setSelection(selected ? tileOf(ctx(), selected) : -1, selected?.kind === 'unit' ? selected.id : -1);
   if (v) routes();
-  const hl = selected?.kind === 'clan' ? { clan: selected.id, market: null } : selected?.kind === 'festival' ? { clan: null, market: selected.id } : null;
+  const st = selected?.kind === 'settlement' ? v.settlements?.find((x) => x.id === selected.id) : null;
+  const hl = selected?.kind === 'clan' ? { clan: selected.id, market: null } : selected?.kind === 'festival' ? { clan: null, market: selected.id } : st ? { tiles: st.land, tile: st.tile } : null;
   view.setHighlight(hl);
   document.body.dataset.selected = keyOf(selected);
 }

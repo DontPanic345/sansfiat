@@ -41,7 +41,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/units/` | `line.rs` (paths, cuts, `ring`), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats; `Ladder`), `muster.rs`, `search.rs` (the route search), `scout.rs`, `ai.rs` (the planner), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game; `Auto`, the planner as a led player. |
-| `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map, layers, placements, orders and reads; `StageSpec` is its data form (`clans` for towns). A staged world is not a save. |
+| `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map, layers, placements, orders and reads; `StageSpec` is its data form (`clans`, `signposts`). A staged world is not a save. |
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
 | `core/src/judge.rs`, `judge_scores.rs` | `Watch`: a game scored from its pick in the score groups, the end group included; `judge_scores.rs` holds the score structs. Reads the world only. |
 | `core/src/judge_ring.rs` | The `supply` group: each civ's ring, the armies and scouts inside it, hungry turns, clan territory. |
@@ -50,11 +50,11 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
 | `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields against the no-fields control), `sweep_towns.rs` (towns against the no-towns control), `sweep_led.rs` (led games beside idle), `sweep_total.rs` (its totals), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view), `story.rs` (the scripted stories of war). |
 | `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the orders; `Sim.stage` builds a staged game. |
-| `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js`, `panels.js` (a selection's shape and its buttons) and `panels-land.js` (festival and tile shapes), `model.js` (the view model), `map/` (`MapView` and one file per layer, `towns.js` among them), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
+| `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js`, `panels.js` (a selection's shape and its buttons) and `panels-land.js` (festival, tile, settlement shapes), `model.js` (the view model), `map/` (`MapView`, a file per layer: `towns.js`, `settle.js`), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim`: the panel shapes as data, and the panel context both share. |
 | `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`. |
-| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, ring, scout, civ, select, feed, army, layout, towns), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
+| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, bar, save, end, art, views, camp, ring, scout, civ, select, feed, army, layout, towns, settle), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games by conquest, the led civ's fall and the limit (and watched), then Play on, Standing so far and New game; `all.mjs` runs them. |
 
 ## Adding a mechanic
 

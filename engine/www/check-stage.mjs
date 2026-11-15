@@ -216,4 +216,62 @@ for (const kind of ['camp', 'scout']) pressAll(kind);
   assert.equal(JSON.parse(staged().view()).towns.length, 0, 'a stage with one home on the tile is no town');
 }
 
-console.log('ok: staged arm (shapes, digest, Disband all), the end and a staged town');
+// A staged signpost and its settlement (#353): a signpost four steps from each capital with a clan of the led civ
+// living on it. The view lists the signpost; the tile panel shows it with Remove signpost; a turn founds the
+// settlement at the `settle` step, and the settlement's panel gives its name, store, clans, land and reasons.
+{
+  const R = 8;
+  const grid = (cell) => {
+    let text = '';
+    for (let r = -R; r <= R; r++) {
+      text += ' '.repeat(2 * Math.max(-R, -r - R) + r + 2 * R);
+      const row = [];
+      for (let q = Math.max(-R, -r - R); q <= Math.min(R, -r + R); q++) row.push(cell(q, r));
+      text += `${row.join(' ')}\n`;
+    }
+    return text;
+  };
+  const spec = {
+    map: grid((q, r) => (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) === R ? '~' : '.')),
+    marks: grid((q, r) => (q === -4 && r === 0 ? 'A' : q === 4 && r === 0 ? 'B' : q === 0 && r === 0 ? 'P' : '.')),
+    civs: [{ mark: 'A' }, { mark: 'B' }],
+    people: 12,
+    lead: 0,
+    clans: [{ home: { mark: 'P' }, tiles: [], people: 4, civ: 0 }],
+    signposts: [{ civ: 0, at: { mark: 'P' } }],
+  };
+  const sim = staged(spec);
+  const v = JSON.parse(sim.view());
+  assert.equal(v.signposts.length, 1, 'the view lists the one signpost');
+  const post = v.signposts[0];
+  for (const key of ['civ', 'tile', 'turn', 'worth']) assert.ok(key in post, `a signpost carries ${key}`);
+  assert.equal(post.civ, v.player, 'the signpost is the led civ\'s');
+  assert.deepEqual(v.settlements, [], 'no settlement yet');
+  const tile = shapeOf(sim, { kind: 'tile', tile: post.tile });
+  assert.ok(tile.numbers.some((n) => n.label === 'Signpost' && n.value.includes('posted 0 turns ago')), 'the tile panel says when it was posted');
+  assert.ok(tile.numbers.some((n) => n.label === 'Worth' && n.tip), 'and its worth, with a tooltip');
+  assert.deepEqual(tile.buttons.map((b) => b.label), ['Remove signpost'], 'the led civ\'s signposted tile has Remove signpost');
+  assert.equal(sim.check(JSON.stringify(tile.buttons[0].action)), '', 'Remove signpost is allowed');
+  const civ = shapeOf(sim, { kind: 'civ', civ: v.player });
+  const sign = civ.buttons.find((b) => b.label === 'Signpost…');
+  assert.ok(sign && sign.arm === 'signpost' && !sign.why, 'the civ panel has Signpost…, armed and not greyed');
+
+  sim.act('{"type":"endTurn"}');
+  const w = JSON.parse(sim.view());
+  assert.equal(w.settlements.length, 1, 'a turn founds the settlement');
+  assert.equal(w.signposts.length, 0, 'and the signpost is gone');
+  const s = w.settlements[0];
+  for (const key of ['id', 'civ', 'tile', 'market', 'founded', 'store', 'cap', 'levied', 'clans', 'traders', 'land']) assert.ok(key in s, `a settlement carries ${key}`);
+  assert.equal(s.store.length, 5, 'its store is a basket');
+  const panel = shapeOf(sim, { kind: 'settlement', id: s.id });
+  assert.match(panel.name, /^.+'s settlement at \(-?\d+, -?\d+\)$/, `its name line: ${panel.name}`);
+  for (const label of ['Store', 'Levy', 'Land']) assert.ok(panel.numbers.find((n) => n.label === label)?.tip, `${label} has a tooltip`);
+  assert.deepEqual(panel.list.map((l) => l.label), ['Clans living here', 'Clans coming to its market'], 'its clans and its traders');
+  assert.equal(panel.list[0].rows.length, s.clans.length, 'the clans living there are listed');
+  assert.ok(panel.reasons.length > 0, 'it has its reasons');
+  assert.equal(panel.key, `settlement:${s.id}`, 'its key');
+  const { candidates } = await import(pathToFileURL(`${here}panels.js`).href);
+  assert.ok(candidates(ctxOf(sim)(w), s.tile).some((c) => c.kind === 'settlement' && c.id === s.id), 'a click on its tile can pick it');
+}
+
+console.log('ok: staged arm (shapes, digest, Disband all), the end, a staged town, a signpost and its settlement');
