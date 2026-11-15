@@ -13,9 +13,9 @@ const at = args.indexOf('--out');
 const out = resolve(at >= 0 ? args[at + 1] : mkdtempSync(join(tmpdir(), 'play-army-')));
 mkdirSync(out, { recursive: true });
 
-const SEED = 3;
+const SEED = Number(process.env.SEED ?? 3);
 const SIZE = 'small';
-const CIV = 'Blue';
+const CIV = process.env.CIV ?? 'Blue';
 const TURNS = 80;
 let failed = false;
 const fail = (msg) => {

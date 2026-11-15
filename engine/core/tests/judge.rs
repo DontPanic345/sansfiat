@@ -62,7 +62,8 @@ fn raising_a_camp_moves_no_standing() {
     let (mut w, ids, _) = led();
     fill_stores(&mut w);
     let before = standing(&w);
-    w.order(ids[0], Order::Raise { n: 2, kind: UnitKind::Camp, fighter: Default::default(), into: None, at: None }).unwrap();
+    w.order(ids[0], Order::Raise { n: 2, kind: UnitKind::Camp, fighter: Default::default(), into: None, at: None })
+        .unwrap();
     assert!(engine::units::camp(&w, ids[0]).is_some(), "the raise made a camp");
     let after = standing(&w);
     for id in ids {

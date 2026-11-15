@@ -256,7 +256,8 @@ const checkCamps = (view) => {
     assert.equal(u.guard.length, u.held.length, 'a zone-guarding share for each held tile');
     assert.ok(u.cut_at === null || (u.cut_at.path.includes(u.cut_at.at) && view.civs[u.cut_at.by]), 'cut_at names a tile and a civ');
     if (u.line && u.line.path.length) {
-      assert.equal(u.line.path.at(-1), view.civs[u.civ].capital, 'a line ends at its capital');
+      assert.equal(u.line.path.at(-1), u.draws_on.tile, 'a line ends at its store');
+      assert.ok(u.draws_on.tile === view.civs[u.civ].capital ? u.draws_on.label === 'capital' : u.draws_on.label === 'settlement', 'its store is the capital or a settlement');
       assert.ok(u.line.cost > 0 && u.line.path.every((i) => i < n), 'a line is a path of tiles');
     }
   }
@@ -482,7 +483,7 @@ for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.
 
 // A save carries its version, and one without it is refused with a reason that names the version.
 const save = JSON.parse(sim.save());
-assert.equal(save.version, 22, 'a save carries its version');
+assert.equal(save.version, 23, 'a save carries its version');
 assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
 const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');

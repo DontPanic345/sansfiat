@@ -41,19 +41,21 @@ fn path_cached(w: &World, paths: &mut Paths, from: usize, to: usize) -> Option<V
 /// tile and the way from it to that capital.
 fn front(w: &World, civ: u32, paths: &mut Paths) -> Option<(usize, Vec<usize>)> {
     let stores = settle::roots(w, civ);
-    let mut best: Option<((i32, usize, u32), usize, Vec<usize>)> = None;
+    let mut best: Option<(i32, usize, u32)> = None;
+    let mut way = None;
     for o in civs::alive(w).filter(|o| o.id != civ) {
         for (k, &s) in stores.iter().enumerate() {
             let key = (steps(w, s, o.capital), k, o.id);
-            if best.as_ref().is_some_and(|b| b.0 <= key) {
+            if best.is_some_and(|b| b <= key) {
                 continue;
             }
             if let Some(p) = path_cached(w, paths, s, o.capital) {
-                best = Some((key, s, p));
+                best = Some(key);
+                way = Some((s, p));
             }
         }
     }
-    best.map(|(_, s, p)| (s, p))
+    way
 }
 
 /// Where an idle army of `civ` is posted: up to `UNIT.post` steps along the way from its front store
@@ -303,10 +305,11 @@ fn muster(w: &mut World, civ: u32, give: Give) {
     let armed = army.map_or(0.0, |a| a.1);
     // A rival within a pack's march of a store, or on its land, is worth a full army; else a party.
     let near = civs::alive(w).filter(|o| o.id != civ).any(|o| {
-        stores
-            .iter()
-            .any(|&s| path_between(w, s, o.capital).is_some_and(|(p, _)| turns(w, &p, s, 0.0) <= PLAN.march))
-    }) || w.units.values().any(|o| o.civ != civ && o.camp().is_some() && c.claim.binary_search(&o.home).is_ok());
+        stores.iter().any(|&s| path_between(w, s, o.capital).is_some_and(|(p, _)| turns(w, &p, s, 0.0) <= PLAN.march))
+    }) || w
+        .units
+        .values()
+        .any(|o| o.civ != civ && o.camp().is_some() && c.claim.binary_search(&o.home).is_ok());
     let cap = if near { PLAN.army * (people + armed) } else { PLAN.party.min(PLAN.army * (people + armed)) };
     if armed + 1.0 > cap + EPS {
         return;

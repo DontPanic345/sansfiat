@@ -30,6 +30,20 @@ export function festivalShape(ctx, m) {
   };
 }
 
+/** Raise at a settlement: the people come from the clans that go to its market, the pack from its store. */
+function raiseAt(s) {
+  const at = (extra) => (n) => civOrder(s.civ, { type: 'raise', n, at: s.tile, ...extra });
+  return {
+    label: 'Raise…',
+    stepper: {
+      options: [
+        { label: 'warriors', cap: 10, make: at({ kind: 'camp', fighter: 'warriors' }) },
+        { label: 'a scout', cap: 10, make: at({ kind: 'scout' }) },
+      ],
+    },
+  };
+}
+
 /** A bare tile's panel (spec item 16, Tile): the terrain, whose it is, and its foods. No buttons. */
 export function tileShape(ctx, sel) {
   const { v, terrain, goods, rules, sim, model } = ctx;
@@ -97,7 +111,7 @@ export function settlementShape(ctx, s) {
       { label: 'Clans coming to its market', rows: clanRows(s.traders), empty: 'No clan comes to its market.' },
     ],
     reasons: reasonsOf(ctx, s.id),
-    buttons: [],
+    buttons: s.civ === v.player ? [raiseAt(s)] : [],
   };
 }
 

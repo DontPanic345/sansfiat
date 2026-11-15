@@ -275,6 +275,14 @@ fn settle_lines(w: &World, me: u32) -> String {
     out
 }
 
+/// What a unit draws on: the store its line ends at, or that it has no line.
+fn draws_on(w: &World, u: &Unit) -> String {
+    match units::store_of(w, u.id) {
+        Some(at) => format!("draws on {}", settle::store_name(w, u.civ, at)),
+        None => "draws on no store".to_string(),
+    }
+}
+
 /// One unit of the led civ: an army's stack, pack, line, zone and hunger; a scout's route.
 fn unit_line(w: &World, u: &Unit) -> String {
     match u.kind() {
@@ -292,10 +300,11 @@ fn unit_line(w: &World, u: &Unit) -> String {
             let cut_at = units::cut_at(w, u.id)
                 .map(|(_, at, by)| format!(", cut at {} by civ {by}", tile(w, at)))
                 .unwrap_or_default();
+            let draws = draws_on(w, u);
             let bows = if cs.bows { ", making bows" } else { "" };
             let dest = cs.dest.map_or("none".to_string(), |t| tile(w, t));
             format!(
-                "  army {} at {}: {:.1} warriors, {:.1} archers, pack {pack:.1} of {:.1} ({feeds:.1} turns), entrenched {} turns{bows}, dest {dest}, {line}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",
+                "  army {} at {}: {:.1} warriors, {:.1} archers, pack {pack:.1} of {:.1} ({feeds:.1} turns), entrenched {} turns{bows}, dest {dest}, {line}, {draws}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",
                 u.id,
                 tile(w, u.tile()),
                 cs.stack[Fighter::Warriors.index()],
@@ -328,7 +337,13 @@ fn unit_line(w: &World, u: &Unit) -> String {
                     None => "no route".to_string(),
                 },
             };
-            format!("  scout {} at {}: {route}, hungry {} turns\n", u.id, tile(w, u.tile()), u.hungry)
+            format!(
+                "  scout {} at {}: {route}, {}, hungry {} turns\n",
+                u.id,
+                tile(w, u.tile()),
+                draws_on(w, u),
+                u.hungry
+            )
         }
     }
 }
@@ -359,6 +374,19 @@ fn legal(w: &World, me: u32) -> String {
     }
     if ok(Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None, at: None }) {
         out += "  {\"type\":\"raise\",\"n\":1,\"fighter\":\"archers\"}  archers, into a new army at your capital\n";
+    }
+    for s in settle::of(w, me) {
+        let at = s.tile;
+        let raise = |kind, fighter| Order::Raise { n: 1, kind, fighter, into: None, at: Some(at) };
+        if ok(raise(UnitKind::Camp, Fighter::Warriors)) {
+            out += &format!(
+                "  {{\"type\":\"raise\",\"n\":1,\"at\":{at}}}  warriors, into a new army at your settlement at {}\n",
+                tile(w, at)
+            );
+        }
+        if ok(raise(UnitKind::Scout, Fighter::Warriors)) {
+            out += &format!("  {{\"type\":\"raise\",\"n\":1,\"kind\":\"scout\",\"at\":{at}}}  a scout, from your settlement at {}\n", tile(w, at));
+        }
     }
     for u in w.units.values().filter(|u| u.civ == me && u.kind() == UnitKind::Camp) {
         let id = u.id;

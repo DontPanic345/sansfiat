@@ -56,7 +56,9 @@ fn claims_none_refuses_a_claim_and_only_k_lets_one_civ_claim() {
     );
     // Camps are not the claims' business: a camp still raises.
     fill_stores(&mut w);
-    assert!(w.order(red, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None, at: None }).is_ok());
+    assert!(w
+        .order(red, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None, at: None })
+        .is_ok());
     // Only the k-th civ in id order (here Blue) may claim.
     w.config.claims = Claims::Only(1);
     assert!(!claim::may_claim(&w, red));
@@ -124,7 +126,8 @@ fn raising_an_army_leaves_standing_as_it_was_and_an_unaligned_clan_on_the_land_c
     let (mut w, ids, _) = led();
     let red = ids[0];
     let before = standing(&w)[&red];
-    w.order(red, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None, at: None }).unwrap();
+    w.order(red, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Default::default(), into: None, at: None })
+        .unwrap();
     assert!((standing(&w)[&red] - before).abs() < 1e-12, "raising moves nobody between civs");
     // An unaligned clan on Red's land: its people count for Red.
     hold_land(&mut w, red, &[at_big(-4, 0)]);

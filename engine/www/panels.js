@@ -215,6 +215,7 @@ function campShape(ctx, u) {
     },
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
     { label: 'Line', value: line, tip: 'Its line home: steps, the days it costs, and the food a turn it carries with all its labour' },
+    { label: 'Draws on', value: u.draws_on ? (u.draws_on.label === 'capital' ? 'its capital' : `its settlement at (${hex(ctx, u.draws_on.tile)})`) : 'none', tip: 'The store its line ends at: the one that feeds it cheapest' },
   ];
   if (u.kind === 'camp') {
     const guard = u.guard.length ? u.guard.reduce((a, b) => a + b, 0) / u.guard.length : 0;
@@ -311,6 +312,7 @@ function scoutShape(ctx, u) {
   const numbers = [
     { label: 'People', value: f2(u.people), tip: 'The people in the scout' },
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
+    { label: 'Draws on', value: u.draws_on ? (u.draws_on.label === 'capital' ? 'its capital' : `its settlement at (${hex(ctx, u.draws_on.tile)})`) : 'none', tip: 'The store its line ends at: the one that feeds it cheapest' },
     { label: 'Known route', value: plan?.known ? `${f2(plan.known.cost)} days` : 'none', tip: 'The days of the route over the tiles the player has seen' },
     { label: 'Possible route', value: plan?.possible ? `${f2(plan.possible.cost)} days` : 'none', tip: 'The days of the cheapest route if the unrevealed tiles are as they could be' },
     {

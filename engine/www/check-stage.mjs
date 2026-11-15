@@ -84,6 +84,7 @@ function checkButtons(shape, name) {
   }
   assert.ok(shapes.camp.buttons.some((b) => b.stepper && b.label === 'Disband…'), 'a camp has Disband…');
   assert.ok(shapes.scout.buttons.some((b) => b.stepper && b.label === 'Disband…'), 'a scout has Disband…');
+  for (const k of ['camp', 'scout']) assert.ok(shapes[k].numbers.find((n) => n.label === 'Draws on')?.value.startsWith('its '), `a ${k} names the store it draws on`);
 }
 
 /** Disband all as the page presses it: the button sends its order with no count, and the whole unit goes home. */
@@ -269,6 +270,10 @@ for (const kind of ['camp', 'scout']) pressAll(kind);
   assert.deepEqual(panel.list.map((l) => l.label), ['Clans living here', 'Clans coming to its market'], 'its clans and its traders');
   assert.equal(panel.list[0].rows.length, s.clans.length, 'the clans living there are listed');
   assert.ok(panel.reasons.length > 0, 'it has its reasons');
+  const raise = panel.buttons.find((b) => b.label === 'Raise…');
+  assert.deepEqual(raise.stepper.options.map((o) => o.label), ['warriors', 'a scout'], 'a settlement raises warriors and a scout');
+  assert.equal(raise.stepper.options[0].make(2).order.at, s.tile, 'a raise there is at its tile');
+  assert.equal(raise.stepper.options[1].make(1).order.kind, 'scout', 'a scout raised there');
   assert.equal(panel.key, `settlement:${s.id}`, 'its key');
   const { candidates } = await import(pathToFileURL(`${here}panels.js`).href);
   assert.ok(candidates(ctxOf(sim)(w), s.tile).some((c) => c.kind === 'settlement' && c.id === s.id), 'a click on its tile can pick it');

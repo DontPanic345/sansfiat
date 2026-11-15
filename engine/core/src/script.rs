@@ -56,7 +56,13 @@ impl Lead {
         }
         if n > 0 && n.is_multiple_of(20) {
             let into = camp(w);
-            let _ = w.act(order(Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Fighter::Warriors, into, at: None }));
+            let _ = w.act(order(Order::Raise {
+                n: 1,
+                kind: units::UnitKind::Camp,
+                fighter: Fighter::Warriors,
+                into,
+                at: None,
+            }));
         }
         if let (30, Some(unit)) = (n, camp(w)) {
             let _ = w.act(order(Order::Switches { unit, forage: false, supply: false }));

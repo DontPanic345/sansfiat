@@ -74,8 +74,11 @@ fn the_stack_sums_to_people_through_raise_join_disband_hunger_and_a_fight() {
     let red = ids[0];
     fill_stores(&mut w);
     let first = led_camp(&w);
-    w.act(led_order(&w, Order::Raise { n: 2, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: Some(first), at: None }))
-        .unwrap();
+    w.act(led_order(
+        &w,
+        Order::Raise { n: 2, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: Some(first), at: None },
+    ))
+    .unwrap();
     assert_eq!(w.units[&first].camp().unwrap().stack, [w.units[&first].people, 0.0]);
     assert!(w.units[&first].people > 3.0, "joined");
     sums(&w);
@@ -267,11 +270,15 @@ fn raise_into_a_cut_army_is_refused_and_raise_with_none_makes_another() {
         )),
         Err("its line is cut: raise at a store".to_string())
     );
-    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None, at: None })).unwrap();
+    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None, at: None }))
+        .unwrap();
     let armies = w.units.values().filter(|u| u.civ == red && u.kind() == UnitKind::Camp).count();
     assert_eq!(armies, 2, "a second army");
     assert!(w
-        .act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None, at: None }))
+        .act(led_order(
+            &w,
+            Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None, at: None }
+        ))
         .is_err());
 }
 
@@ -482,16 +489,21 @@ fn archers_need_held_forest_and_their_army_makes_bows_a_turn() {
     let (mut w, ids, _) = led();
     let red = ids[0];
     let cap = w.civs[&red].capital;
-    let refused =
-        w.check_order(red, &Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None, at: None });
+    let refused = w.check_order(
+        red,
+        &Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: None, at: None },
+    );
     assert_eq!(refused, Err("you hold no forest to make bows on".to_string()));
     w.tiles[cap].terrain = FOREST;
     fill_stores(&mut w);
     let first = led_camp(&w);
     let home = w.units[&first].home;
     camp_mut(&mut w, first).camp_mut().unwrap().dest = Some(at_big(-3, 0));
-    w.act(led_order(&w, Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: Some(first), at: None }))
-        .unwrap();
+    w.act(led_order(
+        &w,
+        Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Archers, into: Some(first), at: None },
+    ))
+    .unwrap();
     let c = w.units[&first].camp().unwrap();
     assert!(c.bows, "the bows take the turn");
     assert_eq!(c.stack[Fighter::Archers.index()], 1.0);

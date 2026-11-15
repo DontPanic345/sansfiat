@@ -35,7 +35,8 @@ pub use ai::{ai, claim_plan, outweighs, plan, post, signpost_plan, signpost_site
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
 pub use line::{
-    cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, ring_capital, route, store_of, turns,
+    cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, ring_capital, route, store_of,
+    turns,
 };
 pub use scout::{ground_worth, rich_ground, Hunger, ScoutState};
 pub use search::{route_plan, search_view, Plan, SearchView};

@@ -159,7 +159,9 @@ impl Story {
         let mut into = self.camp().map(|u| u.id);
         loop {
             let n = self.fillable();
-            if n == 0 || !self.give(Order::Raise { n, kind: UnitKind::Camp, fighter: Fighter::Warriors, into, at: None }) {
+            if n == 0
+                || !self.give(Order::Raise { n, kind: UnitKind::Camp, fighter: Fighter::Warriors, into, at: None })
+            {
                 break;
             }
             raised += n;
