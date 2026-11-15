@@ -25,14 +25,19 @@ A mountain can be crossed only where a bridge would span it, and only a few can.
 is a technology later; for now every civ has the shortest span. A trail brings flat land down a
 little; walking wears one there, and a scout builds trails only on rough ground and mountains.
 
+A mountain with no trail is closed to everyone but a scout. A mountain with a trail is open
+to everyone: a clan, an army, a supply line and a rival's units all walk it, at its trail
+cost.
+
 ## Trails
 
 A tile has one trail, however it got it. Clans wear one by walking a round (`clans.md`), or a
-scout builds one. Either way the trail brings the tile to its hidden trail cost; a worn trail
-can't cross a mountain, since clans can't walk there.
+scout builds one. Either way the trail brings the tile to its hidden trail cost. Only a scout
+puts the first trail on a mountain; once it is there, the traffic over it keeps it worn as on
+any tile.
 
 Trails belong to the tile, so everyone uses them, enemies included. Any trail nobody uses
-wears away, as worn trails do now.
+wears away, as worn trails do now, and a mountain whose trail has worn away is closed again.
 
 ## Knowledge
 
