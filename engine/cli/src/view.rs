@@ -1,10 +1,10 @@
 //! The text view of the led civ: what a player of the page can see, in text, read at every decision
 //! by `play`. Every number is read off the world; nothing here changes it.
 
-use engine::data::{Fighter, CIV, LEANING, UNIT};
+use engine::data::{Fighter, CIV, LEANING, SETTLE, UNIT};
 use engine::over::{self, Why};
 use engine::units::{self, Unit, UnitKind};
-use engine::{civs, claim, fields, markets, stats, towns, Action, Clan, Event, Order, Phase, World, FOODS};
+use engine::{civs, claim, fields, markets, settle, stats, towns, Action, Clan, Event, Order, Phase, World, FOODS};
 
 /// The largest clans the view names.
 const CLANS_NAMED: usize = 5;
@@ -123,6 +123,7 @@ pub(crate) fn text(w: &World, since: usize) -> String {
         out += &unit_line(w, u);
     }
     out += &claim_lines(w, me);
+    out += &settle_lines(w, me);
 
     let mut clans: Vec<&Clan> = w.clans.values().filter(|k| k.civ == Some(me)).collect();
     clans.sort_by(|a, b| b.people.total_cmp(&a.people).then(a.id.cmp(&b.id)));
@@ -223,12 +224,52 @@ fn claim_lines(w: &World, me: u32) -> String {
     let names: Vec<String> = c.claim.iter().map(|&t| tile(w, t)).collect();
     let mut out = format!(
         "land: {} tiles, your claim{posture}: {}\n  nobody stands on it: a rival army that ends its turn on a tile takes it, \
-         with any tiles that cuts off from your capital, unless an army of yours holds that tile\n",
+         with any tiles that cuts off from your capital and settlements, unless an army of yours holds that tile\n",
         c.claim.len(),
         names.join(" ")
     );
     if let Some(n) = w.notes.get(&me).and_then(|l| l.iter().rev().find(|n| n.text.starts_with("the claim "))) {
         out += &format!("  last claim order, turn {}: {}\n", n.turn, n.text);
+    }
+    out
+}
+
+/// The led civ's signposts and settlements, and the rivals' settlements: a signpost's tile, age and
+/// worth; a settlement's store, the clans living on it and coming to its market, and its land.
+fn settle_lines(w: &World, me: u32) -> String {
+    let mut out = String::new();
+    for s in &w.civs[&me].signposts {
+        out += &format!(
+            "signpost at {}: posted {} turn(s) ago, the tile would feed a daughter {:.0}% of her need; your clans that \
+             divide or move on may go there, and the first to settle founds a settlement\n",
+            tile(w, s.tile),
+            w.turn - s.turn,
+            settle::worth(w, s.tile) * 100.0
+        );
+    }
+    for p in settle::panels(w) {
+        if p.civ != me {
+            let name = w.civs.get(&p.civ).map_or("a rival", |c| c.name.as_str());
+            out += &format!("{name}'s settlement at {}: store {:.0}\n", tile(w, p.tile), p.store.iter().sum::<f64>());
+            continue;
+        }
+        let people: f64 = p.clans.iter().map(|id| w.clans[id].people).sum();
+        out += &format!(
+            "settlement at {} (market {}), founded turn {}: store {:.1} of {:.0} (levy {:.1} this turn), {} clan(s) of {:.0} \
+             people live here, {} come to its market, land {} tile(s): {}\n  your claim holds where it joins it; a rival \
+             army that ends its turn on it takes it with its store, unless an army of yours is there\n",
+            tile(w, p.tile),
+            p.market,
+            p.founded,
+            p.store.iter().sum::<f64>(),
+            p.cap,
+            p.levied,
+            p.clans.len(),
+            people,
+            p.traders.len(),
+            p.land.len(),
+            tiles(w, &p.land)
+        );
     }
     out
 }
@@ -332,9 +373,26 @@ fn legal(w: &World, me: u32) -> String {
     let claimed = w.civs[&me].claim.clone();
     if ok(Order::Claim { tiles: claimed.clone() }) {
         out += &format!(
-            "  {{\"type\":\"claim\",\"tiles\":[<tile>, ...]}}  paints your claim (now {} tiles); connected to your capital\n",
+            "  {{\"type\":\"claim\",\"tiles\":[<tile>, ...]}}  paints your claim (now {} tiles); joined to your capital or a settlement\n",
             claimed.len()
         );
+    }
+    if settle::open(w) {
+        let posts = &w.civs[&me].signposts;
+        if posts.len() < SETTLE.signposts {
+            let sites: Vec<usize> = units::signpost_sites(w, me).into_iter().take(6).map(|(_, t)| t).collect();
+            let good = if sites.is_empty() { "none free nearby".to_string() } else { tiles(w, &sites) };
+            out += &format!(
+                "  {{\"type\":\"signpost\",\"tile\":<tile>}}  a place for your clans to settle: land nobody lives on, {} \
+                 steps or more from every capital and settlement (you keep {} at a time, {} now); good sites: {good}\n",
+                SETTLE.spacing,
+                SETTLE.signposts,
+                posts.len()
+            );
+        }
+        for s in posts {
+            out += &format!("  {{\"type\":\"unpost\",\"tile\":{}}}  removes your signpost\n", s.tile);
+        }
     }
     for u in w.units.values().filter(|u| u.civ == me) {
         let id = u.id;

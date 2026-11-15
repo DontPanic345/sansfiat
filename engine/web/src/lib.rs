@@ -289,6 +289,16 @@ impl Sim {
             .iter()
             .map(|t| serde_json::json!({ "tile": t.tile, "market": t.market, "clans": t.clans }))
             .collect();
+        // Each settlement's panel, and each civ's signposts with what the tile is worth as a site.
+        let settlements = engine::settle::panels(w);
+        let signposts: Vec<serde_json::Value> = w
+            .civs
+            .values()
+            .flat_map(|c| c.signposts.iter().map(move |s| (c.id, s)))
+            .map(|(civ, s)| {
+                serde_json::json!({ "civ": civ, "tile": s.tile, "turn": s.turn, "worth": engine::settle::worth(w, s.tile) })
+            })
+            .collect();
         serde_json::json!({
             "turn": w.turn,
             "end": w.end,
@@ -297,6 +307,8 @@ impl Sim {
             "clans": clans,
             "markets": markets,
             "towns": towns,
+            "settlements": settlements,
+            "signposts": signposts,
             "trails": trails,
             "trail_work": trail_work,
             "revealed": revealed,

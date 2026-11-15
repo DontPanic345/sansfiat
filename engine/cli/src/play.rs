@@ -247,15 +247,17 @@ fn unknown(text: &str) -> String {
     "unknown".to_string()
 }
 
-/// The map as `sansfiat map` prints it, with the led civ's capital `C`, its units `U` and its land `L`.
+/// The map as `sansfiat map` prints it, with the led civ's capital `C`, its settlements `S`, its signposts `P`, its units `U` and its land `L`.
 fn map_text(w: &World) -> String {
     let mut marks: Vec<(usize, char)> = Vec::new();
     if let Some(me) = w.player {
         marks.push((w.civs[&me].capital, 'C'));
+        marks.extend(engine::settle::of(w, me).map(|s| (s.tile, 'S')));
+        marks.extend(w.civs[&me].signposts.iter().map(|s| (s.tile, 'P')));
         marks.extend(w.units.values().filter(|u| u.civ == me).map(|u| (u.tile(), 'U')));
         marks.extend(w.civs[&me].claim.iter().map(|&t| (t, 'L')));
     }
     let mut out = engine::map::ascii_marked(&w.tiles, w.config.radius, &marks);
-    out += "C your capital  U your units  L your land\n";
+    out += "C your capital  S your settlements  P your signposts  U your units  L your land\n";
     out
 }

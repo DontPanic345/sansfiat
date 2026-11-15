@@ -178,16 +178,17 @@ fn signposts(w: &mut World, civ: u32, give: Give) {
     }
 }
 
-/// The tile the planner would post `civ`'s next signpost on: among the tiles a signpost may stand on
-/// within `SETTLE.plan_range` steps of its capital or a settlement, at least `SETTLE.spacing` steps
+/// The sites the planner weighs for `civ`'s next signpost, best first: the tiles a signpost may stand
+/// on within `SETTLE.plan_range` steps of its capital or a settlement, at least `SETTLE.spacing` steps
 /// from its other signposts, that nobody holds and that a clan can walk to from one of those seats
-/// within `SETTLE.reach`, the one worth most as a site (`settle::worth`, above `SETTLE.fed`), ties to
+/// within `SETTLE.reach`, each with its worth as a site (`settle::worth`, above `SETTLE.fed`); ties to
 /// the nearer a seat and then the lower tile.
-pub fn signpost_plan(w: &World, civ: u32) -> Option<usize> {
+pub fn signpost_sites(w: &World, civ: u32) -> Vec<(f64, usize)> {
     let c = &w.civs[&civ];
     let roots = settle::roots(w, civ);
     let near = crate::land::cost_map(w, &roots, SETTLE.reach, |i| crate::land::passable(w, i));
-    near.keys()
+    let mut sites: Vec<(f64, usize)> = near
+        .keys()
         .copied()
         .filter(|&t| w.tiles[t].claim.is_none())
         .filter(|&t| roots.iter().any(|&r| steps(w, r, t) <= SETTLE.plan_range))
@@ -195,11 +196,15 @@ pub fn signpost_plan(w: &World, civ: u32) -> Option<usize> {
         .filter(|&t| settle::check_post(w, civ, t).is_ok())
         .map(|t| (settle::worth(w, t), t))
         .filter(|&(v, _)| v > SETTLE.fed)
-        .max_by(|a, b| {
-            let d = |t: usize| roots.iter().map(|&r| steps(w, r, t)).min();
-            a.0.total_cmp(&b.0).then(d(b.1).cmp(&d(a.1))).then(b.1.cmp(&a.1))
-        })
-        .map(|(_, t)| t)
+        .collect();
+    let d = |t: usize| roots.iter().map(|&r| steps(w, r, t)).min();
+    sites.sort_by(|a, b| b.0.total_cmp(&a.0).then(d(a.1).cmp(&d(b.1))).then(a.1.cmp(&b.1)));
+    sites
+}
+
+/// The tile the planner would post `civ`'s next signpost on: the best of `signpost_sites`.
+pub fn signpost_plan(w: &World, civ: u32) -> Option<usize> {
+    signpost_sites(w, civ).first().map(|&(_, t)| t)
 }
 
 /// The people of `civ`'s armies.
