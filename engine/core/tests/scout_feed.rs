@@ -1,190 +1,129 @@
-//! The scout's feeding on the stage: it takes only what a tile regrows and never fallows it, leaves its
-//! errand for rich ground when it runs low and comes back fed, waits on rich ground when idle, and says
-//! why it went hungry.
+//! The scout's food on the stage: its pack, filled at a store. An errand that takes one trip to the
+//! store and is done by a named turn, a rival's zone that holds it where it is, and a rival army on
+//! its tile that kills it.
 
 mod common;
 
-use common::{led_order, led_scout};
+use common::{at_big, led_order, led_scout, BIG};
 use engine::data::*;
-use engine::hex::{Hex, DIRS};
-use engine::land::{spare, steps, yield_of};
-use engine::map::index;
+use engine::events::EventKind;
 use engine::stage::Stage;
-use engine::units;
-use engine::{Action, Order, World};
+use engine::units::{self, Doing};
+use engine::{Action, Order};
 
-/// Small map 2, led by its first civ, plain, with no food and no clans anywhere.
-fn bare() -> Stage {
-    let mut s = Stage::retro("small", 2).unwrap();
-    let first = s.world().civs.keys().next().copied().expect("a civ");
-    s.lead(first).unwrap();
+/// Two civs on bare plains twenty steps apart, led by the first, its store full.
+fn plain() -> (Stage, Vec<u32>) {
+    let mut s = Stage::flat(BIG);
+    let ids = s.civs(&[at_big(-10, 0), at_big(10, 0)], 14.0);
+    s.lead(ids[0]).unwrap();
     s.plain();
-    let w = s.world_mut();
-    w.clans.clear();
-    for t in &mut w.tiles {
-        t.cap = [0.0; N];
-        t.unworn = [0.0; N];
-        t.stock = [0.0; N];
-    }
-    s
+    (s, ids)
 }
 
-fn capital(w: &World) -> usize {
-    w.civs[&w.player.unwrap()].capital
+fn stock(s: &mut Stage, civ: u32) {
+    s.world_mut().civs.get_mut(&civ).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0];
 }
 
-/// The `n` land tiles straight out from `from`, none of them a rival's.
-fn ray(w: &World, from: usize, n: i32) -> Vec<usize> {
-    let h = w.tiles[from].hex();
-    for d in DIRS {
-        let tiles: Vec<usize> =
-            (1..=n).filter_map(|k| index(w.config.radius, Hex { q: h.q + d.0 * k, r: h.r + d.1 * k })).collect();
-        let mine = |i: usize| engine::civs::tile_civ(w, i).is_none_or(|c| Some(c) == w.player);
-        if tiles.len() == n as usize && tiles.iter().all(|&i| w.tiles[i].terrain != SEA && mine(i)) {
-            return tiles;
+/// A known route: forest with a cheap trail hidden on tiles 6 to 9 steps out, walled by mountains. The
+/// scout starts beside it with five turns in its pack, so it goes to its store once before the trails
+/// are built.
+#[test]
+fn an_errand_takes_one_trip_to_the_store_and_is_done_by_turn_10() {
+    let (mut s, ids) = plain();
+    let me = ids[0];
+    for q in -4..=-1 {
+        s.paint(at_big(q, 0), FOREST, Some(1.0 * DAY), None);
+        for r in [-1, 1] {
+            s.paint(at_big(q, r), MOUNTAIN, None, None);
+            s.paint(at_big(q - r.min(0), r), MOUNTAIN, None, None);
         }
     }
-    panic!("no open ray from {from}");
-}
-
-fn scout(w: &World) -> &units::Unit {
-    units::scout(w, w.player.unwrap()).unwrap()
-}
-
-/// Ends a turn with the civ's store empty: the scout lives off what it forages.
-fn end_hungry(w: &mut World) {
-    let me = w.player.unwrap();
-    w.civs.get_mut(&me).unwrap().store = [0.0; N];
-    w.act(Action::EndTurn).unwrap();
-}
-
-fn noted(w: &World, id: u32, part: &str) -> bool {
-    w.notes.get(&id).is_some_and(|l| l.iter().any(|n| n.text.contains(part)))
-}
-
-#[test]
-fn an_idle_scout_waits_on_rich_ground() {
-    let mut s = bare();
-    let cap = capital(s.world());
-    let food = ray(s.world(), cap, 2)[1];
-    s.food(food, GRAIN, 40.0);
-    let mut w = s.into_world();
-    assert_eq!(steps(&w, cap, food), 2);
-    for _ in 0..50 {
-        end_hungry(&mut w);
-    }
-    let u = scout(&w);
-    assert_eq!(u.people, SCOUT.people as f64, "no one starved");
-    // The wild grain regrows over the 50 turns, so it may have moved on from the tile it was set on: it
-    // waits where some food is within its reach.
-    let fed = |i: usize| steps(&w, u.home, i) <= SCOUT.reach as i32 && w.tiles[i].stock.iter().sum::<f64>() > 0.0;
-    assert!((0..w.tiles.len()).any(fed), "it waits where the food is within its reach");
-    assert_eq!(u.scout().unwrap().wander, Some(u.home), "on the ground it picked");
-    assert!(noted(&w, u.id, "waits on rich ground"));
-    assert!(w.tiles.iter().all(|t| t.fallow == 0), "no tile it took from is fallow");
-}
-
-#[test]
-fn a_scout_takes_only_what_a_tile_spares_and_an_army_fallows_it() {
-    let mut s = bare();
-    let cap = capital(s.world());
-    let food = ray(s.world(), cap, 2)[1];
-    s.food(food, GRAIN, 40.0);
-    let me = s.world().player.unwrap();
-    let mut army = Stage::retro("small", 2).unwrap();
-    army.lead(me).unwrap();
-    army.plain();
-    {
-        let w = army.world_mut();
-        w.clans.clear();
-        for t in &mut w.tiles {
-            t.cap = [0.0; N];
-            t.unworn = [0.0; N];
-            t.stock = [0.0; N];
-        }
-    }
-    army.food(food, GRAIN, 40.0);
     let id = led_scout(s.world());
-    let mut w = s.into_world();
-    let u = w.units.get_mut(&id).unwrap();
-    u.actor.home = food;
-    u.actor.territory = vec![food];
-    u.actor.store = [0.0; N];
-    let before = spare(&w.tiles[food]);
-    end_hungry(&mut w);
-    let t = &w.tiles[food];
-    let took: f64 = t.take.iter().sum();
-    assert!(took > 0.0, "the scout forages the tile");
-    assert!(took <= before.iter().sum::<f64>() + 1e-9, "no more than its spare: took {took}");
-    assert!(t.take[GRAIN] <= yield_of(t, GRAIN) + 1e-9);
-    assert_eq!(t.fallow, 0, "a scout never fallows a tile");
-
-    army.army(me, food, 4.0);
-    let mut w = army.into_world();
-    w.units.values_mut().filter(|u| u.kind() == units::UnitKind::Camp).for_each(|u| u.actor.store = [0.0; N]);
-    end_hungry(&mut w);
-    assert!(w.tiles[food].fallow > 0, "an army stripping the same tile leaves it fallow");
+    let u = s.world_mut().units.get_mut(&id).unwrap();
+    u.actor.home = at_big(-5, 0);
+    u.actor.territory = vec![at_big(-5, 0)];
+    u.actor.store = [0.0, 10.0, 0.0, 0.0, 0.0];
+    let (from, to) = (at_big(-10, 0), at_big(2, 0));
+    let order = led_order(s.world(), Order::Route { unit: id, from, to });
+    s.act(order).unwrap();
+    let (mut trips, mut homing, mut back, mut done) = (0, false, false, None);
+    for turn in 1..=40 {
+        stock(&mut s, me);
+        s.act(Action::EndTurn).unwrap();
+        let u = &s.world().units[&id];
+        let sc = u.scout().unwrap();
+        assert_eq!(u.hungry, 0, "never hungry (turn {turn})");
+        if sc.homing && !homing && done.is_none() {
+            trips += 1;
+        }
+        homing = sc.homing;
+        back |= matches!(sc.doing, Doing::Back(_));
+        if sc.built && done.is_none() {
+            done = Some(turn);
+        }
+    }
+    assert_eq!(trips, 1, "one trip to the store before its trails are built");
+    assert!(back, "it walked back to its errand");
+    assert!(done.is_some_and(|t| t <= 10), "its trails are built by turn 10: {done:?}");
+    for q in -4..=-1 {
+        assert!(s.trail(at_big(q, 0)), "a trail at ({q}, 0)");
+    }
 }
 
-/// A scout routed over ten tiles of forest and hills, with food two steps off its route's start.
-fn routed() -> (World, u32, usize, usize) {
-    let mut s = bare();
-    let cap = capital(s.world());
-    let line = ray(s.world(), cap, 10);
-    for (k, &i) in line.iter().enumerate() {
-        s.paint(i, if k % 2 == 0 { FOREST } else { HILLS }, Some(1.0 * DAY), None);
-    }
-    let food = line[1];
-    s.food(food, GRAIN, 60.0);
-    let w = s.into_world();
-    let id = led_scout(&w);
-    (w, id, cap, line[9])
+/// The rival's scout, put on `tile` with a pack and a destination.
+fn rival_scout(s: &mut Stage, civ: u32, tile: usize, dest: usize) -> u32 {
+    let id = units::scout(s.world(), civ).unwrap().id;
+    let u = s.world_mut().units.get_mut(&id).unwrap();
+    u.actor.home = tile;
+    u.actor.territory = vec![tile];
+    u.actor.store = [0.0, 30.0, 0.0, 0.0, 0.0];
+    u.scout_mut().unwrap().dest = Some(dest);
+    id
 }
 
 #[test]
-fn a_routed_scout_with_an_empty_pack_leaves_for_rich_ground_and_comes_back_fed() {
-    let (mut w, id, cap, to) = routed();
-    w.act(led_order(&w, Order::Route { unit: id, from: cap, to })).unwrap();
-    w.units.get_mut(&id).unwrap().actor.store = [0.0; N];
-    let need = SCOUT.people as f64 * UNIT.food;
-    let (mut left, mut back, mut searched, mut wandering) = (false, false, false, false);
-    for _ in 0..40 {
-        end_hungry(&mut w);
-        let u = &w.units[&id];
-        let s = u.scout().unwrap();
-        assert_eq!(s.route, Some((cap, to)), "its route is unchanged");
-        if s.wander.is_some() {
-            left = true;
-            wandering = true;
-        } else if wandering {
-            wandering = false;
-            back = true;
-            assert!(noted(&w, id, "back to its route"));
-            // It had `fed` turns of eating in the pack before it ate this turn's.
-            assert!(u.store.iter().sum::<f64>() + need + 1e-9 >= SCOUT.fed * need);
-        }
-        if back && w.civs[&w.player.unwrap()].revealed.len() > 1 {
-            searched = true;
-        }
-    }
-    assert!(noted(&w, id, "leaves its route to forage at") || noted(&w, id, "forages at"), "it says it leaves");
-    assert!(left && back, "it leaves for rich ground and comes back");
-    assert!(searched || w.tiles.iter().any(|t| t.trail_work > 0.0 || t.trail), "it searches again");
+fn a_rival_army_on_its_tile_kills_a_scout() {
+    let (mut s, ids) = plain();
+    let tile = at_big(0, 0);
+    let id = rival_scout(&mut s, ids[1], tile, tile);
+    s.army(ids[0], tile, 3.0);
+    s.act(Action::EndTurn).unwrap();
+    assert!(!s.world().units.contains_key(&id), "the scout is dead");
+    assert_eq!(s.events(EventKind::ScoutKilled), 1);
 }
 
 #[test]
-fn the_hunger_note_names_the_turns_forage_and_line() {
-    let mut s = bare();
-    let me = s.world().player.unwrap();
-    let id = led_scout(s.world());
-    let cap = capital(s.world());
-    let far = ray(s.world(), cap, 6)[5];
-    s.order(me, Order::Move { unit: id, to: far }).unwrap();
-    let mut w = s.into_world();
-    w.units.get_mut(&id).unwrap().actor.store = [0.0; N];
-    end_hungry(&mut w);
-    assert!(noted(&w, id, "goes hungry at"));
-    assert!(noted(&w, id, "foraging brought 0.0 and its line 0.0 of the 2 it eats"));
-    let h = scout(&w).scout().unwrap().hunger.expect("hungry this turn");
-    assert_eq!((h.forage, h.line, h.eats), (0.0, 0.0, 2.0));
+fn a_scout_in_a_rivals_zone_stays_until_the_zone_lifts() {
+    let (mut s, ids) = plain();
+    let (here, camp) = (at_big(0, 0), at_big(1, 0));
+    let id = rival_scout(&mut s, ids[1], here, at_big(0, 4));
+    let army = s.army(ids[0], camp, 4.0);
+    let order = led_order(s.world(), Order::Zone { unit: army, tiles: vec![here] });
+    s.act(order).unwrap();
+    s.turn(2).unwrap();
+    assert!(units::shut(s.world(), ids[1]).contains_key(&here), "the army holds the scout's tile");
+    let u = &s.world().units[&id];
+    assert_eq!(u.home, here, "it stays");
+    assert_eq!(u.scout().unwrap().doing, Doing::Trapped(ids[0]));
+    assert!(units::doing_text(s.world(), u).starts_with("trapped"));
+    let order = led_order(s.world(), Order::Zone { unit: army, tiles: vec![] });
+    s.act(order).unwrap();
+    s.turn(2).unwrap();
+    assert_ne!(s.world().units[&id].home, here, "the zone lifted: it walks on");
+}
+
+/// A scout outside a rival's zone walks round it, not through.
+#[test]
+fn a_scout_walks_round_a_rivals_zone() {
+    let (mut s, ids) = plain();
+    let id = rival_scout(&mut s, ids[1], at_big(3, 0), at_big(-3, 0));
+    let army = s.army(ids[0], at_big(0, 0), 6.0);
+    let order = led_order(s.world(), Order::Zone { unit: army, tiles: vec![at_big(0, -1), at_big(0, 1)] });
+    s.act(order).unwrap();
+    for _ in 0..6 {
+        s.act(Action::EndTurn).unwrap();
+        let at = s.world().units[&id].home;
+        assert!(!units::shut(s.world(), ids[1]).contains_key(&at), "never on a held tile");
+    }
+    assert_eq!(s.world().units[&id].home, at_big(-3, 0), "it gets there");
 }

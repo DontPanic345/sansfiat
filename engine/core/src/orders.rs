@@ -133,15 +133,9 @@ impl World {
                 let u = unit_of(self, civ, *unit, UnitKind::Camp)?;
                 units::zone_ok(self, u, tiles).map(|_| ())
             }
-            Order::Switches { unit, .. } | Order::Resupply { unit } => {
-                unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout]).map(|_| ())
-            }
-            Order::Forage { unit } => {
-                check_take(self, unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout])?, false)
-            }
-            Order::Pillage { unit } => {
-                check_take(self, unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout])?, true)
-            }
+            Order::Switches { unit, .. } | Order::Resupply { unit } => army_feeds(self, civ, *unit).map(|_| ()),
+            Order::Forage { unit } => check_take(self, army_feeds(self, civ, *unit)?, false),
+            Order::Pillage { unit } => check_take(self, army_feeds(self, civ, *unit)?, true),
             Order::Route { unit, from, to } => {
                 unit_of(self, civ, *unit, UnitKind::Scout)?;
                 check_route(self, *from, *to)
@@ -214,7 +208,7 @@ fn apply(w: &mut World, civ: u32, order: Order) {
             let u = w.units.get_mut(&unit).expect("checked: a unit");
             match &mut u.state {
                 units::UnitState::Camp(c) => (c.auto_forage, c.auto_supply) = (forage, supply),
-                units::UnitState::Scout(s) => (s.auto_forage, s.auto_supply) = (forage, supply),
+                units::UnitState::Scout(_) => {}
             }
         }
         Order::Resupply { unit } => once(w, unit, Once::Resupply),
@@ -237,7 +231,7 @@ fn once(w: &mut World, unit: u32, which: Once) {
     let u = w.units.get_mut(&unit).expect("checked: a unit");
     let (resupply, forage, pillage) = match &mut u.state {
         units::UnitState::Camp(c) => (&mut c.resupply, &mut c.forage, &mut c.pillage),
-        units::UnitState::Scout(s) => (&mut s.resupply, &mut s.forage, &mut s.pillage),
+        units::UnitState::Scout(_) => return,
     };
     match which {
         Once::Resupply => *resupply = true,
@@ -288,6 +282,16 @@ fn check_disband(n: Option<u32>) -> Result<(), String> {
         return Err("disband at least one warrior".to_string());
     }
     Ok(())
+}
+
+/// The army `unit` of `civ`, for an order about its food. A scout has none: its food is its pack,
+/// filled at a store.
+fn army_feeds(w: &World, civ: u32, unit: u32) -> Result<&Unit, String> {
+    let u = unit_among(w, civ, unit, &[UnitKind::Camp, UnitKind::Scout])?;
+    if u.scout().is_some() {
+        return Err("a scout eats from its pack and fills it at a store: it doesn't forage or draw on a line".to_string());
+    }
+    Ok(u)
 }
 
 /// Checks `Move` for camp or scout `u`: a tile of the map, land it can stand on, and a walk there.
@@ -347,7 +351,7 @@ fn order_move(w: &mut World, unit: u32, to: usize) {
     }
     if let Some(s) = u.scout_mut() {
         s.dest = dest;
-        s.wander = None;
+        s.back = None;
         s.route = None;
         s.heard = false;
         s.blocked = false;
@@ -419,7 +423,7 @@ fn order_route(w: &mut World, unit: u32, route: Option<(usize, usize)>) {
     let Some(s) = w.units.get_mut(&unit).and_then(|u| u.scout_mut()) else { return };
     s.route = route;
     s.dest = None;
-    s.wander = None;
+    s.back = None;
     s.heard = false;
     s.blocked = false;
     s.built = false;

@@ -573,35 +573,16 @@ pub struct ScoutRules {
     pub people: u32,
     /// Days to reveal a forest or hills tile (a mountain takes a whole turn's search labour).
     pub reveal: f64,
-    /// Hex steps from its tile a scout forages: its own tile and those within this many steps, each walk
-    /// there and back paid from its labour. A scout on a long errand has no line to live off, and
-    /// the tile it stands on is soon bare; one step more finds a tile that isn't.
-    pub reach: usize,
-    /// Hex steps from its tile a scout looks for rich ground when it runs low: ground it can walk to where
-    /// a turn's foraging brings the most, so a scout far from its line finds a meal, not a march.
-    pub wander: usize,
-    /// Turns of eating (food a person a turn) in the pack under which a routed scout leaves its errand for rich ground.
-    pub low: f64,
-    /// Turns of eating in the pack at which a wandering scout is fed and goes back to its errand: the
-    /// gap between `low` and `fed` stops it leaving again the turn after it returns.
-    pub fed: f64,
-    /// Turns of eating a turn's foraging must bring for ground to count as rich: ground that only just
-    /// feeds a scout is left again as soon as it takes from it.
-    pub rich: f64,
+    /// Turns of its eating a scout's pack holds: what it walks and works on between stores.
+    pub pack: f64,
+    /// Turns of eating a scout keeps over the walk to its store when it turns for it: the turn it
+    /// spends working before it looks again, and the turn it arrives on.
+    pub spare: f64,
+    /// The share of a full pack a scout with an errand waits for at a store before it sets out.
+    pub out: f64,
 }
 
-// Tuned against the 28 errands on the seven retro maps and the AI's scouts (relay/specs/153/errand.md): of the
-// settings that keep every scout alive, the most tiles and trails on the 14 routed errands. Wander 4 left the
-// ground a scout needed out of range (6 of 28 lost); 8 finds it (10 and 12 find more work, but then one of the
-// AI's idle scouts loses a person on medium 9). Rich 1.5 passed over ground that only just fed a scout, and it
-// starved beside it; 1.2 takes it. Low 1.5 and fed 2.5 leave the errand later and come back sooner than 2 and 4:
-// the same lives for a third fewer turns off the errand. Two people: one lost 2 to 8 of 28 at every setting.
-// The scout walks at one person's pace (`walk.md`): its turn's steps halve. Rich 0.8 takes ground that only
-// half feeds it and so loses one scout fewer than 1.2 (4 of 28, all on medium 9, against 5) and reveals and
-// trails more (34 tiles and 6 trails against 28 and 4); wander, low and fed at 6 to 12, 1.5 to 3 and 2.5 to 5
-// lost 4 or 5 (walk.md). Medium 9's four scouts starve with the walk off as well: its pick, not the walk.
-pub const SCOUT: ScoutRules =
-    ScoutRules { people: 2, reveal: 1.0 * DAY, reach: 1, wander: 8, low: 1.5, fed: 2.5, rich: 0.8 };
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 * DAY, pack: 24.0, spare: 2.0, out: 0.5 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's

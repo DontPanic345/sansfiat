@@ -369,6 +369,7 @@ impl World {
             | EventKind::ScoutHungry
             | EventKind::ScoutStarved
             | EventKind::PeopleLeft => e.civ == Some(me),
+            EventKind::ScoutKilled => e.civ == Some(me) || e.other == Some(me),
             EventKind::ClanJoined => e.civ.is_some_and(|c| c != me),
             EventKind::ClanLeft | EventKind::ClaimTaken | EventKind::SettlementTaken => {
                 e.civ == Some(me) || e.other == Some(me)

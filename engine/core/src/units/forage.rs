@@ -1,11 +1,10 @@
-//! The unit's food: what a camp strips from a tile, what a scout grazes, and what the line brings.
+//! An army's food: what a camp strips from a tile and what the line brings.
 //! And the labour a unit has left in its turn, `Ladder`, spent rung by rung. The ladder lives here,
 //! not in `actors`, because its rungs are these functions: an actor's labour spent on food is a unit's.
 
 use super::line::line;
-use super::{pack_cap, Unit, EPS};
+use super::{cap_of, Unit, EPS};
 use crate::data::*;
-use crate::land;
 use crate::market::{add, take, total};
 use crate::settle;
 use crate::world::World;
@@ -40,31 +39,6 @@ pub(super) fn strip_at(w: &mut World, id: u32, tile: usize, labour: f64, room: f
     (food / rate, food)
 }
 
-/// A scout's take of tile `tile`: food at `rate` a unit of labour, up to `room` and no more than the
-/// tile's `spare`, each food in proportion to its share of the spare. What it takes counts in the
-/// tile's `take` for the turn, and the tile never goes fallow. Returns the labour used and the food
-/// taken.
-pub(super) fn graze_at(w: &mut World, id: u32, tile: usize, labour: f64, room: f64, rate: f64) -> (f64, f64) {
-    let t = &mut w.tiles[tile];
-    let spare = land::spare(t);
-    let held = total(&spare);
-    if held <= EPS || labour <= 0.0 || room <= 0.0 {
-        return (0.0, 0.0);
-    }
-    let food = (labour * rate).min(held).min(room);
-    if food <= EPS {
-        return (0.0, 0.0);
-    }
-    let share = food / held;
-    let got = spare.map(|s| s * share);
-    for ((s, k), g) in t.stock.iter_mut().zip(t.take.iter_mut()).zip(got) {
-        *s = (*s - g).max(0.0);
-        *k += g;
-    }
-    add(&mut w.units.get_mut(&id).unwrap().store, &got);
-    (food / rate, food)
-}
-
 /// Puts up to `labour` on the line for up to `want` of food into the pack, from the store the line
 /// ends at and no other. Returns
 /// the labour used and the food brought.
@@ -88,8 +62,8 @@ pub(super) fn supply(w: &mut World, id: u32, labour: f64, want: f64) -> (f64, f6
 }
 
 /// The labour a unit has left this turn, spent down rung by rung: each spend takes its labour off
-/// `left`, in the order the turn makes them. A rung's food is the function's (`strip` for a camp,
-/// `graze_at` for a scout, `supply` along the line), so each keeps its own take rule.
+/// `left`, in the order the turn makes them. A rung's food is the function's (`strip` on a tile,
+/// `supply` along the line), so each keeps its own take rule.
 pub(super) struct Ladder {
     pub left: f64,
 }
@@ -111,24 +85,6 @@ impl Ladder {
         food
     }
 
-    /// Grazes tile `tile` with all the labour left (`graze_at`); returns the food taken.
-    pub fn graze(&mut self, w: &mut World, id: u32, tile: usize, room: f64, rate: f64) -> f64 {
-        let (used, food) = graze_at(w, id, tile, self.left, room, rate);
-        self.left -= used;
-        food
-    }
-
-    /// Grazes tile `tile` for `food` at `rate`, reached by a walk of `walk` paid with it: the walk
-    /// and the labour the grazing used come off `left` together, and nothing if the tile gave none.
-    /// Returns the food taken.
-    pub fn graze_walked(&mut self, w: &mut World, id: u32, tile: usize, walk: f64, food: f64, rate: f64) -> f64 {
-        let (used, taken) = graze_at(w, id, tile, food / rate, food, rate);
-        if taken > 0.0 {
-            self.left -= walk + used;
-        }
-        taken
-    }
-
     /// Brings up to `want` of food along the line with all the labour left (`supply`); returns the
     /// food brought.
     pub fn supply(&mut self, w: &mut World, id: u32, want: f64) -> f64 {
@@ -138,7 +94,7 @@ impl Ladder {
     }
 }
 
-/// The room left in the camp's pack.
+/// The room left in the unit's pack.
 pub(super) fn room(u: &Unit) -> f64 {
-    (pack_cap(u.people) - total(&u.store)).max(0.0)
+    (cap_of(u) - total(&u.store)).max(0.0)
 }

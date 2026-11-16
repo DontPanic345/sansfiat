@@ -38,7 +38,7 @@ pub use line::{
     cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, ring_capital, route, store_of,
     turns,
 };
-pub use scout::{ground_worth, rich_ground, Hunger, ScoutState};
+pub use scout::{doing_text, pack_turns, shut, store_walk, Doing, ScoutState};
 pub use search::{route_plan, search_view, Plan, SearchView};
 
 use camp::{camp_march, camp_turn, hold};
@@ -172,7 +172,9 @@ struct UnitFlat {
     #[serde(default)]
     bows: bool,
     #[serde(default)]
-    wander: Option<usize>,
+    homing: bool,
+    #[serde(default)]
+    back: Option<usize>,
 }
 
 impl From<Unit> for UnitFlat {
@@ -184,17 +186,7 @@ impl From<Unit> for UnitFlat {
         };
         let (camp, scout) = match u.state {
             UnitState::Camp(c) => (c, ScoutState::new()),
-            UnitState::Scout(s) => (
-                CampState {
-                    auto_forage: s.auto_forage,
-                    auto_supply: s.auto_supply,
-                    resupply: s.resupply,
-                    forage: s.forage,
-                    pillage: s.pillage,
-                    ..scout_camp_fields()
-                },
-                s,
-            ),
+            UnitState::Scout(s) => (scout_camp_fields(), s),
         };
         UnitFlat {
             id: u.id,
@@ -223,7 +215,8 @@ impl From<Unit> for UnitFlat {
             stack: camp.stack,
             still: camp.still,
             bows: camp.bows,
-            wander: scout.wander,
+            homing: scout.homing,
+            back: scout.back,
         }
     }
 }
@@ -256,13 +249,9 @@ impl From<UnitFlat> for Unit {
                 heard: f.heard,
                 blocked: f.blocked,
                 built: f.built,
-                auto_forage: f.auto_forage,
-                auto_supply: f.auto_supply,
-                resupply: f.resupply,
-                forage: f.forage,
-                pillage: f.pillage,
-                wander: f.wander,
-                hunger: None,
+                homing: f.homing,
+                back: f.back,
+                doing: Doing::Idle,
             }),
         };
         Unit { id: f.id, civ: f.civ, actor: f.actor, banked: f.banked, hungry: f.hungry, state }
@@ -377,6 +366,15 @@ pub fn pack_cap(people: f64) -> f64 {
     people * UNIT.pack * UNIT.food
 }
 
+/// The food unit `u`'s pack holds: an army's by its people (`pack_cap`), a scout's `SCOUT.pack` turns
+/// of its eating.
+pub fn cap_of(u: &Unit) -> f64 {
+    match u.kind() {
+        UnitKind::Camp => pack_cap(u.people),
+        UnitKind::Scout => u.people * SCOUT.pack * UNIT.food,
+    }
+}
+
 /// The name of `civ`, for a note.
 pub(crate) fn name_of(w: &World, civ: u32) -> String {
     w.civs.get(&civ).map_or_else(|| "a rival".to_string(), |c| c.name.clone())
@@ -405,6 +403,7 @@ pub fn step(w: &mut World) {
     let left: BTreeMap<u32, f64> = camps.iter().map(|&id| (id, camp_march(w, id, &rivals))).collect();
     let spent = hold(w);
     fight::step(w, &holders);
+    scout::kill(w);
     for id in ids {
         match w.units.get(&id).map(|u| u.kind()) {
             Some(UnitKind::Camp) => {

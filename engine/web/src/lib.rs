@@ -225,10 +225,11 @@ impl Sim {
                 }
                 if u.kind() == UnitKind::Scout {
                     let sc = u.scout();
-                    row["wander"] = sc.and_then(|s| s.wander).into();
-                    row["hunger"] = sc
-                        .and_then(|s| s.hunger)
-                        .map(|h| serde_json::json!({ "forage": h.forage, "line": h.line, "eats": h.eats, "cost": h.cost, "carry": h.carry }))
+                    row["doing"] = units::doing_text(w, u).into();
+                    row["pack_cap"] = units::cap_of(u).into();
+                    row["back"] = sc.and_then(|s| s.back).into();
+                    row["store_walk"] = units::store_walk(w, u.id)
+                        .map(|(tile, path, turns)| serde_json::json!({ "tile": tile, "path": path, "turns": turns }))
                         .into();
                     row["search"] = units::search_view(w, u.id)
                         .map(|v| {
