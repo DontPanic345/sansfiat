@@ -28,6 +28,7 @@
   "scoutBlocked": "scout-blocked.ogg",
   "scoutHungry": "scout-hungry.ogg",
   "scoutStarved": "scout-starved.ogg",
+  "scoutKilled": "scout-starved.ogg",
   "clanJoined": "clan-joined.ogg",
   "deployed": "deployed.ogg",
   "held": "held.ogg",

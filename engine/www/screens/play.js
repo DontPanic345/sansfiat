@@ -218,7 +218,10 @@ function routes() {
   // A selected festival: its walkers' routes are drawn bright.
   view.setFocusMarket(selected?.kind === 'festival' ? selected.id : null);
   const camp = selected?.kind === 'unit' ? v.units[selected.id] : null;
-  if (camp && camp.cut_at) {
+  if (camp?.kind === 'scout') {
+    // A scout draws no line: its walk to its store is drawn where an army's line is.
+    view.setLine(camp.store_walk?.path.length ? { tiles: [camp.tile, ...camp.store_walk.path], colour: '#f2dca4' } : null);
+  } else if (camp && camp.cut_at) {
     // Cut by held ground: the line it would have, drawn to the tile where it stops, marked.
     const stop = camp.cut_at.path.indexOf(camp.cut_at.at);
     view.setLine({ tiles: [camp.tile, ...camp.cut_at.path.slice(0, stop + 1)], colour: lineColour(camp), cut: camp.cut_at.at });

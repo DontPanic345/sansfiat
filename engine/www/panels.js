@@ -289,30 +289,24 @@ function disband(u, rules = null) {
   return options.length ? [{ label: 'Disband…', stepper: { options } }, all] : [all];
 }
 
-/** A scout's panel (spec items 23-26): what it does (its errand, its hunger), its route's known and possible costs,
- *  the search's mountains to check and left, its hunger, its switches, and the buttons. */
+/** A scout's panel (spec items 23-26): what it does (the engine's words), its pack and store, its route's known
+ *  and possible costs, the search's mountains to check and left, and the buttons. */
 function scoutShape(ctx, u) {
   const { v, routing, outcome, rules, sim } = ctx;
   const mine = u.civ === v.player;
   const plan = u.plan;
   const search = u.search;
   const left = search?.left ?? [];
-  const errand = u.route != null || u.dest != null;
-  let base;
-  if (u.wander != null && errand) base = `Foraging at ${hex(ctx, u.wander)} until fed, then ${u.route ? 'back to its route' : `on to ${hex(ctx, u.dest)}`}`;
-  else if (u.route) base = `Searching ${hex(ctx, u.route[0])} → ${hex(ctx, u.route[1])}: known route ${plan?.known ? `${f2(plan.known.cost)} days` : 'none'}, possible ${plan?.possible ? `${f2(plan.possible.cost)} days` : 'none'}`;
-  else if (u.dest != null && u.dest === u.tile) base = `At ${hex(ctx, u.tile)}, foraging`;
-  else if (u.dest != null) {
-    const r = JSON.parse(sim.route(u.id));
-    base = `Going to ${hex(ctx, u.dest)}${r ? `: ${plural(r.turns, 'turn')}` : ': no route'}`;
-  } else if (u.wander != null) base = `Waiting on rich ground at ${hex(ctx, u.wander)}`;
-  else base = `At ${hex(ctx, u.tile)}, foraging`;
+  const base = u.doing ? u.doing.charAt(0).toUpperCase() + u.doing.slice(1) : `At ${hex(ctx, u.tile)}`;
   const doing = [...(u.hungry > 0 ? [`Hungry ${plural(u.hungry, 'turn')}: loses a person at ${rules.hungry_turns}`] : []), base].join(' · ');
-  const hunger = u.hunger;
   const numbers = [
     { label: 'People', value: f2(u.people), tip: 'The people in the scout' },
-    { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
-    { label: 'Draws on', value: u.draws_on ? (u.draws_on.label === 'capital' ? 'its capital' : `its settlement at (${hex(ctx, u.draws_on.tile)})`) : 'none', tip: 'The store its line ends at: the one that feeds it cheapest' },
+    { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts: it eats from its pack and fills it at a store' },
+    {
+      label: 'Store',
+      value: u.store_walk ? `${hex(ctx, u.store_walk.tile)}, ${plural(u.store_walk.turns, 'turn')} away` : 'none within reach',
+      tip: 'The nearest store of its civ and the walk there; it walks there when its pack holds no more than the walk and two turns over',
+    },
     { label: 'Known route', value: plan?.known ? `${f2(plan.known.cost)} days` : 'none', tip: 'The days of the route over the tiles the player has seen' },
     { label: 'Possible route', value: plan?.possible ? `${f2(plan.possible.cost)} days` : 'none', tip: 'The days of the cheapest route if the unrevealed tiles are as they could be' },
     {
@@ -320,19 +314,13 @@ function scoutShape(ctx, u) {
       value: search ? `${search.next.length} to check${left.length ? `; ${left.length} left` : ''}` : 'none',
       tip: "Mountains the search won't reveal: the cheapest route through each costs at least the route it knows",
     },
-    {
-      label: 'Hunger',
-      value: hunger ? `foraging ${f2(hunger.forage)}, line ${f2(hunger.line)} of ${f2(hunger.eats)} it eats` : 'fed',
-      tip: 'What foraging and the line brought on its last hungry turn, against what it eats',
-    },
   ];
   const buttons = [];
   if (mine) {
     buttons.push({ label: 'Move to…', arm: 'move' }, { label: 'Route from…', arm: 'start' }, { label: 'Route to…', arm: 'to' });
     if (u.route) buttons.push({ label: 'Clear route', action: unitOrder(u, { type: 'clearRoute' }) });
     if (u.dest != null) buttons.push({ label: 'Stop', action: unitOrder(u, { type: 'move', to: u.tile }) });
-    buttons.push({ label: 'Forage', action: unitOrder(u, { type: 'forage' }) }, { label: 'Resupply', action: unitOrder(u, { type: 'resupply' }) });
-    buttons.push(...switchButtons(u), ...disband(u));
+    buttons.push(...disband(u));
   }
   let hint = null;
   if (routing.arm === 'move') hint = 'Click the map for where the scout goes; Esc cancels';

@@ -107,13 +107,16 @@ fn every_order_is_refused_for_a_unit_of_the_wrong_kind() {
     let me = w.player.unwrap();
     let (camp, scout) = (led_camp(&w), led_scout(&w));
     for order in camp_orders(scout) {
-        // A scout takes the switches, the one-shot orders and disbanding, as a camp does.
+        // A scout takes disbanding as a camp does; it eats from its pack, so the switches and the
+        // one-shot feeding orders are refused with its reason.
         let want = match order {
-            Order::Disband { .. } | Order::Switches { .. } | Order::Resupply { .. } | Order::Forage { .. } => {
+            Order::Disband { .. } => {
                 assert_eq!(w.check_order(me, &order), Ok(()), "{order:?}");
                 continue;
             }
-            Order::Pillage { .. } => "there is nothing to pillage here: it isn't a rival's land",
+            Order::Switches { .. } | Order::Resupply { .. } | Order::Forage { .. } | Order::Pillage { .. } => {
+                "a scout eats from its pack and fills it at a store: it doesn't forage or draw on a line"
+            }
             // A scout takes a Move as a camp does, and refuses the sea (tile 0 here) with its own words.
             Order::Move { .. } => "a scout can only go over land",
             _ => "that unit is not a camp",

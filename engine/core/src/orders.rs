@@ -368,25 +368,6 @@ fn order_move(w: &mut World, unit: u32, to: usize) {
         };
         w.note(unit, text);
     }
-    if dest.is_some() && w.units[&unit].scout().is_some() {
-        reach_note(w, unit, to);
-    }
-}
-
-/// Says a scout's line from `tile` does not carry what it eats, or reaches nothing there.
-fn reach_note(w: &mut World, unit: u32, tile: usize) {
-    if !units::past_reach(w, unit, tile) {
-        return;
-    }
-    let at = w.at(tile);
-    let text = match units::line_from(w, unit, tile) {
-        Some((_, carry)) => {
-            let eats = w.units[&unit].people * UNIT.food;
-            format!("past its line's reach: its line there would carry {carry:.1} of the {eats:.0} it eats")
-        }
-        None => format!("past its line's reach: no line reaches {at}"),
-    };
-    w.note(unit, text);
 }
 
 /// Applies `Zone`: the zone is the camp's territory; held tiles outside it stop being held at once.
@@ -428,7 +409,4 @@ fn order_route(w: &mut World, unit: u32, route: Option<(usize, usize)>) {
     s.blocked = false;
     s.built = false;
     w.note(unit, text);
-    if let Some((_, to)) = route {
-        reach_note(w, unit, to);
-    }
 }

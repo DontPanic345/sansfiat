@@ -69,11 +69,11 @@ fn errand(size: &str, seed: u32, rival: bool) -> Errand {
 fn refill(e: &mut Errand) {
     let w = e.stage.world_mut();
     let Some(u) = w.units.get_mut(&e.scout) else { return };
-    let cap = units::pack_cap(u.people);
+    let cap = units::cap_of(u);
     u.actor.store = [cap / N as f64; N];
     let civ = w.civs.get_mut(&e.civ).unwrap();
-    if civ.actor.store.iter().sum::<f64>() < cap {
-        civ.actor.store = [cap / N as f64; N];
+    if civ.actor.store.iter().sum::<f64>() < 2.0 * cap {
+        civ.actor.store = [2.0 * cap / N as f64; N];
     }
 }
 
@@ -85,19 +85,26 @@ fn settled(e: &Errand) -> Result<bool, String> {
     Ok(s.built || s.route.is_none())
 }
 
-/// Runs the errand's turns until it settles, and returns the turn it settled on (from 1). Panics
+/// Runs the errand's turns until it settles, and returns the turn it settled on (from 1), or `None`
+/// when the scout waits at its store because the errand is further than a full pack takes it and back
+/// (the pack's rule, not the search's). Panics
 /// with its own message when it does not settle within `TURNS`.
-fn settle(e: &mut Errand) -> u32 {
+fn settle(e: &mut Errand) -> Option<u32> {
     for t in 1..=TURNS {
         refill(e);
         e.stage.turn(1).unwrap();
         match settled(e) {
-            Ok(true) => return t,
+            Ok(true) => return Some(t),
             Ok(false) => {}
             Err(m) => panic!("{} turn {t}: {m}", e.name),
         }
     }
-    panic!("{}: the scout has not settled in {TURNS} turns", e.name)
+    let w = e.stage.world();
+    let u = &w.units[&e.scout];
+    if matches!(u.scout().map(|s| s.doing), Some(units::Doing::TooFar(_))) {
+        return None;
+    }
+    panic!("{}: the scout has not settled in {TURNS} turns: {:?} at {} home {}", e.name, units::doing_text(w, u), u.tile(), u.home)
 }
 
 /// The known cost of `civ`'s route from `cap` to `to` (infinite when the known path is none).
@@ -200,7 +207,7 @@ fn settled_scouts_leave_nothing_unrevealed_that_could_beat_them() {
     for (size, seed) in MAPS {
         for rival in [true, false] {
             let mut e = errand(size, seed, rival);
-            let t = settle(&mut e);
+            let Some(t) = settle(&mut e) else { continue };
             let mut plan: Plan = e.stage.route(e.civ, e.cap, e.to);
             // The scout settles in its own turn, and the land's trails wear after it in the same
             // turn (`tend`): a trail that fades then opens a tile the scout reveals on its next turn
@@ -251,7 +258,7 @@ fn a_scouts_search_on_small_9_to_the_forest_is_in_order() {
 fn a_settled_route_has_no_cheaper_trail() {
     for (size, seed, rival) in [("small", 7, true), ("medium", 8, true)] {
         let mut e = errand(size, seed, rival);
-        let t = settle(&mut e);
+        let Some(t) = settle(&mut e) else { continue };
         let cheaper = |e: &Errand| {
             let plan = e.stage.route(e.civ, e.cap, e.to);
             let known = plan.known.as_ref().map_or(f64::INFINITY, |k| k.1);
