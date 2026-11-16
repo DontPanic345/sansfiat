@@ -55,13 +55,13 @@ fn run(size: &str, seed: u32, me_ix: usize, rival_ix: usize, fight: bool) -> Opt
         if r.built.is_none() && s.built {
             r.built = Some(w.turn - turn0);
         }
-        r.off += u32::from(s.homing || s.back.is_some()); // BRANCH
-        r.filling += u32::from(matches!(s.doing, units::Doing::Filling(_))); // BRANCH
-        r.toofar += u32::from(matches!(s.doing, units::Doing::TooFar(_))); // BRANCH
+        r.off += u32::from(s.homing || s.back.is_some());
+        r.filling += u32::from(matches!(s.doing, units::Doing::Filling(_)));
+        r.toofar += u32::from(matches!(s.doing, units::Doing::TooFar(_)));
     }
     let w = stage.world();
     r.starved = w.events.iter().filter(|e| e.kind == EventKind::ScoutStarved && e.unit == Some(id)).count();
-    r.killed = w.events.iter().filter(|e| e.kind == EventKind::ScoutKilled && e.unit == Some(id)).count(); // BRANCH
+    r.killed = w.events.iter().filter(|e| e.kind == EventKind::ScoutKilled && e.unit == Some(id)).count();
     r.at200 = w.units.get(&id).map_or("gone".to_string(), |u| format!("tile {}", u.actor.home));
     Some(r)
 }
@@ -99,7 +99,13 @@ fn report(fight: bool) {
     let mut v = out.into_inner().unwrap();
     v.sort_by_key(|x| x.0);
     let results: Vec<Run> = v.into_iter().map(|x| x.1).collect();
-    println!("fight {} | pack {} spare {} out {}", if fight { "on" } else { "off" }, SCOUT.pack, SCOUT.spare, SCOUT.out);
+    println!(
+        "fight {} | pack {} spare {} out {}",
+        if fight { "on" } else { "off" },
+        SCOUT.pack,
+        SCOUT.spare,
+        SCOUT.out
+    );
     println!("| errand | built | off | filling | too far | starved | killed | at +200 |");
     println!("|---|---|---|---|---|---|---|---|");
     for r in &results {

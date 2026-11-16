@@ -32,3 +32,18 @@
   selected scout draws its walk to its store; the tile tooltip's reach warning is gone for scouts; `scoutKilled` is in
   feed.js, sounds.json (no .ogg exists for either) and check.mjs KINDS. `buttons.mjs` cases for Forage/Resupply/Auto-* keep
   their scout branches, which no longer run (buttons are enumerated from the panels).
+
+## build-2 (the retro maps)
+
+- `SCOUT` stays pack 36, spare 3, out 0.25 (`errand.md`, with the grid). `SAVE_VERSION` is 25 and the pins moved: the fix below.
+- Bug found by tracing a starved medium 8 scout: a pass the scout built wore away behind it (unused trails go), `store_walk`
+  was `None`, and it starved "searching". `scout::keep_way` marks the built passes between a scout and its nearest store used
+  each turn; `core/tests/pass.rs::a_scout_past_its_pass_keeps_the_way_home` holds it. The first sweep's numbers for spare 1
+  and 2 losing scouts were this bug.
+- `core/tests/scout_routes.rs` is the report (`--ignored --nocapture`, `FIGHT=on|off`; a minute for both halves). `errand-main.txt`
+  was made by the same test minus the new columns, on `main` in a worktree.
+- The led game's lines files replay: `sansfiat play --game G --seed 61288 --size small --civ 1 [--no-fight] < lines`, where the
+  lines are the `line` fields of `game/*.lines.jsonl`. After the fix `branch-fight-army` builds its route at +78 and the
+  scout isn't killed (the lines are unchanged).
+- Medium 9's scouts spend most of an errand walking to a store and back (the rival is more than 14 turns' walk): the store
+  isn't what stops them, except civ 846's, which gains about a food a turn.

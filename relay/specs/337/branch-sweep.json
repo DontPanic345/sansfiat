@@ -13764,7 +13764,7 @@
           },
           "at_200": {
             "homes_trailed": 0.845,
-            "worked_trailed": 0.3148148148148148,
+            "worked_trailed": 0.3168724279835391,
             "route_trailed": 0.9866666666666667,
             "markets": 34,
             "trading": 0.9577464788732394
@@ -18329,7 +18329,7 @@
         {
           "civ": 845,
           "auto": {
-            "standing": 0.1528233906936145,
+            "standing": 0.16138996793707214,
             "rank": 1,
             "rank_changes": 1,
             "lead_changes": 1,
@@ -21795,11 +21795,11 @@
       "idle_fell": 3,
       "won": 5,
       "idle_won": 1,
-      "standing": 0.12508379044172516,
+      "standing": 0.12549172269141362,
       "idle_standing": 0.08561148813008795,
-      "over_idle": 0.039472302311637196,
+      "over_idle": 0.03988023456132566,
       "ahead_of_idle": 16
     }
   },
-  "seconds": 91.407621491
+  "seconds": 96.411188024
 }

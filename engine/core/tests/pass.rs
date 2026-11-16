@@ -57,6 +57,28 @@ fn clan(w: &mut World, civ: u32, home: usize, people: f64) -> u32 {
     id
 }
 
+/// A scout past a pass it built keeps the way home: the pass doesn't wear away while it is out of
+/// food's reach, so it walks back to its store when its pack runs low and doesn't starve across the wall.
+#[test]
+fn a_scout_past_its_pass_keeps_the_way_home() {
+    let (mut s, red) = staged();
+    let (pass, far) = (tile(0, 0), tile(4, 0));
+    s.world_mut().tiles[pass].trail = true;
+    let scout = units::scout(s.world(), red).unwrap().id;
+    s.world_mut().units.get_mut(&scout).unwrap().home = far;
+    s.world_mut().units.get_mut(&scout).unwrap().actor.store = [0.0, 40.0, 0.0, 0.0, 0.0];
+    for _ in 1..=40 {
+        stock(&mut s, red);
+        s.act(Action::EndTurn).unwrap();
+    }
+    let home = s.world().units[&scout].home;
+    assert!(s.world().tiles[home].hex().q < 0, "the scout walked home across the pass: at {home}");
+    assert_eq!(s.people(scout), f64::from(SCOUT.people), "the scout lives");
+    let starved =
+        s.world().events.iter().filter(|e| e.kind == engine::EventKind::ScoutStarved && e.unit == Some(scout));
+    assert_eq!(starved.count(), 0, "and goes hungry for nothing");
+}
+
 #[test]
 fn a_pass_the_scout_bridged_is_walked_by_an_army_its_line_and_a_clan() {
     let (mut s, red) = staged();

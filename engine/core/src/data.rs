@@ -579,8 +579,8 @@ pub struct ScoutRules {
     /// so a pack is filled over several turns at the store.
     pub pack: f64,
     /// Turns of eating a scout keeps over the walk to its store when it turns for it: the turn it
-    /// spends working before it looks again, and the turn it arrives on. With a pack of 36, at 2 a
-    /// scout is lost on the walk home on small 9; at 3 and at 4 none is.
+    /// spends working before it looks again, and the turn it arrives on. With a pack of 36 no scout
+    /// starves at 1 to 4 on the retro maps (`relay/specs/337/errand.md`); 3 leaves both turns.
     pub spare: f64,
     /// The share of a full pack a scout with an errand waits for at a store before it sets out. A civ
     /// whose store gains about a food a turn (medium 9) holds a scout at the store for tens of turns

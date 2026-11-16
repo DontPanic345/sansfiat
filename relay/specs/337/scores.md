@@ -10,11 +10,12 @@ the engine has not changed since), `branch-sweep.json` is `sansfiat sweep --judg
 |---|---|---|
 | routes built by +200, 42 errands between the retro maps' capitals, fight off | 8 | 27 |
 | the same, fight on | 8 | 19 |
-| scouts starved (people), fight off | 33 | 6 |
-| scouts killed by a rival army, fight on | not a rule | 7 |
+| scouts starved (people), fight off | 33 | 0 |
+| scouts killed by a rival army, fight on | not a rule | 9 |
 | led game, small 61288 Red, the one route order, fight off: route built | never; the scout stands at (4, -6) at +200, 6 tiles to search | +52 |
 
-The 6 people starved on the branch are the same three medium 8 scouts every setting loses (`errand.md`).
+The first runs starved 6 people (three medium 8 scouts): a built pass wore away behind the scout and left it no way to a store.
+`scout::keep_way` fixed it (`errand.md`); the numbers here are after it.
 
 ## The sweep: what the scout's eating moved
 
@@ -41,7 +42,7 @@ its civ's store, about 2 food a turn, where it foraged for itself.
 | claims taken | 38 | 21 | 10, past |
 | land changed | 706 | 481 | 71, past |
 | clans changed | 368 | 274 | 45, past |
-| led civ's Standing | 0.134 | 0.125 | 0.004, past |
+| led civ's Standing | 0.134 | 0.126 | 0.004, past |
 | led wins of 21 | 8 | 5 | 2, past |
 
 By map (`economy.store_mean`, main to branch): small 2 35.1 to 37.4, small 3 36.4 to 28.2, small 6 45.5 to 44.0,
@@ -60,7 +61,7 @@ the branch.
   from 8 to 5, but the led civs there are idle; the sweep does not say the scout did it.
 - This is the piece's main risk, and it is the store's cost, not a pack's: an AI scout that never leaves home still eats
   2 a turn. A scout that waits for its next errand could eat from the store only when it has one; that is a rule, and the
-  owner's (an idea below).
+  owner's (an idea filed with this step).
 
 ## The led game: small 61288, Red, `{"type":"route","unit":232,"from":735,"to":109}`
 
@@ -70,12 +71,15 @@ Lines files: `game/`. The script is `play --game F --seed 61288 --size small --c
 |---|---|---|
 | `--no-fight`, the retro's control | route never built; the scout stands at 528 (4, -6) at +200, 6 tiles to search | built at +52; the scout stands at its capital at +200 and eats from it (pack 2 of 72, its route stays set) |
 | fight on, one route order alone | Red's capital falls to Blue at +4 | the same, +4 |
-| fight on, raise 2 warriors at +0 and again when none stands on the capital | the capital falls to Blue at +12 | the capital holds to +200; the scout is killed by Blue's army at (4, -7) at +40; no route |
+| fight on, raise 2 warriors at +0 and again when none stands on the capital | the capital falls to Blue at +12 | the capital holds to +200 (an army of 1 warrior, entrenched); the route is built at +78 and the scout stands at its capital at +200, pack 2 of 72 |
 
 `game/main-no-fight.lines.jsonl`, `game/branch-no-fight.lines.jsonl`, `game/main-fight-army.lines.jsonl`,
 `game/branch-fight-army.lines.jsonl`. The fight game on the branch keeps the capital (an army of 1 warrior, entrenched 200
-turns) and loses the scout to a rival army: the kill rule is built as the piece says. The scout's route runs through
-Blue's land (its capital at (3, -9) and a settlement at (-2, -7)), where a rival army shuts the tiles.
+turns) and the scout lives through it: it walks Blue's land with no rival army on its tile, builds its trails by +78 and
+walks home. (Before the way-home fix the same lines had it killed by Blue's army at (4, -7) at +40 with no route: the scout
+dying is the rule, and it happens where a rival army stands, in `core/tests/scout_feed.rs` and in the 9 kills of the 42
+errands in `errand.md`.) Red's scout's route runs through Blue's land (its capital at (3, -9) and a settlement at (-2, -7)),
+where a rival army would shut the tiles.
 
 ### The route built, an army along it and a signpost past the range (branch, `--no-fight`)
 

@@ -170,6 +170,18 @@ fn keep_route(w: &mut World, id: u32) {
     }
 }
 
+/// The built passes between a scout and its nearest store count as walked, so the way home stays
+/// open behind it: a pass it built and left would wear away, and strand it past a wall with no store
+/// to walk to.
+fn keep_way(w: &mut World, id: u32) {
+    let Some((_, path, _)) = store_walk_by(w, id, land::passable) else { return };
+    for t in path {
+        if w.tiles[t].trail {
+            w.tiles[t].used = true;
+        }
+    }
+}
+
 /// The tiles a scout of `civ` can't enter or leave: every tile a rival army holds or stands on.
 pub fn shut(w: &World, civ: u32) -> BTreeMap<usize, u32> {
     let mut out = BTreeMap::new();
@@ -185,6 +197,11 @@ pub fn shut(w: &World, civ: u32) -> BTreeMap<usize, u32> {
 /// holding a turn of its food (with none so stocked, among them all): the store's tile, the path and
 /// the turns the walk takes. A scout walks any land and built pass outside a rival army's zone.
 pub fn store_walk(w: &World, id: u32) -> Option<(usize, Vec<usize>, u32)> {
+    store_walk_by(w, id, walkable)
+}
+
+/// `store_walk` over the tiles `open` lets a scout onto, outside a rival army's zone.
+fn store_walk_by(w: &World, id: u32, open: impl Fn(&World, usize) -> bool) -> Option<(usize, Vec<usize>, u32)> {
     let u = w.units.get(&id)?;
     let shut = shut(w, u.civ);
     let eats = u.people * UNIT.food;
@@ -194,7 +211,7 @@ pub fn store_walk(w: &World, id: u32) -> Option<(usize, Vec<usize>, u32)> {
         if best.as_ref().is_some_and(|b| b.0 && !stocked) {
             continue;
         }
-        let Some((tiles, cost)) = land::path(w, u.home, store, |i| walkable(w, i) && !shut.contains_key(&i)) else {
+        let Some((tiles, cost)) = land::path(w, u.home, store, |i| open(w, i) && !shut.contains_key(&i)) else {
             continue;
         };
         if best.as_ref().is_none_or(|b| (stocked && !b.0) || (stocked == b.0 && cost < b.1)) {
@@ -379,6 +396,7 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
     if sc(w, id).route.is_some() {
         keep_route(w, id);
     }
+    keep_way(w, id);
     w.units.get_mut(&id).unwrap().banked = banked;
     sc_mut(w, id).doing = doing;
 

@@ -129,10 +129,10 @@ led
   total.led.idle_standing                                     0.0929      0.0856     -0.0073      0.0067 *
   total.led.idle_won                                          2.0000      1.0000     -1.0000      0.0000 *
   total.led.lead_changes                                     30.0000     23.0000     -7.0000      7.0000
-  total.led.over_idle                                         0.0413      0.0395     -0.0018      0.0109
+  total.led.over_idle                                         0.0413      0.0399     -0.0014      0.0109
   total.led.rank_changed                                     16.0000     18.0000      2.0000      3.0000
   total.led.rank_changes                                     40.0000     36.0000     -4.0000      2.0000 *
-  total.led.standing                                          0.1342      0.1251     -0.0091      0.0041 *
+  total.led.standing                                          0.1342      0.1255     -0.0087      0.0041 *
   total.led.won                                               8.0000      5.0000     -3.0000      2.0000 *
 settle_vs_control
   total.settle_vs_control.at_100                              6.0000      5.0000     -1.0000      2.0000
