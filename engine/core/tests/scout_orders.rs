@@ -25,13 +25,14 @@ fn lead() -> Stage {
     s
 }
 
-/// Ends a turn with the led civ's store full and the scout's pack set to one of each good, so the
+/// Ends a turn with the led civ's store full and the scout's pack full, so the
 /// scout's feeding is not what these tests are about.
 fn end_fed(w: &mut World) {
     let me = w.player.unwrap();
     w.civs.get_mut(&me).unwrap().store = [100.0; N];
     let id = led_scout(w);
-    w.units.get_mut(&id).unwrap().store = [1.0; N];
+    let full = units::cap_of(&w.units[&id]) / N as f64;
+    w.units.get_mut(&id).unwrap().store = [full; N];
     w.act(engine::Action::EndTurn).unwrap();
 }
 
@@ -88,7 +89,6 @@ fn a_scout_moved_four_steps_out_walks_there_and_stays() {
     let u = &w.units[&id];
     assert!(u.scout().unwrap().route.is_none(), "a moved scout has no route");
     assert_eq!(u.dest(), Some(target), "the destination stays its errand once it arrives");
-    assert!(w.notes[&id].iter().any(|n| n.text.starts_with("at ") && n.text.ends_with("foraging")));
 }
 
 #[test]
@@ -234,7 +234,7 @@ fn search_view_on(size: &str, seed: u32) -> bool {
 }
 
 #[test]
-fn past_reach_is_false_at_the_capital_and_true_eight_steps_out_and_the_move_says_so() {
+fn past_reach_is_false_at_the_capital_and_true_eight_steps_out() {
     let mut s = lead();
     s.plain();
     let cap = capital(s.world());
@@ -245,9 +245,8 @@ fn past_reach_is_false_at_the_capital_and_true_eight_steps_out_and_the_move_says
     assert!(units::past_reach(&w, id, far), "eight steps out, the line carries less than the scout eats");
     w.act(led_order(&w, Order::Move { unit: id, to: far })).unwrap();
     assert!(
-        w.notes[&id].iter().any(|n| n.text.starts_with("past its line's reach: its line there would carry")),
-        "the move notes the reach: {:?}",
-        w.notes[&id].iter().map(|n| &n.text).collect::<Vec<_>>()
+        w.notes[&id].iter().all(|n| !n.text.starts_with("past its line's reach")),
+        "a scout draws on no line, so a move says nothing of one"
     );
     let (cost, carry) = units::line_from(&w, id, far).expect("a line reaches the capital from eight steps out");
     assert!(cost > 0.0 && carry < units::pack_cap(1.0) * 1000.0, "a finite cost and carry");

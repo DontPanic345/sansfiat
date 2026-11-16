@@ -27,9 +27,10 @@ fn lead(seed: u32) -> Stage {
 fn end_fed(w: &mut World) {
     let me = w.player.unwrap();
     w.civs.get_mut(&me).unwrap().store = [100.0; N];
-    // …and the scout's pack, since a line of six tiles carries it less than it eats.
+    // …and the scout's pack, so its feeding is not what these tests are about.
     let id = led_scout(w);
-    w.units.get_mut(&id).unwrap().store = [1.0; N];
+    let full = units::cap_of(&w.units[&id]) / N as f64;
+    w.units.get_mut(&id).unwrap().store = [full; N];
     w.act(Action::EndTurn).unwrap();
 }
 

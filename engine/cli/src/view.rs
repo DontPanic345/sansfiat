@@ -337,11 +337,19 @@ fn unit_line(w: &World, u: &Unit) -> String {
                     None => "no route".to_string(),
                 },
             };
+            let store = match units::store_walk(w, u.id) {
+                Some((at, path, _)) if path.is_empty() => format!("at {}", settle::store_name(w, u.civ, at)),
+                Some((at, _, n)) => format!("{n} turns' walk from {}", settle::store_name(w, u.civ, at)),
+                None => "no walk to a store".to_string(),
+            };
             format!(
-                "  scout {} at {}: {route}, {}, hungry {} turns\n",
+                "  scout {} at {}: {}; {route}, pack {:.1} of {:.0} ({:.1} turns), {store}, hungry {} turns\n",
                 u.id,
                 tile(w, u.tile()),
-                draws_on(w, u),
+                units::doing_text(w, u),
+                u.store.iter().sum::<f64>(),
+                units::cap_of(u),
+                units::pack_turns(w, u.id),
                 u.hungry
             )
         }

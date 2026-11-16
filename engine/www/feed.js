@@ -33,6 +33,7 @@ export const KINDS = {
   scoutPassFound: { icon: '▲', color: '#c4c2cc', label: 'Scout passes' },
   scoutBlocked: { icon: '⊘', color: '#ffb347', label: 'Scout blocked' },
   scoutHungry: { icon: '!', color: '#ffb347', label: 'Scout hungry' },
+  scoutKilled: { icon: '✕', color: '#d64545', label: 'Scout killed' },
   scoutStarved: { icon: '✕', color: '#ff7b72', label: 'Scout starved' },
   clanJoined: { icon: '✚', color: '#3a9d5d', label: 'Clan joined' },
   deployed: { icon: '⬡', color: '#9ecbff', label: 'Army deployed' },

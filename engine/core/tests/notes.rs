@@ -38,7 +38,8 @@ fn a_watched_game_gives_reasons_to_clans_markets_civs_and_camps() {
 
 #[test]
 fn a_led_scouts_reasons_follow_its_route() {
-    let mut w = World::new(Config { seed: 2, ..Config::default() });
+    // The fight is off: this test is about the scout's notes, not war.
+    let mut w = World::new(Config { seed: 2, fight: false, ..Config::default() });
     while w.end.is_none() {
         w.run(1);
     }
@@ -50,7 +51,7 @@ fn a_led_scouts_reasons_follow_its_route() {
         .expect("a forest or hills tile seven steps out");
     w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to })).unwrap();
     // Fed each turn. The scout's notes go with it, so they are read each turn it lives: on this map
-    // the route is set, and the scout leaves it for rich ground to feed (`feeding.md`).
+    // the scout eats from its pack and fills it at a store.
     let scout = units::scout(&w, red).expect("a scout").id;
     let mut texts: Vec<String> = Vec::new();
     for _ in 0..60 {
@@ -60,12 +61,7 @@ fn a_led_scouts_reasons_follow_its_route() {
     }
     let texts: Vec<&str> = texts.iter().map(String::as_str).collect();
     assert!(texts.iter().any(|t| t.starts_with("route set from")), "the route is set: {texts:?}");
-    assert!(
-        texts.iter().any(|t| t.starts_with("has its route")
-            || t.starts_with("builds a trail")
-            || t.starts_with("leaves its route")),
-        "{texts:?}"
-    );
+    assert!(texts.iter().any(|t| t.starts_with("has its route") || t.starts_with("builds a trail")), "{texts:?}");
 }
 
 #[test]
@@ -164,34 +160,4 @@ fn a_repeated_reason_moves_on_and_the_oldest_go() {
     assert_eq!(list.len(), NOTES.kept, "the kept reasons, no more");
     assert_eq!(list[0].text, "n2", "the oldest go first");
     assert_eq!(list.last().unwrap().text, "n9");
-}
-
-/// A scout on rich ground with its pack low picks that tile: it says it forages there, never "0 steps away".
-#[test]
-fn a_scout_on_rich_ground_says_it_forages_there() {
-    let mut said = Vec::new();
-    for seed in 1..=9 {
-        let mut w = World::new(Config { seed, ..Config::default() });
-        while w.end.is_none() {
-            w.run(1);
-        }
-        let red = *w.civs.keys().next().unwrap();
-        w.act(Action::ChooseCiv { civ: Some(red) }).unwrap();
-        let cap = w.civs[&red].capital;
-        let to = (0..w.tiles.len())
-            .find(|&i| {
-                matches!(w.tiles[i].terrain, FOREST | HILLS) && w.tiles[i].hex().distance(w.tiles[cap].hex()) == 7
-            })
-            .expect("a forest or hills tile seven steps out");
-        let scout = led_scout(&w);
-        w.act(led_order(&w, Order::Route { unit: scout, from: cap, to })).unwrap();
-        // Its pack empty, its civ fed: it is low, and the ground it stands on is the pick.
-        w.units.get_mut(&scout).unwrap().store = Default::default();
-        fill_stores(&mut w);
-        w.run(1);
-        let texts: Vec<String> = w.notes.get(&scout).into_iter().flatten().map(|n| n.text.clone()).collect();
-        assert!(texts.iter().all(|t| !t.contains("0 steps away")), "seed {seed}: {texts:?}");
-        said.extend(texts.into_iter().filter(|t| t.starts_with("forages at")));
-    }
-    assert!(!said.is_empty(), "a scout picked the ground it stood on");
 }

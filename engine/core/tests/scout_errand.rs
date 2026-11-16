@@ -1,12 +1,11 @@
 //! The scout's first errand on the seven retro maps, on the stage: the first civ is led, and its
 //! scout gets four errands, each its own stage with no refill: routed to the nearest rival capital,
 //! routed to `Lead`'s target (a forest or hills tile seven steps out), moved there, and left idle.
-//! Over 50 turns each scout's hungry turns, people lost, turns wandering, tiles revealed and trails
+//! Over 50 turns each scout's hungry turns, people lost, turns off the errand, tiles revealed and trails
 //! built are counted, and every scout must be alive at the end. A second test, a report, refills the
 //! routed scouts' packs each turn: the control for how much a living scout gets done.
-//! The errands run with fields off (`Config.fields`), the control: the bound is the scout's rules on
-//! the ground they were measured on. Fields change every clan's take from the pick, and with it the
-//! ground a scout forages; with them on, 6 of the 28 are lost (`relay/specs/155/field-job.md`).
+//! A scout eats from its pack and fills it at a store; turns off the errand are the turns it walks to
+//! a store (`homing`) or back (`back`). The errands run with fields off (`Config.fields`), the control.
 //! `cargo test --release -p engine --test scout_errand -- --nocapture` prints the table
 //! (`relay/specs/153/feeding.md`).
 
@@ -43,9 +42,10 @@ impl Kind {
 struct Result {
     hungry: u32,
     lost: f64,
-    wandering: u32,
+    off: u32,
     revealed: usize,
     trails: usize,
+    killed: usize,
     /// The turn the route was found, counted from the pick.
     found: Option<u32>,
     alive: bool,
@@ -85,7 +85,7 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
     if let Some(order) = order {
         stage.act(Action::Order { civ: me, order }).unwrap();
     }
-    let (mut hungry, mut wandering) = (0, 0);
+    let (mut hungry, mut off) = (0, 0);
     for _ in 0..TURNS {
         if refill {
             let w = stage.world_mut();
@@ -103,12 +103,16 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
         match w.units.get(&id) {
             Some(u) => {
                 hungry += u32::from(u.hungry > 0);
-                wandering += u32::from(u.scout().unwrap().wander.is_some());
+                off += u32::from({
+                    let s = u.scout().unwrap();
+                    s.homing || s.back.is_some()
+                });
             }
             None => hungry += 1,
         }
     }
     let w = stage.world();
+    let killed = w.events.iter().filter(|e| e.kind == EventKind::ScoutKilled && e.unit == Some(id)).count();
     let left = w.units.get(&id).map_or(0.0, |u| u.people);
     let trails = w.events.iter().filter(|e| e.kind == EventKind::ScoutTrailBuilt && e.unit == Some(id)).count();
     let found =
@@ -116,9 +120,10 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
     Result {
         hungry,
         lost: start - left,
-        wandering,
+        off,
         revealed: w.civs[&me].revealed.len() - seen,
         trails,
+        killed,
         found,
         alive: left > 0.0,
     }
@@ -127,27 +132,28 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
 fn table(kinds: &[Kind], refill: bool) -> Vec<String> {
     let mut lost = Vec::new();
     let (mut revealed, mut trails) = (0, 0);
-    let (mut hungry, mut people, mut wandering) = (0, 0.0, 0);
-    println!("| map | errand | hungry turns | people lost | turns wandering | tiles revealed | trails built | route found | alive |");
-    println!("|---|---|---|---|---|---|---|---|---|");
+    let (mut hungry, mut people, mut off) = (0, 0.0, 0);
+    println!("| map | errand | hungry turns | people lost | turns off the errand | tiles revealed | trails built | route found | killed | alive |");
+    println!("|---|---|---|---|---|---|---|---|---|---|");
     for (size, seed) in MAPS {
         for &kind in kinds {
             let e = errand(size, seed, kind, refill);
             println!(
-                "| {size} {seed} | {} | {} | {} | {} | {} | {} | {} | {} |",
+                "| {size} {seed} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
                 kind.name(),
                 e.hungry,
                 e.lost,
-                e.wandering,
+                e.off,
                 e.revealed,
                 e.trails,
                 e.found.map_or("-".to_string(), |t| format!("turn {t}")),
+                e.killed,
                 if e.alive { "yes" } else { "no" }
             );
             hungry += e.hungry;
             people += e.lost;
             if matches!(kind, Kind::RouteRival | Kind::RouteLead) {
-                wandering += e.wandering;
+                off += e.off;
                 revealed += e.revealed;
                 trails += e.trails;
             }
@@ -157,7 +163,7 @@ fn table(kinds: &[Kind], refill: bool) -> Vec<String> {
         }
     }
     println!(
-        "scouts lost: {} of {}: {lost:?}; people lost {people}, hungry scout-turns {hungry}; routed: wandering {wandering}, tiles revealed {revealed}, trails built {trails}",
+        "scouts lost: {} of {}: {lost:?}; people lost {people}, hungry scout-turns {hungry}; routed: off {off}, tiles revealed {revealed}, trails built {trails}",
         lost.len(),
         MAPS.len() * kinds.len()
     );

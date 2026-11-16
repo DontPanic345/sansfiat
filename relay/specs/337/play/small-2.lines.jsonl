@@ -1,0 +1,54 @@
+{"turn":262,"line":"note meant: use the scout on a long errand toward a rival capital did: look at map first surprised: legal route targets are only 5 nearby tiles","result":"noted"}
+{"turn":262,"line":"map","result":"ok"}
+{"turn":262,"line":"note meant: send scout out and raise gift did: route scout to 142 (west edge of known ground), gift 6 surprised: route targets limited to 5 adjacent tiles","result":"noted"}
+{"turn":262,"line":"{\"type\":\"route\",\"unit\":428,\"from\":166,\"to\":142}","result":"ok"}
+{"turn":262,"line":"note meant: spend store on clans did: setGift 6 surprised: nothing","result":"noted"}
+{"turn":262,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":262,"line":"note meant: raise army did: raise 2 warriors surprised: nothing","result":"noted"}
+{"turn":262,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":262,"line":"note meant: watch scout did: end 5 surprised: nothing","result":"noted"}
+{"turn":267,"line":"end 5","result":"ok"}
+{"turn":267,"line":"note meant: test a long route to the rival capital did: route 166 to 506 surprised: not in the legal list, expect refusal","result":"noted"}
+{"turn":267,"line":"{\"type\":\"route\",\"unit\":428,\"from\":166,\"to\":506}","result":"ok"}
+{"turn":267,"line":"note meant: shorter hop did: route to 277 east did surprised: unknown","result":"noted"}
+{"turn":267,"line":"{\"type\":\"route\",\"unit\":428,\"from\":166,\"to\":277}","result":"ok"}
+{"turn":267,"line":"view","result":"ok"}
+{"turn":267,"line":"note meant: the scout finishes a route to Red capital did: route to 506, then end 8 surprised: route to 506 was accepted though not listed","result":"noted"}
+{"turn":267,"line":"{\"type\":\"route\",\"unit\":428,\"from\":166,\"to\":506}","result":"ok"}
+{"turn":275,"line":"end 8","result":"ok"}
+{"turn":275,"line":"note meant: let the scout shuttle between store and the route did: end 8 surprised: nothing yet","result":"noted"}
+{"turn":283,"line":"end 8","result":"ok"}
+{"turn":283,"line":"note meant: let the scout shuttle between store and the route did: end 8 surprised: nothing yet","result":"noted"}
+{"turn":291,"line":"end 8","result":"ok"}
+{"turn":291,"line":"note meant: let the scout shuttle between store and the route did: end 8 surprised: nothing yet","result":"noted"}
+{"turn":299,"line":"end 8","result":"ok"}
+{"turn":299,"line":"note meant: the route is built, march the army along it did: move army 430 to 506 surprised: scout pack stays 2.0 at capital, not refilled","result":"noted"}
+{"turn":299,"line":"{\"type\":\"move\",\"unit\":430,\"to\":506}","result":"ok"}
+{"turn":299,"line":"note meant: see what the army does did: end 5 surprised: nothing","result":"noted"}
+{"turn":304,"line":"end 5","result":"ok"}
+{"turn":304,"line":"note meant: see what the army can do at Red capital did: view surprised: army cut off and hungry already at turn 304","result":"noted"}
+{"turn":304,"line":"view","result":"ok"}
+{"turn":304,"line":"note meant: keep the army alive did: forage on the spot surprised: army arrived in 5 turns though route said 28 days","result":"noted"}
+{"turn":304,"line":"{\"type\":\"forage\",\"unit\":430}","result":"ok"}
+{"turn":304,"line":"why 430","result":"ok"}
+{"turn":304,"line":"note meant: advance did: end 5 surprised: nothing","result":"noted"}
+{"turn":309,"line":"end 5","result":"ok"}
+{"turn":309,"line":"note meant: understand how Red fell did: view surprised: Red 0.0% after my 1 warrior sat on its capital","result":"noted"}
+{"turn":309,"line":"view","result":"ok"}
+{"turn":309,"line":"note meant: widen the claim to clans' homes 222 307 278 did: claim with current tiles plus those surprised: nothing","result":"noted"}
+{"turn":309,"line":"{\"type\":\"claim\",\"tiles\":[56,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,243,244,245,247,248,249,271,272,273,277,222,307,278]}","result":"ok"}
+{"turn":309,"line":"note meant: see result did: end 10 surprised: nothing","result":"noted"}
+{"turn":319,"line":"end 10","result":"ok"}
+{"turn":319,"line":"note meant: raise an army to test movement toward Gold did: raise 2 surprised: nothing","result":"noted"}
+{"turn":319,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":319,"line":"view","result":"ok"}
+{"turn":319,"line":"note meant: scout opens the way to Gold capital did: route 166 to 90 surprised: nothing","result":"noted"}
+{"turn":319,"line":"{\"type\":\"route\",\"unit\":428,\"from\":166,\"to\":90}","result":"ok"}
+{"turn":319,"line":"note meant: march second army toward Gold did: move 546 to 90 surprised: nothing","result":"noted"}
+{"turn":319,"line":"{\"type\":\"move\",\"unit\":546,\"to\":90}","result":"ok"}
+{"turn":325,"line":"end 6","result":"ok"}
+{"turn":325,"line":"view","result":"ok"}
+{"turn":325,"line":"note could not tell: gift: gave stayed 0.0 for 60 turns with gift 6 and 30+ store, nothing said what gave counts","result":"noted"}
+{"turn":325,"line":"note could not tell: land and guard: no guard order was ever offered; claim gave no reason which tiles were joined","result":"noted"}
+{"turn":325,"line":"note could not tell: army: why a 1-warrior army walked a 28-day route in 5 turns, and why two warriors starved down to one before the capital fell; no pillage order offered","result":"noted"}
+{"turn":325,"line":"note could not tell: scout: why the pack stays 2.0 at the capital after the errand finishes, not refilled","result":"noted"}

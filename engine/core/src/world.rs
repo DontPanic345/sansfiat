@@ -179,7 +179,7 @@ pub const TURN: &[Step] = &[
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
 /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
 /// into a different world.
-pub const SAVE_VERSION: u32 = 23;
+pub const SAVE_VERSION: u32 = 25;
 
 /// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -369,6 +369,7 @@ impl World {
             | EventKind::ScoutHungry
             | EventKind::ScoutStarved
             | EventKind::PeopleLeft => e.civ == Some(me),
+            EventKind::ScoutKilled => e.civ == Some(me) || e.other == Some(me),
             EventKind::ClanJoined => e.civ.is_some_and(|c| c != me),
             EventKind::ClanLeft | EventKind::ClaimTaken | EventKind::SettlementTaken => {
                 e.civ == Some(me) || e.other == Some(me)

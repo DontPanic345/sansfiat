@@ -97,19 +97,11 @@ export function onCommand(i, h) {
 }
 
 /** The order lines of the tile tooltip for tile `i` and the selected unit `u` (or null): "Move here" for the
- *  player's camp or scout, and for a scout while Move to… or a route's end is armed, the reach warning: whether
- *  its line there carries what it eats (the engine's `lineFrom`). */
+ *  player's camp or scout. */
 export function orderTip(sim, u, i, v) {
   if (!u || u.civ !== v.player || (u.kind !== 'camp' && u.kind !== 'scout')) return [];
   const lines = [];
   const r = JSON.parse(sim.path(u.tile, i));
   lines.push(r ? `Move here: ${f2(r.cost)} days, ${r.turns} turn${r.turns === 1 ? '' : 's'}` : 'No route');
-  if (u.kind === 'scout' && (routing.arm === 'move' || routing.arm === 'to')) {
-    const line = JSON.parse(sim.lineFrom(u.id, i));
-    if (!line) lines.push("Past the line's reach: no line reaches it");
-    else if (line.carry != null && line.carry < line.eats) {
-      lines.push(`Past the line's reach: its line there carries ${f2(line.carry)} of the ${f2(line.eats)} it eats`);
-    }
-  }
   return lines;
 }

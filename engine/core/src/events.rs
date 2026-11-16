@@ -37,6 +37,7 @@ pub enum EventKind {
     ScoutBlocked,
     ScoutHungry,
     ScoutStarved,
+    ScoutKilled,
     ScoutRaised,
     ClanJoined,
     Deployed,
@@ -171,6 +172,10 @@ impl Event {
             EventKind::ScoutHungry => format!("{}'s scout at {at} goes hungry", self.civ_name(w)),
             EventKind::ScoutRaised => format!("{} raises a scout at {at}", self.civ_name(w)),
             EventKind::ScoutStarved => format!("{}'s scout at {at} loses a person to hunger", self.civ_name(w)),
+            EventKind::ScoutKilled => {
+                let by = self.other.and_then(|c| w.civs.get(&c)).map_or("a rival", |c| c.name.as_str());
+                format!("{}'s scout at {at} is killed by {by}'s army", self.civ_name(w))
+            }
             EventKind::ClanJoined => {
                 let civ = self.civ_name(w);
                 format!("Clan {clan} joins {civ}{}", self.by.map_or(String::new(), |b| format!(": {}", b.words(civ))))

@@ -84,7 +84,10 @@ function checkButtons(shape, name) {
   }
   assert.ok(shapes.camp.buttons.some((b) => b.stepper && b.label === 'Disband…'), 'a camp has Disband…');
   assert.ok(shapes.scout.buttons.some((b) => b.stepper && b.label === 'Disband…'), 'a scout has Disband…');
-  for (const k of ['camp', 'scout']) assert.ok(shapes[k].numbers.find((n) => n.label === 'Draws on')?.value.startsWith('its '), `a ${k} names the store it draws on`);
+  assert.ok(shapes.camp.numbers.find((n) => n.label === 'Draws on')?.value.startsWith('its '), 'a camp names the store it draws on');
+  const sl = shapes.scout.buttons.map((b) => b.label);
+  assert.ok(!sl.some((l) => /^(Auto-|Forage|Resupply|Pillage)/.test(l)), `a scout has no switches or feeding orders: ${sl}`);
+  assert.ok(shapes.scout.numbers.some((n) => n.label === 'Store') && !shapes.scout.numbers.some((n) => n.label === 'Hunger' || n.label === 'Draws on'), 'a scout shows its pack and store, not a line or a hunger reason');
 }
 
 /** Disband all as the page presses it: the button sends its order with no count, and the whole unit goes home. */

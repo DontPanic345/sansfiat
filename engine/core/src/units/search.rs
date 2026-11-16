@@ -5,7 +5,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::forage::Ladder;
-use super::line::{path_between, walkable};
+use super::line::walkable;
 use super::scout::{blocked, clear_route, march, sc, sc_mut, scout_event};
 use super::EPS;
 use crate::data::*;
@@ -130,9 +130,10 @@ pub fn route_plan(w: &World, civ: u32, from: usize, to: usize) -> Plan {
     Plan { known, possible, candidates }
 }
 
-/// The labour a scout's walk costs, from `home`: `cost_map` over walkable tiles.
-pub(super) fn walk_costs(w: &World, home: usize) -> BTreeMap<usize, f64> {
-    cost_map(w, &[home], f64::INFINITY, |i| walkable(w, i))
+/// The labour a scout's walk costs, from `home`: `cost_map` over walkable tiles outside the zones
+/// `shut` to it.
+pub(super) fn walk_costs(w: &World, home: usize, shut: &BTreeMap<usize, u32>) -> BTreeMap<usize, f64> {
+    cost_map(w, &[home], f64::INFINITY, |i| walkable(w, i) && !shut.contains_key(&i))
 }
 
 /// The cheapest tile to stand on to work on tile `j` (`j` itself or a neighbour) that the walk
@@ -146,7 +147,13 @@ pub(super) fn beside(w: &World, costs: &BTreeMap<usize, f64>, j: usize) -> Optio
 
 /// The walk to a tile beside `j` from `home`: empty when it stands there already, `None` when no
 /// walk reaches one.
-pub(super) fn approach(w: &World, costs: &BTreeMap<usize, f64>, home: usize, j: usize) -> Option<Vec<usize>> {
+pub(super) fn approach(
+    w: &World,
+    costs: &BTreeMap<usize, f64>,
+    home: usize,
+    j: usize,
+    shut: &BTreeMap<usize, u32>,
+) -> Option<Vec<usize>> {
     if steps(w, home, j) <= 1 {
         return Some(Vec::new());
     }
@@ -154,7 +161,7 @@ pub(super) fn approach(w: &World, costs: &BTreeMap<usize, f64>, home: usize, j: 
     if n == home {
         return Some(Vec::new());
     }
-    path_between(w, home, n).map(|(p, _)| p)
+    land::path(w, home, n, |i| walkable(w, i) && !shut.contains_key(&i)).map(|(p, _)| p)
 }
 
 /// The cheapest possible cost from `from` to each tile, and from each tile into `to`, within `max`:
@@ -230,7 +237,7 @@ pub(super) fn ordered(
 /// reveal it can reach, reveals it, and builds the trails its route needs; a mountain takes a whole
 /// turn's search labour, begun beside it (`start` is what the search had this turn). Returns the
 /// labour a part-paid step carries to next turn.
-pub(super) fn search(w: &mut World, id: u32, ladder: &mut Ladder, start: f64) -> f64 {
+pub(super) fn search(w: &mut World, id: u32, ladder: &mut Ladder, start: f64, shut: &BTreeMap<usize, u32>) -> f64 {
     let civ = w.units[&id].civ;
     let mut banked = 0.0;
     let mut guard = 0;
@@ -245,9 +252,9 @@ pub(super) fn search(w: &mut World, id: u32, ladder: &mut Ladder, start: f64) ->
             scout_event(w, EventKind::ScoutNoRoute, tile, civ, id, None);
             break;
         }
-        let costs = walk_costs(w, home);
+        let costs = walk_costs(w, home, shut);
         let order = ordered(w, civ, &plan, from, to, home, &costs);
-        let reach = order.iter().find_map(|&j| approach(w, &costs, home, j).map(|p| (j, p)));
+        let reach = order.iter().find_map(|&j| approach(w, &costs, home, j, shut).map(|p| (j, p)));
         if let Some((j, path)) = reach {
             if !path.is_empty() {
                 march(w, id, &path, ladder, &mut banked);
@@ -302,7 +309,7 @@ pub(super) fn search(w: &mut World, id: u32, ladder: &mut Ladder, start: f64) ->
                 scout_event(w, EventKind::ScoutRouteFound, home, civ, id, Some(cost));
             }
         }
-        let trail = needs.iter().find_map(|&j| approach(w, &costs, home, j).map(|p| (j, p)));
+        let trail = needs.iter().find_map(|&j| approach(w, &costs, home, j, shut).map(|p| (j, p)));
         let Some((j, path)) = trail else {
             match known_cost {
                 // Its trails are built: the route stays set until cleared, and is said once.
@@ -361,7 +368,7 @@ pub fn search_view(w: &World, id: u32) -> Option<SearchView> {
     let (from, to) = super::scout::sc(w, id).route?;
     let (civ, home) = (w.units[&id].civ, w.units[&id].home);
     let plan = route_plan(w, civ, from, to);
-    let costs = walk_costs(w, home);
+    let costs = walk_costs(w, home, &super::scout::shut(w, civ));
     let next = ordered(w, civ, &plan, from, to, home, &costs);
     let known = plan.known.as_ref().map(|k| k.1);
     let known_cost = known.unwrap_or(f64::INFINITY);
