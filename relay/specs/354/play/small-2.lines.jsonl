@@ -1,0 +1,73 @@
+{"turn":262,"line":"note meant: hold standing, see what a raised army does did: raise 3 warriors at capital surprised: store is only 10 food and levy is 0 though 30 clans are mine","result":"noted"}
+{"turn":262,"line":"{\"type\":\"raise\",\"n\":3}","result":"refused: the store can't fill their packs"}
+{"turn":262,"line":"note meant: lift clan fed did: gift 6 to draw trade clans surprised: nothing","result":"noted"}
+{"turn":262,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":267,"line":"end 5","result":"ok"}
+{"turn":267,"line":"note meant: raise a first army now the store holds 51 did: raise 2 warriors at capital to test armies surprised: earlier raise of 3 was refused, store was 10","result":"noted"}
+{"turn":267,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":267,"line":"note meant: make a store beyond the capital so supply from any store matters did: signpost at 589 the suggested site surprised: nothing","result":"noted"}
+{"turn":267,"line":"{\"type\":\"signpost\",\"tile\":589}","result":"ok"}
+{"turn":267,"line":"note meant: let clans settle did: end 10 surprised: nothing","result":"noted"}
+{"turn":277,"line":"end 10","result":"ok"}
+{"turn":277,"line":"note meant: test supply from the settlement: march army 448 to 589 did: move 448 to 589 surprised: settlement exists already at turn 269","result":"noted"}
+{"turn":277,"line":"{\"type\":\"move\",\"unit\":448,\"to\":589}","result":"ok"}
+{"turn":280,"line":"end 3","result":"ok"}
+{"turn":280,"line":"note meant: raise at the settlement, test raise-at-store did: raise 1 warriors at 589 surprised: army 448 at 589 says \"at the capital\" though it draws on its settlement","result":"noted"}
+{"turn":280,"line":"{\"type\":\"raise\",\"n\":1,\"at\":589}","result":"ok"}
+{"turn":280,"line":"note meant: guard west where Gold takes tiles did: new army at capital from 2 warriors via raise n2 surprised: nothing","result":"noted"}
+{"turn":280,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":282,"line":"end 2","result":"ok"}
+{"turn":282,"line":"map","result":"ok"}
+{"turn":282,"line":"note meant: defend west from Gold did: move 491 to 443 surprised: nothing","result":"noted"}
+{"turn":282,"line":"{\"type\":\"move\",\"unit\":491,\"to\":443}","result":"ok"}
+{"turn":282,"line":"note meant: march settlement army to capital side did: move 490 to 505 to test supply across stores surprised: nothing","result":"noted"}
+{"turn":282,"line":"{\"type\":\"move\",\"unit\":490,\"to\":505}","result":"ok"}
+{"turn":287,"line":"end 5","result":"ok"}
+{"turn":287,"line":"note meant: understand why 490 draws on the far settlement though capital is adjacent did: why 490 surprised: line 6 days vs capital next door","result":"noted"}
+{"turn":287,"line":"why 490","result":"ok"}
+{"turn":287,"line":"why 490","result":"ok"}
+{"turn":287,"line":"note meant: scout builds a trail did: route scout 427 from 506 to 535 surprised: scout has stayed at 412 not capital","result":"noted"}
+{"turn":287,"line":"{\"type\":\"route\",\"unit\":427,\"from\":412,\"to\":535}","result":"ok"}
+{"turn":287,"line":"note meant: gift harder to lift standing, Blue leads did: gift 15 surprised: gave 0.0 for 25 turns while gift 6 posted 50","result":"noted"}
+{"turn":287,"line":"{\"type\":\"setGift\",\"food\":15}","result":"ok"}
+{"turn":297,"line":"end 10","result":"ok"}
+{"turn":297,"line":"view","result":"ok"}
+{"turn":297,"line":"note meant: claim covering unaligned clans 340 and 119 so they join at once did: claim existing land plus 530 529 surprised: Blue climbs to 34.6 while I stall","result":"noted"}
+{"turn":297,"line":"{\"type\":\"claim\",\"tiles\":[378,379,410,412,413,414,415,442,443,444,445,446,447,473,474,475,476,477,478,479,501,502,503,504,505,506,507,508,509,510,531,532,533,534,535,538,539,540,561,562,565,566,567,568,589,593,594,595,619,620,621,644,645,530,529]}","result":"ok"}
+{"turn":302,"line":"end 5","result":"ok"}
+{"turn":302,"line":"note meant: retake west tiles Gold holds did: move 491 to 410 surprised: nothing","result":"noted"}
+{"turn":302,"line":"{\"type\":\"move\",\"unit\":491,\"to\":410}","result":"ok"}
+{"turn":305,"line":"end 3","result":"ok"}
+{"turn":305,"line":"note meant: reach Gold-held tile at 0,3 did: move 491 to 411 surprised: nothing","result":"noted"}
+{"turn":305,"line":"{\"type\":\"move\",\"unit\":491,\"to\":411}","result":"ok"}
+{"turn":308,"line":"end 3","result":"ok"}
+{"turn":308,"line":"view","result":"ok"}
+{"turn":308,"line":"note meant: push past my claim to see where line fails did: move 491 to 378 then end 3 surprised: move list repeats 410 twice","result":"noted"}
+{"turn":308,"line":"{\"type\":\"move\",\"unit\":491,\"to\":378}","result":"ok"}
+{"turn":311,"line":"end 3","result":"ok"}
+{"turn":311,"line":"{\"type\":\"move\",\"unit\":491,\"to\":346}","result":"ok"}
+{"turn":315,"line":"end 4","result":"ok"}
+{"turn":315,"line":"note meant: understand cut off army did: why 491 surprised: pack 1.3, line 16.7 days, claim lost at 346 so cut off","result":"noted"}
+{"turn":315,"line":"why 491","result":"ok"}
+{"turn":315,"line":"note meant: bring 491 home before it starves did: move 491 back to 378 and forage on way surprised: no pillage order offered at 346 though Gold had it","result":"noted"}
+{"turn":315,"line":"{\"type\":\"move\",\"unit\":491,\"to\":378}","result":"ok"}
+{"turn":317,"line":"end 2","result":"ok"}
+{"turn":317,"line":"view","result":"ok"}
+{"turn":317,"line":"note meant: try a second signpost to grow stores did: signpost at 415 surprised: view says none free nearby","result":"noted"}
+{"turn":317,"line":"{\"type\":\"signpost\",\"tile\":415}","result":"ok"}
+{"turn":327,"line":"end 10","result":"ok"}
+{"turn":327,"line":"note meant: return 491 people home, try disband did: disband 491 surprised: nothing","result":"noted"}
+{"turn":327,"line":"{\"type\":\"disband\",\"unit\":491}","result":"ok"}
+{"turn":327,"line":"note meant: raise archers into 448 to hold settlement did: raise archers into 448 surprised: nothing","result":"noted"}
+{"turn":327,"line":"{\"type\":\"raise\",\"n\":1,\"fighter\":\"archers\",\"into\":448}","result":"ok"}
+{"turn":337,"line":"end 10","result":"ok"}
+{"turn":337,"line":"note meant: keep standing, nothing calls for more did: end 10 surprised: nothing","result":"noted"}
+{"turn":347,"line":"end 10","result":"ok"}
+{"turn":347,"line":"note meant: finish to +100 did: end 15 surprised: nothing","result":"noted"}
+{"turn":362,"line":"end 15","result":"ok"}
+{"turn":362,"line":"note could not tell: gift: what gave counts; gave stayed 0.0 for 100 turns with gift 6 to 15 and 50 posted","result":"noted"}
+{"turn":362,"line":"note could not tell: land: why 530/529 clans joined or not; which tiles Gold held and why claim could not retake them","result":"noted"}
+{"turn":362,"line":"note could not tell: guard: no guard order offered, so not tried","result":"noted"}
+{"turn":362,"line":"note could not tell: army: why 490 beside the capital draws on the far settlement; no pillage order was ever offered","result":"noted"}
+{"turn":362,"line":"note could not tell: scout: what the route was for; it never left 412","result":"noted"}
+{"turn":362,"line":"note could not tell: signpost: whether 415 was accepted, and why the settlement store sat at 22.8 for 40 turns","result":"noted"}
