@@ -11,7 +11,6 @@ use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::passable;
-use crate::market::total;
 use crate::units::{self, Unit, UnitKind};
 use crate::world::World;
 
@@ -21,8 +20,9 @@ use crate::world::World;
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Order {
     /// Raise `fighter` (warriors by default) into army `into`, which must be the civ's with its line
-    /// not cut, or with none into a new army at the capital: one person from each of up to `n` of its clans.
-    /// `{"type":"raise","n":2}` (a new army), `{"type":"raise","n":2,"into":12}`
+    /// not cut, or with none into a new army at the store on `at` (the capital with none): one person
+    /// from each of up to `n` of the clans at that store's market.
+    /// `{"type":"raise","n":2}` (a new army), `{"type":"raise","n":2,"into":12}`, `{"type":"raise","n":2,"at":58}`
     Raise {
         n: u32,
         #[serde(default)]
@@ -31,6 +31,9 @@ pub enum Order {
         fighter: Fighter,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         into: Option<u32>,
+        /// The store a new unit is raised at, by its tile: the capital with none.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        at: Option<usize>,
     },
     /// Disband `n` of the unit's people, or all with `None`, to the civ's own clan: of
     /// kind `fighter` (all of that kind with `n` none), else of every kind in proportion.
@@ -107,7 +110,7 @@ impl World {
             return Err("your civ has fallen".to_string());
         }
         match order {
-            Order::Raise { n, kind, fighter, into } => check_raise(self, civ, *n, *kind, *fighter, *into),
+            Order::Raise { n, kind, fighter, into, at } => check_raise(self, civ, *n, *kind, *fighter, *into, *at),
             Order::Claim { tiles } => claim::check(self, civ, tiles).map(|_| ()),
             Order::Signpost { tile } => crate::settle::check_post(self, civ, *tile),
             Order::Unpost { tile } => crate::settle::check_unpost(self, civ, *tile),
@@ -183,11 +186,11 @@ fn unit_among<'a>(w: &'a World, civ: u32, id: u32, kinds: &[UnitKind]) -> Result
 /// Applies an order that `check_order` has passed.
 fn apply(w: &mut World, civ: u32, order: Order) {
     match order {
-        Order::Raise { n, kind: UnitKind::Scout, .. } => {
-            units::raise_scout(w, civ, n).expect("checked: a clan can give a person");
+        Order::Raise { n, kind: UnitKind::Scout, at, .. } => {
+            units::raise_scout(w, civ, n, at).expect("checked: a clan can give a person");
         }
-        Order::Raise { n, fighter, into, .. } => {
-            units::raise(w, civ, n, fighter, into).expect("checked: a clan can give a person");
+        Order::Raise { n, fighter, into, at, .. } => {
+            units::raise(w, civ, n, fighter, into, at).expect("checked: a clan can give a person");
         }
         Order::Disband { unit, n, fighter } => units::disband_kind(w, unit, n, fighter, false),
         Order::Claim { tiles } => {
@@ -243,30 +246,28 @@ fn once(w: &mut World, unit: u32, which: Once) {
     }
 }
 
-/// Checks `Raise`. A scout's: the army is on, `n` is at least one, a clan can give a person, and the
-/// store can fill the packs. A camp's: the army is on, `n` is at least one, warriors (archers come in
-/// build-2), `into` (if any) is the civ's army with its line not cut, a clan can give a person, and
-/// the store can fill the packs of those that do.
-fn check_raise(w: &World, civ: u32, n: u32, kind: UnitKind, fighter: Fighter, into: Option<u32>) -> Result<(), String> {
+/// Checks `Raise`: the army is on, `n` is at least one, the store it draws on (`units::raise_store`:
+/// army `into`'s, the one on `at`, else the capital) has a clan at its market able to give a person
+/// and can fill the packs of those that do. A camp's `into` (if any) is the civ's army with its line
+/// not cut, and archers need forest.
+fn check_raise(
+    w: &World,
+    civ: u32,
+    n: u32,
+    kind: UnitKind,
+    fighter: Fighter,
+    into: Option<u32>,
+    at: Option<usize>,
+) -> Result<(), String> {
     if !w.config.army {
         return Err("armies are off".to_string());
     }
     if n == 0 {
         return Err("raise at least one warrior".to_string());
     }
-    match kind {
-        UnitKind::Scout => {
-            let k = units::givers(w, civ).len().min(n as usize);
-            if k == 0 {
-                return Err("no clan has a person to spare".to_string());
-            }
-            return if total(&w.civs[&civ].store) + units::EPS < units::pack_cap(k as f64) {
-                Err("the store can't fill their packs".to_string())
-            } else {
-                Ok(())
-            };
-        }
-        UnitKind::Camp => {}
+    if kind == UnitKind::Scout {
+        let store = units::raise_store(w, civ, None, at)?;
+        return units::can_raise(w, civ, n, store).map(|_| ());
     }
     if fighter == Fighter::Archers && !civs::land(w, civ).into_iter().any(|t| w.tiles[t].terrain == FOREST) {
         return Err("you hold no forest to make bows on".to_string());
@@ -274,17 +275,11 @@ fn check_raise(w: &World, civ: u32, n: u32, kind: UnitKind, fighter: Fighter, in
     if let Some(id) = into {
         unit_of(w, civ, id, UnitKind::Camp)?;
         if units::cut_off(w, id) {
-            return Err("its line is cut: raise at the capital".to_string());
+            return Err("its line is cut: raise at a store".to_string());
         }
     }
-    let k = units::givers(w, civ).len().min(n as usize);
-    if k == 0 {
-        return Err("no clan has a person to spare".to_string());
-    }
-    if total(&w.civs[&civ].store) + units::EPS < units::pack_cap(k as f64) {
-        return Err("the store can't fill their packs".to_string());
-    }
-    Ok(())
+    let store = units::raise_store(w, civ, into, at)?;
+    units::can_raise(w, civ, n, store).map(|_| ())
 }
 
 /// Checks `Disband`: at least one warrior.

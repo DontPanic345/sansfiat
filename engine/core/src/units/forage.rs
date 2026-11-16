@@ -7,6 +7,7 @@ use super::{pack_cap, Unit, EPS};
 use crate::data::*;
 use crate::land;
 use crate::market::{add, take, total};
+use crate::settle;
 use crate::world::World;
 
 /// Strips the unit's tile for up to `labour` of work, taking at most `room` of food into the
@@ -64,12 +65,14 @@ pub(super) fn graze_at(w: &mut World, id: u32, tile: usize, labour: f64, room: f
     (food / rate, food)
 }
 
-/// Puts up to `labour` on the line for up to `want` of food from the store into the pack. Returns
+/// Puts up to `labour` on the line for up to `want` of food into the pack, from the store the line
+/// ends at and no other. Returns
 /// the labour used and the food brought.
 pub(super) fn supply(w: &mut World, id: u32, labour: f64, want: f64) -> (f64, f64) {
-    let civ = w.units[&id].civ;
-    let Some((_, cost, _)) = line(w, id) else { return (0.0, 0.0) };
-    let held = total(&w.civs[&civ].store);
+    let (civ, home) = (w.units[&id].civ, w.units[&id].home);
+    let Some((path, cost, _)) = line(w, id) else { return (0.0, 0.0) };
+    let store = path.last().copied().unwrap_or(home);
+    let held = settle::store(w, civ, store).map_or(0.0, total);
     let mut food = want.min(held);
     let mut used = 0.0;
     if cost > 0.0 {
@@ -79,7 +82,7 @@ pub(super) fn supply(w: &mut World, id: u32, labour: f64, want: f64) -> (f64, f6
     if food <= EPS {
         return (0.0, 0.0);
     }
-    let got = take(&mut w.civs.get_mut(&civ).unwrap().store, food);
+    let got = settle::store_mut(w, civ, store).map(|s| take(s, food)).unwrap_or_default();
     add(&mut w.units.get_mut(&id).unwrap().store, &got);
     (used, food)
 }

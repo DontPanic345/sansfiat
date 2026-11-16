@@ -56,7 +56,7 @@ fn a_led_civ_that_takes_the_last_capital_wins_by_conquest() {
     assert_eq!(s.over().map(|o| o.winner), Some(me));
 
     // Orders are refused with the game's end; ending turns goes on.
-    let raise = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None };
+    let raise = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None, at: None };
     let refused = s.act(Action::Order { civ: me, order: raise.clone() });
     assert_eq!(refused, Err("the game is over".to_string()));
     assert_eq!(s.act(Action::SetGift { food: 1.0 }), Err("the game is over".to_string()));
@@ -82,7 +82,7 @@ fn a_led_civ_whose_capital_a_rival_takes_is_lost_and_the_last_standing_civ_wins(
     assert_eq!(s.events(EventKind::GameOver), 1);
     let refused = s.act(Action::Order {
         civ: me,
-        order: Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None },
+        order: Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None, at: None },
     });
     assert_eq!(refused, Err("the game is over".to_string()));
 }
@@ -194,7 +194,7 @@ fn the_world_runs_on_after_the_end_and_the_ai_civs_orders_still_go_through() {
     // An AI civ still gives orders through the world's door, which the end doesn't refuse (the
     // taker's army may have marched on the third capital since: a fallen civ gives none).
     let other = if w.civs[&other].is_out() { taker } else { other };
-    let raise = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None };
+    let raise = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into: None, at: None };
     let checked = w.check_order(other, &raise);
     assert_ne!(checked, Err("the game is over".to_string()));
     assert_ne!(checked, Err("the game has not begun".to_string()));

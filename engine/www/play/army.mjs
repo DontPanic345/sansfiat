@@ -17,6 +17,8 @@ const SEED = 3;
 const SIZE = 'small';
 const CIV = 'Blue';
 const TURNS = 80;
+// The people kept at the capital: enough that no rival outweighs it while the army is away.
+const HOME = 5;
 let failed = false;
 const fail = (msg) => {
   console.error(`army: ${msg}`);
@@ -123,11 +125,11 @@ try {
   // Warriors stay at the capital as its own army: a capital with no army of its civ on it falls to a rival army
   // there, and the marching army leaves it. Each Raise… from the civ's panel makes an army at the capital.
   const home = () => page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${me} && u.kind === 'camp' && u.id !== ${army.id}).reduce((a, u) => a + u.people, 0)`);
-  for (let k = 0; k < TURNS && (await home()) < 3; k++) {
+  for (let k = 0; k < TURNS && (await home()) < HOME; k++) {
     await selectKey(page, civKey, cap);
     if (!(await page.stepper('Raise…', { n: 1, option: 'warriors', go: true })).go) await page.button('End turn');
   }
-  need((await home()) >= 3, `${(await home()).toFixed(1)} people stay at the capital`);
+  need((await home()) >= HOME, `${(await home()).toFixed(1)} people stay at the capital`);
 
   // March: Move to… onto a rival army's tile if there is one (it is at the capital's door), else a rival's land tile: a contested one if the corridors meet one, else the nearest one held.
   const target = await page.eval(`(() => { const v = game.view(), L = game.layout(), me = ${me};

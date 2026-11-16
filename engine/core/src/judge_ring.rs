@@ -25,6 +25,10 @@ pub struct SupplyCiv {
     /// The hungry army-turns among each.
     pub army_inside_hungry: u32,
     pub army_outside_hungry: u32,
+    /// Army-turns outside the capital's own ring (`units::ring_capital`), whatever a settlement
+    /// feeds, and the hungry turns among them.
+    pub army_far: u32,
+    pub army_far_hungry: u32,
     /// Scout-turns with the scout inside the ring, and outside it, and the hungry turns among each.
     pub scout_inside: u32,
     pub scout_outside: u32,
@@ -43,6 +47,8 @@ impl SupplyCiv {
         self.army_outside += o.army_outside;
         self.army_inside_hungry += o.army_inside_hungry;
         self.army_outside_hungry += o.army_outside_hungry;
+        self.army_far += o.army_far;
+        self.army_far_hungry += o.army_far_hungry;
         self.scout_inside += o.scout_inside;
         self.scout_outside += o.scout_outside;
         self.scout_inside_hungry += o.scout_inside_hungry;
@@ -116,6 +122,7 @@ impl Supply {
     /// ring is computed once, and only if one of its units is away from the capital.
     pub(crate) fn turn(&mut self, w: &World) {
         let mut rings: BTreeMap<u32, BTreeMap<usize, f64>> = BTreeMap::new();
+        let mut capitals: BTreeMap<u32, BTreeMap<usize, f64>> = BTreeMap::new();
         for u in w.units.values() {
             let kind = u.kind();
             if kind != UnitKind::Camp && kind != UnitKind::Scout {
@@ -129,7 +136,17 @@ impl Supply {
                 ring.get(&u.home).is_some_and(|&share| share < 1.0)
             };
             let hungry = u.hungry > 0;
+            // Outside the capital's ring: as outside the ring, for a civ with no settlement.
+            let far = !inside
+                || (u.home != capital && crate::settle::of(w, u.civ).next().is_some() && {
+                    let ring = capitals.entry(u.civ).or_insert_with(|| units::ring_capital(w, u.civ));
+                    !ring.get(&u.home).is_some_and(|&share| share < 1.0)
+                });
             let c = self.civs.entry(u.civ).or_default();
+            if kind == UnitKind::Camp && far {
+                c.army_far += 1;
+                c.army_far_hungry += hungry as u32;
+            }
             match (kind, inside) {
                 (UnitKind::Camp, true) => {
                     c.army_inside += 1;

@@ -48,7 +48,7 @@ fn scout_orders(unit: u32) -> Vec<Order> {
 #[test]
 fn every_order_has_its_wire_name() {
     let orders = [
-        Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Default::default(), into: None },
+        Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Default::default(), into: None, at: None },
         Order::Disband { unit: 1, n: None, fighter: None },
         Order::Move { unit: 1, to: 2 },
         Order::Zone { unit: 1, tiles: vec![2] },
@@ -133,7 +133,7 @@ fn every_order_is_refused_before_the_game_has_begun() {
     let civ = *w.civs.keys().next().unwrap();
     let camp = units::camp(&w, civ).unwrap().id;
     let scout = units::scout(&w, civ).unwrap().id;
-    let raise = Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Default::default(), into: None };
+    let raise = Order::Raise { n: 1, kind: units::UnitKind::Camp, fighter: Default::default(), into: None, at: None };
     assert_eq!(w.check_order(civ, &raise), Err("the game has not begun".to_string()));
     for order in camp_orders(camp).into_iter().chain(scout_orders(scout)) {
         assert_eq!(w.check_order(civ, &order), Err("the game has not begun".to_string()), "{order:?}");

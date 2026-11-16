@@ -4,7 +4,7 @@ use engine::over::{self, Why};
 use engine::script::Lead;
 use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
-use engine::{civs, fields, markets, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
+use engine::{civs, fields, markets, settle, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
 use std::collections::BTreeMap;
 
 use wasm_bindgen::prelude::*;
@@ -115,7 +115,7 @@ impl Sim {
     /// `rules()` gives `join`, the leaning a clan joins a civ at, for the tints. `units` is the camps,
     /// `{id: camp}`, a camp being its engine fields (`kind`, `people` (warriors), `home`, `store` (the
     /// pack, a basket), `dest`, `banked`, `hungry`, `auto_forage`, `auto_supply`, `routes`, ...) and
-    /// `tile`, `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
+    /// `tile`, `draws_on` (`{tile, label, name}`: the store its line ends at, `label` "capital" or "settlement"; null with no line), `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
     /// (`{path, cost, carry}`: the path after its tile to the capital, its cost, and the food it carries
     /// a turn with all its labour; carry null is without limit, at the capital; `line` itself null when
     /// there is no line), `cut_off`, `territory` (its zone, sorted, its tile in it), `held` (the zone's
@@ -205,6 +205,13 @@ impl Sim {
                 row["food_turns"] = if need > 0.0 { held / need } else { 0.0 }.into();
                 row["line"] = units::line(w, u.id)
                     .map(|(path, cost, carry)| serde_json::json!({ "path": path, "cost": cost, "carry": carry }))
+                    .into();
+                row["draws_on"] = units::store_of(w, u.id)
+                    .map(|tile| {
+                        let capital = w.civs.get(&u.civ).is_some_and(|c| c.capital == tile);
+                        let label = if capital { "capital" } else { "settlement" };
+                        serde_json::json!({ "tile": tile, "label": label, "name": settle::store_name(w, u.civ, tile) })
+                    })
                     .into();
                 row["cut_off"] = units::cut_off(w, u.id).into();
                 row["zone_cap"] = units::zone_cap(u).into();

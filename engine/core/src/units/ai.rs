@@ -7,8 +7,8 @@
 
 use std::collections::BTreeMap;
 
-use super::line::{line_by, path_between, ring, turns};
-use super::{camp, cut_off, givers, pack_cap, room, zone_cap, zone_of, zone_ok, Unit, UnitKind, EPS};
+use super::line::{line_by, path_between, ring, store_of, turns};
+use super::{camp, cut_off, givers_at, pack_cap, room, zone_cap, zone_of, zone_ok, Unit, UnitKind, EPS};
 use crate::civs;
 use crate::claim;
 use crate::data::*;
@@ -36,23 +36,41 @@ fn path_cached(w: &World, paths: &mut Paths, from: usize, to: usize) -> Option<V
     paths.entry((from, to)).or_insert_with(|| path_between(w, from, to).map(|(p, _)| p)).clone()
 }
 
-/// Where an idle army of `civ` is posted: up to `UNIT.post` steps along the way from the capital to
-/// the nearest rival capital reachable by land, or with none, to its farthest clan, keeping to its
-/// own land and on land (not on a built pass). The capital when there is nowhere to go.
+/// `civ`'s front: of its stores (its capital and settlements) and the rival capitals reachable by
+/// land, the pair fewest steps apart (ties to the capital, then the lower rival), as the store's
+/// tile and the way from it to that capital.
+fn front(w: &World, civ: u32, paths: &mut Paths) -> Option<(usize, Vec<usize>)> {
+    let stores = settle::roots(w, civ);
+    let mut best: Option<(i32, usize, u32)> = None;
+    let mut way = None;
+    for o in civs::alive(w).filter(|o| o.id != civ) {
+        for (k, &s) in stores.iter().enumerate() {
+            let key = (steps(w, s, o.capital), k, o.id);
+            if best.is_some_and(|b| b <= key) {
+                continue;
+            }
+            if let Some(p) = path_cached(w, paths, s, o.capital) {
+                best = Some(key);
+                way = Some((s, p));
+            }
+        }
+    }
+    way
+}
+
+/// Where an idle army of `civ` is posted: up to `UNIT.post` steps along the way from its front store
+/// (`front`) to the rival capital nearest it, or with none reachable by land, from the capital to its
+/// farthest clan, keeping to its own land and on land (not on a built pass). The store when there is
+/// nowhere to go.
 pub fn post(w: &World, civ: u32) -> usize {
     post_by(w, civ, &mut Paths::new())
 }
 
 fn post_by(w: &World, civ: u32, paths: &mut Paths) -> usize {
     let c = &w.civs[&civ];
-    let to_rival = civs::alive(w)
-        .filter(|o| o.id != civ)
-        .filter_map(|o| {
-            path_cached(w, paths, c.capital, o.capital).map(|p| ((steps(w, c.capital, o.capital), o.id), p))
-        })
-        .min_by_key(|(k, _)| *k)
-        .map(|(_, p)| p);
-    let way = to_rival.or_else(|| {
+    let to_rival = front(w, civ, paths);
+    let from = to_rival.as_ref().map_or(c.capital, |f| f.0);
+    let way = to_rival.map(|f| f.1).or_else(|| {
         let far = w
             .clans
             .values()
@@ -60,7 +78,7 @@ fn post_by(w: &World, civ: u32, paths: &mut Paths) -> usize {
             .max_by_key(|k| (steps(w, c.capital, k.home), std::cmp::Reverse(k.id)))?;
         path_cached(w, paths, c.capital, far.home)
     });
-    let mut at = c.capital;
+    let mut at = from;
     for t in way.unwrap_or_default().into_iter().take(UNIT.post) {
         // A camp stands only on land (`check_move`), so a built pass over a mountain ends the way.
         if civs::tile_civ(w, t) != Some(civ) || !TERRAIN[w.tiles[t].terrain].land {
@@ -114,19 +132,34 @@ fn mouths(w: &World, civ: u32) -> f64 {
     w.units.values().filter(|u| u.civ == civ && u.scout().is_none()).map(|u| u.people).sum::<f64>() * UNIT.food
 }
 
-/// Whether `civ`'s levy feeds its mouths and one more: the levy this turn covers them `PLAN.feed`
-/// times over, or its store is so near its cap (`PLAN.full`) that the levy is cut to the room left.
+/// The levy `civ`'s stores took this turn: the capital's and its settlements'.
+fn levied(w: &World, civ: u32) -> f64 {
+    w.civs[&civ].levied + settle::of(w, civ).filter_map(|s| w.settle_levied.get(&s.id)).sum::<f64>()
+}
+
+/// The food in `civ`'s stores: the capital's and its settlements'.
+fn stored(w: &World, civ: u32) -> f64 {
+    total(&w.civs[&civ].store) + settle::of(w, civ).map(|s| total(&s.store)).sum::<f64>()
+}
+
+/// Whether `civ`'s levy feeds its mouths and one more: the levy this turn, at all its stores, covers
+/// them `PLAN.feed` times over, or its capital's store is so near its cap (`PLAN.full`) that the levy
+/// is cut to the room left.
 fn levy_feeds(w: &World, civ: u32) -> bool {
     let c = &w.civs[&civ];
     let eats = mouths(w, civ) + UNIT.food;
-    c.levied + EPS >= PLAN.feed * eats || (total(&c.store) + EPS >= PLAN.full * CIV.store_cap && c.levied + EPS >= eats)
+    let levied = levied(w, civ);
+    levied + EPS >= PLAN.feed * eats || (total(&c.store) + EPS >= PLAN.full * CIV.store_cap && levied + EPS >= eats)
 }
 
-/// Whether `civ` can feed one more mouth: its levy feeds it (`levy_feeds`), a clan can give a
-/// person, and its store holds `PLAN.reserve` turns of its mouths' food beyond `more`.
-fn feeds_one_more(w: &World, civ: u32, more: f64) -> bool {
+/// Whether `civ` can feed one more mouth raised at its store on `store`: its levy feeds it
+/// (`levy_feeds`), a clan at that store's market can give a person, and the store holds
+/// `PLAN.reserve` turns of the civ's mouths' food beyond `more`.
+fn feeds_one_more(w: &World, civ: u32, more: f64, store: usize) -> bool {
     let eats = mouths(w, civ) + UNIT.food;
-    levy_feeds(w, civ) && total(&w.civs[&civ].store) + EPS >= more + PLAN.reserve * eats && !givers(w, civ).is_empty()
+    levy_feeds(w, civ)
+        && settle::store(w, civ, store).map_or(0.0, total) + EPS >= more + PLAN.reserve * eats
+        && !givers_at(w, civ, store).is_empty()
 }
 
 /// The gift: `PLAN.gift_contested` a turn while a clan at its festival is a rival's or leans to one
@@ -250,39 +283,52 @@ pub fn claim_plan(w: &World, civ: u32) -> Vec<usize> {
     claim::connected_part(w, civ, &tiles)
 }
 
-/// The army's size. A hungry army at its capital, or a store that can't feed the civ's mouths a
-/// turn, sends a warrior home. Else, while the civ can feed one more (`feeds_one_more`, with the
-/// new warrior's pack) and its army is under its cap, it raises one: a new army at the capital, or
-/// into its army where its line isn't cut. The cap is `PLAN.army` of its people while a rival's
-/// capital is within `PLAN.march` turns' walk or a rival army is on its land, and a party of
-/// `PLAN.party`, which can live off the land, while none is.
+/// The army's size. A hungry army at a store of its civ, or stores that together can't feed the
+/// civ's mouths a turn, sends a warrior home. Else, while the civ can feed one more
+/// (`feeds_one_more`, with the new warrior's pack) and its army is under its cap, it raises one: into
+/// its army where its line isn't cut, from the store the line ends at; or a new army at its front
+/// store (`front`) when that can raise one, else at the capital. The cap is `PLAN.army` of its people
+/// while a rival's capital is within `PLAN.march` turns' walk of one of its stores or a rival army is
+/// on its land, and a party of `PLAN.party`, which can live off the land, while none is.
 fn muster(w: &mut World, civ: u32, give: Give) {
     let c = &w.civs[&civ];
     let army = camp(w, civ).map(|u| (u.id, u.people, u.hungry, u.home));
-    let starving = total(&c.store) + EPS < mouths(w, civ);
+    let starving = stored(w, civ) + EPS < mouths(w, civ);
+    let stores = settle::roots(w, civ);
     if let Some((id, _, hungry, home)) = army {
-        if (hungry > 0 && home == c.capital) || starving {
+        if (hungry > 0 && stores.contains(&home)) || starving {
             let _ = give(w, civ, Decision::Order(Order::Disband { unit: id, n: Some(1), fighter: None }));
             return;
         }
     }
     let people: f64 = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| k.people).sum();
     let armed = army.map_or(0.0, |a| a.1);
-    // A rival within a pack's march, or on its land, is worth a full army; else a party.
-    let capital = c.capital;
-    let near = civs::alive(w)
-        .filter(|o| o.id != civ)
-        .any(|o| path_between(w, capital, o.capital).is_some_and(|(p, _)| turns(w, &p, capital, 0.0) <= PLAN.march))
-        || w.units.values().any(|o| o.civ != civ && o.camp().is_some() && c.claim.binary_search(&o.home).is_ok());
+    // A rival within a pack's march of a store, or on its land, is worth a full army; else a party.
+    let near = civs::alive(w).filter(|o| o.id != civ).any(|o| {
+        stores.iter().any(|&s| path_between(w, s, o.capital).is_some_and(|(p, _)| turns(w, &p, s, 0.0) <= PLAN.march))
+    }) || w
+        .units
+        .values()
+        .any(|o| o.civ != civ && o.camp().is_some() && c.claim.binary_search(&o.home).is_ok());
     let cap = if near { PLAN.army * (people + armed) } else { PLAN.party.min(PLAN.army * (people + armed)) };
-    if armed + 1.0 > cap + EPS || !feeds_one_more(w, civ, pack_cap(1.0)) {
+    if armed + 1.0 > cap + EPS {
         return;
     }
     let into = army.map(|a| a.0).filter(|&id| !cut_off(w, id));
     if army.is_some() && into.is_none() {
         return;
     }
-    let order = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into };
+    let capital = c.capital;
+    let at = match into {
+        Some(id) => store_of(w, id),
+        None => front(w, civ, &mut Paths::new())
+            .map(|f| f.0)
+            .filter(|&s| feeds_one_more(w, civ, pack_cap(1.0), s))
+            .or(Some(capital)),
+    };
+    let Some(store) = at.filter(|&s| feeds_one_more(w, civ, pack_cap(1.0), s)) else { return };
+    let at = if into.is_some() || store == capital { None } else { Some(store) };
+    let order = Order::Raise { n: 1, kind: UnitKind::Camp, fighter: Fighter::Warriors, into, at };
     let _ = give(w, civ, Decision::Order(order));
 }
 
@@ -349,7 +395,8 @@ fn defence_at(w: &World, civ: u32, tile: usize) -> f64 {
 }
 
 /// What the army is for this turn, the first that applies:
-/// 1. **Feed it.** Hungry, or its line cut by a rival: it marches home, through whoever stands in
+/// 1. **Feed it.** Hungry, or its line cut by a rival: it marches home, to the store its line ends
+///    at (the capital with no line), through whoever stands in
 ///    the way. It leaves its own land only with `PLAN.packed` of its pack; off it with under
 ///    `PLAN.low` turns in its pack it halts and lives off the tile (foraging, or pillaging a
 ///    rival's), and marches home once the tile is bare.
@@ -366,6 +413,8 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
     let Some(u) = w.units.get(&id) else { return };
     let (here, dest, people) = (u.home, u.dest(), u.people);
     let capital = w.civs[&civ].capital;
+    // Home is the store its line ends at: the capital when it has no line.
+    let home = store_of(w, id).unwrap_or(capital);
     let strength = people * might(u).0;
     let go = |w: &mut World, give: Give, to: usize, why: String| {
         let at = w.units.get(&id).map(|u| (u.home, u.dest()));
@@ -379,8 +428,8 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
 
     // 1. Feed it.
     let severed = u.camp().is_some_and(|c| c.cut_by.is_some());
-    if here != capital && severed {
-        return go(w, give, capital, "a rival cuts its line: it marches home".to_string());
+    if here != home && severed {
+        return go(w, give, home, "a rival cuts its line: it marches home".to_string());
     }
     let ground = civs::tile_civ(w, here);
     let home_ground = ground == Some(civ);
@@ -394,13 +443,13 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
         let _ = give(w, civ, Decision::Order(order));
         return;
     }
-    if here != capital && (u.hungry > 0 || (low && !home_ground)) {
+    if here != home && (u.hungry > 0 || (low && !home_ground)) {
         let why = if u.hungry > 0 {
             "hungry: it marches home"
         } else {
             "its pack is low and the land here is bare: it marches home"
         };
-        return go(w, give, capital, why.to_string());
+        return go(w, give, home, why.to_string());
     }
     // An army sets out with its pack full: on its own land it waits for it.
     let packed = total(&u.store) + EPS >= PLAN.packed * pack_cap(people);
@@ -444,7 +493,8 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
         .min()
         .map(|(_, o, t)| (o, t));
     let fill = |w: &mut World, give: Give| {
-        go(w, give, capital, "fills its pack at its capital before it sets out".to_string());
+        let name = settle::store_name(w, civ, home);
+        go(w, give, home, format!("fills its pack at {name} before it sets out"));
     };
     if let Some((rival, t)) = prize {
         if !packed && home_ground && dest != Some(t) {
@@ -455,7 +505,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
     }
     let on_capital = civs::alive(w).any(|o| o.id != civ && (o.capital == here || Some(o.capital) == dest));
     if on_capital {
-        return go(w, give, capital, "it no longer outweighs the capital: it pulls back".to_string());
+        return go(w, give, home, "it no longer outweighs the capital: it pulls back".to_string());
     }
 
     // 4. Hurt the nearest rival.
@@ -589,9 +639,10 @@ fn post_zone(w: &mut World, civ: u32, id: u32, give: Give) {
     let u = &w.units[&id];
     let Some((p, _, carry)) = line_by(w, id, false) else { return };
     let afford = carry * (1.0 - UNIT.guarding / UNIT.labour) + EPS >= u.people * UNIT.food;
-    let capital = w.civs[&u.civ].capital;
+    let stores = settle::roots(w, u.civ);
     let k = UNIT.zone.min(zone_cap(u).saturating_sub(1));
-    let tiles: Vec<usize> = if afford { p.into_iter().filter(|&t| t != capital).take(k).collect() } else { Vec::new() };
+    let tiles: Vec<usize> =
+        if afford { p.into_iter().filter(|t| !stores.contains(t)).take(k).collect() } else { Vec::new() };
     if zone_of(u.home, &tiles) != u.actor.territory && zone_ok(w, u, &tiles).is_ok() {
         let _ = give(w, civ, Decision::Order(Order::Zone { unit: id, tiles }));
     }

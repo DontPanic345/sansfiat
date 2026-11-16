@@ -67,3 +67,4 @@ first, so there's no reserve to set.
 - Foraging takes only what it takes, for every unit: the tile keeps the rest of its food and rests in proportion. (#104)
 - A civ can raise people into an army only while that army's line is open, so a cut-off army can't be reinforced. (#104)
 - The ring is every tile from which a civ's line feeds an army with days to spare. It is the same for every army and scout of the civ, and a rival's held ground is past it. (#154)
+- A unit's line runs to the store of its civ, capital or settlement, that feeds it for the least labour, and draws on that store alone. A store that doesn't hold a turn of the unit's food is passed over while another does, and a line a rival cuts looks for another store. The ring is every store's ring together. (#354)
