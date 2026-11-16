@@ -573,16 +573,22 @@ pub struct ScoutRules {
     pub people: u32,
     /// Days to reveal a forest or hills tile (a mountain takes a whole turn's search labour).
     pub reveal: f64,
-    /// Turns of its eating a scout's pack holds: what it walks and works on between stores.
+    /// Turns of its eating a scout's pack holds: what it walks and works on between stores. A pack
+    /// doesn't spoil. Of the 42 routes between the retro maps' capitals (`relay/specs/337/errand.md`)
+    /// 24 builds 23, 36 builds 27 and 48 builds 27; a civ's store holds 30 turns of it (`CIV.store_cap`),
+    /// so a pack is filled over several turns at the store.
     pub pack: f64,
     /// Turns of eating a scout keeps over the walk to its store when it turns for it: the turn it
-    /// spends working before it looks again, and the turn it arrives on.
+    /// spends working before it looks again, and the turn it arrives on. With a pack of 36, at 2 a
+    /// scout is lost on the walk home on small 9; at 3 and at 4 none is.
     pub spare: f64,
-    /// The share of a full pack a scout with an errand waits for at a store before it sets out.
+    /// The share of a full pack a scout with an errand waits for at a store before it sets out. A civ
+    /// whose store gains about a food a turn (medium 9) holds a scout at the store for tens of turns
+    /// at a half; a quarter builds as many routes as a tenth, with fewer turns on the way.
     pub out: f64,
 }
 
-pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 * DAY, pack: 24.0, spare: 2.0, out: 0.5 };
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 * DAY, pack: 36.0, spare: 3.0, out: 0.25 };
 
 pub struct LeaningRules {
     /// Leaning a clan gains towards a civ per food a person it gained by trading at the civ's
