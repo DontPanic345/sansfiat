@@ -293,7 +293,7 @@ fn unit_line(w: &World, u: &Unit) -> String {
             let feeds = if need > 0.0 { pack / need } else { 0.0 };
             let line = match units::line(w, u.id) {
                 None => "no line".to_string(),
-                Some((_, _, carry)) if carry.is_infinite() => "at the capital, no limit".to_string(),
+                Some((_, _, carry)) if carry.is_infinite() => "at its store, no limit".to_string(),
                 Some((_, cost, carry)) => format!("line {cost:.1} days, carries {carry:.1} food a turn"),
             };
             let cut = if units::cut_off(w, u.id) { ", cut off" } else { "" };
