@@ -1,9 +1,9 @@
 // A scout in the page (touch point 19). On small seed 2: Move to… sends it to a tile (its march is drawn, and it
 // stands there after a few turns); Route from… rings the start on the capital; Route to… sets the route from it;
-// Clear route clears it; a tile ten steps out with Move to… armed says it is past the line's reach; and a scout
-// sent out with its switches off goes hungry, its panel saying why. On small seed 12 the scout's route to the rival's
+// Clear route clears it; its panel gives the pack and the store, with no
+// switch or feeding button. On small seed 12 the scout's route to the rival's
 // capital leaves a mountain unrevealed, and the panel lists it. Four screenshots go into --out: the march, the start ring,
-// the unrevealed list and the hungry panel.
+// the unrevealed list and the pack panel.
 //   node www/play/scout.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -84,7 +84,7 @@ try {
   let s = await scoutOf(page, scout);
   need(s.dest === TARGET && s.route == null, `Move to… sets the scout's dest to ${TARGET} and no route (dest ${s.dest}, route ${JSON.stringify(s.route)})`);
   p = await page.panel();
-  need(p.doing.includes('Going to'), `the doing line says "Going to" (${p.doing})`);
+  need(/^(Idle|Walking to its destination)/.test(p.doing), `the doing line is the engine's words (${p.doing}); a move's first turn is yet to run`);
   need(await page.eval(`game.map.routes.some((r) => r.unit === ${scout} && r.tiles.length > 1)`), 'the march path is drawn');
   await page.shot(join(out, 'march.png'), 1);
 
@@ -94,7 +94,7 @@ try {
   s = await scoutOf(page, scout);
   need(s.tile === TARGET, `the scout stands at ${TARGET} after ${turns} turns`);
   p = await page.panel();
-  need(/(^| · )At /.test(p.doing), `the doing line says "At" once it stands there (${p.doing})`);
+  need(/^(Idle|Walking|Waiting)/.test(p.doing), `the doing line is the engine's words once it stands there (${p.doing})`);
 
   // Route from… rings the start on the capital; Route to… on TARGET sets [capital, TARGET] and draws the known path.
   await page.button('Route from…');
@@ -129,38 +129,14 @@ try {
   await page.eval(frames);
   need((await scoutOf(page, scout)).dest === cap, 'a right-click sends the selected scout to the tile');
 
-  // The reach warning: with Move to… armed, a tile ten steps out whose line can't carry what the scout eats.
-  await page.button('Move to…');
-  const far = await ringAt(page, cap, 10);
-  let warned = null;
-  for (const i of far.slice(0, 12)) {
-    const tip = await tipAt(page, i);
-    if (tip.includes("Past the line's reach")) {
-      warned = { i, tip };
-      break;
-    }
-  }
-  need(warned !== null, `a tile ten steps out says it is past the line's reach${warned ? ` (${warned.tip.split('\n').join(' / ')})` : ''}`);
-  await page.key('Escape');
-
-  // Move to… the far tile, its switches off: the scout goes hungry, and its panel says why.
-  if (warned) {
-    await page.button('Move to…');
-    await page.click(warned.i);
-    await page.eval(frames);
-  }
-  for (const label of ['Auto-forage', 'Auto-supply']) {
-    const on = await page.eval(`[...document.querySelectorAll('.actions button')].some((b) => b.textContent.startsWith('${label}: on'))`);
-    if (on) await page.button(label);
-  }
-  need((await scoutOf(page, scout)).auto_forage === false && (await scoutOf(page, scout)).auto_supply === false, 'the scout’s switches are off');
-  let hungry = 0;
-  for (; hungry < 80 && !((await scoutOf(page, scout)).hungry > 0); hungry++) await page.button('End turn');
-  need((await scoutOf(page, scout)).hungry > 0, `the scout goes hungry after ${hungry} turns`);
+  // The scout eats from its pack: its panel has the pack and the store, and no switch or feeding button.
   p = await page.panel();
-  need(p.doing.startsWith('Hungry'), `the doing line leads with the hunger (${p.doing})`);
-  need(p.numbers.some((n) => n.label === 'Hunger' && n.value !== 'fed'), `the Hunger row gives its reason (${p.numbers.find((n) => n.label === 'Hunger')?.value})`);
-  await page.shot(join(out, 'hungry.png'), 1);
+  const names = p.buttons.map((b) => b.label);
+  need(!names.some((l) => /^(Auto-|Forage|Resupply|Pillage)/.test(l)), `a scout has no switches or feeding orders (${names.join(', ')})`);
+  need(p.numbers.some((n) => n.label === 'Pack') && p.numbers.some((n) => n.label === 'Store'), 'the panel gives its pack and its store');
+  need(!p.numbers.some((n) => n.label === 'Hunger'), 'the panel has no Hunger row');
+  need(!p.doing.includes('oraging'), `the doing line never says foraging (${p.doing})`);
+  await page.shot(join(out, 'pack.png'), 1);
   for (const e of page.errors()) fail(`page error: ${e}`);
 } catch (e) {
   fail(e.stack ?? String(e));

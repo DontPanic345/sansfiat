@@ -32,7 +32,7 @@ const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationF
 
 /** Clicks tile `i` until the selection is `key` (a click on a stack moves to its next thing). */
 async function selectKey(page, key, i) {
-  for (let n = 0; n < 8; n++) {
+  for (let n = 0; n < 12; n++) {
     if ((await page.data()).selected === key) return;
     await page.click(i);
     await page.eval(frames);

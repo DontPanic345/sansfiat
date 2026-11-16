@@ -289,7 +289,9 @@ fn check_disband(n: Option<u32>) -> Result<(), String> {
 fn army_feeds(w: &World, civ: u32, unit: u32) -> Result<&Unit, String> {
     let u = unit_among(w, civ, unit, &[UnitKind::Camp, UnitKind::Scout])?;
     if u.scout().is_some() {
-        return Err("a scout eats from its pack and fills it at a store: it doesn't forage or draw on a line".to_string());
+        return Err(
+            "a scout eats from its pack and fills it at a store: it doesn't forage or draw on a line".to_string()
+        );
     }
     Ok(u)
 }

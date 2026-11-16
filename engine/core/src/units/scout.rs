@@ -217,7 +217,9 @@ pub fn doing_text(w: &World, u: &super::Unit) -> String {
         Doing::Searching => "walking to its destination".to_string(),
         Doing::ToStore(t, n) => format!("walking to {} to fill its pack, {n} turns away", store(t)),
         Doing::Filling(t) => format!("waiting at {} for a pack", store(t)),
-        Doing::TooFar(t) => format!("waiting at {}: its errand is further than a full pack takes it and back", store(t)),
+        Doing::TooFar(t) => {
+            format!("waiting at {}: its errand is further than a full pack takes it and back", store(t))
+        }
         Doing::Back(t) => format!("walking back to its errand at {}", w.at(t)),
         Doing::Trapped(by) => format!("trapped in {}'s zone", super::name_of(w, by)),
     }
@@ -268,19 +270,25 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
         doing = Doing::Trapped(by);
         if was != doing {
             let (at, name) = (w.at(home), super::name_of(w, by));
-            w.note(id, format!("trapped at {at}: it can't leave {name}'s zone until the zone lifts or the army leaves"));
+            w.note(
+                id,
+                format!("trapped at {at}: it can't leave {name}'s zone until the zone lifts or the army leaves"),
+            );
         }
     } else {
         // At a store it fills; walking, it turns for one when the pack runs low.
         if let Some((store, path, n)) = &walk {
             if path.is_empty() {
                 let leaving = errand;
-                let want = if leaving { room(&w.units[&id]) } else { (2.0 * need - total(&w.units[&id].store)).max(0.0) };
+                let want =
+                    if leaving { room(&w.units[&id]) } else { (2.0 * need - total(&w.units[&id].store)).max(0.0) };
                 fill(w, id, *store, want);
                 sc_mut(w, id).homing = false;
                 if leaving {
                     let cap = cap_of(&w.units[&id]);
-                    let far = sc(w, id).back.and_then(|b| land::path(w, home, b, |i| walkable(w, i) && !shut.contains_key(&i)));
+                    let far = sc(w, id)
+                        .back
+                        .and_then(|b| land::path(w, home, b, |i| walkable(w, i) && !shut.contains_key(&i)));
                     let out = far.map_or(0, |(p, _)| turns(w, &p, home, 0.0));
                     if f64::from(2 * out) + SCOUT.spare + 1.0 > cap / need + EPS {
                         doing = Doing::TooFar(*store);
@@ -292,7 +300,13 @@ pub(super) fn scout_turn(w: &mut World, id: u32) {
                     } else if total(&w.units[&id].store) + EPS < SCOUT.out * cap {
                         doing = Doing::Filling(*store);
                         if was != doing {
-                            w.note(id, format!("waits at its store for a pack: it holds {:.1} of {cap:.0}", total(&w.units[&id].store)));
+                            w.note(
+                                id,
+                                format!(
+                                    "waits at its store for a pack: it holds {:.1} of {cap:.0}",
+                                    total(&w.units[&id].store)
+                                ),
+                            );
                         }
                     }
                 }

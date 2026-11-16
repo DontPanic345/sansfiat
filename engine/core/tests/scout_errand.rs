@@ -103,7 +103,10 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
         match w.units.get(&id) {
             Some(u) => {
                 hungry += u32::from(u.hungry > 0);
-                off += u32::from({ let s = u.scout().unwrap(); s.homing || s.back.is_some() });
+                off += u32::from({
+                    let s = u.scout().unwrap();
+                    s.homing || s.back.is_some()
+                });
             }
             None => hungry += 1,
         }

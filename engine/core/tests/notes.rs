@@ -61,11 +61,7 @@ fn a_led_scouts_reasons_follow_its_route() {
     }
     let texts: Vec<&str> = texts.iter().map(String::as_str).collect();
     assert!(texts.iter().any(|t| t.starts_with("route set from")), "the route is set: {texts:?}");
-    assert!(
-        texts.iter().any(|t| t.starts_with("has its route")
-            || t.starts_with("builds a trail")),
-        "{texts:?}"
-    );
+    assert!(texts.iter().any(|t| t.starts_with("has its route") || t.starts_with("builds a trail")), "{texts:?}");
 }
 
 #[test]

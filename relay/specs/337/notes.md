@@ -15,3 +15,20 @@
   before the first walk out.
 - Waiting on a long command: `pgrep -f` in a wait loop matches its own shell. Run the command in
   the foreground with a long timeout instead.
+
+## build-1 (the suite, the pass, the page)
+
+- Suite green. `SAVE_VERSION` 24 and the pins in `cli/tests/save.rs` bumped; `UnitFlat` has 33 fields (`homing`, `back` for `wander`).
+- `core/tests/cases.rs`: `refill` fills the scout to `cap_of` and the civ's store to twice that. `settle` returns
+  `None` for an errand that waits `Doing::TooFar` at the end (medium 9 to the rival: further than a full pack
+  there and back); the two invariant tests skip those errands. The search-order test still runs them all.
+- Orders to a scout no longer note "past its line's reach" (`reach_note` is gone); `units::past_reach` stays for armies.
+- `core/tests/pass.rs`: the pass on a staged wall (q = 0, one crossing). The scout builds it, an army marches over it, its
+  line crosses it, and a clan divides to a signpost across. It passes on the rule as built; no fix was needed.
+  The army test asserts the march (`units::route`) crosses the pass tile: an army strides several tiles a turn, so
+  "stood on it" is not observable turn by turn.
+- `scout_errand.rs` reports turns off the errand (`homing`/`back`), routes and kills; its 4-lost bound is unchanged and holds.
+- Page: the scout's panel shows `u.doing`, Pack and Store (`store_walk`), no switches or feeding buttons, no Hunger row; the
+  selected scout draws its walk to its store; the tile tooltip's reach warning is gone for scouts; `scoutKilled` is in
+  feed.js, sounds.json (no .ogg exists for either) and check.mjs KINDS. `buttons.mjs` cases for Forage/Resupply/Auto-* keep
+  their scout branches, which no longer run (buttons are enumerated from the panels).

@@ -104,7 +104,13 @@ fn settle(e: &mut Errand) -> Option<u32> {
     if matches!(u.scout().map(|s| s.doing), Some(units::Doing::TooFar(_))) {
         return None;
     }
-    panic!("{}: the scout has not settled in {TURNS} turns: {:?} at {} home {}", e.name, units::doing_text(w, u), u.tile(), u.home)
+    panic!(
+        "{}: the scout has not settled in {TURNS} turns: {:?} at {} home {}",
+        e.name,
+        units::doing_text(w, u),
+        u.tile(),
+        u.home
+    )
 }
 
 /// The known cost of `civ`'s route from `cap` to `to` (infinite when the known path is none).
