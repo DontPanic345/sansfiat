@@ -31,6 +31,8 @@ pub struct Scores {
     pub towns: TownScores,
     /// Signposts posted, settlements founded and taken, and what each civ has at +100 and +200.
     pub settle: crate::judge_settle::SettleScores,
+    /// How far salt and obsidian move: the festivals they trade at, and who holds them at +200.
+    pub goods: crate::judge_goods::GoodsScores,
     pub end: EndScores,
 }
 

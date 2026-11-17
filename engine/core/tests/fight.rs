@@ -19,7 +19,7 @@ fn army(w: &mut World, civ: u32, tile: usize, stack: [f64; 2]) -> u32 {
     let id = put_camp(w, civ, tile);
     let u = camp_mut(w, id);
     u.actor.people = stack[0] + stack[1];
-    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0];
+    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let c = u.camp_mut().unwrap();
     c.stack = stack;
     c.guard = vec![1.0];
@@ -311,7 +311,7 @@ fn new_army(w: &mut World, civ: u32, tile: usize, stack: [f64; 2]) -> u32 {
     u.actor.people = stack[0] + stack[1];
     u.actor.home = tile;
     u.actor.territory = vec![tile];
-    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0];
+    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     u.hungry = 0;
     u.banked = 0.0;
     let c = u.camp_mut().unwrap();
@@ -394,7 +394,7 @@ fn a_capital_ringed_by_rival_armies_is_besieged_and_its_clans_harvest_nothing() 
     assert!(!w.civs[&blue].besieged);
     w.clans.get_mut(&bc).unwrap().basket = [1.0; N];
     civs::levy(&mut w, mid);
-    assert!(w.civs[&blue].store.iter().sum::<f64>() > store.iter().sum::<f64>(), "the levy comes in again");
+    assert!(engine::market::total(&w.civs[&blue].store) > engine::market::total(&store), "the levy comes in again");
 }
 
 /// Blue's neighbours of `t` are held by its own armies, so Red's army at `t` is cut off from its

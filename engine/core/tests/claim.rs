@@ -116,8 +116,8 @@ fn a_clan_on_the_civs_land_is_its_own_and_pays_the_levy_at_its_market_and_one_of
     engine::leaning::land(&mut w, false);
     assert_eq!((w.clans[&on].civ, w.clans[&off].civ), (Some(red), None));
     levy(&mut w, mid);
-    assert!((total(&w.civs[&red].store) - CIV.levy * N as f64).abs() < 1e-9, "the land's clan paid");
-    assert!((w.levied[&on] - CIV.levy * N as f64).abs() < 1e-9, "and what it paid is kept for the views");
+    assert!((total(&w.civs[&red].store) - CIV.levy * 5.0).abs() < 1e-9, "the land's clan paid");
+    assert!((w.levied[&on] - CIV.levy * 5.0).abs() < 1e-9, "and what it paid is kept for the views");
     assert_eq!(w.clans[&off].basket, [1.0; N], "the stranger off the land paid nothing");
 }
 

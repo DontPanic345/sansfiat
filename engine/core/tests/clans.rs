@@ -54,8 +54,8 @@ fn seeds_land_on_every_big_landmass() {
 
 #[test]
 fn nutrition_rewards_variety() {
-    assert!((nutrition(&[10.0, 0.0, 0.0, 0.0, 0.0], 10.0) - 5.8).abs() < EPS);
-    assert!((nutrition(&[2.5, 2.5, 2.5, 2.5, 0.0], 10.0) - 10.0).abs() < EPS);
+    assert!((nutrition(&[10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 10.0) - 5.8).abs() < EPS);
+    assert!((nutrition(&[2.5, 2.5, 2.5, 2.5, 0.0, 0.0, 0.0], 10.0) - 10.0).abs() < EPS);
 }
 
 /// What `pop` people with no store or route would reap from `territory` held from its first tile.
@@ -106,7 +106,7 @@ fn reaping_keeps_to_labour_stock_and_target_on_real_maps() {
         w.run(60);
         for c in w.clans.values() {
             let (_, yearly) = walks(&w, c.home, &c.territory);
-            for (pop, store) in [(c.people, c.store), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0])] {
+            for (pop, store) in [(c.people, c.store), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])] {
                 let takes =
                     reap(&w, c.id, pop, &store, &c.routes, &c.territory, &yearly, 0.0, &vec![true; c.territory.len()])
                         .takes;
@@ -130,7 +130,7 @@ fn a_clan_harvests_nothing_off_its_territory() {
     let o = at(0, 0);
     w.tiles[o].stock[GRAIN] = 2.0;
     for d in 0..6 {
-        w.tiles[out(d, 1)].stock = [20.0, 20.0, 20.0, 0.0, 0.0];
+        w.tiles[out(d, 1)].stock = [20.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0];
     }
     let id = put(&mut w, &[o], 5.0);
     let before: Vec<Basket> = w.tiles.iter().map(|t| t.stock).collect();
@@ -192,8 +192,8 @@ fn per(basket: Basket) -> Basket {
 
 #[test]
 fn a_clan_that_harvests_just_its_need_holds() {
-    let mut w = eater(P, per([2.5, 2.5, 2.5, 2.5, 0.0]), 5);
-    w.clans.get_mut(&1).unwrap().harvest = per([2.5, 2.5, 2.5, 2.5, 0.0]);
+    let mut w = eater(P, per([2.5, 2.5, 2.5, 2.5, 0.0, 0.0, 0.0]), 5);
+    w.clans.get_mut(&1).unwrap().harvest = per([2.5, 2.5, 2.5, 2.5, 0.0, 0.0, 0.0]);
     eat(&mut w);
     let c = &w.clans[&1];
     assert!(c.fed && !c.starving);
@@ -205,7 +205,7 @@ fn a_clan_that_harvests_just_its_need_holds() {
 fn a_clan_grows_on_its_harvest_beyond_need() {
     for extra in [0.5, 1.0, 10.0] {
         // 4 of game and of grain and 2 of fruit meet a need of 10; more game counts at `excess_value`.
-        let b = per([4.0 + extra, 4.0, 2.0, 0.0, 0.0]);
+        let b = per([4.0 + extra, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0]);
         let mut w = eater(P, b, 5);
         w.clans.get_mut(&1).unwrap().harvest = b;
         eat(&mut w);
@@ -221,7 +221,7 @@ fn a_clan_grows_on_its_harvest_beyond_need() {
 #[test]
 fn a_store_alone_does_not_make_a_clan_grow() {
     // Fed well from its store, with nothing harvested.
-    let mut w = eater(P, per([5.0, 5.0, 5.0, 5.0, 0.0]), 5);
+    let mut w = eater(P, per([5.0, 5.0, 5.0, 5.0, 0.0, 0.0, 0.0]), 5);
     eat(&mut w);
     let c = &w.clans[&1];
     assert!(c.fed);
@@ -230,7 +230,7 @@ fn a_store_alone_does_not_make_a_clan_grow() {
 
 #[test]
 fn a_clan_short_of_food_holds_steady() {
-    let mut w = eater(P, per([4.0, 4.0, 1.0, 0.0, 0.0]), 5);
+    let mut w = eater(P, per([4.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0]), 5);
     eat(&mut w);
     let c = &w.clans[&1];
     assert!((c.fed_ratio - 0.9).abs() < EPS);
@@ -240,7 +240,7 @@ fn a_clan_short_of_food_holds_steady() {
 
 #[test]
 fn a_starving_clan_shrinks() {
-    let mut w = eater(P, per([4.0, 0.0, 0.0, 0.0, 0.0]), 5);
+    let mut w = eater(P, per([4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), 5);
     eat(&mut w);
     let c = &w.clans[&1];
     assert!((c.fed_ratio - 0.4).abs() < EPS);
@@ -251,12 +251,12 @@ fn a_starving_clan_shrinks() {
 
 #[test]
 fn the_store_is_what_is_left_less_spoilage() {
-    let mut w = eater(P, per([10.0, 10.0, 0.0, 0.0, 0.0]), 5);
+    let mut w = eater(P, per([10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0]), 5);
     eat(&mut w);
     let c = &w.clans[&1];
     // 8 tenths of need count in full; 2 tenths more need 2 / 0.3 of the 12 tenths left over.
     let eaten = 0.2 * P / CLAN.excess_value;
-    let left = 0.6 * P * (1.0 - eaten / (1.2 * P)) * (1.0 - CLAN.spoilage);
+    let left = 0.6 * P * (1.0 - eaten / (1.2 * P)) * (1.0 - GOOD[GRAIN].spoil);
     assert!(c.fed);
     assert!((c.store[GAME] - left).abs() < EPS && (c.store[GRAIN] - left).abs() < EPS, "{:?}", c.store);
 }
@@ -293,7 +293,7 @@ fn a_clan_starving_too_long_moves_on() {
         let mut w = flat();
         let o = at(0, 0);
         let rich = out(0, 4);
-        w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0];
+        w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0];
         let id = put(&mut w, &[o, out(3, 1)], 5.0);
         let c = w.clans.get_mut(&id).unwrap();
         (c.fed, c.starving, c.hungry, c.since) = (false, true, hungry, 9);
@@ -322,12 +322,12 @@ fn a_big_clan_divides_its_land() {
     let round: Vec<usize> = std::iter::once(at(0, 0)).chain((0..6).map(|d| out(d, 1))).chain([out(0, 2)]).collect();
     let id = put(&mut w, &round, CLAN.split_at);
     let c = w.clans.get_mut(&id).unwrap();
-    c.basket = [10.0, 10.0, 10.0, 0.0, 0.0];
+    c.basket = [10.0, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0];
     c.harvest = c.basket;
     c.since = 5;
     let s = surplus(&c.harvest, CLAN.split_at);
     let pop = CLAN.split_at * (1.0 + growth(6) * (s / (CLAN.grow_full * CLAN.split_at)).min(1.0));
-    let store: f64 = 3.0 * (10.0 - CLAN.diet_share * CLAN.split_at) * (1.0 - CLAN.spoilage);
+    let store: f64 = 3.0 * (10.0 - CLAN.diet_share * CLAN.split_at) * (1.0 - GOOD[GRAIN].spoil);
     eat(&mut w);
     assert_eq!(w.clans.len(), 2);
     let (m, d) = (&w.clans[&id], w.clans.values().find(|c| c.id != id).unwrap());
@@ -349,11 +349,11 @@ fn a_starving_clan_sends_a_daughter_only_where_she_would_be_fed() {
         let o = at(0, 0);
         let rich = out(1, 3);
         if food {
-            w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0];
+            w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0];
         }
         let id = put(&mut w, &[o], 9.0);
         // 70% fed: starving, but still at least `hungry_split` after shrinking.
-        w.clans.get_mut(&id).unwrap().basket = [3.6, 2.7, 0.0, 0.0, 0.0];
+        w.clans.get_mut(&id).unwrap().basket = [3.6, 2.7, 0.0, 0.0, 0.0, 0.0, 0.0];
         let pop = 9.0 * (1.0 - CLAN.starve * (1.0 - 0.7 / CLAN.stable_at));
         assert!(pop >= CLAN.hungry_split);
         eat(&mut w);

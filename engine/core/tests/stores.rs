@@ -18,7 +18,7 @@ fn tile(q: i32, r: i32) -> usize {
     index(RADIUS, Hex { q, r }).unwrap()
 }
 
-const FOOD: [f64; 5] = [40.0, 0.0, 0.0, 0.0, 0.0];
+const FOOD: [f64; 7] = [40.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
 /// Red with a settlement on (−1, 0) founded by a clan of 4 that goes to its market, both stores
 /// holding 40 food; and Blue.
@@ -64,12 +64,12 @@ fn a_line_ends_at_the_nearest_store_that_holds_a_turn_of_food() {
     assert_eq!(units::store_of(&w, army), Some(t));
     // An empty settlement feeds nobody: the line runs on to the capital, and costs more.
     let sid = settle::at(&w, t).unwrap().id;
-    w.settlements.get_mut(&sid).unwrap().store = [0.0; 5];
+    w.settlements.get_mut(&sid).unwrap().store = [0.0; 7];
     let (far, far_cost, _) = units::line(&w, army).unwrap();
     assert_eq!(far.last(), Some(&capital));
     assert!(far_cost > cost);
     // With no store holding a turn of its food, the nearest is its line.
-    w.civs.get_mut(&red).unwrap().store = [0.0; 5];
+    w.civs.get_mut(&red).unwrap().store = [0.0; 7];
     assert_eq!(units::store_of(&w, army), Some(t));
 }
 
@@ -80,7 +80,7 @@ fn a_unit_draws_on_its_lines_store_alone() {
         let (mut stage, red, _, t) = stage();
         let army = stage.army(red, tile(0, 0), 3.0);
         if empty {
-            stage.world_mut().units.get_mut(&army).unwrap().actor.store = [0.0; 5];
+            stage.world_mut().units.get_mut(&army).unwrap().actor.store = [0.0; 7];
         }
         stage.turn(1).unwrap();
         let w = stage.into_world();
@@ -157,11 +157,11 @@ fn the_planner_posts_its_army_at_the_store_nearest_a_rival_and_the_army_goes_hom
     let mut w = stage.into_world();
     {
         let u = w.units.get_mut(&army).unwrap();
-        u.actor.store = [0.0; 5];
+        u.actor.store = [0.0; 7];
         u.hungry = 1;
         u.camp_mut().unwrap().dest = None;
     }
-    w.tiles[tile(1, 0)].stock = [0.0; 5];
+    w.tiles[tile(1, 0)].stock = [0.0; 7];
     let mut seen = Vec::new();
     units::plan(&mut w, red, &mut |w, civ, d| {
         seen.push(d.clone());
@@ -187,7 +187,7 @@ fn an_army_marching_past_a_settlement_arrives_fed() {
         stage.world_mut().player = Some(red);
         if !stocked {
             let sid = settle::at(stage.world(), t).unwrap().id;
-            stage.world_mut().settlements.get_mut(&sid).unwrap().store = [0.0; 5];
+            stage.world_mut().settlements.get_mut(&sid).unwrap().store = [0.0; 7];
         }
         stage.order(red, Order::Move { unit: army, to: tile(2, 0) }).unwrap();
         let mut hungry = 0;

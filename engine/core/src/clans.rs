@@ -16,7 +16,7 @@ use crate::fields;
 use crate::homes;
 use crate::land::{neighbours, passable};
 use crate::map::{self, Country};
-use crate::market::{sum, Basket};
+use crate::market::{sum, total, Basket};
 use crate::rng::{rand, rand_index};
 use crate::world::World;
 
@@ -150,7 +150,8 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
 /// `excess_value` beyond it.
 pub fn nutrition(b: &Basket, need: f64) -> f64 {
     let k = CLAN.diet_share * need;
-    b.iter().map(|&v| v.min(k)).sum::<f64>() + CLAN.excess_value * b.iter().map(|&v| (v - k).max(0.0)).sum::<f64>()
+    let food = || (0..N).filter(|&g| GOOD[g].eaten).map(|g| b[g]);
+    food().map(|v| v.min(k)).sum::<f64>() + CLAN.excess_value * food().map(|v| (v - k).max(0.0)).sum::<f64>()
 }
 
 /// The walks from `home` to each tile of `territory` (sorted), and each one's yearly cost at
@@ -164,6 +165,9 @@ pub fn walks(w: &World, home: usize, territory: &[usize]) -> (Walks, Vec<f64>) {
 /// What a clan's labour reaps from its tiles in a turn: gathered food per tile, the field grain per tile
 /// and the field days per tile (`reap`).
 pub struct Reaped {
+    /// What its source job gathered, by good. `reap` caps it at what the clan holds (`SOURCE.hold`);
+    /// `reap_within` gives what the days would.
+    pub dug: Basket,
     /// Gathered food per tile, taken from its stock: what `harvest` takes and what `wear` sees.
     pub takes: Vec<Basket>,
     /// Field grain per tile, drawn from no stock.
@@ -175,7 +179,7 @@ pub struct Reaped {
 impl Reaped {
     /// Nothing reaped from `n` tiles.
     pub fn empty(n: usize) -> Reaped {
-        Reaped { takes: vec![[0.0; N]; n], grain: vec![0.0; n], days: vec![0.0; n] }
+        Reaped { dug: [0.0; N], takes: vec![[0.0; N]; n], grain: vec![0.0; n], days: vec![0.0; n] }
     }
 
     /// The whole harvest: gathered food and field grain.
@@ -205,9 +209,14 @@ pub fn reap(
     fields: f64,
     gathers: &[bool],
 ) -> Reaped {
-    let budget = (CLAN.surplus_target * people - store.iter().sum::<f64>()).max(0.0);
+    let budget = (CLAN.surplus_target * people - total(store)).max(0.0);
     let fields = if fields::open(w) { fields } else { 0.0 };
-    reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget)
+    let mut reaped = reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget);
+    // A clan gathers a source's good only up to what it holds of it (`SOURCE.hold`).
+    for g in 0..N {
+        reaped.dug[g] = reaped.dug[g].min((SOURCE.hold * people - store[g]).max(0.0));
+    }
+    reaped
 }
 
 /// `reap` within `budget`: gathering and field grain together come to at most `budget`, by one factor
@@ -224,7 +233,9 @@ fn reap_within(
     gathers: &[bool],
     budget: f64,
 ) -> Reaped {
-    let (work, field, fk) = fields::jobs(w, people, routes, tiles, yearly, fields, gathers);
+    // A starving clan leaves its sources: every day goes on food.
+    let dig = !w.clans.get(&id).is_some_and(|c| c.starving);
+    let (work, field, fk, dug) = fields::jobs(w, people, routes, tiles, yearly, fields, gathers, dig);
     let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
     let mut total = 0.0;
     for (&t, &labour) in tiles.iter().zip(&work) {
@@ -256,18 +267,18 @@ fn reap_within(
             *g *= scale;
         }
     }
-    Reaped { takes, grain, days }
+    Reaped { dug, takes, grain, days }
 }
 
 /// Whether `territory` would harvest the clan's whole target this turn (`reap` scaled down to
 /// it, or nothing left to harvest for): a clan short of it wants more land.
 pub fn at_target(w: &World, clan: &Clan, territory: &[usize]) -> bool {
-    let budget = (CLAN.surplus_target * clan.people - clan.store.iter().sum::<f64>()).max(0.0);
+    let budget = (CLAN.surplus_target * clan.people - total(&clan.store)).max(0.0);
     let (_, yearly) = walks(w, clan.home, territory);
     let gathers = reckoned(w, clan.id, territory);
     let food =
         reap(w, clan.id, clan.people, &clan.store, &clan.routes, territory, &yearly, clan.fields, &gathers).food();
-    food.iter().sum::<f64>() >= budget - 1e-9
+    total(&food) >= budget - 1e-9
 }
 
 /// Which of `tiles` clan `id` reckons it will claim: those held by nobody or by it. Planning counts a
@@ -291,8 +302,15 @@ pub(crate) fn worth(
 ) -> f64 {
     let (_, yearly) = walks(w, home, territory);
     let gathers = reckoned(w, id, territory);
-    let food = reap(w, id, people, store, routes, territory, &yearly, fields, &gathers).food();
-    nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) / people
+    let reaped = reap(w, id, people, store, routes, territory, &yearly, fields, &gathers);
+    let food = reaped.food();
+    // What its sources would give, whatever it holds, reckoned in food (`SOURCE.worth`).
+    let could = if w.config.goods {
+        reap_within(w, id, people, routes, territory, &yearly, 0.0, &gathers, 0.0).dug.iter().sum::<f64>()
+    } else {
+        0.0
+    };
+    (nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) + SOURCE.worth * could) / people
 }
 
 /// `worth` with nothing held back for the store's cap: what the labour on `territory` from `home`
@@ -312,8 +330,10 @@ pub(crate) fn could_reap(
     let (_, yearly) = walks(w, home, territory);
     let gathers = reckoned(w, id, territory);
     let fields = if fields::open(w) { fields } else { 0.0 };
-    let food = reap_within(w, id, people, routes, territory, &yearly, fields, &gathers, f64::INFINITY).food();
-    nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) / people
+    let reaped = reap_within(w, id, people, routes, territory, &yearly, fields, &gathers, f64::INFINITY);
+    let food = reaped.food();
+    (nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) + SOURCE.worth * reaped.dug.iter().sum::<f64>())
+        / people
 }
 
 /// How well `territory` would feed the clan this turn, its days split at `fields`. Walking counts
@@ -406,7 +426,7 @@ pub fn harvest(w: &mut World) {
         let c = w.clans.get_mut(&id).unwrap();
         c.walk = yearly.iter().sum();
         c.harvest = food;
-        c.basket = std::array::from_fn(|f| c.store[f] + food[f]);
+        c.basket = std::array::from_fn(|f| c.store[f] + food[f] + reaped.dug[f]);
         c.store = [0.0; N];
         c.sown = sown;
     }
@@ -434,7 +454,8 @@ pub fn eat(w: &mut World) {
         c.starving = c.fed_ratio < CLAN.stable_at;
         if c.starving && !was_starving {
             // The food it has least of, which it is short of.
-            let short = (0..N).min_by(|&a, &b| c.basket[a].total_cmp(&c.basket[b])).unwrap_or(0);
+            let short =
+                (0..N).filter(|&g| GOOD[g].eaten).min_by(|&a, &b| c.basket[a].total_cmp(&c.basket[b])).unwrap_or(0);
             starving.push((c.id, c.home, c.fed_ratio, short));
         }
         c.hungry = if c.starving { c.hungry + 1 } else { 0 };

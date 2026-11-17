@@ -21,7 +21,7 @@ fn plain() -> (Stage, Vec<u32>) {
 }
 
 fn stock(s: &mut Stage, civ: u32) {
-    s.world_mut().civs.get_mut(&civ).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0];
+    s.world_mut().civs.get_mut(&civ).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 }
 
 /// A known route: forest with a cheap trail hidden on tiles 6 to 9 steps out, walled by mountains. The
@@ -42,7 +42,7 @@ fn an_errand_takes_one_trip_to_the_store_and_is_done_by_turn_10() {
     let u = s.world_mut().units.get_mut(&id).unwrap();
     u.actor.home = at_big(-5, 0);
     u.actor.territory = vec![at_big(-5, 0)];
-    u.actor.store = [0.0, 10.0, 0.0, 0.0, 0.0];
+    u.actor.store = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let (from, to) = (at_big(-10, 0), at_big(2, 0));
     let order = led_order(s.world(), Order::Route { unit: id, from, to });
     s.act(order).unwrap();
@@ -76,7 +76,7 @@ fn rival_scout(s: &mut Stage, civ: u32, tile: usize, dest: usize) -> u32 {
     let u = s.world_mut().units.get_mut(&id).unwrap();
     u.actor.home = tile;
     u.actor.territory = vec![tile];
-    u.actor.store = [0.0, 30.0, 0.0, 0.0, 0.0];
+    u.actor.store = [0.0, 30.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     u.scout_mut().unwrap().dest = Some(dest);
     id
 }

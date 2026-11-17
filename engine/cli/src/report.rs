@@ -104,7 +104,7 @@ pub(crate) fn civs_text(w: &World) -> String {
     let mut out = String::new();
     for c in civs::cards(w) {
         let civ = &w.civs[&c.civ];
-        let store: f64 = civ.store.iter().sum();
+        let store = engine::market::total(&civ.store);
         out += &format!(
             "  civ {} at ({}, {}), market {}: {} clans, {:.1} people, store {store:.1}, {} hearths on its land, camp {}\n",
             c.name,

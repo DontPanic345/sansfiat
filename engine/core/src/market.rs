@@ -1,22 +1,53 @@
 use serde::Serialize;
 
-use crate::data::N;
+use crate::data::{GOOD, N};
 
 pub type Basket = [f64; N];
 
-/// The amount of food in a basket.
+/// The food in a basket: its eaten goods (`GOOD`).
 pub fn total(b: &Basket) -> f64 {
-    b.iter().sum()
+    (0..N).filter(|&g| GOOD[g].eaten).map(|g| b[g]).sum()
 }
 
-/// Takes up to `amount` of food from `from`, in proportion to what it holds.
+/// A basket of `food` shared evenly over the foods, and no salt or obsidian.
+pub fn spread(food: f64) -> Basket {
+    let n = GOOD.iter().filter(|g| g.eaten).count() as f64;
+    std::array::from_fn(|g| if GOOD[g].eaten { food / n } else { 0.0 })
+}
+
+/// What a basket weighs: each good at its `GOOD` weight.
+pub fn weight(b: &Basket) -> f64 {
+    (0..N).map(|g| b[g] * GOOD[g].weight).sum()
+}
+
+/// A basket's goods that aren't eaten, summed.
+pub fn wares(b: &Basket) -> f64 {
+    (0..N).filter(|&g| !GOOD[g].eaten).map(|g| b[g]).sum()
+}
+
+/// Every trader's worth of a food, and of nothing else: what a trader with no use for salt or
+/// obsidian wants.
+pub const FOOD_WORTH: Basket = {
+    let mut out = [0.0; N];
+    let mut g = 0;
+    while g < N {
+        if GOOD[g].eaten {
+            out[g] = 1.0;
+        }
+        g += 1;
+    }
+    out
+};
+
+/// Takes up to `amount` of food from `from`, in proportion to the food it holds. What isn't eaten
+/// stays.
 pub fn take(from: &mut Basket, amount: f64) -> Basket {
     let held = total(from);
     if held <= 0.0 || amount <= 0.0 {
         return [0.0; N];
     }
     let share = (amount / held).min(1.0);
-    let out = from.map(|v| v * share);
+    let out: Basket = std::array::from_fn(|g| if GOOD[g].eaten { from[g] * share } else { 0.0 });
     for f in 0..N {
         from[f] -= out[f];
     }
@@ -35,14 +66,16 @@ pub fn sum(takes: &[Basket]) -> Basket {
     std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum())
 }
 
-/// Each trader values a basket at Σ sqrt(amount), so given exchange ratios `prices` it wants
-/// amount_g ∝ 1/p_g² of each good, spending exactly what its own basket is worth.
-pub fn demand(basket: &Basket, prices: &Basket, goods: &[usize]) -> Basket {
+/// Each trader values a basket at Σ worth × sqrt(amount), so given exchange ratios `prices` it wants
+/// amount_g ∝ (worth_g / p_g)² of each good, spending exactly what its own basket is worth. A food's
+/// worth is 1; a good the trader has no use for is worth 0 to it, and it wants none. A trader that
+/// wants none of `goods` keeps what it brought.
+pub fn demand(basket: &Basket, prices: &Basket, goods: &[usize], worth: &Basket) -> Basket {
     let wealth: f64 = goods.iter().map(|&g| prices[g] * basket[g]).sum();
-    let denom: f64 = goods.iter().map(|&g| 1.0 / prices[g]).sum();
+    let denom: f64 = goods.iter().map(|&g| worth[g] * worth[g] / prices[g]).sum();
     let mut out = [0.0; N];
     for &g in goods {
-        out[g] = wealth / (prices[g] * prices[g] * denom);
+        out[g] = if denom > 0.0 { wealth * worth[g] * worth[g] / (prices[g] * prices[g] * denom) } else { basket[g] };
     }
     out
 }
@@ -78,14 +111,16 @@ pub struct Clearing {
 }
 
 /// Finds exchange ratios at which supply meets demand by tâtonnement, then hands out the goods.
-pub fn clear(baskets: &[Basket], start: &Basket, p: &Params) -> Clearing {
+/// `worths` is each trader's worth of each good (`demand`). A good nobody there wants is not traded:
+/// it stays with whoever brought it.
+pub fn clear(baskets: &[Basket], worths: &[Basket], start: &Basket, p: &Params) -> Clearing {
     let mut supply = [0.0; N];
     for b in baskets {
         for g in 0..N {
             supply[g] += b[g];
         }
     }
-    let goods: Vec<usize> = (0..N).filter(|&g| supply[g] > 1e-9).collect();
+    let goods: Vec<usize> = (0..N).filter(|&g| supply[g] > 1e-9 && worths.iter().any(|w| w[g] > 0.0)).collect();
     let mut prices = *start;
     if baskets.len() < 2 || goods.len() < 2 {
         let after = baskets.to_vec();
@@ -96,8 +131,8 @@ pub fn clear(baskets: &[Basket], start: &Basket, p: &Params) -> Clearing {
     while iterations < p.iterations {
         iterations += 1;
         let mut want = [0.0; N];
-        for b in baskets {
-            let d = demand(b, &prices, &goods);
+        for (b, w) in baskets.iter().zip(worths) {
+            let d = demand(b, &prices, &goods, w);
             for &g in &goods {
                 want[g] += d[g];
             }
@@ -120,8 +155,9 @@ pub fn clear(baskets: &[Basket], start: &Basket, p: &Params) -> Clearing {
     // Ration whichever side of each good is long, so goods are conserved exactly.
     let net: Vec<Basket> = baskets
         .iter()
-        .map(|b| {
-            let d = demand(b, &prices, &goods);
+        .zip(worths)
+        .map(|(b, w)| {
+            let d = demand(b, &prices, &goods, w);
             let mut z = [0.0; N];
             for &g in &goods {
                 z[g] = d[g] - b[g];

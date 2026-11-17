@@ -183,7 +183,8 @@ pub fn led() -> (World, [u32; 3], [u32; 3]) {
     w.events.clear();
     // The scouts' packs are full, as a scout refills its pack to full from the store.
     for u in w.units.values_mut().filter(|u| u.kind() == units::UnitKind::Scout) {
-        u.actor.store = [units::pack_cap(u.people) / N as f64; N];
+        u.actor.store = [0.0; N];
+        u.actor.store[1] = units::pack_cap(u.people);
     }
     (w, ids, clans)
 }
@@ -209,7 +210,7 @@ pub fn camp_mut(w: &mut World, id: u32) -> &mut Unit {
 
 /// The sum of a basket's goods.
 pub fn total(b: &[f64; N]) -> f64 {
-    b.iter().sum()
+    engine::market::total(b)
 }
 
 /// How many events of `kind` the world holds.

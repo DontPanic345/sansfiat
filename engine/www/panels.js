@@ -131,6 +131,24 @@ export const civName = (ctx, id) => ctx.v.civs[id]?.name ?? '?';
 const unitName = (u) => { const k = u.kind === 'camp' ? 'army' : u.kind; return `${k[0].toUpperCase()}${k.slice(1)} ${u.id}`; };
 const pack = (u) => sum(u.store);
 
+/** A store's food: its first `rules.foods` goods; salt and obsidian are not food. */
+export const foodOf = (ctx, store) => sum(store.slice(0, ctx.rules.foods));
+
+/** Every good a store holds, food first then salt and obsidian, as "name amount". */
+export const heldGoods = (ctx, store) => ctx.goods.map((g, f) => (store[f] > 0.005 ? `${g} ${f2(store[f])}` : null)).filter(Boolean);
+
+/** A number row for each of salt and obsidian in `store`: with `always`, a row for each even at 0; else only when held. */
+export function wareRows(ctx, store, always, what) {
+  return ctx.goods
+    .map((g, f) => ({ g, f }))
+    .filter(({ f }) => f >= ctx.rules.foods && (always || store[f] > 0.005))
+    .map(({ g, f }) => ({
+      label: `${g[0].toUpperCase()}${g.slice(1)}`,
+      value: f2(store[f]),
+      tip: f === ctx.rules.foods ? `Salt in ${what}: it keeps the food there from spoiling, and is used up doing it` : `Obsidian in ${what}: a warrior raised from the store takes ${ctx.rules.arms.each} of it for a blade`,
+    }));
+}
+
 /** The latest reasons the subject has (`Sim.notes`), newest first, for the panel's Why list. */
 export function reasonsOf(ctx, id) {
   if (id == null) return [];
@@ -213,6 +231,9 @@ function campShape(ctx, u) {
       value: u.still > 0 ? `${plural(u.still, 'turn')}, +${Math.round(100 * st.bonus)}%` : 'no',
       tip: `Turns it has stood still; each turn adds ${Math.round(100 * rules.fight.entrench)}% to its defence, to ${Math.round(100 * rules.fight.entrench_cap)}%`,
     },
+    ...(u.kind === 'camp'
+      ? [{ label: 'Armed', value: pct(u.armed ?? 0), tip: `The share of its people with an obsidian blade, which fights ×${rules.arms.edge} (taken at the store when raised; none for archers)` }]
+      : []),
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
     { label: 'Line', value: line, tip: 'Its line home: steps, the days it costs, and the food a turn it carries with all its labour' },
     { label: 'Draws on', value: u.draws_on ? (u.draws_on.label === 'capital' ? 'its capital' : `its settlement at (${hex(ctx, u.draws_on.tile)})`) : 'none', tip: 'The store its line ends at: the one that feeds it cheapest' },
@@ -383,7 +404,7 @@ function leaningRows(ctx, id) {
  *  keep, its claim, the leaning clans and its units. Only the player's civ has buttons. Raise… makes a new army
  *  at the capital (warriors or archers) or a scout (build-4). A fallen civ has no buttons. */
 function civShape(ctx, c) {
-  const { v, goods, rules, painting } = ctx;
+  const { v, rules, painting } = ctx;
   const mine = c.id === v.player;
   if (c.fallen) {
     const [turn, by] = c.fallen;
@@ -401,7 +422,7 @@ function civShape(ctx, c) {
   const civs = Object.values(v.civs).length;
   const posture = c.besieged ? '; besieged' : c.pressed ? '; its capital is pressed' : '';
   const doing = `${mine ? `You lead ${c.name}: ` : ''}Standing ${pct(s.total)}, ${ORD(s.rank)} of ${civs}${posture}`;
-  const stored = goods.map((g, f) => (c.store[f] > 0.005 ? `${g} ${f2(c.store[f])}` : null)).filter(Boolean);
+  const stored = heldGoods(ctx, c.store);
   const numbers = [
     { label: 'Standing', value: pct(s.total), tip: 'The people of its clans and units, as a share of everyone. A clan whose home is on its land is its clan' },
     { label: 'People', value: f2(c.people), tip: 'The people in its clans' },
@@ -413,9 +434,10 @@ function civShape(ctx, c) {
     { label: 'Clans', value: c.clans, tip: 'Clans it holds' },
     {
       label: 'Store',
-      value: `${f2(sum(c.store))} of ${rules.store_cap}`,
+      value: `${f2(foodOf(ctx, c.store))} of ${rules.store_cap}`,
       tip: `${stored.join(', ') || 'Empty'}${c.lost > 0.005 ? `; lost ${f2(c.lost)} last turn` : ''}`,
     },
+    ...wareRows(ctx, c.store, true, 'its store'),
     {
       label: 'Last turn',
       value: `kept ${f2(c.keep)} · posted ${f2(c.posted)} · given ${f2(c.given)}`,
@@ -511,6 +533,9 @@ function clanShape(ctx, k) {
         : `It pays ${civ.name} no levy: it doesn’t walk to the capital’s festival`,
     });
   }
+  const held = heldGoods(ctx, k.store ?? []);
+  if (held.length) numbers.push({ label: 'Store', value: `${f2(foodOf(ctx, k.store))} food`, tip: `What the clan holds: ${held.join(', ')}` });
+  numbers.push(...wareRows(ctx, k.store ?? [], false, 'its store'));
   if (k.market != null) numbers.push({ label: 'Route', value: `${f2(cost)} days a turn`, tip: `Days a turn to walk to festival ${k.market}` });
   numbers.push({ label: 'Leanings', value: leans.length ? leans.join(', ') : 'none', tip: `Shares of the joining line (${rules.join}) for each civ` });
   return {

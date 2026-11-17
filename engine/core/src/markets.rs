@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::actors;
 use crate::actors::{carriers, walk_cost, Route};
 use crate::civs;
 use crate::clans::{nutrition, surplus, Clan};
@@ -15,7 +16,7 @@ use crate::events::{Event, EventKind};
 use crate::homes;
 use crate::land::{cost_map, passable, path};
 use crate::leaning;
-use crate::market::{clear, demand, take, Basket, Params};
+use crate::market::{clear, demand, take, total, wares, weight, Basket, Params};
 use crate::reach::{self, Scratch};
 use crate::world::World;
 
@@ -40,6 +41,12 @@ pub struct Market {
     /// Whether its tile reads as a town (`towns.rs`): kept by the `markets` step, and read by no rule.
     #[serde(default, skip_serializing_if = "crate::towns::is_false")]
     pub town: bool,
+    /// Last turn's volume of the goods that aren't eaten: the salt and obsidian that changed hands.
+    #[serde(default)]
+    pub wares: f64,
+    /// Last turn's volume, good by good.
+    #[serde(default)]
+    pub ware: Basket,
 }
 
 /// Path cost from the market's tile over passable tiles, out to `MARKET.reach`: the land around
@@ -52,7 +59,7 @@ pub fn reach(w: &World, tile: usize) -> BTreeMap<usize, f64> {
 /// foods and the goods the market last traded, by nutrition for `pop` people.
 pub fn gain(m: &Market, b: &Basket, pop: f64) -> f64 {
     let goods: Vec<usize> = (0..N).filter(|&f| b[f] > 0.0 || m.goods.contains(&f)).collect();
-    let d = demand(b, &m.prices, &goods);
+    let d = demand(b, &m.prices, &goods, &actors::worths(b, pop));
     (nutrition(&d, pop) - nutrition(b, pop)).max(0.0)
 }
 
@@ -67,7 +74,7 @@ pub fn desire(m: &Market, surplus: bool) -> f64 {
 /// The people who walk a clan's festival route: the carriers of what it brought last turn, its basket
 /// capped at `MARKET.carry × people` as `trade` caps it (`actors::carriers`).
 pub fn walkers(clan: &Clan) -> f64 {
-    carriers(clan.basket.iter().sum::<f64>().min(MARKET.carry * clan.people))
+    carriers(weight(&clan.basket).min(MARKET.carry * clan.people))
 }
 
 /// A festival in reach of a home: its id, the cheapest route's cost from the home and its tiles
@@ -110,7 +117,7 @@ pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
 fn worths_from(w: &World, clan: &Clan, festivals: &[Festival]) -> Vec<(u32, f64, f64)> {
     let b: Basket = std::array::from_fn(|f| clan.store[f] + clan.harvest[f]);
     let walkers = walkers(clan);
-    let surplus = clan.store.iter().sum::<f64>() >= MARKET.surplus_at * clan.people;
+    let surplus = total(&clan.store) >= MARKET.surplus_at * clan.people;
     // A civ clan is drawn to its capital's market, and to its civ's settlements'.
     let capital = clan.civ.and_then(|c| w.civs.get(&c)).map(|c| c.market);
     let settled =
@@ -215,7 +222,8 @@ pub fn by_market(w: &World) -> BTreeMap<u32, Vec<u32>> {
 }
 
 /// The `trade` step, after harvest: each market clears what its clans brought. A clan brings its
-/// basket scaled evenly down to at most `MARKET.carry × people` of food; the rest stays in its
+/// salt and obsidian (less the salt its own store will use, `actors::keeps_back`), and its food scaled evenly down to what `MARKET.carry × people` of weight
+/// leaves (`GOOD`'s weights); the rest stays in its
 /// basket, and the cleared goods come back on top.
 pub fn trade(w: &mut World) {
     for c in w.civs.values_mut() {
@@ -233,17 +241,35 @@ pub fn trade(w: &mut World) {
             .iter()
             .map(|id| {
                 let c = &w.clans[id];
-                let total: f64 = c.basket.iter().sum();
-                let most = MARKET.carry * c.people;
+                // What isn't eaten is brought, but the salt its own store will use, and the food fills what the carriers have left.
+                let back = actors::keeps_back(&c.basket, c.people);
+                let light: f64 =
+                    (0..N).filter(|&g| !GOOD[g].eaten).map(|g| (c.basket[g] - back[g]) * GOOD[g].weight).sum();
+                let total = total(&c.basket);
+                let most = (MARKET.carry * c.people - light).max(0.0);
                 let share = if total > most { most / total } else { 1.0 };
-                (c.basket.map(|v| v * share), c.basket.map(|v| v - v * share))
+                let part = |g: usize| {
+                    if GOOD[g].eaten {
+                        share
+                    } else if c.basket[g] > 0.0 {
+                        1.0 - back[g] / c.basket[g]
+                    } else {
+                        0.0
+                    }
+                };
+                (
+                    std::array::from_fn(|g| c.basket[g] * part(g)),
+                    std::array::from_fn(|g| c.basket[g] - c.basket[g] * part(g)),
+                )
             })
             .unzip();
         // The civ whose capital market this is gives and posts what its store holds beyond its keep.
+        let mut worths: Vec<Basket> =
+            ids.iter().map(|id| actors::worths(&w.clans[id].basket, w.clans[id].people)).collect();
         let civ = crate::civs::alive(w).find(|c| c.market == mid && w.phase.playing()).map(|c| c.id);
         let mut posted = 0.0;
         if let Some(civ) = civ {
-            let spare = (w.civs[&civ].store.iter().sum::<f64>() - civs::keep(w, civ)).max(0.0);
+            let spare = (total(&w.civs[&civ].store) - civs::keep(w, civ)).max(0.0);
             // Gifts go to every clan there that isn't the civ's own: unaligned clans and rivals' alike.
             let others: Vec<usize> = (0..ids.len()).filter(|&i| w.clans[&ids[i]].civ != Some(civ)).collect();
             let pool = if w.config.gifts { w.civs[&civ].gift.min(spare) } else { 0.0 };
@@ -255,9 +281,10 @@ pub fn trade(w: &mut World) {
             }
             let rest = (spare - given).max(0.0);
             let basket = take(&mut w.civs.get_mut(&civ).unwrap().store, rest);
-            posted = basket.iter().sum();
+            posted = total(&basket);
             if posted > 0.0 {
                 brought.push(basket);
+                worths.push(actors::civ_worths(&w.civs[&civ].store, CIV.store_cap));
             }
             let c = w.civs.get_mut(&civ).unwrap();
             c.given = given;
@@ -268,7 +295,7 @@ pub fn trade(w: &mut World) {
             }
         }
         let m = w.markets.get_mut(&mid).unwrap();
-        let c = clear(&brought, &m.prices, &Params::default());
+        let c = clear(&brought, &worths, &m.prices, &Params::default());
         if c.cleared {
             m.prices = c.prices;
             m.goods = c.goods.clone();
@@ -279,6 +306,8 @@ pub fn trade(w: &mut World) {
             }
         }
         m.volume = c.volume.iter().sum();
+        m.wares = wares(&c.volume);
+        m.ware = c.volume;
         m.traders = ids.len();
         m.activity = MARKET.fade * m.activity + (1.0 - MARKET.fade) * ids.len() as f64;
         if m.volume > 0.0 {
@@ -494,6 +523,8 @@ pub fn raise(w: &mut World, tile: usize) -> u32 {
         traders: 0,
         moved: 0.0,
         town: false,
+        wares: 0.0,
+        ware: [0.0; N],
     };
     w.markets.insert(id, m);
     id

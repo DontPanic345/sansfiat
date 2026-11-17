@@ -207,8 +207,8 @@ fn festivals(mut s: Stage) -> Vec<(u32, f64, f64)> {
         w.markets.get_mut(m).unwrap().traders = k * 2;
     }
     let c = w.clans.get_mut(&id).unwrap();
-    c.store = [0.5, 1.0, 0.0, 0.2, 0.0];
-    c.harvest = [0.0, 2.0, 0.0, 0.0, 0.0];
+    c.store = [0.5, 1.0, 0.0, 0.2, 0.0, 0.0, 0.0];
+    c.harvest = [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let c = c.clone();
     markets::worths(w, &c).into_iter().map(|(m, worth, cost)| (m, worth / DAY, cost / DAY)).collect()
 }

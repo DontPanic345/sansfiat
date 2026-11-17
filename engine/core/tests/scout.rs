@@ -29,8 +29,8 @@ fn end_fed(w: &mut World) {
     w.civs.get_mut(&me).unwrap().store = [100.0; N];
     // …and the scout's pack, so its feeding is not what these tests are about.
     let id = led_scout(w);
-    let full = units::cap_of(&w.units[&id]) / N as f64;
-    w.units.get_mut(&id).unwrap().store = [full; N];
+    let full = engine::market::spread(units::cap_of(&w.units[&id]));
+    w.units.get_mut(&id).unwrap().store = full;
     w.act(Action::EndTurn).unwrap();
 }
 

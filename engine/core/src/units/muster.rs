@@ -303,6 +303,7 @@ pub fn raise(
     }
     let pack = settle::store_mut(w, civ, store).map(|s| take(s, pack_cap(k))).unwrap_or_default();
     let id = join(w, civ, k, pack, fighter, into, store);
+    arm(w, civ, store, id, k, fighter == Fighter::Warriors);
     if fighter == Fighter::Archers {
         w.units.get_mut(&id).unwrap().camp_mut().expect("an army").bows = true;
         let tile = w.units[&id].home;
@@ -310,6 +311,26 @@ pub fn raise(
         w.note(id, format!("{k:.0} archers raised: its bows take this turn's labour"));
     }
     Ok(from.len() as u32)
+}
+
+/// Arms the `k` people just raised into army `id` from `civ`'s store on `store`: each warrior takes `ARMS.each`
+/// of the store's obsidian while it lasts, and the obsidian is used up. The army's armed share is its
+/// armed people over all its people.
+fn arm(w: &mut World, civ: u32, store: usize, id: u32, k: f64, warriors: bool) {
+    let Some(s) = settle::store_mut(w, civ, store) else { return };
+    let mut armed = 0.0;
+    for g in (0..N).filter(|&g| warriors && GOOD[g].uses == Use::Arms) {
+        let more = (s[g] / ARMS.each).min(k - armed);
+        s[g] -= more * ARMS.each;
+        armed += more;
+    }
+    let u = w.units.get_mut(&id).unwrap();
+    let people = u.people;
+    let c = u.camp_mut().expect("an army");
+    c.armed = if people > 0.0 { ((people - k).max(0.0) * c.armed + armed) / people } else { 0.0 };
+    if armed > 0.0 {
+        w.note(id, format!("{armed:.1} of its {k:.0} new warriors took obsidian blades from the store"));
+    }
 }
 
 /// Sends `n` of camp `id`'s people (all with `None`) back to its civ's own clan, with their share of

@@ -2,9 +2,11 @@
 //! by `play`. Every number is read off the world; nothing here changes it.
 
 use engine::data::{Fighter, CIV, LEANING, SETTLE, UNIT};
+use engine::data::{ARMS, GOOD, KEEPING, N};
+use engine::market::total;
 use engine::over::{self, Why};
 use engine::units::{self, Unit, UnitKind};
-use engine::{civs, claim, fields, markets, settle, stats, towns, Action, Clan, Event, Order, Phase, World, FOODS};
+use engine::{civs, claim, fields, markets, settle, stats, towns, Action, Clan, Event, Order, Phase, World, GOODS};
 
 /// The largest clans the view names.
 const CLANS_NAMED: usize = 5;
@@ -98,8 +100,9 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     }
 
     let c = &w.civs[&me];
-    let stock: Vec<String> = FOODS.iter().zip(c.store.iter()).map(|(f, v)| format!("{f} {v:.1}")).collect();
-    out += &format!("store {:.1}: {}\n", c.store.iter().sum::<f64>(), stock.join(", "));
+    let stock: Vec<String> = GOODS.iter().zip(c.store.iter()).map(|(f, v)| format!("{f} {:.1}", v.max(0.0))).collect();
+    out += &format!("store {:.1} food: {}\n", total(&c.store), stock.join(", "));
+    out += &sources(w, me);
     let set = match c.keep {
         Some(k) => format!("set to {k:.1}"),
         None => "the default, the camp's full pack".to_string(),
@@ -251,7 +254,7 @@ fn settle_lines(w: &World, me: u32) -> String {
     for p in settle::panels(w) {
         if p.civ != me {
             let name = w.civs.get(&p.civ).map_or("a rival", |c| c.name.as_str());
-            out += &format!("{name}'s settlement at {}: store {:.0}\n", tile(w, p.tile), p.store.iter().sum::<f64>());
+            out += &format!("{name}'s settlement at {}: store {:.0}\n", tile(w, p.tile), total(&p.store));
             continue;
         }
         let people: f64 = p.clans.iter().map(|id| w.clans[id].people).sum();
@@ -262,7 +265,7 @@ fn settle_lines(w: &World, me: u32) -> String {
             tile(w, p.tile),
             p.market,
             p.founded,
-            p.store.iter().sum::<f64>(),
+            total(&p.store),
             p.cap,
             p.levied,
             p.clans.len(),
@@ -281,6 +284,42 @@ fn draws_on(w: &World, u: &Unit) -> String {
         Some(at) => format!("draws on {}", settle::store_name(w, u.civ, at)),
         None => "draws on no store".to_string(),
     }
+}
+
+/// The map's sources of salt and obsidian, good by good: each source's tile and who gathers it, and
+/// what the goods do.
+fn sources(w: &World, me: u32) -> String {
+    let mut out = String::new();
+    for g in (0..N).filter(|&g| !GOOD[g].eaten) {
+        let at: Vec<String> = engine::sources::of(w, g)
+            .into_iter()
+            .map(|t| {
+                let who = match w.tiles[t].claim.and_then(|id| w.clans.get(&id)) {
+                    None => "nobody".to_string(),
+                    Some(k) if k.civ == Some(me) => format!("your clan {}", k.id),
+                    Some(k) => match k.civ {
+                        Some(c) => format!("civ {c}'s clan {}", k.id),
+                        None => format!("unaligned clan {}", k.id),
+                    },
+                };
+                format!("{} ({who})", tile(w, t))
+            })
+            .collect();
+        if !at.is_empty() {
+            out += &format!("{} sources: {}\n", GOODS[g], at.join(", "));
+        }
+    }
+    if !out.is_empty() {
+        out += &format!(
+            "  a clan that holds a source gathers it and trades it at its festival; your store gets it by the levy and \
+             at your market. A salt keeps {:.0} food in a store at half its spoiling for a turn and is used up; a \
+             warrior raised takes {:.1} obsidian from the store he is raised from and fights {:.0}% stronger\n",
+            KEEPING.keeps,
+            ARMS.each,
+            (ARMS.edge - 1.0) * 100.0
+        );
+    }
+    out
 }
 
 /// One unit of the led civ: an army's stack, pack, line, zone and hunger; a scout's route.
@@ -302,6 +341,7 @@ fn unit_line(w: &World, u: &Unit) -> String {
                 .unwrap_or_default();
             let draws = draws_on(w, u);
             let bows = if cs.bows { ", making bows" } else { "" };
+            let bows = format!("{bows}, {:.0}% armed with obsidian", cs.armed * 100.0);
             let dest = cs.dest.map_or("none".to_string(), |t| tile(w, t));
             format!(
                 "  army {} at {}: {:.1} warriors, {:.1} archers, pack {pack:.1} of {:.1} ({feeds:.1} turns), entrenched {} turns{bows}, dest {dest}, {line}, {draws}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",

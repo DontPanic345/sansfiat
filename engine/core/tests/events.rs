@@ -129,7 +129,7 @@ fn a_tile_reaching_full_tame_is_a_hearth_event() {
 fn a_starving_clan_is_announced_once_and_a_big_one_divides() {
     let mut w = flat();
     let id = put(&mut w, &[at(0, 0)], 10.0);
-    w.clans.get_mut(&id).unwrap().basket = [4.0, 0.0, 0.0, 0.0, 0.0];
+    w.clans.get_mut(&id).unwrap().basket = [4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     w.turn = 3;
     eat(&mut w);
     assert_eq!(w.events.len(), 1);
@@ -137,7 +137,7 @@ fn a_starving_clan_is_announced_once_and_a_big_one_divides() {
     assert_eq!((e.kind, e.clan, e.tile, e.turn), (EventKind::ClanStarving, Some(id), at(0, 0), 3));
     assert_eq!(e.text(&w), format!("Clan {id} is starving"));
     // Still starving next turn: not announced again.
-    w.clans.get_mut(&id).unwrap().basket = [4.0, 0.0, 0.0, 0.0, 0.0];
+    w.clans.get_mut(&id).unwrap().basket = [4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     eat(&mut w);
     assert_eq!(w.events.len(), 1);
 

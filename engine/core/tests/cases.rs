@@ -3,7 +3,7 @@
 //! main and what must change. A `should_panic` case is red on main on purpose: its expected text is
 //! the failure main gives, and the fix removes the attribute.
 
-use engine::data::{Fighter, FOREST, HILLS, MOUNTAIN, N};
+use engine::data::{Fighter, FOREST, HILLS, MOUNTAIN};
 use engine::land::{neighbours, steps};
 use engine::stage::Stage;
 use engine::units::{self, Plan};
@@ -70,10 +70,10 @@ fn refill(e: &mut Errand) {
     let w = e.stage.world_mut();
     let Some(u) = w.units.get_mut(&e.scout) else { return };
     let cap = units::cap_of(u);
-    u.actor.store = [cap / N as f64; N];
+    u.actor.store = engine::market::spread(cap);
     let civ = w.civs.get_mut(&e.civ).unwrap();
-    if civ.actor.store.iter().sum::<f64>() < 2.0 * cap {
-        civ.actor.store = [2.0 * cap / N as f64; N];
+    if engine::market::total(&civ.actor.store) < 2.0 * cap {
+        civ.actor.store = engine::market::spread(2.0 * cap);
     }
 }
 
@@ -309,7 +309,7 @@ fn a_settled_route_has_no_cheaper_trail() {
 /// Sets a unit's people to `k`, its stack (an army's warriors) and its pack to match.
 fn set_people(u: &mut Unit, k: f64) {
     u.actor.people = k;
-    u.actor.store = [units::pack_cap(k) / N as f64; N];
+    u.actor.store = engine::market::spread(units::pack_cap(k));
     if let Some(c) = u.camp_mut() {
         c.stack = [0.0; 2];
         c.stack[Fighter::Warriors.index()] = k;

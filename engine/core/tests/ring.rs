@@ -101,7 +101,7 @@ fn the_walk_out_goes_hungry_past_the_ring() {
         for turn in 1..=40 {
             // Bare plains give the civ's store nothing, and its line drains it: it is topped up to its
             // cap each turn, so only the line's reach can starve the army.
-            s.world_mut().civs.get_mut(&me).unwrap().actor.store = [CIV.store_cap / N as f64; N];
+            s.world_mut().civs.get_mut(&me).unwrap().actor.store = engine::market::spread(CIV.store_cap);
             s.turn(1).unwrap();
             let Some(u) = s.world().units.get(&id) else { break };
             if u.hungry > 0 {

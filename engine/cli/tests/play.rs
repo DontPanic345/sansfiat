@@ -149,7 +149,7 @@ fn a_second_call_resumes_the_same_game() {
 fn the_view_at_the_pick_is_under_80_lines() {
     let (_dir, game) = game_in("view");
     let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], "");
-    assert!(made.lines().count() < 80, "{} lines", made.lines().count());
+    assert!(made.lines().count() < 90, "{} lines", made.lines().count());
     assert!(made.lines().any(|l| l.starts_with("  civ ") && l.ends_with(" you")), "the led civ is marked");
     assert!(made.contains("legal orders:"), "{made}");
 }
@@ -196,7 +196,7 @@ fn the_view_at_the_pick_lists_the_claim_and_its_new_legal_orders() {
     assert!(made.contains("nobody stands on it:"), "{made}");
     assert!(made.lines().any(|l| l.starts_with("clans: ") && l.contains("with their home on your land")), "{made}");
     assert!(made.contains(r#"  {"type":"claim","tiles":"#), "{made}");
-    assert!(made.lines().count() < 80, "{} lines", made.lines().count());
+    assert!(made.lines().count() < 90, "{} lines", made.lines().count());
     let map = sansfiat(&["play", "--game", &game], "map\n");
     assert!(map.contains("L your land"), "{map}");
     assert!(map.lines().any(|l| l.contains(" L ") || l.contains(" L\n") || l.ends_with(" L")), "{map}");

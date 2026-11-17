@@ -715,6 +715,7 @@ function fillTip(i) {
       lines.push(share !== undefined && share < 1 ? `Ring: its line takes ${Math.round(100 * share)}% of an army's days here` : "Past the ring: its line can't feed an army here");
     }
     lines.push(`Fertility ${f2(layout.fertility[i])}`);
+    if (layout.source?.[i]) lines.push(`Source of ${layout.source[i]}`);
     lines.push(...wearTip(i));
   }
   const civ = sim.tile_civ(i);

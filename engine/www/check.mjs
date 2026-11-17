@@ -30,6 +30,9 @@ for (const key of ['q', 'r', 'terrain', 'fertility', 'river', 'flow', 'lake', 'f
   assert.ok(Array.isArray(layout[key]) && layout[key].length === n, `layout.${key} has one entry per tile`);
 }
 assert.equal(layout.radius, medium.radius);
+assert.equal(GOODS.length, RULES.foods + 2, 'the goods are the foods, then salt and obsidian');
+assert.ok(layout.source.every((g) => g === null || GOODS.slice(RULES.foods).includes(g)), 'a source is salt or obsidian');
+assert.ok(GOODS.slice(RULES.foods).every((g) => layout.source.includes(g)), 'the map has a source of each');
 const count = (key, f = (x) => x > 0) => layout[key].filter(f).length;
 assert.ok(count('river') > 0, 'the map has rivers');
 assert.ok(count('lake') > 0, 'the map has a lake');
@@ -242,6 +245,7 @@ const checkCamps = (view) => {
     assert.equal(typeof u.auto_forage, 'boolean', 'a camp carries its forage switch');
     assert.equal(typeof u.auto_supply, 'boolean', 'a camp carries its supply switch');
     assert.equal(u.store.length, GOODS.length, 'a camp carries its pack, a basket');
+    assert.ok(u.armed >= 0 && u.armed <= 1, 'a camp carries its armed share');
     assert.equal(
       u.cut_off,
       u.line === null || (u.line.carry !== null && u.line.carry + 1e-9 < u.people * RULES.unit_food),
@@ -483,7 +487,7 @@ for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.
 
 // A save carries its version, and one without it is refused with a reason that names the version.
 const save = JSON.parse(sim.save());
-assert.equal(save.version, 25, 'a save carries its version');
+assert.equal(save.version, 26, 'a save carries its version');
 assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
 const { version, ...unversioned } = save;
 assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');

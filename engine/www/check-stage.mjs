@@ -257,6 +257,7 @@ for (const kind of ['camp', 'scout']) pressAll(kind);
   assert.deepEqual(tile.buttons.map((b) => b.label), ['Remove signpost'], 'the led civ\'s signposted tile has Remove signpost');
   assert.equal(sim.check(JSON.stringify(tile.buttons[0].action)), '', 'Remove signpost is allowed');
   const civ = shapeOf(sim, { kind: 'civ', civ: v.player });
+  assert.deepEqual(civ.numbers.filter((n) => ['Salt', 'Obsidian'].includes(n.label)).map((n) => n.label), ['Salt', 'Obsidian'], 'the civ panel lists salt and obsidian');
   const sign = civ.buttons.find((b) => b.label === 'Signpost…');
   assert.ok(sign && sign.arm === 'signpost' && !sign.why, 'the civ panel has Signpost…, armed and not greyed');
 
@@ -266,7 +267,7 @@ for (const kind of ['camp', 'scout']) pressAll(kind);
   assert.equal(w.signposts.length, 0, 'and the signpost is gone');
   const s = w.settlements[0];
   for (const key of ['id', 'civ', 'tile', 'market', 'founded', 'store', 'cap', 'levied', 'clans', 'traders', 'land']) assert.ok(key in s, `a settlement carries ${key}`);
-  assert.equal(s.store.length, 5, 'its store is a basket');
+  assert.equal(s.store.length, GOODS.length, 'its store is a basket');
   const panel = shapeOf(sim, { kind: 'settlement', id: s.id });
   assert.match(panel.name, /^.+'s settlement at \(-?\d+, -?\d+\)$/, `its name line: ${panel.name}`);
   for (const label of ['Store', 'Levy', 'Land']) assert.ok(panel.numbers.find((n) => n.label === label)?.tip, `${label} has a tooltip`);

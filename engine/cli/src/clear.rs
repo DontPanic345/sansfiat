@@ -33,7 +33,7 @@ pub(crate) fn clear_file(path: &str) -> Result<(), String> {
         None => [1.0; N],
     };
 
-    let c = clear(&baskets, &start, &Params::default());
+    let c = clear(&baskets, &vec![[1.0; N]; baskets.len()], &start, &Params::default());
     let name = |g: usize| GOODS[g];
     println!("cleared {} after {} iterations", c.cleared, c.iterations);
     println!("{:>8}  {}", "", c.goods.iter().map(|&g| format!("{:>7}", name(g))).collect::<Vec<_>>().join(" "));

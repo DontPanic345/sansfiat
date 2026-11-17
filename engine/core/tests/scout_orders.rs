@@ -31,8 +31,8 @@ fn end_fed(w: &mut World) {
     let me = w.player.unwrap();
     w.civs.get_mut(&me).unwrap().store = [100.0; N];
     let id = led_scout(w);
-    let full = units::cap_of(&w.units[&id]) / N as f64;
-    w.units.get_mut(&id).unwrap().store = [full; N];
+    let full = engine::market::spread(units::cap_of(&w.units[&id]));
+    w.units.get_mut(&id).unwrap().store = full;
     w.act(engine::Action::EndTurn).unwrap();
 }
 
@@ -205,7 +205,8 @@ fn search_view_on(size: &str, seed: u32) -> bool {
     let mut w = s.into_world();
     w.act(led_order(&w, Order::Route { unit: scout, from: cap, to })).unwrap();
     let view = search_view(&w, scout).expect("a route has a search");
-    let known = view.known.expect("the known route is finite");
+    // A map whose rival is out of known reach has no open mountains to order.
+    let Some(known) = view.known else { return false };
     let through = |m: usize| {
         let a = engine::units::route_plan(&w, me, cap, m).possible?.1;
         let b = engine::units::route_plan(&w, me, m, to).possible?.1;

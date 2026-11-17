@@ -172,6 +172,8 @@ struct UnitFlat {
     #[serde(default)]
     bows: bool,
     #[serde(default)]
+    armed: f64,
+    #[serde(default)]
     homing: bool,
     #[serde(default)]
     back: Option<usize>,
@@ -215,6 +217,7 @@ impl From<Unit> for UnitFlat {
             stack: camp.stack,
             still: camp.still,
             bows: camp.bows,
+            armed: camp.armed,
             homing: scout.homing,
             back: scout.back,
         }
@@ -242,6 +245,7 @@ impl From<UnitFlat> for Unit {
                 stack: f.stack,
                 still: f.still,
                 bows: f.bows,
+                armed: f.armed,
             }),
             UnitKind::Scout => UnitState::Scout(ScoutState {
                 dest: f.dest,
@@ -278,6 +282,7 @@ fn scout_camp_fields() -> CampState {
         stack: [0.0; 2],
         still: 0,
         bows: false,
+        armed: 0.0,
     }
 }
 

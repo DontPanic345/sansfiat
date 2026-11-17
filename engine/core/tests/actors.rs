@@ -14,17 +14,17 @@ fn close(a: f64, b: f64) -> bool {
 #[test]
 fn spoil_removes_the_spoilage_share_of_every_food() {
     let mut a = Actor::new(0, 0.0);
-    a.store = [10.0, 0.0, 2.5, 4.0, 1.0];
+    a.store = [10.0, 0.0, 2.5, 4.0, 1.0, 0.0, 0.0];
     a.spoil();
-    for (got, held) in a.store.iter().zip([10.0, 0.0, 2.5, 4.0, 1.0]) {
-        assert!(close(*got, held * (1.0 - CLAN.spoilage)), "{got} of {held}");
+    for (got, held) in a.store.iter().zip([10.0, 0.0, 2.5, 4.0, 1.0, 0.0, 0.0]) {
+        assert!(close(*got, held * (1.0 - GOOD[GRAIN].spoil)), "{got} of {held}");
     }
 }
 
 #[test]
 fn eat_by_share_takes_in_proportion_and_never_more_than_is_held() {
     let mut a = Actor::new(0, 0.0);
-    a.store = [3.0, 1.0, 0.0, 0.0, 0.0];
+    a.store = [3.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     // 2 of 4 held: half of each good.
     let eaten = a.eat_by_share(2.0);
     assert!(close(eaten[GAME], 1.5) && close(eaten[GRAIN], 0.5), "{eaten:?}");
@@ -46,7 +46,7 @@ fn eat_by_diet_equals_the_clans_old_rule_on_a_hand_worked_case() {
     // 0.3 a unit: 0.9 ÷ 0.3 = 3 units of it are eaten, which leaves 0.4 of game in the store. The
     // people get 5.6 + 3 × 0.3 = 6.5, all of their need. Then the spoilage is applied by the clan.
     let mut a = Actor::new(0, 0.0);
-    a.store = [6.0, 1.0, 0.0, 2.0, 0.0];
+    a.store = [6.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0];
     let got = a.eat_by_diet(6.5);
     assert!(close(got, 6.5), "{got}");
     assert!(close(a.store[GAME], 0.4), "{:?}", a.store);
@@ -58,7 +58,7 @@ fn eat_by_diet_eats_the_excess_only_as_far_as_the_need_goes() {
     // Need 1. Grain gives 0.4 of itself, leaving 2.6 of excess; the 0.6 still short is 2 units of
     // excess at 0.3 each, so 2 of the 2.6 are eaten and 0.6 stays in the store. Total got: 0.4 + 0.6.
     let mut a = Actor::new(0, 0.0);
-    a.store = [0.0, 3.0, 0.0, 0.0, 0.0];
+    a.store = [0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let got = a.eat_by_diet(1.0);
     assert!(close(got, 1.0), "{got}");
     assert!(close(a.store[GRAIN], 0.6), "{:?}", a.store);
@@ -173,24 +173,24 @@ fn a_job_with_no_tiles_gets_nothing_and_its_share_is_not_handed_on() {
 #[test]
 fn meal_eats_the_store_then_kin_biggest_first_ties_to_the_lower_id() {
     use engine::actors::meal;
-    let mut store = [1.0, 0.0, 0.0, 0.0, 0.0];
-    let mut small = [0.5, 0.0, 0.0, 0.0, 0.0];
-    let mut big = [0.0, 2.0, 0.0, 0.0, 0.0];
-    let mut tie = [0.0, 0.0, 2.0, 0.0, 0.0];
+    let mut store = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let mut small = [0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let mut big = [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let mut tie = [0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0];
     // Need 3: the store gives 1, then the biggest kin (`big`, 2) gives 2; `tie` and `small` stay.
     let got = meal(3.0, &mut store, [(7, &mut small), (4, &mut tie), (2, &mut big)]);
     assert!(close(got, 3.0), "{got}");
     assert_eq!(store, [0.0; N]);
     assert_eq!(big, [0.0; N]);
-    assert_eq!(small, [0.5, 0.0, 0.0, 0.0, 0.0]);
-    assert_eq!(tie, [0.0, 0.0, 2.0, 0.0, 0.0]);
+    assert_eq!(small, [0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    assert_eq!(tie, [0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0]);
 
     // Equal kin (2 each): the lower id gives first, and need 2.5 takes 2.5 of it.
     let mut none = [0.0; N];
-    let mut a = [0.0, 2.0, 0.0, 0.0, 0.0];
-    let mut b = [0.0, 0.0, 2.0, 0.0, 0.0];
+    let mut a = [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let mut b = [0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0];
     let got = meal(2.5, &mut none, [(9, &mut b), (3, &mut a)]);
     assert!(close(got, 2.5), "{got}");
     assert_eq!(a, [0.0; N]);
-    assert_eq!(b, [0.0, 0.0, 1.5, 0.0, 0.0]);
+    assert_eq!(b, [0.0, 0.0, 1.5, 0.0, 0.0, 0.0, 0.0]);
 }

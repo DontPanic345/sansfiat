@@ -311,12 +311,11 @@ pub fn fallen(w: &mut World, civ: u32) {
 /// `SETTLE.store_cap` is lost.
 pub fn upkeep(w: &mut World) {
     for s in w.settlements.values_mut() {
-        s.store = s.store.map(|v| v * (1.0 - CLAN.spoilage));
+        crate::actors::spoil(&mut s.store);
         let all = total(&s.store);
         s.lost = (all - SETTLE.store_cap).max(0.0);
         if s.lost > 0.0 {
-            let keep = SETTLE.store_cap / all;
-            s.store = s.store.map(|v| v * keep);
+            crate::market::take(&mut s.store, s.lost);
         }
     }
 }

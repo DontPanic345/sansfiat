@@ -1,0 +1,4 @@
+[
+  { "id": "build-1", "title": "The page, the pins and the sweep", "part": "glaze", "model": "sonnet", "effort": "high", "points": 6, "why": "Open 1, New 1, Miss 2, Reach 2; about 12 files, 350 lines with tests, pins and engine/CLAUDE.md: the rules are settled in the engine and tested; what is left is mechanical (pins, 5-wide baskets in tests and page checks), one draw layer and panel rows after towns.js and settle.js, and two sweeps written up. Sonnet can do each from the brief; the risk is a test on a real map that moved for a reason nobody has read, which the brief tells it how to treat." },
+  { "id": "review", "title": "Review the piece", "model": "sonnet", "effort": "high", "why": "The whole step wrote the rules and the draft of docs/design/goods.md without a cold read, and the first sweep shows more starving than the control: the review judges the scores, the played games and the ledger on an axis the builder could not." }
+]

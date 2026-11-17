@@ -44,6 +44,8 @@ fn centre_report_compares_with_the_mean_over_land() {
             traders: 0,
             moved: 0.0,
             town: false,
+            wares: 0.0,
+            ware: [0.0; engine::N],
         },
     );
     let ids: Vec<u32> = w.markets.keys().copied().collect();

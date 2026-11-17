@@ -467,7 +467,7 @@ pub fn keep(w: &World, civ: u32) -> f64 {
 }
 
 /// The levy at market `mid`, a capital's or a settlement's: each clan there that is the civ's pays
-/// `CIV.levy` of what it brought (its basket) into the store there (the civ's at its capital, the
+/// `CIV.levy` of what it brought (its basket, salt and obsidian with the food) into the store there (the civ's at its capital, the
 /// settlement's own), in id order until the store is at its cap (`CIV.store_cap`,
 /// `SETTLE.store_cap`); its harvest drops by the same share, so that growth, which `eat` reckons on
 /// the harvest, sees less. (A share of only the harvest beyond need brings next to nothing: clans
@@ -491,21 +491,28 @@ pub fn levy(w: &mut World, mid: u32) {
         None => (total(&w.civs[&civ].store), CIV.store_cap),
     };
     let mut room = (cap - held).max(0.0);
+    let mut stored = match settlement {
+        Some(s) => w.settlements[&s].store,
+        None => w.civs[&civ].store,
+    };
     let mut paid_by = Vec::new();
     for id in ids {
         let c = w.clans.get_mut(&id).unwrap();
-        let total: f64 = c.basket.iter().sum();
+        let total = total(&c.basket);
         if total <= 0.0 || room <= 0.0 {
             continue;
         }
         let share = CIV.levy.min(room / total);
         room -= share * total;
-        let paid = c.basket.map(|v| v * share);
+        // Salt and obsidian go with the food, up to what the store holds of each.
+        let holds = crate::actors::civ_holds(cap);
+        let paid: Basket = std::array::from_fn(|g| (c.basket[g] * share).min((holds[g] - stored[g]).max(0.0)));
+        add(&mut stored, &paid);
         for (f, &p) in paid.iter().enumerate() {
             c.harvest[f] *= 1.0 - share;
             c.basket[f] -= p;
         }
-        let sum: f64 = paid.iter().sum();
+        let sum = crate::market::total(&paid);
         match settlement {
             Some(s) => {
                 add(&mut w.settlements.get_mut(&s).unwrap().store, &paid);
@@ -513,10 +520,8 @@ pub fn levy(w: &mut World, mid: u32) {
             }
             None => {
                 let civ_state = w.civs.get_mut(&civ).unwrap();
-                for (f, &p) in paid.iter().enumerate() {
-                    civ_state.store[f] += p;
-                    civ_state.levied += p;
-                }
+                add(&mut civ_state.store, &paid);
+                civ_state.levied += sum;
             }
         }
         w.levied.insert(id, sum);
@@ -547,11 +552,10 @@ pub fn upkeep(w: &mut World) {
     for id in ids {
         let civ = w.civs.get_mut(&id).unwrap();
         civ.spoil();
-        let total: f64 = civ.store.iter().sum();
+        let total = total(&civ.store);
         let mut lost = 0.0;
         if total > CIV.store_cap {
-            let keep = CIV.store_cap / total;
-            civ.store = civ.store.map(|v| v * keep);
+            take(&mut civ.store, total - CIV.store_cap);
             lost = total - CIV.store_cap;
         }
         civ.lost = lost;

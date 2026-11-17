@@ -1,10 +1,12 @@
-use engine::data::{CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{ARMS, CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SIZES, TENDING, TRAIL, UNIT};
 use engine::map::Tile;
 use engine::over::{self, Why};
 use engine::script::Lead;
 use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
-use engine::{civs, fields, markets, settle, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, TERRAIN};
+use engine::{
+    civs, fields, markets, settle, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, GOODS, TERRAIN,
+};
 use std::collections::BTreeMap;
 
 use wasm_bindgen::prelude::*;
@@ -63,7 +65,7 @@ impl Sim {
     /// What never changes after generation, as columns (one array per field, indexed by tile):
     /// `{radius, q, r, terrain, fertility, river, flow (-1 for none), lake, flood, zone
     /// (0 open, 1 valley, 2 sealed, 3 neck), pass, wild_grain, trail_cost, span, ground (the field days
-    /// the tile takes a turn, `fields::ground`)}`. The page asks once per map.
+    /// the tile takes a turn, `fields::ground`), source (the name of the good the tile is a source of, or null)}`. The page asks once per map.
     pub fn layout(&self) -> String {
         let t = &self.world.tiles;
         let col = |f: &dyn Fn(&Tile) -> serde_json::Value| -> Vec<serde_json::Value> { t.iter().map(f).collect() };
@@ -84,6 +86,7 @@ impl Sim {
             "trail_cost": col(&|t| t.trail_cost.into()),
             "span": col(&|t| t.span.into()),
             "ground": ground,
+            "source": col(&|t| t.source.map(|g| GOODS[g]).into()),
         })
         .to_string()
     }
@@ -481,14 +484,14 @@ pub fn sizes() -> String {
     serde_json::to_string(&rows).unwrap()
 }
 
-/// The food names, in the order of every basket, as JSON.
+/// The goods' names (the foods, then salt and obsidian), in the order of every basket, as JSON.
 #[wasm_bindgen]
 pub fn goods() -> String {
-    serde_json::to_string(&FOODS).unwrap()
+    serde_json::to_string(&GOODS).unwrap()
 }
 
 /// Rules the page needs to read the world, as JSON: `{tame_turns, players, unit_labour, unit_food,
-/// hungry_turns, store_cap, join, levy, gift_max, notes_shown, save_version, fighters, fight}`. `join` is the
+/// hungry_turns, store_cap, join, levy, gift_max, notes_shown, save_version, fighters, fight, foods (how many of `goods()` are foods, which come first), arms {edge, each}}`. `join` is the
 /// leaning at which a clan joins a civ and `levy` the share of what it brings to market a civ's clan pays; `gift_max` is the most a civ can give a turn (its store cap);
 /// `notes_shown` is how many reasons the panel shows. `fighters` is `[{name, attack, defence}]` in
 /// `Fighter` order (strength per person attacking and defending); `fight` is `{entrench, entrench_cap,
@@ -513,6 +516,8 @@ pub fn rules() -> String {
         "fight": { "entrench": FIGHT.entrench, "entrench_cap": FIGHT.entrench_cap, "hungry": FIGHT.hungry, "surrender": FIGHT.surrender },
         "field": { "farmer": FIELD.farmer },
         "signposts": SETTLE.signposts,
+        "foods": FOODS.len(),
+        "arms": { "edge": ARMS.edge, "each": ARMS.each },
     })
     .to_string()
 }
