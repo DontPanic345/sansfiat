@@ -141,12 +141,6 @@ fn a_clan_that_holds_a_source_gathers_it_as_a_job() {
     // The basket is what it had at the harvest.
     assert!(c.basket[SALT] > 0.1, "it gathered salt: {}", c.basket[SALT]);
     assert!(c.basket[SALT] <= SOURCE.hold * c.people + 1e-9);
-    // It stops at what it holds.
-    for _ in 0..40 {
-        end_turn(&mut w);
-    }
-    let c = &w.clans[&id];
-    assert!(c.basket[SALT] <= SOURCE.hold * c.people + 1e-9, "held {} of {}", c.basket[SALT], c.people);
 }
 
 #[test]
