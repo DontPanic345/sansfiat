@@ -21,3 +21,8 @@
 - PR #375 is open, marked not ready. `steps.json` hands on: build-1 (page, pins, checks, the
   sweep beside main), then play and review.
 - Not run: `engine/check.sh`, the sweep on `main`, any played game.
+
+## build-1
+
+- Done: tests green (pins at SAVE_VERSION 26), page draws sources and every store lists its goods (`www/play/goods.mjs`), sweeps on main and branch (`scores.md`, `compare.txt`), `SOURCE.share` 0.05 kept after its one try, `engine/check.sh` run whole.
+- Not run: any played game.
