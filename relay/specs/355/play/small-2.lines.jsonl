@@ -1,0 +1,41 @@
+{"turn":287,"line":"note meant: get gift flowing and see if obsidian arrives did: set gift 6 since store is 10 and no levy yet surprised: store has 0 salt/obsidian, my clan 58 holds obsidian at 167 but levy paid 0","result":"noted"}
+{"turn":287,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":287,"line":"note meant: see time pass did: end 5 surprised: nothing","result":"noted"}
+{"turn":292,"line":"end 5","result":"ok"}
+{"turn":292,"line":"note meant: use obsidian by raising warriors did: raise 3 surprised: store has 4.6 obsidian","result":"noted"}
+{"turn":292,"line":"{\"type\":\"raise\",\"n\":3}","result":"ok"}
+{"turn":292,"line":"view","result":"ok"}
+{"turn":292,"line":"note meant: grow land toward salt and learn the map did: end 10 surprised: nothing yet","result":"noted"}
+{"turn":302,"line":"end 10","result":"ok"}
+{"turn":302,"line":"note meant: scout toward a salt holder to learn the route did: route scout to 220 (nearby, only legal choices) surprised: route targets are only adjacent tiles","result":"noted"}
+{"turn":302,"line":"{\"type\":\"route\",\"unit\":471,\"from\":219,\"to\":220}","result":"ok"}
+{"turn":302,"line":"note meant: send army to hold a frontier tile did: move 490 to 222 surprised: nothing","result":"noted"}
+{"turn":302,"line":"{\"type\":\"move\",\"unit\":490,\"to\":222}","result":"ok"}
+{"turn":302,"line":"note meant: let time pass did: end 10 surprised: nothing","result":"noted"}
+{"turn":312,"line":"end 10","result":"ok"}
+{"turn":312,"line":"map","result":"ok"}
+{"turn":312,"line":"view","result":"ok"}
+{"turn":312,"line":"map","result":"ok"}
+{"turn":312,"line":"note meant: widen claim toward the north where clans divide did: claim existing tiles plus 280 (-4,-2) 252 where unaligned clan 307 sits surprised: unsure which tiles are joined","result":"noted"}
+{"turn":312,"line":"{\"type\":\"claim\",\"tiles\":[97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,280,252]}","result":"refused: a claim must be joined to the capital or a settlement"}
+{"turn":312,"line":"note meant: claim only reachable tile 223 neighbours did: skip, end 15 to watch standing surprised: refusal named no tile","result":"noted"}
+{"turn":327,"line":"end 15","result":"ok"}
+{"turn":327,"line":"note meant: spend obsidian (10 idle) on strength and raise people share did: raise 6 into 490 surprised: obsidian piles up while salt is 0, no clan of mine holds salt","result":"noted"}
+{"turn":327,"line":"{\"type\":\"raise\",\"n\":6,\"into\":490}","result":"ok"}
+{"turn":327,"line":"note meant: test forage lever did: forage 490 surprised: nothing","result":"noted"}
+{"turn":327,"line":"{\"type\":\"forage\",\"unit\":490}","result":"ok"}
+{"turn":342,"line":"end 15","result":"ok"}
+{"turn":342,"line":"note meant: lift gift to draw unaligned clans did: setGift 12 surprised: gave stays below posted","result":"noted"}
+{"turn":342,"line":"{\"type\":\"setGift\",\"food\":12}","result":"ok"}
+{"turn":357,"line":"end 15","result":"ok"}
+{"turn":357,"line":"view","result":"ok"}
+{"turn":357,"line":"note meant: use obsidian, store at 10 cap-like did: raise 4 into 490 surprised: obsidian stuck at 10.0 several checks, seems capped or equilibrium","result":"noted"}
+{"turn":357,"line":"{\"type\":\"raise\",\"n\":4,\"into\":490}","result":"ok"}
+{"turn":372,"line":"end 15","result":"ok"}
+{"turn":372,"line":"note meant: finish did: end 15 surprised: nothing","result":"noted"}
+{"turn":387,"line":"end 15","result":"ok"}
+{"turn":387,"line":"note could not tell: gift: what gave counts; gave stayed 0.0 with posted 15-45 and gift 6-12","result":"noted"}
+{"turn":387,"line":"note could not tell: land: which tile of a refused claim is unjoined; no free signpost site ever listed","result":"noted"}
+{"turn":387,"line":"note could not tell: army: why obsidian sits at 10.0 and whether salt will ever reach my store; no way to see strength gain","result":"noted"}
+{"turn":387,"line":"note could not tell: scout: route targets only adjacent tiles, no way to reach a salt holder","result":"noted"}
+{"turn":387,"line":"view","result":"ok"}
