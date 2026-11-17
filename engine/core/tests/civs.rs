@@ -199,7 +199,7 @@ fn the_store_spoils_and_is_capped() {
 
     // Past the cap, every good scales down so the store holds the cap.
     let c = &w.civs[&red];
-    let total: f64 = c.store.iter().sum();
+    let total = engine::market::total(&c.store);
     assert!((total - CIV.store_cap).abs() < 1e-9, "{total}");
     // Three caps spoil, and the rest over the cap is lost.
     let over = 3.0 * CIV.store_cap * (1.0 - GOOD[GRAIN].spoil) - CIV.store_cap;
@@ -342,14 +342,14 @@ fn a_real_map_founds_three_civs_that_live_on() {
     for _ in 0..100 {
         w.act(Action::EndTurn).unwrap();
         for c in w.civs.values() {
-            assert!(c.store.iter().sum::<f64>() <= CIV.store_cap + 1e-9);
+            assert!(engine::market::total(&c.store) <= CIV.store_cap + 1e-9);
             assert!(w.markets.contains_key(&c.market));
         }
         for c in w.clans.values() {
             assert!(c.civ.is_none_or(|id| w.civs.contains_key(&id)));
         }
     }
-    assert!(w.civs.values().any(|c| c.store.iter().sum::<f64>() > 0.0));
+    assert!(w.civs.values().any(|c| engine::market::total(&c.store) > 0.0));
 }
 
 #[test]

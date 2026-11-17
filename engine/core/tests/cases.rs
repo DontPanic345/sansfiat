@@ -3,7 +3,7 @@
 //! main and what must change. A `should_panic` case is red on main on purpose: its expected text is
 //! the failure main gives, and the fix removes the attribute.
 
-use engine::data::{Fighter, FOREST, HILLS, MOUNTAIN, N};
+use engine::data::{Fighter, FOREST, HILLS, MOUNTAIN};
 use engine::land::{neighbours, steps};
 use engine::stage::Stage;
 use engine::units::{self, Plan};
@@ -72,7 +72,7 @@ fn refill(e: &mut Errand) {
     let cap = units::cap_of(u);
     u.actor.store = engine::market::spread(cap);
     let civ = w.civs.get_mut(&e.civ).unwrap();
-    if civ.actor.store.iter().sum::<f64>() < 2.0 * cap {
+    if engine::market::total(&civ.actor.store) < 2.0 * cap {
         civ.actor.store = engine::market::spread(2.0 * cap);
     }
 }

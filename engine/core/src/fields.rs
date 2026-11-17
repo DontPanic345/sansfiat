@@ -91,6 +91,7 @@ pub fn sow(w: &World, id: u32, tiles: &[usize], work: &[f64]) -> Vec<f64> {
 /// gives nothing and all labour gathers. A clan that gathers a tile with a source gives `SOURCE.share` of
 /// its days to the source job, taken from the other two by their shares; the last value is what it digs,
 /// by good. With `dig` off it has no source job.
+#[allow(clippy::too_many_arguments)]
 pub fn jobs(
     w: &World,
     people: f64,

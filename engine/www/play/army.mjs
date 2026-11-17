@@ -1,4 +1,4 @@
-// The armies (build-4): on small seed 3, Blue (the civ that holds forest, and whose corridor meets Gold's land
+// The armies (build-4): on small seed 6, Red (the civ that holds forest, and whose corridor meets Gold's land
 // from the first turn), the page raises warriors as a new army through the civ's panel, raises archers into it
 // through the army's panel, sees its number on the map, marches it with Move to… onto a rival's land tile, and
 // reads the fight in the feed and the army's reasons. Gift 0 and the turns that fill the store come first.
@@ -13,9 +13,9 @@ const at = args.indexOf('--out');
 const out = resolve(at >= 0 ? args[at + 1] : mkdtempSync(join(tmpdir(), 'play-army-')));
 mkdirSync(out, { recursive: true });
 
-const SEED = 3;
+const SEED = 6;
 const SIZE = 'small';
-const CIV = 'Blue';
+const CIV = 'Red';
 const TURNS = 80;
 // The people kept at the capital: enough that no rival outweighs it while the army is away.
 const HOME = 5;

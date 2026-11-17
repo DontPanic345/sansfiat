@@ -64,7 +64,7 @@ export function tileShape(ctx, sel) {
     });
     const source = ctx.layout.source?.[i];
     if (source) {
-      numbers.push({ label: 'Source', value: source, tip: `A source of ${source}: the clan that holds this tile gives a tenth of its days to digging it` });
+      numbers.push({ label: 'Source', value: source, tip: `A source of ${source}: the clan that holds this tile gives a share of its days to digging it` });
     }
     numbers.push({ label: 'Trail', value: t.trail ? 'yes' : 'no', tip: 'A trail, worn by the walks over the tile' });
     if (t.wild_grain > 0) {

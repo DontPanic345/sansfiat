@@ -87,9 +87,9 @@ pub struct SourceRules {
 }
 
 /// Twelve salt pans and five obsidian hills on a small map: salt is common along the shore and obsidian
-/// rare, so most civs trade for obsidian or go without. A tenth of a holder's days gives a clan of eight
-/// about 0.9 of the good a turn, a little more than its own store's salt need.
-pub const SOURCE: SourceRules = SourceRules { salt: 12, obsidian: 5, share: 0.1, a_day: 0.25, hold: 0.5, worth: 0.5 };
+/// rare, so most civs trade for obsidian or go without. A twentieth of a holder's days gives a clan of eight
+/// about 0.45 of the good a turn: the share a holder can give without starving more than the control (0.1 did).
+pub const SOURCE: SourceRules = SourceRules { salt: 12, obsidian: 5, share: 0.05, a_day: 0.25, hold: 0.5, worth: 0.5 };
 
 /// How salt keeps a store (`actors::spoil`).
 pub struct KeepingRules {

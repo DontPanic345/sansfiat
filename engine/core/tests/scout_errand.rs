@@ -9,7 +9,7 @@
 //! `cargo test --release -p engine --test scout_errand -- --nocapture` prints the table
 //! (`relay/specs/153/feeding.md`).
 
-use engine::data::{FOREST, HILLS, N};
+use engine::data::{FOREST, HILLS};
 use engine::land::steps;
 use engine::stage::Stage;
 use engine::units;
@@ -93,7 +93,7 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
                 let cap = units::pack_cap(u.people);
                 u.actor.store = engine::market::spread(cap);
                 let civ = w.civs.get_mut(&me).unwrap();
-                if civ.actor.store.iter().sum::<f64>() < cap {
+                if engine::market::total(&civ.actor.store) < cap {
                     civ.actor.store = engine::market::spread(cap);
                 }
             }

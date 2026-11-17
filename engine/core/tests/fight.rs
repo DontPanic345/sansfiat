@@ -394,7 +394,7 @@ fn a_capital_ringed_by_rival_armies_is_besieged_and_its_clans_harvest_nothing() 
     assert!(!w.civs[&blue].besieged);
     w.clans.get_mut(&bc).unwrap().basket = [1.0; N];
     civs::levy(&mut w, mid);
-    assert!(w.civs[&blue].store.iter().sum::<f64>() > store.iter().sum::<f64>(), "the levy comes in again");
+    assert!(engine::market::total(&w.civs[&blue].store) > engine::market::total(&store), "the levy comes in again");
 }
 
 /// Blue's neighbours of `t` are held by its own armies, so Red's army at `t` is cut off from its
