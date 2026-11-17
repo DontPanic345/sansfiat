@@ -233,7 +233,9 @@ fn reap_within(
     gathers: &[bool],
     budget: f64,
 ) -> Reaped {
-    let (work, field, fk, dug) = fields::jobs(w, people, routes, tiles, yearly, fields, gathers);
+    // A starving clan leaves its sources: every day goes on food.
+    let dig = !w.clans.get(&id).is_some_and(|c| c.starving);
+    let (work, field, fk, dug) = fields::jobs(w, people, routes, tiles, yearly, fields, gathers, dig);
     let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
     let mut total = 0.0;
     for (&t, &labour) in tiles.iter().zip(&work) {

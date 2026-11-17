@@ -99,7 +99,8 @@ pub struct KeepingRules {
     pub slows: f64,
     /// The spoiling a person that makes a clan want salt as much as a food (`actors::worths`).
     pub want_at: f64,
-    /// What a civ's store wants salt and obsidian at, at least, against a food's 1.
+    /// What a civ's store with none wants salt and obsidian at, against a food's 1; it falls to 0 as the
+    /// store fills to what it holds (`actors::civ_room`).
     pub civ_want: f64,
 }
 
@@ -114,11 +115,14 @@ pub struct ArmsRules {
     pub each: f64,
     /// What an armed warrior's strength is multiplied by, attacking and defending.
     pub edge: f64,
+    /// The most obsidian a civ's store takes: past it the levy leaves the obsidian with the clan and
+    /// the store wants none at its market.
+    pub hold: f64,
 }
 
 /// A warrior with obsidian blades is worth a quarter more: enough to turn an even fight, not enough to
-/// stand in for numbers.
-pub const ARMS: ArmsRules = ArmsRules { each: 0.5, edge: 1.25 };
+/// stand in for numbers. A store holds blades for twenty.
+pub const ARMS: ArmsRules = ArmsRules { each: 0.5, edge: 1.25, hold: 10.0 };
 
 pub struct Terrain {
     pub name: &'static str,

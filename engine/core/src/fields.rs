@@ -90,7 +90,7 @@ pub fn sow(w: &World, id: u32, tiles: &[usize], work: &[f64]) -> Vec<f64> {
 /// work on each field tile, and the field tiles' indices into `tiles`. With no field tile, `fields`
 /// gives nothing and all labour gathers. A clan that gathers a tile with a source gives `SOURCE.share` of
 /// its days to the source job, taken from the other two by their shares; the last value is what it digs,
-/// by good.
+/// by good. With `dig` off it has no source job.
 pub fn jobs(
     w: &World,
     people: f64,
@@ -99,6 +99,7 @@ pub fn jobs(
     yearly: &[f64],
     fields: f64,
     gathers: &[bool],
+    dig: bool,
 ) -> (Vec<f64>, Vec<f64>, Vec<usize>, Basket) {
     let fk: Vec<usize> =
         (0..tiles.len()).filter(|&k| ground(w, tiles[k]) > 0.0 && yield_a_day(w, tiles[k]) > 0.0).collect();
@@ -107,7 +108,8 @@ pub fn jobs(
     let gy: Vec<f64> = gk.iter().map(|&k| yearly[k]).collect();
     let fy: Vec<f64> = fk.iter().map(|&k| yearly[k]).collect();
     // The source job: the tiles with a source the clan gathers, at `SOURCE.share` of its days.
-    let sk: Vec<usize> = (0..tiles.len()).filter(|&k| gathers[k] && w.tiles[tiles[k]].source.is_some()).collect();
+    let sk: Vec<usize> =
+        (0..tiles.len()).filter(|&k| dig && gathers[k] && w.tiles[tiles[k]].source.is_some()).collect();
     let dig = if sk.is_empty() { 0.0 } else { SOURCE.share };
     let sy: Vec<f64> = sk.iter().map(|&k| yearly[k]).collect();
     let shares = [1.0 - share - dig * (1.0 - share), share - dig * share, dig];
@@ -141,7 +143,8 @@ pub fn home_toward(w: &World, c: &Clan, territory: &[usize]) -> Option<usize> {
     }
     let (_, yearly) = clans::walks(w, c.home, territory);
     // The field job's labour does not depend on the gathering tiles: they are not counted here.
-    let (_, field, fk, _) = jobs(w, c.people, &c.routes, territory, &yearly, c.fields, &vec![true; territory.len()]);
+    let (_, field, fk, _) =
+        jobs(w, c.people, &c.routes, territory, &yearly, c.fields, &vec![true; territory.len()], false);
     let fields: Vec<usize> = fk.iter().map(|&k| territory[k]).collect();
     let days = sow(w, c.id, &fields, &field);
     let mut best: Option<(f64, usize)> = None;

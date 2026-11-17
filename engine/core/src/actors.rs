@@ -127,10 +127,27 @@ pub fn keeps_back(b: &Basket, people: f64) -> Basket {
     })
 }
 
+/// The most a civ's store of food cap `cap` holds of each good that isn't eaten: the salt that keeps a
+/// full store for a turn, and `ARMS.hold` of obsidian. Infinite for a food: the cap counts food.
+pub fn civ_holds(cap: f64) -> Basket {
+    std::array::from_fn(|g| match GOOD[g].uses {
+        Use::Food => f64::INFINITY,
+        Use::Keeps => cap / KEEPING.keeps,
+        Use::Arms => ARMS.hold,
+    })
+}
+
 /// What each good is worth to a civ's store at its market: it wants salt and obsidian both, at
-/// `KEEPING.civ_want`.
-pub fn civ_worths() -> Basket {
-    std::array::from_fn(|g| if GOOD[g].eaten { 1.0 } else { KEEPING.civ_want })
+/// `KEEPING.civ_want` with none, falling to 0 as `store` fills to what it holds (`civ_holds`).
+pub fn civ_worths(store: &Basket, cap: f64) -> Basket {
+    let holds = civ_holds(cap);
+    std::array::from_fn(|g| {
+        if GOOD[g].eaten {
+            1.0
+        } else {
+            KEEPING.civ_want * (1.0 - store[g] / holds[g]).clamp(0.0, 1.0)
+        }
+    })
 }
 
 /// Walks `path` from `from` on `labour`: each step is taken while its cost is no more than what is

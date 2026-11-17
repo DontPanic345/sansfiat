@@ -491,6 +491,10 @@ pub fn levy(w: &mut World, mid: u32) {
         None => (total(&w.civs[&civ].store), CIV.store_cap),
     };
     let mut room = (cap - held).max(0.0);
+    let mut stored = match settlement {
+        Some(s) => w.settlements[&s].store,
+        None => w.civs[&civ].store,
+    };
     let mut paid_by = Vec::new();
     for id in ids {
         let c = w.clans.get_mut(&id).unwrap();
@@ -500,7 +504,10 @@ pub fn levy(w: &mut World, mid: u32) {
         }
         let share = CIV.levy.min(room / total);
         room -= share * total;
-        let paid = c.basket.map(|v| v * share);
+        // Salt and obsidian go with the food, up to what the store holds of each.
+        let holds = crate::actors::civ_holds(cap);
+        let paid: Basket = std::array::from_fn(|g| (c.basket[g] * share).min((holds[g] - stored[g]).max(0.0)));
+        add(&mut stored, &paid);
         for (f, &p) in paid.iter().enumerate() {
             c.harvest[f] *= 1.0 - share;
             c.basket[f] -= p;

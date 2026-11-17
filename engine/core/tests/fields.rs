@@ -270,7 +270,7 @@ fn fields_off_or_before_the_pick_keep_the_share_at_zero_and_reap_as_before() {
     notch(w, id);
     assert_eq!(w.clans[&id].fields, 0.0);
     let (_, yearly) = engine::clans::walks(w, f, &[f]);
-    let store = [1.0, 2.0, 0.0, 0.0, 0.0];
+    let store = [1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     for share in [0.0, 0.5] {
         assert_eq!(
             reap(w, 0, 10.0, &store, &[], &[f], &yearly, share, &[true]).takes,
@@ -295,7 +295,7 @@ fn fields_off_or_before_the_pick_keep_the_share_at_zero_and_reap_as_before() {
     let c = w.clans[&id].clone();
     let (_, yearly) = engine::clans::walks(w, c.home, &c.territory);
     let tiles = c.territory.clone();
-    for (pop, store) in [(10.0, [0.0; N]), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0])] {
+    for (pop, store) in [(10.0, [0.0; N]), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])] {
         for share in [0.0, 0.5] {
             let got = reap(w, c.id, pop, &store, &c.routes, &tiles, &yearly, share, &vec![true; tiles.len()]).takes;
             assert_eq!(got, old_reap(w, pop, &store, &c.routes, &tiles, &yearly), "pop {pop} share {share}");
@@ -309,6 +309,7 @@ fn on_real_maps_with_fields_off_reap_is_the_old_reap() {
         let mut w = World::new(Config {
             seed,
             radius: 16,
+            goods: false,
             army: true,
             gifts: true,
             zone: true,

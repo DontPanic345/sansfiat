@@ -284,7 +284,7 @@ pub fn trade(w: &mut World) {
             posted = total(&basket);
             if posted > 0.0 {
                 brought.push(basket);
-                worths.push(actors::civ_worths());
+                worths.push(actors::civ_worths(&w.civs[&civ].store, CIV.store_cap));
             }
             let c = w.civs.get_mut(&civ).unwrap();
             c.given = given;

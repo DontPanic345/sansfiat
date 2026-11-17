@@ -19,7 +19,7 @@ fn army(w: &mut World, civ: u32, tile: usize, stack: [f64; 2]) -> u32 {
     let id = put_camp(w, civ, tile);
     let u = camp_mut(w, id);
     u.actor.people = stack[0] + stack[1];
-    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0];
+    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let c = u.camp_mut().unwrap();
     c.stack = stack;
     c.guard = vec![1.0];
@@ -311,7 +311,7 @@ fn new_army(w: &mut World, civ: u32, tile: usize, stack: [f64; 2]) -> u32 {
     u.actor.people = stack[0] + stack[1];
     u.actor.home = tile;
     u.actor.territory = vec![tile];
-    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0];
+    u.actor.store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     u.hungry = 0;
     u.banked = 0.0;
     let c = u.camp_mut().unwrap();

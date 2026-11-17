@@ -40,7 +40,8 @@ fn stage() -> (Stage, u32, u32) {
 /// Makes tile `t` rich: every food at 6, so it feeds a daughter in full.
 fn rich(w: &mut World, t: usize) {
     let tile = &mut w.tiles[t];
-    (tile.cap, tile.unworn, tile.stock) = ([6.0; 5], [6.0; 5], [6.0; 5]);
+    (tile.cap, tile.unworn, tile.stock) =
+        ([6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0], [6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0], [6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0]);
 }
 
 /// A clan of `civ` with `people` living on `home`, which it holds.
@@ -158,15 +159,15 @@ fn clans_that_walk_to_a_settlement_pay_its_levy_into_its_store_which_spoils_and_
     let (sid, k) = settled(&mut w, red, tile(-1, 0));
     let mid = w.settlements[&sid].market;
     let capital_store = total(&w.civs[&red].store);
-    w.clans.get_mut(&k).unwrap().basket = [10.0, 0.0, 0.0, 0.0, 0.0];
+    w.clans.get_mut(&k).unwrap().basket = [10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     civs::levy(&mut w, mid);
     assert!((total(&w.settlements[&sid].store) - 10.0 * CIV.levy).abs() < 1e-9);
     assert_eq!(total(&w.civs[&red].store), capital_store, "the capital's store takes none of it");
-    w.settlements.get_mut(&sid).unwrap().store = [SETTLE.store_cap * 2.0, 0.0, 0.0, 0.0, 0.0];
+    w.settlements.get_mut(&sid).unwrap().store = [SETTLE.store_cap * 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     settle::upkeep(&mut w);
     let s = &w.settlements[&sid];
     assert!((total(&s.store) - SETTLE.store_cap).abs() < 1e-9 && s.lost > 0.0);
-    w.clans.get_mut(&k).unwrap().basket = [10.0, 0.0, 0.0, 0.0, 0.0];
+    w.clans.get_mut(&k).unwrap().basket = [10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     civs::levy(&mut w, mid);
     assert!((total(&w.settlements[&sid].store) - SETTLE.store_cap).abs() < 1e-9, "a full store takes no levy");
     settle::upkeep(&mut w);
@@ -191,7 +192,7 @@ fn a_rival_army_on_an_unguarded_settlement_takes_it_with_its_store() {
     let t = tile(-1, 0);
     let (sid, _) = settled(stage.world_mut(), red, t);
     stage.order(red, Order::Claim { tiles: vec![t, tile(0, 0)] }).unwrap();
-    stage.world_mut().settlements.get_mut(&sid).unwrap().store = [12.0, 0.0, 0.0, 0.0, 0.0];
+    stage.world_mut().settlements.get_mut(&sid).unwrap().store = [12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     stage.army(blue, t, 3.0);
     let mut w = stage.into_world();
     claim::step(&mut w);
