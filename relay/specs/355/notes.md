@@ -18,3 +18,20 @@
   this piece. `sources.rs` holds the placing so `map.rs` grew by four lines.
 - `sweep --judge` runs nine configs a map now and takes about 4 minutes.
 - None of the milestone's open ideas was taken.
+
+## Review (#355)
+
+- A clan at its hold (`SOURCE.hold` a person) of a good still gives `SOURCE.share` of its days to the
+  source: `fields::jobs` splits the days before `clans::reap` caps what is dug, so the days are lost, not
+  refunded. A clan that holds obsidian nobody at its festival wants reaches the cap and then wastes a
+  twentieth of its labour every turn. The design says a clan gathers "only up to what it cares to hold": the
+  fix is to pass the cap into `jobs` so a capped clan has no source job. It moves digests and the sweep, so
+  the review leaves it. It may be part of the starving cost (1.23 times the no-sources control).
+- `actors::spoil`'s `used` can round to 1 plus an epsilon when a store has far more food than its salt keeps,
+  leaving a salt of about -1e-17; the text view clamps it. Clamp `used` at 1 in the engine with the next
+  change that moves digests.
+- `scores.md`'s first draft had three numbers that `compare.txt` does not (lead changes, town clans,
+  settlements founded); corrected there. The judge's figures are `compare.txt`'s.
+- The sweep json holds the no-sources control's people, starving and festivals only, not its Standing,
+  doubt or towns: what the sources did apart from the wider baskets, the cap and the levy is not
+  separable from the report. Exporting the control's scores is the way to see it.

@@ -100,7 +100,7 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     }
 
     let c = &w.civs[&me];
-    let stock: Vec<String> = GOODS.iter().zip(c.store.iter()).map(|(f, v)| format!("{f} {v:.1}")).collect();
+    let stock: Vec<String> = GOODS.iter().zip(c.store.iter()).map(|(f, v)| format!("{f} {:.1}", v.max(0.0))).collect();
     out += &format!("store {:.1} food: {}\n", total(&c.store), stock.join(", "));
     out += &sources(w, me);
     let set = match c.keep {

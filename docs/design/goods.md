@@ -55,3 +55,5 @@ fields better warriors than one that has to trade for blades.
 - A unit of salt keeps 10 food for a turn at half its spoiling and is used up. (#355)
 - A warrior raised takes half a unit of obsidian from the store he is raised from and fights a quarter stronger; an army's armed share stays through its losses. (#355)
 - At a festival a clan brings all its obsidian and the salt its own store won't use; a good nobody there wants isn't traded. (#355)
+- A civ's store takes salt only to keep a full store and obsidian only for twenty warriors; past that the levy leaves them with the clan and the store wants none at its market. (#355)
+- A starving clan gives none of its days to a source: digging cost a clan its food. (#355)

@@ -39,15 +39,15 @@ more (raise orders per 100, 6.9 to 10.3) and field bigger armies, and armed warr
 | people fallen | 16.8 | 52.5 | 76.9 |
 | camps lost | 11 | 8 | |
 | Standing top at +200 | 0.234 | 0.291 | 0.033 |
-| spread at +200 (the lead is closer) | 0.173 | 0.243 | 0.027 |
-| lead changes | 10 | 14 | 3 |
+| spread at +200 (most Standing less least: one civ runs further ahead) | 0.173 | 0.243 | 0.027 |
+| lead changes (the led civ's place changes: 23 to 18, floor 7; swings 13 to 14) | 10 | 7 | 3 |
 | led civ's Standing | 0.125 | 0.167 | 0.040 |
 | led civ won | 5 | 7 | 4 |
 | towns at +100 | 12 | 10 | 1 |
-| town clans at +200 | 77 | 38 | 10 |
-| settlements founded | 6 | 15 | 3 |
+| town clans at +200 | 77 | 59 | 10 |
+| settlements founded | 6 | 10 | 5 |
 
-Towns halve (town clans 77 to 38). The cause is not traced; it is a cost of the piece to the towns score. Everything else flagged is in
+Towns fall a quarter (town clans 77 to 59, town farmers 58 to 44; the first draft of this file said 38, a misreading, corrected in review against `compare.txt`). The cause is not traced; it is a cost of the piece to the towns score. Everything else flagged is in
 `compare.txt`; most of it is the same war and motion (clans changed 274 to 595 before the share change).
 
 ## Tests and scripts moved by the new worlds (not by a rule)
