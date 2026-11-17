@@ -16,3 +16,8 @@
 ## Done
 
 - 1 to 5 are in the engine and build. See `notes.md` for what is left.
+- Tests: `core/tests/goods.rs` passes; six old tests fail and are listed in `build-1.md`.
+- First sweep: `sweep-1.txt` (32.0% of festivals trade salt or obsidian; control 0).
+- PR #375 is open, marked not ready. `steps.json` hands on: build-1 (page, pins, checks, the
+  sweep beside main), then play and review.
+- Not run: `engine/check.sh`, the sweep on `main`, any played game.
