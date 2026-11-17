@@ -91,10 +91,10 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
             let w = stage.world_mut();
             if let Some(u) = w.units.get_mut(&id) {
                 let cap = units::pack_cap(u.people);
-                u.actor.store = [cap / N as f64; N];
+                u.actor.store = engine::market::spread(cap);
                 let civ = w.civs.get_mut(&me).unwrap();
                 if civ.actor.store.iter().sum::<f64>() < cap {
-                    civ.actor.store = [cap / N as f64; N];
+                    civ.actor.store = engine::market::spread(cap);
                 }
             }
         }

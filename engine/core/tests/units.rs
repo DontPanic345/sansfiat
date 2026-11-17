@@ -907,8 +907,8 @@ fn a_camp_cut_by_an_army_eats_its_pack_then_forages() {
 }
 
 #[test]
-fn a_unit_serialises_its_33_flat_fields_in_the_old_order_whatever_its_kind() {
-    const KEYS: [&str; 33] = [
+fn a_unit_serialises_its_34_flat_fields_in_the_old_order_whatever_its_kind() {
+    const KEYS: [&str; 34] = [
         "id",
         "civ",
         "kind",
@@ -940,6 +940,7 @@ fn a_unit_serialises_its_33_flat_fields_in_the_old_order_whatever_its_kind() {
         "stack",
         "still",
         "bows",
+        "armed",
         "homing",
         "back",
     ];

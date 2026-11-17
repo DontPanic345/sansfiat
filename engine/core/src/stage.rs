@@ -332,7 +332,7 @@ impl Stage {
         u.actor.home = i;
         u.actor.territory = vec![i];
         u.actor.people = people;
-        u.actor.store = [units::pack_cap(people) / N as f64; N];
+        u.actor.store = crate::market::spread(units::pack_cap(people));
         let c = u.camp_mut().expect("a camp");
         c.held = vec![i];
         c.stack = [0.0; 2];

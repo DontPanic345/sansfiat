@@ -9,6 +9,12 @@ pub fn total(b: &Basket) -> f64 {
     (0..N).filter(|&g| GOOD[g].eaten).map(|g| b[g]).sum()
 }
 
+/// A basket of `food` shared evenly over the foods, and no salt or obsidian.
+pub fn spread(food: f64) -> Basket {
+    let n = GOOD.iter().filter(|g| g.eaten).count() as f64;
+    std::array::from_fn(|g| if GOOD[g].eaten { food / n } else { 0.0 })
+}
+
 /// What a basket weighs: each good at its `GOOD` weight.
 pub fn weight(b: &Basket) -> f64 {
     (0..N).map(|g| b[g] * GOOD[g].weight).sum()
