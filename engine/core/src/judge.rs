@@ -158,6 +158,8 @@ pub struct Watch {
     towns: Towns,
     /// Signposts and settlements (`judge_settle`).
     settle: crate::judge_settle::Settle,
+    /// Salt and obsidian (`judge_goods`).
+    goods: crate::judge_goods::Goods,
 }
 
 impl Watch {
@@ -196,6 +198,7 @@ impl Watch {
             fields: Fields::pick(w),
             towns: Towns::pick(w),
             settle: crate::judge_settle::Settle::pick(w),
+            goods: crate::judge_goods::Goods::pick(w),
         }
     }
 
@@ -256,7 +259,7 @@ impl Watch {
 
         let pack = units::pack_cap(UNIT.first as f64);
         for c in alive(w) {
-            let store: f64 = c.store.iter().sum();
+            let store = crate::market::total(&c.store);
             let e = &mut self.economy;
             e.civ_turns += 1;
             e.store_sum += store;
@@ -271,6 +274,7 @@ impl Watch {
         self.fields.turn(w);
         self.towns.turn(w);
         self.settle.turn(w);
+        self.goods.turn(w);
 
         let now = self.turns();
         let mut festival = BTreeMap::new();
@@ -433,6 +437,7 @@ impl Watch {
             fields: self.fields.scores(),
             towns: self.towns.scores(),
             settle: self.settle.scores(),
+            goods: self.goods.scores(),
             end: self.end_scores(w),
         }
     }

@@ -39,23 +39,31 @@ pub fn entrenched(still: u32) -> f64 {
     1.0 + (f64::from(still) * FIGHT.entrench).min(FIGHT.entrench_cap)
 }
 
+/// An army's strength a person, attacking and defending as it stands: its kinds' strengths by their
+/// share of it, times `ARMS.edge` for the share armed with obsidian, entrenchment for the defence, and
+/// hunger.
+pub fn might(u: &super::Unit) -> (f64, f64) {
+    let Some(c) = u.camp() else { return (0.0, 0.0) };
+    let sum: f64 = c.stack.iter().sum();
+    let per = |f: fn(&FighterRules) -> f64| {
+        if sum <= EPS {
+            f(&FIGHTERS[0])
+        } else {
+            Fighter::ALL.iter().map(|k| c.stack[k.index()] * f(k.rules())).sum::<f64>() / sum
+        }
+    };
+    let hungry = if u.hungry > 0 { FIGHT.hungry } else { 1.0 };
+    let edge = 1.0 + (ARMS.edge - 1.0) * c.armed;
+    (per(|r| r.attack) * hungry * edge, per(|r| r.defence) * entrenched(c.still) * hungry * edge)
+}
+
 /// The people on each tile, by part: each army's split over the tiles it holds by its guard shares
 /// (all on its own tile when undeployed or marching). Scouts and clans are never a part.
 pub fn presence(w: &World) -> BTreeMap<usize, Vec<Part>> {
     let mut out: BTreeMap<usize, Vec<Part>> = BTreeMap::new();
     for u in w.units.values() {
         let Some(c) = u.camp().filter(|_| u.people > EPS) else { continue };
-        let sum: f64 = c.stack.iter().sum();
-        let per = |f: fn(&FighterRules) -> f64| {
-            if sum <= EPS {
-                f(&FIGHTERS[0])
-            } else {
-                Fighter::ALL.iter().map(|k| c.stack[k.index()] * f(k.rules())).sum::<f64>() / sum
-            }
-        };
-        let hungry = if u.hungry > 0 { FIGHT.hungry } else { 1.0 };
-        let attack = per(|r| r.attack) * hungry;
-        let defence = per(|r| r.defence) * entrenched(c.still) * hungry;
+        let (attack, defence) = might(u);
         let shares: f64 = c.guard.iter().take(c.held.len()).sum();
         let spread: Vec<(usize, f64)> = if c.held.contains(&u.home) && shares > EPS {
             c.held.iter().zip(&c.guard).map(|(&t, &g)| (t, u.people * g / shares)).collect()

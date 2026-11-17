@@ -80,6 +80,9 @@ pub struct Tile {
     /// Turns left in which a foraged or pillaged tile yields nothing to anyone and regrows nothing.
     #[serde(default)]
     pub fallow: u32,
+    /// The good this tile is a source of (`sources.rs`): an index into `GOOD`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<usize>,
 }
 
 impl Tile {
@@ -355,6 +358,7 @@ fn finish(
             trail_cost: None,
             span: None,
             fallow: 0,
+            source: None,
         })
         .collect();
     finish_caps(&mut tiles);

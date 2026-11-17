@@ -396,7 +396,7 @@ impl Stage {
 
     /// The food in `civ`'s store, all goods added.
     pub fn store(&self, civ: u32) -> f64 {
-        self.world.civs[&civ].actor.store.iter().sum()
+        crate::market::total(&self.world.civs[&civ].actor.store)
     }
 
     /// The civ holding tile `i`, if any.
@@ -555,6 +555,8 @@ pub fn open_market(w: &mut World, tile: usize) -> u32 {
         traders: 0,
         moved: 0.0,
         town: false,
+        wares: 0.0,
+        ware: [0.0; N],
     };
     w.markets.insert(id, m);
     id

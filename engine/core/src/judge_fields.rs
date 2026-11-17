@@ -158,7 +158,7 @@ impl Fields {
         for c in alive(w) {
             let f = self.by.entry(Some(c.id)).or_default();
             f.turns += 1;
-            f.store_turns_at_pack += (c.store.iter().sum::<f64>() >= pack) as u32;
+            f.store_turns_at_pack += (crate::market::total(&c.store) >= pack) as u32;
         }
 
         for (&id, c) in &w.clans {

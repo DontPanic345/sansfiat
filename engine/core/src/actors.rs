@@ -45,9 +45,9 @@ impl Actor {
         self.routes.iter().map(|r| r.cost).sum()
     }
 
-    /// The store spoils a turn: each good keeps `1 - CLAN.spoilage` of itself.
-    pub fn spoil(&mut self) {
-        self.store = self.store.map(|v| v * (1.0 - CLAN.spoilage));
+    /// The store spoils a turn (`spoil`). Returns the food lost.
+    pub fn spoil(&mut self) -> f64 {
+        spoil(&mut self.store)
     }
 
     /// Eats `need` from the store in proportion to what it holds, and returns what was eaten.
@@ -61,15 +61,76 @@ impl Actor {
     /// what the people got, in need units.
     pub fn eat_by_diet(&mut self, need: f64) -> f64 {
         let k = CLAN.diet_share * need;
-        let mut got: f64 = self.store.iter().map(|&v| v.min(k)).sum();
-        let left: Basket = self.store.map(|v| (v - k).max(0.0));
+        let food: Basket = std::array::from_fn(|g| if GOOD[g].eaten { self.store[g] } else { 0.0 });
+        let mut got: f64 = food.iter().map(|&v| v.min(k)).sum();
+        let left: Basket = food.map(|v| (v - k).max(0.0));
         let total: f64 = left.iter().sum();
         let eaten = total.min((need - got).max(0.0) / CLAN.excess_value);
         got += eaten * CLAN.excess_value;
         let keep = if total > 0.0 { 1.0 - eaten / total } else { 0.0 };
-        self.store = left.map(|v| v * keep);
+        self.store = std::array::from_fn(|g| if GOOD[g].eaten { left[g] * keep } else { self.store[g] });
         got
     }
+}
+
+/// The salt and its like in a store: every good that keeps (`Use::Keeps`).
+fn keepers(store: &Basket) -> f64 {
+    (0..N).filter(|&g| GOOD[g].uses == Use::Keeps).map(|g| store[g]).sum()
+}
+
+/// A store spoils a turn, whoever's it is: each good loses its `GOOD` spoil. Salt keeps `KEEPING.keeps`
+/// food a unit, sparing that food `KEEPING.slows` of its spoiling, and the salt that kept food is used
+/// up. Returns the food lost.
+pub fn spoil(store: &mut Basket) -> f64 {
+    let food = total(store);
+    let salt = keepers(store);
+    let kept = food.min(salt * KEEPING.keeps);
+    let spared = if food > 0.0 { KEEPING.slows * kept / food } else { 0.0 };
+    let used = if salt > 0.0 { kept / KEEPING.keeps / salt } else { 0.0 };
+    for g in 0..N {
+        let rate = match GOOD[g].uses {
+            Use::Food => GOOD[g].spoil * (1.0 - spared),
+            Use::Keeps => GOOD[g].spoil + (1.0 - GOOD[g].spoil) * used,
+            Use::Arms => GOOD[g].spoil,
+        };
+        store[g] *= 1.0 - rate;
+    }
+    food - total(store)
+}
+
+/// What each good is worth to an actor at a market, against a food's 1 (`market::demand`), from what
+/// it has (`b`) and the people it feeds. Salt is worth what the food it will have left spoils by, a
+/// person, over `KEEPING.want_at`, less what the salt it holds already keeps, at most 1. Obsidian is
+/// worth nothing to a clan: only a civ raises warriors.
+pub fn worths(b: &Basket, people: f64) -> Basket {
+    let spare = (total(b) - people).max(0.0);
+    let bare = (spare - keepers(b) * KEEPING.keeps).max(0.0);
+    let loss = if people > 0.0 { bare * GOOD[0].spoil / people } else { 0.0 };
+    std::array::from_fn(|g| match GOOD[g].uses {
+        Use::Food => 1.0,
+        Use::Keeps => (loss / KEEPING.want_at).min(1.0),
+        Use::Arms => 0.0,
+    })
+}
+
+/// What an actor keeps at home of what it has (`b`) when it goes to market: the salt its own spare
+/// food will use this turn. Everything else that isn't eaten it brings.
+pub fn keeps_back(b: &Basket, people: f64) -> Basket {
+    let mut need = (total(b) - people).max(0.0) / KEEPING.keeps;
+    std::array::from_fn(|g| {
+        if GOOD[g].uses != Use::Keeps {
+            return 0.0;
+        }
+        let kept = b[g].min(need);
+        need -= kept;
+        kept
+    })
+}
+
+/// What each good is worth to a civ's store at its market: it wants salt and obsidian both, at
+/// `KEEPING.civ_want`.
+pub fn civ_worths() -> Basket {
+    std::array::from_fn(|g| if GOOD[g].eaten { 1.0 } else { KEEPING.civ_want })
 }
 
 /// Walks `path` from `from` on `labour`: each step is taken while its cost is no more than what is

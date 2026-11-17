@@ -8,7 +8,7 @@
 use std::collections::BTreeMap;
 
 use super::line::{line_by, path_between, ring, store_of, turns};
-use super::{camp, cut_off, givers_at, pack_cap, room, zone_cap, zone_of, zone_ok, Unit, UnitKind, EPS};
+use super::{camp, cut_off, givers_at, pack_cap, room, zone_cap, zone_of, zone_ok, UnitKind, EPS};
 use crate::civs;
 use crate::claim;
 use crate::data::*;
@@ -332,35 +332,20 @@ fn muster(w: &mut World, civ: u32, give: Give) {
     let _ = give(w, civ, Decision::Order(order));
 }
 
-/// An army's strength a person, attacking and defending as it stands (entrenchment and hunger in).
-fn might(u: &Unit) -> (f64, f64) {
-    let Some(c) = u.camp() else { return (0.0, 0.0) };
-    let sum: f64 = c.stack.iter().sum();
-    let per = |f: fn(&FighterRules) -> f64| {
-        if sum <= EPS {
-            f(&FIGHTERS[0])
-        } else {
-            Fighter::ALL.iter().map(|k| c.stack[k.index()] * f(k.rules())).sum::<f64>() / sum
-        }
-    };
-    let hungry = if u.hungry > 0 { FIGHT.hungry } else { 1.0 };
-    (per(|r| r.attack) * hungry, per(|r| r.defence) * super::fight::entrenched(c.still) * hungry)
-}
-
 /// Whether army `id` outweighs `rival`'s capital: the fight there played forward by the fight's own
 /// rule, its people attacking the armies standing on it. A capital no army stands on falls to
 /// whoever walks onto it. It outweighs a held capital when the armies there are gone or beaten off
 /// within `PLAN.siege` turns, the army never having to retreat, with `PLAN.left` of its people left.
 pub fn outweighs(w: &World, id: u32, rival: u32) -> bool {
     let (Some(u), Some(r)) = (w.units.get(&id), w.civs.get(&rival).filter(|r| !r.is_out())) else { return false };
-    let attack = might(u).0;
+    let attack = super::fight::might(u).0;
     let mut a = u.people;
     // The defenders: people and strength a person.
     let mut parts: Vec<(f64, f64)> = w
         .units
         .values()
         .filter(|o| o.civ == rival && o.camp().is_some() && (o.home == r.capital || o.held().contains(&r.capital)))
-        .map(|o| (o.people, might(o).1.max(FIGHTERS[0].defence)))
+        .map(|o| (o.people, super::fight::might(o).1.max(FIGHTERS[0].defence)))
         .collect();
     for _ in 0..PLAN.siege {
         let strength: f64 = parts.iter().map(|p| p.0 * p.1).sum();
@@ -390,7 +375,7 @@ fn defence_at(w: &World, civ: u32, tile: usize) -> f64 {
     w.units
         .values()
         .filter(|o| o.civ != civ && o.camp().is_some() && (o.home == tile || o.held().contains(&tile)))
-        .map(|o| o.people * might(o).1)
+        .map(|o| o.people * super::fight::might(o).1)
         .sum()
 }
 
@@ -415,7 +400,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
     let capital = w.civs[&civ].capital;
     // Home is the store its line ends at: the capital when it has no line.
     let home = store_of(w, id).unwrap_or(capital);
-    let strength = people * might(u).0;
+    let strength = people * super::fight::might(u).0;
     let go = |w: &mut World, give: Give, to: usize, why: String| {
         let at = w.units.get(&id).map(|u| (u.home, u.dest()));
         let Some((home, dest)) = at else { return };
@@ -468,7 +453,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
         .filter(|o| o.civ != civ && o.camp().is_some() && o.people > EPS)
         .filter(|o| on_land(o.home) || steps(w, o.home, capital) <= 1)
         .min_by_key(|o| (steps(w, o.home, capital), o.id))
-        .map(|o| (o.id, o.home, o.people * might(o).1));
+        .map(|o| (o.id, o.home, o.people * super::fight::might(o).1));
     if let Some((foe, at, theirs)) = threat {
         if strength > PLAN.edge * theirs {
             return go(w, give, at, format!("marches on the rival army at {}: it outweighs it", w.at(at)));

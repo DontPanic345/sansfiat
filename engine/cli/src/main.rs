@@ -14,6 +14,7 @@ mod sweep;
 mod sweep_fields;
 mod sweep_judge;
 mod sweep_led;
+mod sweep_goods;
 mod sweep_settle;
 mod sweep_text;
 mod sweep_total;

@@ -45,6 +45,8 @@ pub struct CampState {
     pub still: u32,
     /// Whether it makes bows this turn (build-2).
     pub bows: bool,
+    /// The share of its people armed with obsidian (`ARMS`): set at each raising, kept through losses.
+    pub armed: f64,
 }
 
 impl CampState {
@@ -67,6 +69,7 @@ impl CampState {
             stack,
             still: 0,
             bows: false,
+            armed: 0.0,
         }
     }
 }
