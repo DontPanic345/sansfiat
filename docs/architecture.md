@@ -21,7 +21,7 @@ runs the same in native and wasm. That holds, and it stays the first rule.
 | Goals | Standing per civ each turn; win and lose rules; a game that ends | Standing and `judge::Watch`; no end | M3 G (the score), M4 E (the end) |
 | AI | A planner per civ giving orders for Standing: claim, raise what it can feed, gift, pillage, cut, answer a cut | A claim its armies answer for, a post and a zone; worth about as much as no orders | M4 R |
 | Tiles shared | Many clans on one tile, each with its share of the tile's field ground | A home is not a claim: many clans may live on one tile, each gathering its own claim and sharing the tile's field ground (`homes.rs`) | Done in M4 W |
-| Goods | A basket of goods, some of them food, each with weight, spoiling and a use; sources on tiles; crafts as labour | `Basket = [f64; FOODS]`; everything is eaten | M5 |
+| Goods | A basket of goods, some of them food, each with weight, spoiling and a use; sources on tiles; crafts as labour | Holds in part (#355): `Basket = [f64; N]`, five foods then salt and obsidian, with a table `GOOD` (weight, spoil, eaten, use); salt and obsidian sources on tiles (`sources.rs`); salt keeps food, obsidian arms warriors; no crafts yet | M5 |
 | Markets | A clearing that takes any participant's row: clans, the civ, units, traders | Clans, with the civ bolted on as an extra row | M5 |
 | Knowledge | Knacks per civ: level, practice, luck, contact | None | M6 |
 | Routes | A route staged through rests: campsites, caches, caravanserai; a line reaches as far as its rests | A line is one path from a unit to the capital | M7 |

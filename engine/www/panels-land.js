@@ -1,7 +1,7 @@
 // The land's panels: a festival's and a bare tile's shape (spec items 16, Festival and Tile). `panels.js`
 // reads these through `describe`.
 
-import { civName, civOrder, f2, hex, reasonsOf, tileKind } from './panels.js';
+import { civName, civOrder, f2, foodOf, heldGoods, hex, reasonsOf, tileKind, wareRows } from './panels.js';
 
 /** A festival's panel (spec item 16, Festival): its age, traders and activity, its prices in the tooltip, the
  *  clans going, and its walkers drawn on the map (by the view's focus). */
@@ -62,6 +62,10 @@ export function tileShape(ctx, sel) {
     goods.forEach((g, f) => {
       if (t.cap[f] > 0) numbers.push({ label: g, value: `${f2(t.stock[f])} of ${f2(t.cap[f])}`, tip: `${g} in the tile's stock, of its cap` });
     });
+    const source = ctx.layout.source?.[i];
+    if (source) {
+      numbers.push({ label: 'Source', value: source, tip: `A source of ${source}: the clan that holds this tile gives a tenth of its days to digging it` });
+    }
     numbers.push({ label: 'Trail', value: t.trail ? 'yes' : 'no', tip: 'A trail, worn by the walks over the tile' });
     if (t.wild_grain > 0) {
       numbers.push({ label: 'Tame', value: `${Math.round((100 * t.tame) / rules.tame_turns)}%`, tip: 'Share of the way to a hearth: the wild grain tamed here' });
@@ -90,10 +94,10 @@ export function tileShape(ctx, sel) {
 /** A settlement's panel: its store against the cap and this turn's levy, the clans living on it, the clans that
  *  come to its market, its land (drawn on the map while it is selected), and its reasons. */
 export function settlementShape(ctx, s) {
-  const { v, goods } = ctx;
+  const { v } = ctx;
   const clanRows = (ids) => ids.map((id) => ({ select: { kind: 'clan', id }, label: `Clan ${id}`, text: `${f2(v.clans[id]?.people ?? 0)} people` }));
-  const total = s.store.reduce((a, b) => a + b, 0);
-  const stored = goods.map((g, f) => (s.store[f] > 0.005 ? `${g} ${f2(s.store[f])}` : null)).filter(Boolean);
+  const total = foodOf(ctx, s.store);
+  const stored = heldGoods(ctx, s.store);
   const people = s.clans.reduce((a, id) => a + (v.clans[id]?.people ?? 0), 0);
   const name = civName(ctx, s.civ);
   return {
@@ -102,6 +106,7 @@ export function settlementShape(ctx, s) {
     doing: `Founded turn ${s.founded}: ${s.clans.length} clan${s.clans.length === 1 ? '' : 's'}, ${f2(people)} people live here`,
     numbers: [
       { label: 'Store', value: `${f2(total)} of ${f2(s.cap)}`, tip: `${stored.join(', ') || 'Empty'}: filled only by the levy at its market` },
+      ...wareRows(ctx, s.store, false, 'its store'),
       { label: 'Levy', value: `${f2(s.levied)} this turn`, tip: `Food the civ's clans paid into this store at its market this turn` },
       { label: 'Land', value: `${s.land.length} tiles`, tip: "The part of the civ's claim nearer this settlement than the capital or another settlement; lit on the map" },
       { label: 'Founded', value: s.founded, tip: 'The turn a clan settled here' },
