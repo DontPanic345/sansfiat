@@ -55,3 +55,17 @@ in this order; each is small.
 The rules (`data.rs` `GOOD`, `SOURCE`, `KEEPING`, `ARMS`; `actors::spoil`, `worths`; `muster::arm`)
 are settled: change one only for a bug, and say so in your summary. `data.rs` and `map.rs` are past
 800 lines and were before this piece; splitting them is a note for the retro, not this build.
+
+## What the whole step's test run showed
+
+`cargo test --no-fail-fast` on the commit before this brief: every `core` test passes but these, and
+the list was cut at its first 70 lines, so `cli` tests may fail too (the digest pins will):
+
+- `notes`: `a_watched_game_gives_reasons_to_clans_markets_civs_and_camps`
+- `save` (core): all three (a pinned version or a fixture save at version 25)
+- `script`: `the_script_logs_the_orders_it_gives`
+- `stores`: `the_planner_marches_on_a_rival_once_a_store_is_in_reach_of_it`
+
+The last three read a real or staged game that sources or the wider basket moved. Read why each
+moved before re-pinning: a planner test that fails because a store's food total changed is a missed
+`.iter().sum()` (see `notes.md`), and that is a bug to fix, not a pin.
