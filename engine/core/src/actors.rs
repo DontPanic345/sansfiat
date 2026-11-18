@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::data::*;
 use crate::land::{grid, neighbours, passable, step_cost, steps};
+use crate::lots::Lots;
 use crate::market::{take, total, Basket};
 use crate::world::World;
 
@@ -32,12 +33,23 @@ pub struct Actor {
     pub territory: Vec<usize>,
     pub routes: Vec<Route>,
     pub market: Option<u32>,
+    /// Where the wares in its store (and, for a clan, its basket) came from (`lots.rs`).
+    #[serde(default, skip_serializing_if = "Lots::is_empty")]
+    pub lots: Lots,
 }
 
 impl Actor {
     /// An actor of `people` at `home`, holding only home.
     pub fn new(home: usize, people: f64) -> Actor {
-        Actor { people, home, store: [0.0; N], territory: vec![home], routes: Vec::new(), market: None }
+        Actor {
+            people,
+            home,
+            store: [0.0; N],
+            territory: vec![home],
+            routes: Vec::new(),
+            market: None,
+            lots: Lots::default(),
+        }
     }
 
     /// What its routes cost a turn.

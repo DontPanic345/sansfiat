@@ -12,6 +12,7 @@ use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::{cost_map, is_hearth, passable, path, steps};
+use crate::lots::Lots;
 use crate::market::{add, take, total, Basket};
 use crate::markets::reach;
 use crate::units::{self, Counters};
@@ -141,6 +142,8 @@ struct CivFlat {
     fallen: Option<(u32, u32)>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     signposts: Vec<crate::settle::Signpost>,
+    #[serde(default, skip_serializing_if = "Lots::is_empty")]
+    lots: Lots,
 }
 
 impl From<Civ> for CivFlat {
@@ -168,6 +171,7 @@ impl From<Civ> for CivFlat {
             besieged: c.besieged,
             fallen: c.fallen,
             signposts: c.signposts,
+            lots: c.actor.lots,
         }
     }
 }
@@ -181,7 +185,7 @@ impl From<CivFlat> for Civ {
             market: f.market,
             capital: f.capital,
             founded: f.founded,
-            actor: Actor { store: f.store, ..Actor::new(f.capital, 0.0) },
+            actor: Actor { store: f.store, lots: f.lots, ..Actor::new(f.capital, 0.0) },
             lost: f.lost,
             clan: f.clan,
             army: f.army,
@@ -520,13 +524,22 @@ pub fn levy(w: &mut World, mid: u32) {
             c.basket[f] -= p;
         }
         let sum = crate::market::total(&paid);
+        let lots = if w.config.exchange { Some(w.clans[&id].lots.clone()) } else { None };
         match settlement {
             Some(s) => {
-                add(&mut w.settlements.get_mut(&s).unwrap().store, &paid);
+                let seat = w.settlements.get_mut(&s).unwrap();
+                if let Some(lots) = &lots {
+                    seat.lots.arrive(&seat.store, &paid, lots);
+                }
+                add(&mut seat.store, &paid);
                 *w.settle_levied.entry(s).or_insert(0.0) += sum;
             }
             None => {
                 let civ_state = w.civs.get_mut(&civ).unwrap();
+                if let Some(lots) = &lots {
+                    let held = civ_state.store;
+                    civ_state.actor.lots.arrive(&held, &paid, lots);
+                }
                 add(&mut civ_state.store, &paid);
                 civ_state.levied += sum;
             }

@@ -14,6 +14,7 @@ use crate::clans::site_value;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::{cost_map, passable, steps};
+use crate::lots::Lots;
 use crate::market::{total, Basket};
 use crate::rng::rand;
 use crate::world::World;
@@ -39,6 +40,9 @@ pub struct Settlement {
     pub store: Basket,
     /// Goods cut by the cap last turn.
     pub lost: f64,
+    /// Where the wares in its store came from (`lots.rs`).
+    #[serde(default, skip_serializing_if = "Lots::is_empty")]
+    pub lots: Lots,
 }
 
 /// Whether civs post signposts: `Config.signposts`.
@@ -256,7 +260,10 @@ pub fn found(w: &mut World, civ: u32, tile: usize, clan: u32) -> u32 {
     let market = market.unwrap_or_else(|| crate::markets::raise(w, tile));
     let id = w.next_id;
     w.next_id += 1;
-    w.settlements.insert(id, Settlement { id, civ, tile, market, founded: w.turn, store: [0.0; N], lost: 0.0 });
+    w.settlements.insert(
+        id,
+        Settlement { id, civ, tile, market, founded: w.turn, store: [0.0; N], lost: 0.0, lots: Lots::default() },
+    );
     w.civs.get_mut(&civ).unwrap().signposts.retain(|s| s.tile != tile);
     if claim::may_claim(w, civ) {
         claim::join(w, civ, tile);

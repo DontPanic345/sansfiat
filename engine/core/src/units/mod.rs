@@ -30,6 +30,7 @@ use serde::{Deserialize, Serialize};
 use crate::actors::{Actor, Carrier};
 use crate::claim;
 use crate::data::*;
+use crate::exchange::UnitTrade;
 use crate::world::World;
 
 pub use ai::{ai, claim_plan, outweighs, plan, post, signpost_plan, signpost_sites, Decision, Give};
@@ -120,6 +121,8 @@ pub struct Unit {
     /// Hungry turns in a row.
     pub hungry: u32,
     pub state: UnitState,
+    /// What its pack did at a market's clearing last turn, if it joined one (`exchange.rs`).
+    pub traded: Option<UnitTrade>,
 }
 
 /// What a unit is, and the state only that kind has.
@@ -178,6 +181,8 @@ struct UnitFlat {
     homing: bool,
     #[serde(default)]
     back: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    traded: Option<UnitTrade>,
 }
 
 impl From<Unit> for UnitFlat {
@@ -221,6 +226,7 @@ impl From<Unit> for UnitFlat {
             armed: camp.armed,
             homing: scout.homing,
             back: scout.back,
+            traded: u.traded,
         }
     }
 }
@@ -259,7 +265,7 @@ impl From<UnitFlat> for Unit {
                 doing: Doing::Idle,
             }),
         };
-        Unit { id: f.id, civ: f.civ, actor: f.actor, banked: f.banked, hungry: f.hungry, state }
+        Unit { id: f.id, civ: f.civ, actor: f.actor, banked: f.banked, hungry: f.hungry, state, traded: f.traded }
     }
 }
 

@@ -135,3 +135,28 @@ pub struct ArmsRules {
 /// A warrior with obsidian blades is worth a quarter more: enough to turn an even fight, not enough to
 /// stand in for numbers. A store holds blades for twenty.
 pub const ARMS: ArmsRules = ArmsRules { each: 0.5, edge: 1.25, hold: 10.0 };
+
+/// How a store remembers where its goods came from (`lots.rs`).
+pub struct LotsRules {
+    /// The most lots a store keeps of one good: past it the smallest are dropped and the rest renormalised.
+    pub most: usize,
+    /// The most markets a lot's chain keeps: past it the oldest market goes, never the source.
+    pub chain: usize,
+}
+
+/// Four lots and six markets show a good's main routes on a page without a store's list growing: the shares
+/// of a mixed store spread thin fast, and a chain longer than six markets is past what a clan's festival
+/// and a camp's march join up in a few turns.
+pub const LOTS: LotsRules = LotsRules { most: 4, chain: 6 };
+
+/// How a clan passes goods on to a second festival (`exchange::carry_route`).
+pub struct PassRules {
+    /// The share of a second walk's cost (in labour) that the wares' worth at the festival's last prices must
+    /// cover for a clan to make it.
+    pub cover: f64,
+}
+
+/// A clan's unsold pile is a few units of salt, a third of a food a unit, and a walk costs a person's days:
+/// at the full cost no clan ever walks (probe: the worth is a hundredth of the cost), so a clan walks when
+/// the wares pay a hundredth of it. At this the sweep carries a few hundred units a map, and health holds.
+pub const PASS: PassRules = PassRules { cover: 0.01 };
