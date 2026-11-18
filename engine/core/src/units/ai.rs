@@ -5,9 +5,8 @@
 //! them; the automatic player's (`script::Auto`) is `World::act`, logged as a player's are. The
 //! planner has no order the player lacks.
 
-use std::collections::BTreeMap;
-
 use super::line::{line_by, path_between, ring, store_of, turns};
+use super::paths::{path_cached, reaches, within_march, Paths};
 use super::{camp, cut_off, givers_at, pack_cap, room, zone_cap, zone_of, zone_ok, UnitKind, EPS};
 use crate::civs;
 use crate::claim;
@@ -27,14 +26,6 @@ pub enum Decision {
 
 /// Where the planner's decisions go: `Err` when the world refuses one, which the planner ignores.
 pub type Give<'a> = &'a mut dyn FnMut(&mut World, u32, Decision) -> Result<(), String>;
-
-/// The paths `post` reads, by their ends, as `path_between` finds them. `ai` keeps one for its turn.
-type Paths = BTreeMap<(usize, usize), Option<Vec<usize>>>;
-
-/// `path_between`'s tiles from `from` to `to`, found once in `paths`.
-fn path_cached(w: &World, paths: &mut Paths, from: usize, to: usize) -> Option<Vec<usize>> {
-    paths.entry((from, to)).or_insert_with(|| path_between(w, from, to).map(|(p, _)| p)).clone()
-}
 
 /// `civ`'s front: of its stores (its capital and settlements) and the rival capitals reachable by
 /// land, the pair fewest steps apart (ties to the capital, then the lower rival), as the store's
@@ -96,8 +87,9 @@ pub fn ai(w: &mut World) {
         return;
     }
     let ids: Vec<u32> = civs::alive(w).map(|c| c.id).filter(|&c| Some(c) != w.player).collect();
+    let mut paths = Paths::new();
     for civ in ids {
-        plan(w, civ, &mut |w, civ, d| match d {
+        plan_with(w, civ, &mut paths, &mut |w, civ, d| match d {
             Decision::Order(order) => w.order(civ, order),
             Decision::Gift(food) => w.set_gift(civ, food),
         });
@@ -106,8 +98,13 @@ pub fn ai(w: &mut World) {
 
 /// One civ's turn of planning, its decisions given to `give` as they are made, each read against
 /// the world the last one left. In order: its gift, its claim, its army's size, and each
-/// army's orders.
+/// army's orders. It finds its own paths; `ai` shares one set over the turn.
 pub fn plan(w: &mut World, civ: u32, give: Give) {
+    plan_with(w, civ, &mut Paths::new(), give);
+}
+
+/// `plan`, with the turn's `paths`.
+fn plan_with(w: &mut World, civ: u32, paths: &mut Paths, give: Give) {
     if w.civs.get(&civ).is_none_or(|c| c.is_out()) {
         return;
     }
@@ -119,11 +116,10 @@ pub fn plan(w: &mut World, civ: u32, give: Give) {
     if !w.config.army {
         return;
     }
-    muster(w, civ, give);
+    muster(w, civ, paths, give);
     let armies: Vec<u32> = w.units.values().filter(|u| u.civ == civ && u.camp().is_some()).map(|u| u.id).collect();
-    let mut paths = Paths::new();
     for id in armies {
-        direct(w, civ, id, &mut paths, give);
+        direct(w, civ, id, paths, give);
     }
 }
 
@@ -290,7 +286,7 @@ pub fn claim_plan(w: &World, civ: u32) -> Vec<usize> {
 /// store (`front`) when that can raise one, else at the capital. The cap is `PLAN.army` of its people
 /// while a rival's capital is within `PLAN.march` turns' walk of one of its stores or a rival army is
 /// on its land, and a party of `PLAN.party`, which can live off the land, while none is.
-fn muster(w: &mut World, civ: u32, give: Give) {
+fn muster(w: &mut World, civ: u32, paths: &mut Paths, give: Give) {
     let c = &w.civs[&civ];
     let army = camp(w, civ).map(|u| (u.id, u.people, u.hungry, u.home));
     let starving = stored(w, civ) + EPS < mouths(w, civ);
@@ -304,12 +300,14 @@ fn muster(w: &mut World, civ: u32, give: Give) {
     let people: f64 = w.clans.values().filter(|k| k.civ == Some(civ)).map(|k| k.people).sum();
     let armed = army.map_or(0.0, |a| a.1);
     // A rival within a pack's march of a store, or on its land, is worth a full army; else a party.
-    let near = civs::alive(w).filter(|o| o.id != civ).any(|o| {
-        stores.iter().any(|&s| path_between(w, s, o.capital).is_some_and(|(p, _)| turns(w, &p, s, 0.0) <= PLAN.march))
-    }) || w
-        .units
-        .values()
-        .any(|o| o.civ != civ && o.camp().is_some() && c.claim.binary_search(&o.home).is_ok());
+    let marches: Vec<_> = stores.iter().map(|&s| (s, within_march(w, s))).collect();
+    let near =
+        civs::alive(w).filter(|o| o.id != civ).any(|o| {
+            marches.iter().any(|(s, r)| {
+                r.contains_key(&o.capital)
+                    && path_between(w, *s, o.capital).is_some_and(|(p, _)| turns(w, &p, *s, 0.0) <= PLAN.march)
+            })
+        }) || w.units.values().any(|o| o.civ != civ && o.camp().is_some() && c.claim.binary_search(&o.home).is_ok());
     let cap = if near { PLAN.army * (people + armed) } else { PLAN.party.min(PLAN.army * (people + armed)) };
     if armed + 1.0 > cap + EPS {
         return;
@@ -321,10 +319,9 @@ fn muster(w: &mut World, civ: u32, give: Give) {
     let capital = c.capital;
     let at = match into {
         Some(id) => store_of(w, id),
-        None => front(w, civ, &mut Paths::new())
-            .map(|f| f.0)
-            .filter(|&s| feeds_one_more(w, civ, pack_cap(1.0), s))
-            .or(Some(capital)),
+        None => {
+            front(w, civ, paths).map(|f| f.0).filter(|&s| feeds_one_more(w, civ, pack_cap(1.0), s)).or(Some(capital))
+        }
     };
     let Some(store) = at.filter(|&s| feeds_one_more(w, civ, pack_cap(1.0), s)) else { return };
     let at = if into.is_some() || store == capital { None } else { Some(store) };
@@ -458,7 +455,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
         if strength > PLAN.edge * theirs {
             return go(w, give, at, format!("marches on the rival army at {}: it outweighs it", w.at(at)));
         }
-        if let Some(t) = across(w, civ, id, foe) {
+        if let Some(t) = across(w, civ, id, foe, paths) {
             if here == t && dest.is_none() {
                 return cut(w, civ, id, foe, give);
             }
@@ -502,7 +499,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
             .map(|o| o.id)
             .collect();
         for foe in abroad {
-            if let Some(t) = across(w, civ, id, foe) {
+            if let Some(t) = across(w, civ, id, foe, paths) {
                 if here == t && dest.is_none() {
                     return cut(w, civ, id, foe, give);
                 }
@@ -515,7 +512,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
             }
             return;
         }
-        if let Some(t) = raid(w, civ, id, strength, party) {
+        if let Some(t) = raid(w, civ, id, strength, party, paths) {
             if !packed && home_ground && dest != Some(t) {
                 return fill(w, give);
             }
@@ -532,7 +529,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
 /// line takes no more than `PLAN.reach` of its days, or anywhere it can walk when it is a `party`,
 /// small enough to live off the land. The nearest, a rival clan's home counting two steps nearer
 /// than its ground and that two nearer than bare land.
-fn raid(w: &World, civ: u32, id: u32, strength: f64, party: bool) -> Option<usize> {
+fn raid(w: &World, civ: u32, id: u32, strength: f64, party: bool, paths: &mut Paths) -> Option<usize> {
     let from = w.units[&id].home;
     let grounds: Vec<(usize, bool)> = w
         .clans
@@ -560,7 +557,7 @@ fn raid(w: &World, civ: u32, id: u32, strength: f64, party: bool) -> Option<usiz
     tiles
         .into_iter()
         .take(PLAN.looks)
-        .find(|&(_, t)| strength > PLAN.edge * defence_at(w, civ, t) && path_between(w, from, t).is_some())
+        .find(|&(_, t)| strength > PLAN.edge * defence_at(w, civ, t) && reaches(w, paths, from, t))
         .map(|(_, t)| t)
 }
 
@@ -568,7 +565,7 @@ fn raid(w: &World, civ: u32, id: u32, strength: f64, party: bool) -> Option<usiz
 /// past the rival's own that is no capital and not the rival's land, that it can walk to without
 /// passing that army, where nobody of a rival's stands, and where its own line would carry its
 /// food. `None` when the rival has no line or no such tile.
-fn across(w: &World, civ: u32, id: u32, foe: u32) -> Option<usize> {
+fn across(w: &World, civ: u32, id: u32, foe: u32, paths: &mut Paths) -> Option<usize> {
     let o = w.units.get(&foe)?;
     let line = &o.actor.routes.first()?.path;
     let from = w.units[&id].home;
@@ -578,7 +575,7 @@ fn across(w: &World, civ: u32, id: u32, foe: u32) -> Option<usize> {
             && TERRAIN[w.tiles[t].terrain].land
             && civs::tile_civ(w, t) != Some(o.civ)
             && !super::past_reach(w, id, t)
-            && (t == from || path_between(w, from, t).is_some_and(|(p, _)| !p.contains(&o.home)))
+            && (t == from || path_cached(w, paths, from, t).is_some_and(|p| !p.contains(&o.home)))
             && defence_at(w, civ, t) <= EPS
     })
 }

@@ -18,6 +18,7 @@ pub mod fight;
 mod forage;
 mod line;
 mod muster;
+mod paths;
 mod scout;
 mod search;
 
