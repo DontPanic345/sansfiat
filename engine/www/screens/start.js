@@ -18,6 +18,7 @@ export function init() {
   $('continue').onclick = continueGame;
   $('start-loadButton').onclick = () => $('start-load').click();
   $('start-load').onchange = loadFile;
+  $('start-tests').onclick = () => app.show('tests');
 }
 
 export function show() {

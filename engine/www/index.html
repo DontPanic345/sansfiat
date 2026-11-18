@@ -26,6 +26,7 @@
     <div class="row">
       <button id="start-loadButton" type="button">Load a file…</button>
       <input id="start-load" type="file" accept=".json,application/json" hidden aria-label="Load a saved game">
+      <button id="start-tests" type="button" title="The stage tests: each a stage and the holds it must keep">Tests</button>
     </div>
     <p id="start-error" role="alert"></p>
   </div>
@@ -128,6 +129,37 @@
     <button id="end-playon" type="button">Play on</button>
     <button id="end-new" type="button">New game</button>
   </div>
+</section>
+
+<section id="screen-tests" data-screen="tests" aria-label="Stage tests" hidden>
+  <div class="tests-head">
+    <button id="tests-back" type="button">Back</button>
+    <h1>Stage tests</h1>
+  </div>
+  <div id="tests-list">
+    <p class="dim">Each test is a stage written as data, the orders it is given and the holds that must keep. Core runs them; the page only shows the verdict.</p>
+    <ul id="tests-rows" aria-label="Tests"></ul>
+  </div>
+  <div id="tests-open" hidden>
+    <div class="tests-head">
+      <button id="tests-up" type="button">Tests</button>
+      <h2 id="tests-name"></h2>
+    </div>
+    <p id="tests-claim"></p>
+    <p id="tests-kept" class="dim"></p>
+    <div class="tests-controls">
+      <button id="tests-play" type="button" aria-pressed="false">Play</button>
+      <button id="tests-step" type="button">Step</button>
+      <button id="tests-again" type="button">Again</button>
+      <span id="tests-turn" class="dim"></span>
+      <span id="tests-result" role="status"></span>
+    </div>
+    <div class="tests-body">
+      <div id="tests-mapbox"><canvas id="tests-map" aria-label="The test's map"></canvas></div>
+      <ol id="tests-holds" aria-label="Holds"></ol>
+    </div>
+  </div>
+  <p id="tests-error" role="alert"></p>
 </section>
 
 <script type="module" src="main.js"></script>

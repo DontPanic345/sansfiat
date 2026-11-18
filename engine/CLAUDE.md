@@ -52,9 +52,9 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
 | `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields), `sweep_towns.rs` (towns), `sweep_goods.rs` (goods against the no-sources control), `sweep_led.rs` (led games beside idle), `sweep_total.rs`, `sweep_text.rs` and `game_judge.rs` (the file's judge), `view.rs` (the text view), `story.rs` (stories of war). |
 | `web/src/lib.rs`, `stage_test.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`, the orders; `Sim.stage` builds one, `Sim.stage_test` a test. |
-| `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js`, `panels.js` (a selection's shape and its buttons) and `panels-land.js` (festival, tile, settlement shapes), `model.js` (the view model), `map/` (`MapView`, a file per layer: `towns.js`, `sources.js`), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
+| `www/` | The page: `main.js` (the router), `app.js`, `screens/` (`tests.js`, the Tests screen), `bar.js`, `panel.js`, `panels.js` (a selection's shape and its buttons) and `panels-land.js` (festival, tile, settlement shapes), `model.js` (the view model), `map/` (`MapView`, a file per layer: `towns.js`, `sources.js`), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
-| `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim`: the panel shapes as data, and the panel context both share. |
+| `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim`, and the panel context both share. |
 | `www/play.mjs` | Drives the page in headless Chrome (clicks, waits, screenshots); `play/live.mjs` holds one page across shell calls. |
 | `www/play/` | One script per touch point of `docs/design/page.md`, each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button on a staged game; `all.mjs` runs them. |
 
