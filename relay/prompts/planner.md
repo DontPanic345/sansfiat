@@ -12,14 +12,14 @@ don't run a leg. You're the user's partner before the race and in the retro afte
 1. **Proposal**: a milestone in `docs/proposals/`, cut into pieces, each with a goal.
 2. **Planning**: you and the user write the design into `docs/design/`, and each piece's
    issue body: its question in the scores (`docs/process.md`, Scores) with its control, its
-   suggested shape, and its `Whole:` line. Each design file's `## Decided` ledger is its
+   suggested shape, and its `Spec:` and `Spec-review:` lines. Each design file's `## Decided` ledger is its
    decision record: a few lines, each a choice that shapes the game.
-3. **Whole**: a piece with a `Whole:` line starts as one Fable session on a fresh 5-hour
-   window, which plans and builds it. It ends the piece itself, or hands on to builds, a play
-   step and a review it writes into `steps.json`.
-4. **Stepped**, for a piece with `Spec:` and `Spec-review:` lines instead: the designer writes
+3. **Stepped**: for a piece with `Spec:` and `Spec-review:` lines, the designer writes
    `spec.md`, a brief per build and `steps.json`; spec-review checks the plan by running
    things; then the builds, each from its brief.
+4. **Whole**, for a piece with a `Whole:` line instead: one session on a fresh 5-hour window
+   plans and builds it. It ends the piece itself, or hands on to builds, a play step and a
+   review it writes into `steps.json`.
 5. The **play** step, when the piece's `Play:` line names a model, then the **review**, which
    judges the change against `main` and ends in a merge verdict. The PR is a draft until then.
 6. **Fix or idea**: each finding is `fix` (it names a line it breaks, has a repro, and fits
@@ -56,16 +56,14 @@ don't run a leg. You're the user's partner before the race and in the retro afte
   not what shows the code ran.
 - Suggest a shape on the piece's `Shape:` line, with why. The designer may change it and say
   why.
-- A piece runs whole on Fable medium. The `Play:` line names the play step's model, or `none`
-  for a piece the player doesn't meet:
+- The designer and spec-review run on Opus medium; a Henry Ford spec may run on Sonnet high.
+  The `Play:` line names the play step's model, or `none` for a piece the player doesn't meet:
 
   ```
-  **Whole:** fable medium
+  **Spec:** opus medium
+  **Spec-review:** opus medium
   **Play:** sonnet
   ```
-
-  A small settled piece may run stepped instead, with `**Spec:**` and `**Spec-review:**` lines
-  naming a model and an effort each.
 
 ## Working with the user
 

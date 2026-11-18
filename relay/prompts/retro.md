@@ -32,7 +32,7 @@ take, try, later or drop. A figure it couldn't measure says so.
 `<next>.md` opens with the owner's questions from the retro, answered as the proposal assumes, so
 the owner can change one and see what moves. Each piece is a `### X. Title` section, X a letter,
 with the lines a piece's issue carries (`relay/README.md`): Goal with its question and control,
-Whole (or Spec and Spec-review), Play, Shape, Design, Decided, In scope, Out of scope, and After
+Spec and Spec-review (or Whole), Play, Shape, Design, Decided, In scope, Out of scope, and After
 as `#X`. When the owner merges the proposal PR, the crew opens each section as a piece.
 
 The owner's notes come first: each one is a piece, a line of a piece, a change in

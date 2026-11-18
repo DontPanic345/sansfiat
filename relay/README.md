@@ -18,7 +18,8 @@ these lines from its body, in any order:
 
 ```
 **Goal:** what the piece delivers, and its question in the scores with its control
-**Whole:** fable medium
+**Spec:** opus medium
+**Spec-review:** opus medium
 **Play:** sonnet
 **Shape:** Easel and Canvas: why
 **Design:** docs/design/clans.md
@@ -28,9 +29,9 @@ these lines from its body, in any order:
 **After:** #31
 ```
 
-`Whole` names the model and effort of the piece's first session, which plans and builds it
-(below). A piece without it runs stepped and needs `Spec` and `Spec-review`, each on its own
-line naming a model and an effort: a piece with neither is held.
+`Spec` and `Spec-review` each name a model and an effort, and the piece runs stepped. A piece
+with a `Whole` line instead runs whole: its first session, on the model and effort it names,
+plans and builds it (below). A piece with neither is held.
 `Play` names the play step's model (medium unless it names an effort, and "three seeds" plays
 three maps), or `none`.
 `Shape` is a suggestion the designer may change. A

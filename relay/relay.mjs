@@ -177,9 +177,9 @@ export const RETRO_STEPS = [
     { id: "architecture", title: "The architecture angle", model: "opus", effort: "medium", why: "Reads the code's shape against docs/architecture.md." },
     { id: "relay", title: "The relay angle", model: "opus", effort: "medium", why: "Reads the crew, the prompts and the transcripts." },
     { id: "wait", title: "The owner's notes", model: "none", effort: "none", why: "Up to 72 hours for the owner's notes, or `/relay retro go`." },
-    { id: "game", title: "The game and players angles", model: "fable", effort: "medium", why: "Reads the owner's notes; one session, two files." },
-    { id: "retro", title: "The retro", model: "fable", effort: "medium", why: "Reads the angles and writes the retro." },
-    { id: "proposal", title: "The next proposal", model: "fable", effort: "medium", why: "Writes the next milestone's proposals from the retro." },
+    { id: "game", title: "The game and players angles", model: "opus", effort: "medium", why: "Reads the owner's notes; one session, two files." },
+    { id: "retro", title: "The retro", model: "opus", effort: "medium", why: "Reads the angles and writes the retro." },
+    { id: "proposal", title: "The next proposal", model: "opus", effort: "medium", why: "Writes the next milestone's proposals from the retro." },
 ];
 const RETRO_IDS = RETRO_STEPS.map((s) => s.id);
 
