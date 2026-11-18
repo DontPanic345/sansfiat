@@ -1,12 +1,16 @@
 //! The stage: the map text, the layers, the placements, the orders and reads, the retro cache and
 //! the spec form.
 
+mod common;
+
+use common::{capital, led_order, led_scout, open_ray};
 use engine::data::{size_radius, GRAIN};
 use engine::hex::Hex;
 use engine::land;
 use engine::map::{self, index};
 use engine::stage::{pregame_runs, ArmySpec, Stage, StageSpec, TileRef, RETRO};
-use engine::{stats, Config, Order, World};
+use engine::units;
+use engine::{stats, Config, EventKind, Order, World};
 
 /// The text of a grid of `radius`: every tile a `.` but those in `marks`, drawn as `map::ascii`
 /// draws a map.
@@ -165,6 +169,8 @@ fn a_spec_round_trips_and_builds_the_builders_world() {
         clans: Vec::new(),
         signposts: Vec::new(),
         limit: None,
+        scouts: Vec::new(),
+        stores: Vec::new(),
     };
     let json = serde_json::to_string(&spec).unwrap();
     let back: StageSpec = serde_json::from_str(&json).unwrap();
@@ -208,4 +214,62 @@ fn paint_sets_a_tiles_terrain_and_hidden_cost() {
     s.paint(i, engine::data::FOREST, Some(2.0), Some(3));
     let t = &s.world().tiles[i];
     assert_eq!((t.terrain, t.trail_cost, t.span), (engine::data::FOREST, Some(2.0), Some(3)));
+}
+
+/// The pick of the small map of `seed`, led by its first civ with the fight off.
+fn retro_led(seed: u32) -> Stage {
+    let mut s = Stage::retro("small", seed).unwrap();
+    s.world_mut().config.fight = false;
+    let first = s.world().civs.keys().next().copied().expect("a civ");
+    s.lead(first).unwrap();
+    s
+}
+
+/// A real game's save replays to the same world, scout included. (A staged world never replays: its
+/// placements are set outside the log, so its point is a game's save, on the pick.)
+#[test]
+fn a_route_order_replays_to_the_same_world() {
+    let mut w = retro_led(2).into_world();
+    let (cap, _) = capital(&w);
+    let target = open_ray(&w, cap, 6)[5];
+    w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
+    w.run(15);
+    // The army eats from the civ's store, which on this seed can't feed the scout past a route's walk: a
+    // scout that starved out has no route to clear, and its hunger is the event that says so.
+    let civ = w.player.unwrap();
+    match units::scout(&w, civ).map(|u| u.id) {
+        Some(id) => w.act(led_order(&w, Order::ClearRoute { unit: id })).expect("the scout is still there"),
+        None => assert!(w.events.iter().any(|e| e.kind == EventKind::ScoutStarved), "the scout starved"),
+    }
+    w.run(5);
+    let again = World::replay(&w.save()).unwrap();
+    assert_eq!(stats::digest(&again), stats::digest(&w));
+    let unit = units::scout(&w, civ).map_or(0, |u| u.id);
+    assert!(w.act(led_order(&w, Order::Route { unit, from: cap, to: cap })).is_err(), "a route needs two tiles");
+}
+
+/// The map and marks read as rows or as text alike, and a spec's scouts and stores are set on their
+/// civs: a scout moved to its tile with its pack, a store set to its food.
+#[test]
+fn rows_scouts_and_stores_of_a_spec_are_set() {
+    let rows: Vec<String> = Stage::flat(12).ascii().lines().map(String::from).collect();
+    let text = Stage::flat(12).ascii();
+    let json = serde_json::json!({
+        "map": rows,
+        "marks": grid_text(12, &[(Hex { q: -5, r: 0 }, 'A'), (Hex { q: 5, r: 0 }, 'B'), (Hex { q: 0, r: 0 }, 'S')]),
+        "civs": [{ "mark": "A" }, { "mark": "B" }],
+        "people": 14,
+        "lead": 0,
+        "scouts": [{ "civ": 1, "at": { "mark": "S" }, "pack": 30, "dest": { "mark": "A" } }],
+        "stores": [{ "civ": 0, "food": 50, "everyTurn": true }],
+    });
+    let spec: StageSpec = serde_json::from_value(json).unwrap();
+    let stage = Stage::from_spec(&spec).unwrap();
+    let ids: Vec<u32> = stage.world().civs.keys().copied().collect();
+    let scout = stage.scout(ids[1]).unwrap();
+    assert_eq!((scout.tile(), scout.actor.store[1]), (stage.mark('S'), 30.0));
+    assert_eq!(scout.scout().unwrap().dest, Some(stage.mark('A')));
+    assert_eq!(stage.store(ids[0]), 50.0);
+    let as_text: StageSpec = serde_json::from_value(serde_json::json!({ "map": text, "retro": null })).unwrap();
+    assert_eq!(as_text.map.as_deref(), Some(text.as_str()), "a string reads as it is");
 }

@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use engine::data::{JUDGE, N, UNIT};
+use engine::data::{GRAIN, JUDGE, N, UNIT};
 use engine::judge::{rank_of, Watch};
 use engine::stage::Stage;
 use engine::stats::{self, standing};
@@ -205,8 +205,7 @@ fn a_played_game_scores_the_same_twice() {
 /// army is the most people in one camp, and the levy pays in the first turns after the pick.
 #[test]
 fn a_staged_store_at_a_pack_is_a_turn_at_pack() {
-    let mut s = Stage::retro("small", 2).unwrap();
-    let civs: Vec<u32> = s.world().civs.keys().copied().collect();
+    let (mut s, civs) = civs_on_flat(3, 14.0);
     let pack = units::pack_cap(UNIT.first as f64);
     for &c in &civs {
         s.world_mut().civs.get_mut(&c).unwrap().store = [0.0; N];
@@ -221,8 +220,7 @@ fn a_staged_store_at_a_pack_is_a_turn_at_pack() {
 
 #[test]
 fn a_staged_army_sets_the_largest_army() {
-    let mut s = Stage::retro("small", 2).unwrap();
-    let civs: Vec<u32> = s.world().civs.keys().copied().collect();
+    let (mut s, civs) = civs_on_flat(3, 14.0);
     let civ = civs[0];
     let cap = s.world().civs[&civ].capital;
     s.army(civ, cap, 40.0);
@@ -233,9 +231,12 @@ fn a_staged_army_sets_the_largest_army() {
 
 #[test]
 fn the_levy_pays_in_the_first_turns_after_the_pick() {
-    let mut s = Stage::retro("small", 2).unwrap();
-    let civs: Vec<u32> = s.world().civs.keys().copied().collect();
-    s.lead(civs[0]).unwrap();
+    let (mut s, civs) = civs_on_flat(3, 14.0);
+    // Each capital's land has grain for its clan to gather, as the retro land has.
+    for &c in &civs {
+        let cap = s.world().civs[&c].capital;
+        s.food(cap, GRAIN, 50.0);
+    }
     let mut watch = Watch::new(s.world());
     for _ in 0..3 {
         s.turn(1).unwrap();

@@ -41,21 +41,22 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/units/` | `line.rs` (paths, cuts, `ring`), `camp.rs` (an army's turn and zone), `forage.rs` (what a unit eats; `Ladder`), `muster.rs`, `search.rs` (the route search), `scout.rs`, `ai.rs` (the planner), `fight.rs`. |
 | `core/src/orders.rs` | `Order`, `World::order` and `check_order`: the player's and the AI's. |
 | `core/src/script.rs` | `Lead`, the scripted game; `Auto`, the planner as a led player. |
-| `core/src/stage.rs`, `maptext.rs` | `Stage`: a world on a known map, layers, placements, orders and reads; `StageSpec` is its data form (`clans`, `signposts`). A staged world is not a save. |
+| `core/src/stage.rs`, `stage_spec.rs`, `maptext.rs` | `Stage`: a world on a known map, layers, placements, orders and reads; `stage_spec.rs` is `StageSpec`, its data form. A staged world is not a save. |
+| `core/src/stage_test.rs`, `core/stage/` | A stage test as data (`StageSpec`, orders, holds), one JSON file each, listed in `LIST`; `Run` plays it a turn at a time. |
 | `core/src/stats.rs` | `summary`, `standing`, the evidence reports, `digest` and `state_digest`. |
-| `core/src/judge.rs`, `judge_scores.rs` | `Watch`: a game scored from its pick in the score groups, the end group included; `judge_scores.rs` holds the score structs. Reads the world only. |
+| `core/src/judge.rs`, `judge_scores.rs` | `Watch`: a game scored from its pick, the end group included; `judge_scores.rs` holds the score structs. Reads the world only. |
 | `core/src/judge_ring.rs` | The `supply` group: each civ's ring, the armies and scouts inside it, hungry turns, clan territory. |
 | `core/src/judge_fields.rs` | The `fields` group: field tiles, farmers, store turns at a pack, moves and starving. |
-| `core/src/towns.rs`, `judge_towns.rs` | Towns: `towns` (a festival with `TOWN.homes` homes on its tile) and `check`, which keeps `Market.town` and `TownFormed`; the `towns` group: towns, town clans and their walk, trade and starving, and home moves. |
+| `core/src/towns.rs`, `judge_towns.rs` | Towns: `towns` (a festival with `TOWN.homes` homes on its tile) and `check` (`Market.town`, `TownFormed`); the `towns` group. |
 | `core/src/sources.rs`, `judge_goods.rs` | Goods: placing salt and obsidian sources (`place`, `of`, `steps_from`); the `goods` group. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
 | `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields), `sweep_towns.rs` (towns), `sweep_goods.rs` (goods against the no-sources control), `sweep_led.rs` (led games beside idle), `sweep_total.rs`, `sweep_text.rs` and `game_judge.rs` (the file's judge), `view.rs` (the text view), `story.rs` (stories of war). |
-| `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the orders; `Sim.stage` builds one. |
+| `web/src/lib.rs`, `stage_test.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`, the orders; `Sim.stage` builds one, `Sim.stage_test` a test. |
 | `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js`, `panels.js` (a selection's shape and its buttons) and `panels-land.js` (festival, tile, settlement shapes), `model.js` (the view model), `map/` (`MapView`, a file per layer: `towns.js`, `sources.js`), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim`: the panel shapes as data, and the panel context both share. |
-| `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`; `play/live.mjs` holds one page across shell calls (header). |
-| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, ..., towns, settle, goods), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button once on a staged game; `end.mjs` ends staged games, then Play on and New game; `all.mjs` runs them. |
+| `www/play.mjs` | Drives the page in headless Chrome (clicks, waits, screenshots); `play/live.mjs` holds one page across shell calls. |
+| `www/play/` | One script per touch point of `docs/design/page.md`, each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button on a staged game; `all.mjs` runs them. |
 
 ## Adding a mechanic
 
@@ -73,7 +74,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 - The world changes only through `act` and the planner's orders; a save replays to an identical world.
 - The end is a phase: only the `over` step sets `Phase::Over`, and the world runs on in it (`playing()`);
   `validate` refuses the player's orders there.
-- A rule's proof is a stage (`core/src/stage.rs`), and a button's is `www/play/buttons.mjs`.
+- A rule's proof is a test in `core/stage/` (under 8 KB each), and a button's is `www/play/buttons.mjs`.
 - All randomness goes through `rng::rand`; `exp`, `ln`, `powf` go through `libm`, so native and wasm
   give the same digest every turn (`./cross-build.sh`).
 - `clear` conserves every good exactly.

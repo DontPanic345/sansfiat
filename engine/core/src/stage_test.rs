@@ -297,7 +297,7 @@ impl Run {
                 _ => None,
             })
             .ok_or_else(|| format!("{}: a hold is still pending", test.name))?;
-        Err(format!("{}: {} failed on turn {turn}: {why}", test.name, run.hold_words(i, &w)))
+        Err(format!("{}: failed on turn {turn}: {}: {why}", test.name, run.hold_words(i, &w)))
     }
 
     /// The stores kept each turn, as words: "the store of Red is kept at 50".
@@ -432,7 +432,8 @@ impl Run {
     }
 
     fn not_holding(&self, fact: &Fact, w: &World) -> String {
-        format!("{} does not hold", self.fact_words(fact, w))
+        let _ = (fact, w);
+        "it does not hold".to_string()
     }
 
     fn civ(&self, k: usize) -> Result<u32, String> {

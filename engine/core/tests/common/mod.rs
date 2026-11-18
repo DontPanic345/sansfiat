@@ -42,6 +42,27 @@ pub fn big() -> World {
     flat_radius(BIG)
 }
 
+/// The `n` tiles from `from` straight out in the first direction that stays on land (none of them
+/// sea, none of them a rival's land), in order, as `from`'s own tile is not among them.
+pub fn open_ray(w: &World, from: usize, n: i32) -> Vec<usize> {
+    let h = w.tiles[from].hex();
+    for d in DIRS {
+        let tiles: Vec<usize> =
+            (1..=n).filter_map(|k| index(w.config.radius, Hex { q: h.q + d.0 * k, r: h.r + d.1 * k })).collect();
+        let mine = |i: usize| engine::civs::tile_civ(w, i).is_none_or(|c| Some(c) == w.player);
+        if tiles.len() == n as usize && tiles.iter().all(|&i| w.tiles[i].terrain != SEA && mine(i)) {
+            return tiles;
+        }
+    }
+    panic!("no open ray from {from}");
+}
+
+/// The player's capital, as its tile and its hex.
+pub fn capital(w: &World) -> (usize, Hex) {
+    let c = w.civs[&w.player.unwrap()].capital;
+    (c, w.tiles[c].hex())
+}
+
 /// The tile at `(q, r)` in a `big()` world.
 pub fn at_big(q: i32, r: i32) -> usize {
     index(BIG, Hex { q, r }).unwrap()
