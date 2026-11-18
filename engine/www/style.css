@@ -109,6 +109,8 @@ button.link:hover { background:none; }
 #detail .numbers { display:flex; flex-wrap:wrap; gap:2px 16px; margin:4px 0; }
 #detail .num { white-space:nowrap; }
 #detail .num b { font-variant-numeric:tabular-nums; }
+#detail button.num { background:none; border:0; border-radius:3px; padding:0 3px; margin:0 -3px; color:inherit; font:inherit; text-decoration:underline dotted; cursor:pointer; }
+#detail button.num.picked { background:rgba(255,255,255,0.14); text-decoration:none; }
 #detail .list { margin:6px 0; }
 #detail .listrow { font-size:12px; }
 #detail .hint, #detail .refused { margin:4px 0; font-size:12px; }

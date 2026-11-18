@@ -7,6 +7,7 @@
 // goods, rules, sim, view (MapView), routing, outcome, painting}.
 
 import { festivalShape, settlementShape, tileShape } from './panels-land.js';
+import { fillButton, wareRows } from './panels-goods.js';
 
 export const f2 = (x) => (Math.round(x * 100) / 100).toString();
 const ZONES = ['', 'valley', 'sealed valley', 'neck'];
@@ -137,18 +138,6 @@ export const foodOf = (ctx, store) => sum(store.slice(0, ctx.rules.foods));
 /** Every good a store holds, food first then salt and obsidian, as "name amount". */
 export const heldGoods = (ctx, store) => ctx.goods.map((g, f) => (store[f] > 0.005 ? `${g} ${f2(store[f])}` : null)).filter(Boolean);
 
-/** A number row for each of salt and obsidian in `store`: with `always`, a row for each even at 0; else only when held. */
-export function wareRows(ctx, store, always, what) {
-  return ctx.goods
-    .map((g, f) => ({ g, f }))
-    .filter(({ f }) => f >= ctx.rules.foods && (always || store[f] > 0.005))
-    .map(({ g, f }) => ({
-      label: `${g[0].toUpperCase()}${g.slice(1)}`,
-      value: f2(store[f]),
-      tip: f === ctx.rules.foods ? `Salt in ${what}: it keeps the food there from spoiling, and is used up doing it` : `Obsidian in ${what}: a warrior raised from the store takes ${ctx.rules.arms.each} of it for a blade`,
-    }));
-}
-
 /** The latest reasons the subject has (`Sim.notes`), newest first, for the panel's Why list. */
 export function reasonsOf(ctx, id) {
   if (id == null) return [];
@@ -260,6 +249,7 @@ function campShape(ctx, u) {
     buttons.push({ label: 'Forage', action: unitOrder(u, { type: 'forage' }) });
     buttons.push({ label: 'Pillage', action: unitOrder(u, { type: 'pillage' }) });
     buttons.push({ label: 'Resupply', action: unitOrder(u, { type: 'resupply' }) });
+    buttons.push(fillButton(u));
     buttons.push(...switchButtons(u));
     if (deployed) buttons.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
     if (u.kind === 'camp') buttons.push(raiseInto(u, rules));
@@ -343,6 +333,7 @@ function scoutShape(ctx, u) {
   const buttons = [];
   if (mine) {
     buttons.push({ label: 'Move to…', arm: 'move' }, { label: 'Route from…', arm: 'start' }, { label: 'Route to…', arm: 'to' });
+    buttons.push(fillButton(u));
     if (u.route) buttons.push({ label: 'Clear route', action: unitOrder(u, { type: 'clearRoute' }) });
     if (u.dest != null) buttons.push({ label: 'Stop', action: unitOrder(u, { type: 'move', to: u.tile }) });
     buttons.push(...disband(u));
@@ -441,7 +432,7 @@ function civShape(ctx, c) {
       value: `${f2(foodOf(ctx, c.store))} of ${rules.store_cap}`,
       tip: `${stored.join(', ') || 'Empty'}${c.lost > 0.005 ? `; lost ${f2(c.lost)} last turn` : ''}`,
     },
-    ...wareRows(ctx, c.store, true, 'its store'),
+    ...wareRows(ctx, c.store, true, 'its store', c.capital),
     {
       label: 'Last turn',
       value: `kept ${f2(c.keep)} · posted ${f2(c.posted)}`,

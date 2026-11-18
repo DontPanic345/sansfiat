@@ -19,6 +19,7 @@ import * as festivals from './layers/festivals.js';
 import * as land from './layers/land.js';
 import * as held from './layers/held.js';
 import * as lines from './layers/lines.js';
+import * as flow from './layers/flow.js';
 import * as clans from './layers/clans.js';
 import * as towns from './layers/towns.js';
 import * as leanings from './layers/leanings.js';
@@ -34,7 +35,7 @@ import * as overlay from './layers/overlay.js';
 import { CORNER, EDGE_DIR } from './geom.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, clans, towns, leanings, centres, capitals, settle, ring, units, routes, overlay];
+export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, flow, clans, towns, leanings, centres, capitals, settle, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */
@@ -68,6 +69,7 @@ export class MapView {
     this.ring = null; // {colour, shares: Map tile -> share}: the ring of the selected army's or civ's civ, or null
     this.homeLine = null; // the led civ's camp's line home as tile lists, drawn faint at all times
     this.plan = null; // {known, possible}: the selected scout's route as tile lists from its start, or null
+    this.flow = null; // {good, store, chains}: the picked good's chains into its store, or null (layers/flow.js)
     this.routeStart = null; // {tile, colour}: the ring where a scout's route begins, while it is being set, or null
     this.revealed = new Uint8Array(0); // 1 where the led civ has revealed the tile
     this.work = []; // [tile, labour, need]: trails under way
@@ -256,6 +258,12 @@ export class MapView {
   /** The selected camp's line home: `{tiles: [its tile, ...path], colour}`, or null. */
   setLine(line) {
     this.line = line;
+    this.requestDraw();
+  }
+
+  /** The picked good's chains into its store: `{good, store, chains: [{share, path}]}`, or null for none. */
+  setFlow(picked) {
+    this.flow = picked;
     this.requestDraw();
   }
 

@@ -347,6 +347,8 @@ pub struct Panel {
     pub traders: Vec<u32>,
     /// Its land: the tiles of its civ's claim nearer it than the capital or another settlement.
     pub land: Vec<usize>,
+    /// Where the wares in its store came from (`lots.rs`).
+    pub lots: Lots,
 }
 
 /// Each settlement's panel, in id order.
@@ -375,6 +377,7 @@ pub fn panels(w: &World) -> Vec<Panel> {
             clans: w.clans.values().filter(|k| k.home == s.tile).map(|k| k.id).collect(),
             traders: w.clans.values().filter(|k| k.market == Some(s.market)).map(|k| k.id).collect(),
             land: near.remove(&s.id).unwrap_or_default(),
+            lots: s.lots.clone(),
         })
         .collect()
 }
