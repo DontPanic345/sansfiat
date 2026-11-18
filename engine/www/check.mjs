@@ -525,4 +525,28 @@ for (const kind of ['clanMoved', 'clanFarming']) {
 
 await import('./check-stage.mjs');
 
+// The stage door: a test built from its file and stepped to the end passes; a copy whose trails hold
+// is "by": 2 fails there, at turn 2, with the hold's words (the verdict is core's).
+const TESTS = JSON.parse(Sim.tests());
+assert.deepEqual(TESTS.map((t) => t.name), ['scout-errand', 'scout-killed', 'scout-trapped', 'scout-walks-round'], 'the list in order');
+const playTest = (json) => {
+  const t = Sim.stage_test(json);
+  assert.equal(t.staged(), true, 'a test is a staged game');
+  let s = JSON.parse(t.test_state());
+  while (!s.done) s = JSON.parse(t.test_step());
+  return s;
+};
+const errand = TESTS.find((t) => t.name === 'scout-errand');
+const held = playTest(errand.json);
+assert.equal(held.passed, true, 'scout-errand passes');
+assert.ok(held.holds.every((h) => h.state === 'held'), 'every hold of scout-errand is held');
+const copy = JSON.parse(errand.json);
+copy.holds[3] = { by: 2, fact: { scoutBuilt: { civ: 0 } } };
+const failed = playTest(JSON.stringify(copy));
+assert.equal(failed.passed, false, 'a hold that cannot hold fails the test');
+assert.equal(failed.holds[3].state, 'failed');
+assert.equal(failed.holds[3].turn, 2, 'it fails at turn 2');
+assert.match(failed.holds[3].words, /^by turn 2: /, 'the failed hold names its words');
+assert.throws(() => new Sim(seed, medium.radius).test_state(), /not a stage test/, 'a game with no test has no test state');
+
 console.log(`ok: medium seed ${seed}, ${n} tiles, ended turn ${v.end.turn}${v.end.by_limit ? ' by the limit' : ''}, ${all.length} events, ${Object.keys(v.clans).length} clans`);

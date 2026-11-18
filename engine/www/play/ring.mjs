@@ -1,12 +1,13 @@
-// The ring in the page (build-3): on small seed 2 the led civ raises an army, and selecting the army draws the
-// ring and covers the capital's tile; selecting the civ still draws it; selecting a clan takes it away. The tile
+// The ring in the page (build-3): a staged game on a plains map, its led civ with an army of three warriors on its
+// capital, and a clan living out on the plains. Selecting the army draws the ring and covers the capital's tile; selecting the civ still draws it; selecting a clan takes it away. The tile
 // tooltip, with an army selected, says the ring's share on the capital ("Ring: its line takes 0% of an army's
 // days here") and that a tile past the ring can't be fed ("Past the ring: its line can't feed an army here").
 // Writes ring.png (the army selected, its ring drawn) to --out.   node www/play/ring.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open, raiseArmy } from '../play.mjs';
+import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -37,14 +38,23 @@ async function selectKey(page, key, i) {
 /** Whether the ring is drawn (the layer on, a ring set) and covers tile `tile`. */
 const drawn = (page, tile) => page.eval(`(() => { const m = game.map; return !!(m.on.ring && m.ring && m.ring.shares.has(${tile})); })()`);
 
-const page = await open('?size=small&seed=2&run=1');
+// Radius 8: the capital A at (-4, 0), the rival's B at (4, 0), a clan's home P at (0, 3), an army of three warriors.
+const R = 8;
+const SPEC = {
+  map: plains(R),
+  marks: marks(R, { A: [-4, 0], B: [4, 0], P: [0, 3] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+  armies: [{ civ: 0, at: { mark: 'A' }, people: 3 }],
+  clans: [{ home: { mark: 'P' }, tiles: [], people: 4 }],
+};
+
+const page = await open('');
 try {
-  await page.until("document.body.dataset.phase === 'choose'");
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
+  await stage(page, SPEC);
   const civ = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${civ}].capital`);
-  await raiseArmy(page);
   const army = await page.eval(`(() => { const u = Object.values(game.view().units).find((u) => u.civ === ${civ} && u.kind === 'camp'); return u && { id: u.id, tile: u.tile }; })()`);
   need(!!army, 'the civ has an army to select');
   if (!army) throw new Error('no army raised');

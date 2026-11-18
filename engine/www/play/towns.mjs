@@ -8,6 +8,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -25,25 +26,10 @@ const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationF
 
 // ---- the staged map: radius 3, sea on the rim, plains inside ------------------------------------------------------
 const R = 3;
-const dist = (q, r) => Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
-const SPAN = (r) => ({ lo: Math.max(-R, -r - R), hi: Math.min(R, -r + R) });
-const gridText = (cell) => {
-  let text = '';
-  for (let r = -R; r <= R; r++) {
-    const { lo, hi } = SPAN(r);
-    text += ' '.repeat(2 * lo + r + 2 * R);
-    const row = [];
-    for (let q = lo; q <= hi; q++) row.push(cell(q, r));
-    text += `${row.join(' ')}\n`;
-  }
-  return text;
-};
-const MAP = gridText((q, r) => (dist(q, r) === R ? '~' : '.'));
 const MARK = { A: [0, 0], X: [1, -1], S: [-1, 1] };
-const MARKS = gridText((q, r) => Object.keys(MARK).find((k) => MARK[k][0] === q && MARK[k][1] === r) ?? '.');
 const SPEC = {
-  map: MAP,
-  marks: MARKS,
+  map: plains(R),
+  marks: marks(R, MARK),
   civs: [{ mark: 'A' }],
   people: 12,
   lead: 0,
@@ -61,9 +47,7 @@ const SPEC = {
 
 const page = await open('');
 try {
-  await page.eval(`game.stage(${JSON.stringify(SPEC)})`);
-  await page.until("document.body.dataset.phase === 'main'");
-  await page.eval(frames);
+  await stage(page, SPEC);
 
   const view = await page.eval('game.view()');
   const me = view.player;

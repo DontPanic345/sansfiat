@@ -1,24 +1,40 @@
-// The armies (build-4): on small seed 6, Red (the civ that holds forest, and whose corridor meets Gold's land
-// from the first turn), the page raises warriors as a new army through the civ's panel, raises archers into it
-// through the army's panel, sees its number on the map, marches it with Move to… onto a rival's land tile, and
-// reads the fight in the feed and the army's reasons. Gift 0 and the turns that fill the store come first.
+// The armies, on the page (build-4): a staged game on a forested plains map of radius 8. The led civ (A, west) holds
+// forest, and its store holds 400 grain, so its Raise… allows warriors at once. The rival (B, east) has an army of three
+// warriors at E, one step from the led civ's path. The page raises warriors as a new army through the civ's panel,
+// raises archers into it through the army's panel, sees its number on the map, marches it onto E by Move to…, and
+// reads the fight in the feed and the army's reasons. Grain lies on every tile, so the armies do not starve on the march.
 // Exits non-zero when any of these is missing; writes army-*.png to --out.   node www/play/army.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open, lead } from '../play.mjs';
+import { open } from '../play.mjs';
+import { grid, marks, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
 const out = resolve(at >= 0 ? args[at + 1] : mkdtempSync(join(tmpdir(), 'play-army-')));
 mkdirSync(out, { recursive: true });
 
-const SEED = 6;
-const SIZE = 'small';
-const CIV = 'Red';
 const TURNS = 80;
 // The people kept at the capital: enough that no rival outweighs it while the army is away.
 const HOME = 5;
+// The forest at (-4, -1) and (-3, 0), inside the led civ's land.
+const R = 8;
+const FOREST = [
+  [-4, -1],
+  [-3, 0],
+];
+const SPEC = {
+  map: grid(R, (q, r) => (FOREST.some(([fq, fr]) => fq === q && fr === r) ? 'f' : Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) === R ? '~' : '.')),
+  marks: marks(R, { A: [-4, 0], B: [4, 0], E: [1, 0] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 40,
+  lead: 0,
+  armies: [{ civ: 1, at: { mark: 'E' }, people: 3 }],
+  stores: [{ civ: 0, food: 400 }],
+  // Grain on every tile, so a camp that marches off its line still finds food.
+  food: Array.from({ length: 3 * R * (R + 1) + 1 }, (_, tile) => ({ at: { tile }, good: 1, amount: 200 })),
+};
 let failed = false;
 const fail = (msg) => {
   console.error(`army: ${msg}`);
@@ -45,7 +61,7 @@ const buttonOf = async (page, label) => (await page.panel())?.buttons.find((b) =
 
 const page = await open('');
 try {
-  await lead(page, { seed: SEED, size: SIZE, civ: CIV });
+  await stage(page, SPEC);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   const civKey = `civ:${me}`;
@@ -154,17 +170,21 @@ try {
   const marched = await page.eval('game.view().turn');
   let skirmish = null;
   for (let k = 0; k < 60 && !skirmish; k++) {
+    const before = await page.eval(`game.view().units[${army.id}]?.tile ?? null`);
     await page.button('End turn');
+    // A fight the army is in: on its tile when the turn began, or where it stands now.
     skirmish = await page.eval(`(() => { const v = game.view(), u = v.units[${army.id}];
-      return u && v.contested.includes(u.tile) ? game.feed.items.findLast((it) => it.kind === 'skirmish' && it.unit === ${army.id} && it.turn >= ${marched}) ?? null : null; })()`);
+      return game.feed.items.findLast((it) => it.kind === 'skirmish' && it.civ === ${me} && it.turn >= ${marched} && (it.tile === ${before} || (u && it.tile === u.tile))) ?? null; })()`);
   }
   need(skirmish != null && skirmish.turn >= marched, `a skirmish with the army is in the feed (${skirmish ? `turn ${skirmish.turn}: ${skirmish.text}` : 'none'})`);
   if (skirmish) {
-    // Click it in the feed: the army is selected, and its panel says it is fighting and why.
+    // Click it in the feed: the fight's first army is selected (the feed names it by its id, the lowest in the fight);
+    // the army that marched is then selected on its tile, and its panel says it is fighting and why.
     await page.eval(`(() => { const li = [...document.querySelectorAll('#feed li')].find((l) => Number(l.dataset.id) === ${skirmish.id});
       if (li) li.click(); })()`);
     await page.eval(frames);
-    need((await page.data()).selected === armyKey, 'a click on the skirmish selects the army');
+    need((await page.data()).selected === `unit:${skirmish.unit}`, `a click on the skirmish selects the fight's first army ${skirmish.unit}`);
+    await selectKey(page, armyKey, skirmish.tile);
     p = await page.panel();
     need(p.doing?.includes('Fighting at'), `the army's panel says it is fighting ("${p.doing}")`);
     need(p.reasons.some((r) => r.includes('fought')), `the army's reasons give the fight ("${p.reasons[0] ?? 'none'}")`);
@@ -184,7 +204,7 @@ try {
   await page.shot(join(out, 'army-feed.png'), 1);
 
   for (const e of page.errors()) fail(`page error: ${e}`);
-  console.log(JSON.stringify({ seed: SEED, size: SIZE, civ: CIV, turns, raisedAt: army.tile, army: army.id, target, skirmish: skirmish?.turn ?? null }));
+  console.log(JSON.stringify({ turns, raisedAt: army.tile, army: army.id, target, skirmish: skirmish?.turn ?? null }));
 } finally {
   await page.close();
 }

@@ -1,16 +1,39 @@
 // The map's views: pan, zoom and fit move it; each layer toggles by name and the map redraws; H toggles
-// hidden country; a hover shows a tooltip naming the terrain.   node www/play/views.mjs [--out DIR]
+// hidden country; a hover shows a tooltip naming the terrain. The staged map has a river, forest, hills, marsh and
+// mountain among the plains, so each layer that draws terrain has something to draw.   node www/play/views.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { open } from '../play.mjs';
+import { grid, marks, stage } from '../play-stage.mjs';
+
+// Radius 12, so the fit is below the zoom's cap. Sea on the rim, the land cycled through plains, forest, hills,
+// marsh and mountain, and plains where the marks stand: two capitals, a river (R flows to S), and a clan's home
+// (P) going to the led civ's festival.
+const R = 12;
+const TERRAIN = ['.', 'f', '.', 'h', '%', '.', '^', 'f', '.'];
+const MARKS = { A: [-3, 0], B: [3, 0], R: [0, -2], S: [1, -2], P: [-2, 1] };
+const SPEC = {
+  map: grid(R, (q, r) => {
+    const d = Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
+    if (d === R) return '~';
+    if (Object.values(MARKS).some(([a, b]) => a === q && b === r)) return '.';
+    return TERRAIN[(((q * 4 + r * 7) % TERRAIN.length) + TERRAIN.length) % TERRAIN.length];
+  }),
+  marks: marks(R, MARKS),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+  rivers: [{ at: { mark: 'R' }, flow: { mark: 'S' } }],
+  clans: [{ home: { mark: 'P' }, tiles: [], people: 4, market: 0 }],
+};
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
 const out = resolve(at >= 0 ? args[at + 1] : mkdtempSync(join(tmpdir(), 'play-views-')));
 mkdirSync(out, { recursive: true });
 
-const page = await open('?size=small&seed=2&run=1');
+const page = await open('');
 let failed = false;
 const fail = (msg) => {
   console.error(`views: ${msg}`);
@@ -19,7 +42,9 @@ const fail = (msg) => {
 const settle = () => page.until('!game.map.anim && !game.map.frame', 5000);
 const view = () => page.eval('(() => { const m = game.map; return { k: m.k, cx: m.cx, cy: m.cy }; })()');
 try {
-  await page.until("document.body.dataset.phase === 'choose'");
+  await stage(page, SPEC);
+  // A turn walks the clan to its festival: the routes are drawn from the walks.
+  await page.button('End turn');
   await page.eval('game.map.fit()');
   const fit = await view();
 

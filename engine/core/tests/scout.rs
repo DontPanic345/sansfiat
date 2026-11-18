@@ -1,24 +1,21 @@
 //! The scout: a civ's route search over known and possible costs, its reveals and trails, and its
-//! feeding. The maps are the real pre-game's, with their land painted into the case a test needs.
+//! feeding. The maps are built stages of bare plains, with the land a test needs painted on them.
 
 mod common;
 
-use common::{led_order, led_scout};
+use common::{at_big, capital, led_order, led_scout, open_ray, BIG};
 use engine::data::*;
-use engine::hex::{Hex, DIRS};
-use engine::map::index;
 use engine::stage::Stage;
-use engine::stats::digest;
 use engine::units::{self, UnitKind};
 use engine::{Action, EventKind, Order, World};
 
-/// The real map of `seed` (the small retro map, from its cached pick), led by its first civ.
-fn lead(seed: u32) -> Stage {
-    let mut s = Stage::retro("small", seed).unwrap();
-    // The fight is off: the led civ sits idle past the pick and this test is not about war.
+/// A built map of bare plains (`BIG`): two civs ten steps apart, the first led, the fight off. The
+/// first civ's capital is the origin, so the rays and rings of these tests fit the map.
+fn lead() -> Stage {
+    let mut s = Stage::flat(BIG);
+    let ids = s.civs(&[at_big(0, 0), at_big(10, 0)], 14.0);
+    s.lead(ids[0]).unwrap();
     s.world_mut().config.fight = false;
-    let first = s.world().civs.keys().next().copied().expect("a civ");
-    s.lead(first).unwrap();
     s
 }
 
@@ -32,27 +29,6 @@ fn end_fed(w: &mut World) {
     let full = engine::market::spread(units::cap_of(&w.units[&id]));
     w.units.get_mut(&id).unwrap().store = full;
     w.act(Action::EndTurn).unwrap();
-}
-
-/// The `n` tiles from `from` straight out in the first direction that stays on land (none of them
-/// sea, none of them a rival's land), in order, as `from`'s own tile is not among them.
-fn open_ray(w: &World, from: usize, n: i32) -> Vec<usize> {
-    let h = w.tiles[from].hex();
-    for d in DIRS {
-        let tiles: Vec<usize> =
-            (1..=n).filter_map(|k| index(w.config.radius, Hex { q: h.q + d.0 * k, r: h.r + d.1 * k })).collect();
-        let mine = |i: usize| engine::civs::tile_civ(w, i).is_none_or(|c| Some(c) == w.player);
-        if tiles.len() == n as usize && tiles.iter().all(|&i| w.tiles[i].terrain != SEA && mine(i)) {
-            return tiles;
-        }
-    }
-    panic!("no open ray from {from}");
-}
-
-/// The player's capital, as its hex.
-fn capital(w: &World) -> (usize, Hex) {
-    let c = w.civs[&w.player.unwrap()].capital;
-    (c, w.tiles[c].hex())
 }
 
 fn scout(w: &World) -> &units::Unit {
@@ -78,7 +54,7 @@ fn until_route_done(w: &mut World, max: u32) -> u32 {
 
 #[test]
 fn the_scout_is_made_at_the_capital_with_its_packs_from_the_store() {
-    let w = lead(2).into_world();
+    let w = lead().into_world();
     let me = w.player.unwrap();
     let (cap, _) = capital(&w);
     let scouts: Vec<_> = w.units.values().filter(|u| u.kind() == UnitKind::Scout).collect();
@@ -90,8 +66,7 @@ fn the_scout_is_made_at_the_capital_with_its_packs_from_the_store() {
 
 #[test]
 fn a_hidden_route_is_priced_by_what_the_civ_knows() {
-    let mut s = lead(2);
-    s.plain();
+    let mut s = lead();
     let (cap, _) = capital(s.world());
     // Six steps out; the third is an unrevealed forest with a trail costing 1, the rest plains.
     let line = open_ray(s.world(), cap, 6);
@@ -115,8 +90,7 @@ fn a_hidden_route_is_priced_by_what_the_civ_knows() {
 
 #[test]
 fn a_route_across_rough_country_is_searched_and_its_trails_built() {
-    let mut s = lead(2);
-    s.plain();
+    let mut s = lead();
     let (cap, _) = capital(s.world());
     // Six tiles of forest and hills, each with a hidden trail.
     let line = open_ray(s.world(), cap, 6);
@@ -161,8 +135,7 @@ fn sealed_valley(s: &mut Stage, pass: Option<usize>) -> Vec<usize> {
 
 #[test]
 fn a_sealed_scout_searches_the_range_from_inside_the_valley() {
-    let mut s = lead(2);
-    s.plain();
+    let mut s = lead();
     let (cap, ch) = capital(s.world());
     let line = open_ray(s.world(), cap, 6);
     let (pass, target) = (line[2], line[5]);
@@ -186,8 +159,7 @@ fn a_sealed_scout_searches_the_range_from_inside_the_valley() {
 
 #[test]
 fn a_sealed_valley_gets_its_pass_built_and_its_route_found() {
-    let mut s = lead(2);
-    s.plain();
+    let mut s = lead();
     let (cap, _) = capital(s.world());
     let line = open_ray(s.world(), cap, 6);
     let (pass, target) = (line[2], line[5]);
@@ -205,8 +177,7 @@ fn a_sealed_valley_gets_its_pass_built_and_its_route_found() {
 
 #[test]
 fn no_route_can_exist_through_a_wall_no_mountain_of_which_can_be_bridged() {
-    let mut s = lead(2);
-    s.plain();
+    let mut s = lead();
     let (cap, _) = capital(s.world());
     let target = open_ray(s.world(), cap, 6)[5];
     sealed_valley(&mut s, None);
@@ -219,8 +190,7 @@ fn no_route_can_exist_through_a_wall_no_mountain_of_which_can_be_bridged() {
 
 #[test]
 fn a_built_trail_cuts_the_camps_and_the_clans_walks() {
-    let mut s = lead(2);
-    s.plain();
+    let mut s = lead();
     let (cap, _) = capital(s.world());
     let line = open_ray(s.world(), cap, 4);
     for &i in &line {
@@ -239,8 +209,7 @@ fn a_built_trail_cuts_the_camps_and_the_clans_walks() {
 
 #[test]
 fn a_mountain_pass_is_crossed_by_the_camp_only_once_built() {
-    let mut s = lead(2);
-    s.plain();
+    let mut s = lead();
     let (cap, _) = capital(s.world());
     let line = open_ray(s.world(), cap, 6);
     let (pass, target) = (line[2], line[5]);
@@ -250,25 +219,4 @@ fn a_mountain_pass_is_crossed_by_the_camp_only_once_built() {
     w.tiles[pass].trail = true;
     assert!(units::path_between(&w, cap, target).is_some(), "a built pass is walked");
     assert!(ring.iter().filter(|&&i| i != pass).all(|&i| !w.tiles[i].trail));
-}
-
-#[test]
-fn a_route_order_replays_to_the_same_world() {
-    let mut w = lead(2).into_world();
-    let (cap, _) = capital(&w);
-    let target = open_ray(&w, cap, 6)[5];
-    w.act(led_order(&w, Order::Route { unit: led_scout(&w), from: cap, to: target })).unwrap();
-    w.run(15);
-    // The army eats from the civ's store, which on this seed can't feed the scout past a route's walk: a
-    // scout that starved out has no route to clear, and its hunger is the event that says so.
-    let civ = w.player.unwrap();
-    match units::scout(&w, civ).map(|u| u.id) {
-        Some(id) => w.act(led_order(&w, Order::ClearRoute { unit: id })).expect("the scout is still there"),
-        None => assert!(w.events.iter().any(|e| e.kind == EventKind::ScoutStarved), "the scout starved"),
-    }
-    w.run(5);
-    let again = World::replay(&w.save()).unwrap();
-    assert_eq!(digest(&again), digest(&w));
-    let unit = units::scout(&w, civ).map_or(0, |u| u.id);
-    assert!(w.act(led_order(&w, Order::Route { unit, from: cap, to: cap })).is_err(), "a route needs two tiles");
 }

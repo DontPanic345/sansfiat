@@ -12,24 +12,34 @@ use std::collections::BTreeMap;
 
 use wasm_bindgen::prelude::*;
 
+mod stage_test;
+use engine::stage_test::Run;
+
 #[wasm_bindgen]
 pub struct Sim {
     world: World,
     lead: Lead,
     staged: bool,
+    /// The stage test this game plays, when `stage_test` built it.
+    run: Option<Run>,
 }
 
 #[wasm_bindgen]
 impl Sim {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, radius: i32) -> Sim {
-        Sim { world: World::new(Config { seed, radius, ..Config::default() }), lead: Lead::default(), staged: false }
+        Sim {
+            world: World::new(Config { seed, radius, ..Config::default() }),
+            lead: Lead::default(),
+            staged: false,
+            run: None,
+        }
     }
 
     /// Rebuilds the world from a save's JSON.
     pub fn load(save: &str) -> Result<Sim, String> {
         let save: Save = serde_json::from_str(save).map_err(|e| e.to_string())?;
-        Ok(Sim { world: World::replay(&save)?, lead: Lead::default(), staged: false })
+        Ok(Sim { world: World::replay(&save)?, lead: Lead::default(), staged: false, run: None })
     }
 
     /// The stage `spec` (JSON, as `engine::stage::StageSpec` reads it) describes: a world placed on a
@@ -37,7 +47,7 @@ impl Sim {
     pub fn stage(spec: &str) -> Result<Sim, String> {
         let spec: StageSpec = serde_json::from_str(spec).map_err(|e| e.to_string())?;
         let world = Stage::from_spec(&spec)?.into_world();
-        Ok(Sim { world, lead: Lead::default(), staged: true })
+        Ok(Sim { world, lead: Lead::default(), staged: true, run: None })
     }
 
     /// Whether this game was built by `stage`, not played from a seed or loaded from a save.

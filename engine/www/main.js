@@ -1,7 +1,7 @@
 // The page's router. It loads the wasm, the atlas and the sounds, then shows one screen at a time: start,
-// play (with the pick over its map) or end, each a module with show(args) and hide(). `?size&seed` goes
-// straight to play (`run=1` skips the pre-game, `play=1` runs it, `speed` sets its pace); a bare URL
-// opens start. `window.game` is what the scripts in www/play/ read.
+// play (with the pick over its map), end or tests, each a module with show(args) and hide(). `?size&seed` goes
+// straight to play (`run=1` skips the pre-game, `play=1` runs it, `speed` sets its pace); `?tests` opens the
+// stage tests; a bare URL opens start. `window.game` is what the scripts in www/play/ read.
 
 import init, { Sim, terrain, goods, rules, sizes } from './pkg/web.js';
 import { loadAtlas } from './atlas.js';
@@ -11,6 +11,7 @@ import { autosave } from './save.js';
 import * as start from './screens/start.js';
 import * as play from './screens/play.js';
 import * as end from './screens/end.js';
+import * as tests from './screens/tests.js';
 
 await init();
 app.data = {
@@ -23,7 +24,7 @@ app.data = {
 app.atlas = await loadAtlas();
 app.sound = new Sound(await (await fetch('./assets/sounds.json')).json());
 
-const SCREENS = { start, play, end };
+const SCREENS = { start, play, end, tests };
 
 /** Shows the screen `name` (its section, and body.dataset.screen), handing it `args`. */
 app.show = (name, args) => {
@@ -37,6 +38,7 @@ app.show = (name, args) => {
 start.init();
 play.init();
 end.init();
+tests.init();
 
 window.game = {
   screen: () => app.screen,
@@ -62,10 +64,21 @@ window.game = {
   terrain: () => app.data.TERRAIN,
   /** Shows a staged game: the world `spec` (a StageSpec, as an object) describes. Not a save. */
   stage: (spec) => app.show('play', { sim: app.data.Sim.stage(JSON.stringify(spec)) }),
+  /** The stage tests (`Sim.tests()`): each one's name, claim, turns, kept, holds and json. */
+  tests: () => JSON.parse(app.data.Sim.tests()),
+  /** Opens the Tests screen on a test: its name, or a test given as an object (a copy, for scripts). */
+  test: (which) => app.show('tests', { test: which }),
+  /** The open test's `test_state()`, or null on the list. */
+  testState: () => tests.state(),
+  /** The open test's view (`Sim.view()`), or null on the list: where its units stand. */
+  testView: () => tests.v(),
 };
 
 const params = new URLSearchParams(location.search);
-if (params.has('size') || params.has('seed')) {
+if (params.has('tests')) {
+  // ?tests opens the list; ?tests=NAME opens that test. pace=MS sets how long a turn takes while played.
+  app.show('tests', { test: params.get('tests') || null, pace: params.get('pace') });
+} else if (params.has('size') || params.has('seed')) {
   const size = app.data.SIZES.find((s) => s.name === params.get('size')) || app.data.SIZES[0];
   const seed = Math.max(0, Math.floor(Number(params.get('seed')) || 1));
   app.show('play', {

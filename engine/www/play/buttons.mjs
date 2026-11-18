@@ -7,6 +7,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { open } from '../play.mjs';
+import { grid, stage as stageOn } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -37,18 +38,7 @@ function indexOf(q, r, R = 3) {
   for (let c = -R; c < q; c++) i += 2 * R + 1 - Math.abs(c);
   return i + r - Math.max(-R, -q - R);
 }
-/** A grid's text (as `map::ascii` draws one): `cell(q, r)` gives each tile's character. */
-function gridText(cell, R = 3) {
-  let text = '';
-  for (let r = -R; r <= R; r++) {
-    const { lo, hi } = { lo: Math.max(-R, -r - R), hi: Math.min(R, -r + R) };
-    text += ' '.repeat(2 * lo + r + 2 * R);
-    const row = [];
-    for (let q = lo; q <= hi; q++) row.push(cell(q, r));
-    text += `${row.join(' ')}\n`;
-  }
-  return text;
-}
+const gridText = (cell, R = 3) => grid(R, cell);
 const TERRAIN = { '1,-1': 'h', '-1,-1': 'f' };
 const MAP = gridText((q, r) => (dist(q, r) === R ? '~' : TERRAIN[`${q},${r}`] ?? '.'));
 // Marks: A and B the two capitals; F and R food beside A and B; S a plains tile beside A (a route's start);
@@ -98,13 +88,11 @@ const X = indexOf(...MARK.X);
 
 // ---- the page -----------------------------------------------------------------------------------------------
 
-const page = await open('?size=small&seed=2&run=1');
+const page = await open('');
 
 /** Stages a fresh game of `spec`: every case starts from one, so its effect never hides another's. */
 async function stage(spec = specFor()) {
-  await page.eval(`game.stage(${JSON.stringify(spec)})`);
-  await page.until("document.body.dataset.phase === 'main'");
-  await page.eval(frames);
+  await stageOn(page, spec);
 }
 
 /** The world as the page reads it, with the led civ's units found by kind. */

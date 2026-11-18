@@ -1,10 +1,12 @@
 // The top bar (touch points 7-9): the pre-game's counts and the chips' Standing with a tooltip on each
 // number; End turn and space each end a turn; Play runs turns and space pauses; speed changes the rate;
-// each menu opens, and Escape closes it.   node www/play/bar.mjs [--out DIR]
+// each menu opens, and Escape closes it. The pre-game's counts read a seeded pre-game (the one check that needs
+// one: a stage is not a pre-game); the rest runs on a staged game of three civs.   node www/play/bar.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -21,16 +23,30 @@ const need = (ok, msg) => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const turn = async (page) => Number(await page.eval('game.view().turn'));
 
-const page = await open('?size=small&seed=2&run=1');
-try {
-  await page.until("document.body.dataset.phase === 'choose'");
-  // Before the pick: the counts, each with its tooltip.
-  const untitled = await page.eval(`[...document.querySelectorAll('#bar .stat')].filter((e) => e.offsetParent && !e.title).map((e) => e.textContent.trim())`);
-  need(untitled.length === 0, `counts without a tooltip: ${untitled.join(', ')}`);
-  need((await page.eval("document.getElementById('chips').hidden")) === true, 'the chips show before the pick');
+// Radius 8: three civs on plains, the led one first.
+const R = 8;
+const SPEC = {
+  map: plains(R),
+  marks: marks(R, { A: [-4, 0], B: [4, 0], C: [0, 4] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }, { mark: 'C' }],
+  people: 12,
+  lead: 0,
+};
 
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
+// Before the pick, on a seeded pre-game: the counts, each with its tooltip.
+const pre = await open('?size=small&seed=2');
+try {
+  await pre.until("document.body.dataset.phase === 'pregame'");
+  const untitled = await pre.eval(`[...document.querySelectorAll('#bar .stat')].filter((e) => e.offsetParent && !e.title).map((e) => e.textContent.trim())`);
+  need(untitled.length === 0, `counts without a tooltip: ${untitled.join(', ')}`);
+  need((await pre.eval("document.getElementById('chips').hidden")) === true, 'the chips show before the pick');
+} finally {
+  await pre.close();
+}
+
+const page = await open('');
+try {
+  await stage(page, SPEC);
 
   // After it: a chip per civ, the Standing summing to at most 100%, yours marked, each with a tooltip.
   const chips = await page.eval(`[...document.querySelectorAll('#chips .chip')].map((c) => ({ mine: c.classList.contains('mine'), you: !!c.querySelector('em'), pct: parseFloat(c.querySelector('span').textContent), title: c.title }))`);
@@ -93,11 +109,9 @@ try {
 
 // Phone width: the bar is one line, its ☰ menu holds Play, speed and the menus, and the feed is a drawer
 // closed by default.
-const phone = await open('?size=small&seed=2&run=1', { size: 'phone' });
+const phone = await open('', { size: 'phone' });
 try {
-  await phone.until("document.body.dataset.phase === 'choose'");
-  await phone.button('Lead ');
-  await phone.until("document.body.dataset.phase === 'main'");
+  await stage(phone, SPEC);
   const lines = await phone.eval("Math.round(document.getElementById('bar').getBoundingClientRect().height)");
   need(lines <= 40, `the phone bar is ${lines}px tall, not one line`);
   need(await phone.eval("document.getElementById('side').classList.contains('collapsed')"), 'the feed is open at phone width');

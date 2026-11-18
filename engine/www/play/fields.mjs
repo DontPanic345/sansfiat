@@ -1,12 +1,16 @@
-// Fields, on the page (#155, build-3): lead a civ on small seed 1 and play turns until one of its clans farms. Then
-// the feed holds a clanFarming item and a click selects its clan; the clan's panel has a Fields row over a tile with
-// ground; the civ's panel has a Living row whose farming part is above 0 and whose parts add up to its people and
-// its army; the fields layer draws on the clan's field tile; View → Fields turns it off. Writes fields.png (the
-// farmer selected) and civ-panel.png (the civ's panel) to --out.   node www/play/fields.mjs [--out DIR]
+// Fields, on the page (#155, build-3): a staged game on a plains map, its led civ's clan of twelve on the floodplain P,
+// with the floodplain X beside it. The clan's fields start at none: its notch raises them, and the feed has its farming
+// line. Turns are played until a farming clan of the led civ has a field tile that yields (the tiles are tamed in the
+// spec, so their grain yields from the start). Then the feed holds a clanFarming item and a click selects its clan; the
+// clan's panel has a Fields row over a tile with ground; the civ's panel has a Living row whose farming part is above 0
+// and whose parts add up to its people and its army; the fields layer draws on the clan's field tile; View → Fields turns
+// it off. Writes fields.png (the farmer selected) and civ-panel.png (the civ's panel) to --out.
+//   node www/play/fields.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { lead, open } from '../play.mjs';
+import { open } from '../play.mjs';
+import { grid, marks, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -45,16 +49,31 @@ const differing = (a, b) => {
 };
 const numberOf = (panel, label) => panel?.numbers.find((n) => n.label === label);
 
+// Radius 10: the led civ's capital at A and the rival's at B, eight steps either way. The farming clan lives on the
+// floodplain P (0, 1) with the floodplain X (0, 2) beside it, twelve people, and 30 grain on P for its first turns.
+const R = 10;
+const SPEC = {
+  map: grid(R, (q, r) => (q === 0 && (r === 1 || r === 2) ? 'z' : Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) === R ? '~' : '.')),
+  marks: marks(R, { A: [-8, 0], B: [8, 0], P: [0, 1], X: [0, 2] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+  food: [{ at: { mark: 'P' }, good: 1, amount: 30 }],
+  tame: [{ at: { mark: 'P' }, tame: 100 }, { at: { mark: 'X' }, tame: 100 }],
+  clans: [{ home: { mark: 'P' }, tiles: [{ mark: 'X' }], people: 12, civ: 0 }],
+};
+
 const page = await open('');
 try {
-  await lead(page, { seed: 1 });
+  await stage(page, SPEC);
   const me = await page.eval('game.view().player');
 
-  // Play until some clan of the led civ farms: its share at rules().field.farmer, the line its doing line and home read.
+  // Play until a clan of the led civ farms: its share is at rules().field.farmer (the line its doing line reads), it has a
+  // field tile laid, and the feed has its clanFarming line.
   const farmer = await page.eval("import('./pkg/web.js').then((m) => JSON.parse(m.rules()).field.farmer)");
   let turns = 0;
   const farming = () =>
-    page.eval(`Object.values(game.view().clans).filter((c) => c.civ === ${me} && c.fields >= ${farmer} - 1e-9).map((c) => c.id)`);
+    page.eval(`Object.values(game.view().clans).filter((c) => c.civ === ${me} && c.fields >= ${farmer} - 1e-9 && c.plots.length > 0 && game.feed.items.some((i) => i.kind === 'clanFarming' && i.clan === c.id)).map((c) => c.id)`);
   const farmers = () => page.eval(`game.view().civs[${me}].living.farming`);
   let clans = await farming();
   while (clans.length === 0 && turns < CAP) {

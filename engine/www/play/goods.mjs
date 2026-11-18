@@ -1,11 +1,13 @@
 // Goods on the page (#355): the map draws a mark on each source tile, a white crystal for salt and a black shard for
 // obsidian, and the tile's tooltip and panel name the source; the civ's panel lists salt and obsidian beside its food.
-// On small seed 2.
+// A staged game on a plains map: a salt source and an obsidian source beside the led civ's capital, and its store set
+// to 10 grain.
 //   node www/play/goods.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -21,11 +23,21 @@ const need = (ok, msg) => {
 };
 const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 
-const page = await open('?size=small&seed=2&run=1');
+// The staged game: radius 4, the led civ's capital at A, the rival's at B, salt at S and obsidian at O.
+const R = 4;
+const SPEC = {
+  map: plains(R),
+  marks: marks(R, { A: [-2, 0], B: [2, 0], S: [0, -1], O: [0, 1] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+  sources: [{ at: { mark: 'S' }, good: 'salt' }, { at: { mark: 'O' }, good: 'obsidian' }],
+  stores: [{ civ: 0, food: 10 }],
+};
+
+const page = await open('');
 try {
-  await page.until("document.body.dataset.phase === 'choose'");
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
+  await stage(page, SPEC);
   const civ = await page.eval('game.view().player');
 
   // The sources: salt and obsidian both on the map.
