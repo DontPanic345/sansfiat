@@ -74,7 +74,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 - The world changes only through `act` and the planner's orders; a save replays to an identical world.
 - The end is a phase: only the `over` step sets `Phase::Over`, and the world runs on in it (`playing()`);
   `validate` refuses the player's orders there.
-- A rule's proof is a test in `core/stage/` (under 8 KB each), and a button's is `www/play/buttons.mjs`.
+- A rule's proof is a test in `core/stage/`, and a button's is `www/play/buttons.mjs`.
 - All randomness goes through `rng::rand`; `exp`, `ln`, `powf` go through `libm`, so native and wasm
   give the same digest every turn (`./cross-build.sh`).
 - `clear` conserves every good exactly.
