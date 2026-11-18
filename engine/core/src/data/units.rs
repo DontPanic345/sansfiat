@@ -124,7 +124,8 @@ pub struct UnitRules {
     pub inside: f64,
     /// Tiles (hex steps) of its line the AI's zone covers past the camp's own, at most `people − 1`.
     pub zone: usize,
-    /// Salt a person's pack takes from a store of its civ (`Order::Fill`): the pack's salt room.
+    /// Salt a person's pack takes from a store of its civ (`Order::Fill`): the pack's salt room. A pack's
+    /// salt keeps its food, using about half a unit a person a turn, so 3 leaves some to sell after a march.
     pub salt: f64,
 }
 
@@ -143,7 +144,7 @@ pub const UNIT: UnitRules = UnitRules {
     guard: 0.1 * DAY,
     inside: 0.2,
     zone: 2,
-    salt: 1.0,
+    salt: 3.0,
 };
 
 /// What one person of a carrier carries (`actors::Actor::carry`).

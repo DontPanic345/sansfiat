@@ -117,12 +117,19 @@ pub struct KeepingRules {
     /// Salt a civ's store (capital or settlement) keeps back from its keeping, for the packs to fill from
     /// (`Order::Fill`, `exchange.rs`). Only with `Config.exchange`.
     pub packs: f64,
+    /// The share of a clan's salt a store's levy takes (against `CIV.levy` of its food), so the packs have
+    /// some to fill from. Only with `Config.exchange`.
+    pub levy: f64,
 }
 
 /// A unit of salt keeps 10 food and spares it half its spoiling: half a food saved for a unit of salt,
 /// so salt is worth about half its measure in food to a full store and nothing to an empty one. A clan
-/// at its surplus target loses 0.2 food a person a turn, and wants salt as it wants a food.
-pub const KEEPING: KeepingRules = KeepingRules { keeps: 10.0, slows: 0.5, want_at: 0.2, civ_want: 1.0, packs: 10.0 };
+/// at its surplus target loses 0.2 food a person a turn, and wants salt as it wants a food. With exchange
+/// on, a store keeps 10 units of salt back from its keeping and its levy takes half a clan's salt: a pack's
+/// salt keeps its own food within a march or two, so a pack carries more than it will sell, and the thin
+/// salt a capital's clans bring (about 0.2 a turn) fills a reserve only if the levy takes a good share.
+pub const KEEPING: KeepingRules =
+    KeepingRules { keeps: 10.0, slows: 0.5, want_at: 0.2, civ_want: 1.0, packs: 10.0, levy: 0.5 };
 
 /// How obsidian arms warriors (`units/muster.rs`, `units/fight.rs`).
 pub struct ArmsRules {

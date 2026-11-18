@@ -48,9 +48,9 @@ pub struct Market {
     /// Last turn's volume, good by good.
     #[serde(default)]
     pub ware: Basket,
-    /// This turn's clearings here, each row's net and the prices it cleared at (`judge_trade`). Written
-    /// only with `Config.exchange`.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    /// This turn's clearings here, each row's net and the prices it cleared at (`judge_trade`). Derived, not
+    /// saved: the judge reads it in the turn, so the exchange-off control has its trade group too.
+    #[serde(skip)]
     pub cleared: Vec<Cleared>,
 }
 
@@ -364,7 +364,7 @@ fn clear_at(w: &mut World, mid: u32, ids: &[u32], carriers: &[u32]) {
     if volume > 0.0 {
         w.note(mid, "its clans traded here: traders swapped goods".to_string());
     }
-    if c.cleared && w.config.exchange {
+    if c.cleared {
         let nets: Vec<Basket> =
             (0..brought.len()).map(|i| std::array::from_fn(|g| c.after[i][g] - brought[i][g])).collect();
         w.markets.get_mut(&mid).unwrap().cleared.push(Cleared { nets, prices: c.prices });

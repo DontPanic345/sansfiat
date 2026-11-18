@@ -1,6 +1,6 @@
 // Exchange on the page (#356): Fill salt moves salt from the capital's store into the army's pack, and a store's
 // picked good draws its chains on the map. A staged game: the led civ's capital A with an army on it, a rival's
-// capital B, a salt source S and an obsidian source O, and the capital's store holding 8 salt and 3 obsidian, each
+// capital B, a salt source S and an obsidian source O, and the capital's store holding 40 salt and 3 obsidian, each
 // dug at its source. Presses Fill salt on the army and checks the pack's salt rose and the store's fell in
 // `Sim.view()`; picks the store's obsidian and checks the flow layer drew a chain whose first point is a source,
 // then salt, then the second click and Escape clear it.
@@ -40,7 +40,7 @@ const SPEC = {
     { at: { mark: 'S' }, good: 'salt' },
     { at: { mark: 'O' }, good: 'obsidian' },
   ],
-  stores: [{ civ: 0, food: 10, salt: 8, obsidian: 3 }],
+  stores: [{ civ: 0, food: 10, salt: 40, obsidian: 3 }],
   armies: [{ civ: 0, at: { mark: 'A' }, people: 4 }],
 };
 

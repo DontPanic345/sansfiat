@@ -32,3 +32,13 @@
 - Units trade at the first clearing only; a unit's pack salt is sold into whatever the clans there want. The
   clans' worth for salt falls once they hold some (`actors::worths`), so a second army at the same festival
   the same turn gets less.
+
+## After the glaze
+
+- `army_flow` (`core/tests/exchange.rs`, `--ignored --nocapture`, 20 s for the seven maps) reads what an army
+  has: army-turns salted, salted and low, foreign army-turns with food, and the civ stores' salt. Quicker than a
+  sweep to see what a number does to the flow; only a sweep says what it does to health.
+- A pack's salt keeps the pack's food (`spoil_keeping`), about half a unit a person a turn: salt that isn't more
+  than a march's keeping is gone before the market. `UNIT.salt` 3 leaves a little to sell.
+- The control's trade group is real now (`Market.cleared` is derived and written with exchange off too).
+- `KEEPING.levy` is the levy's salt share (with exchange on); `CIV.levy` is still the food's.

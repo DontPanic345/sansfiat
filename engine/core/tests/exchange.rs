@@ -132,6 +132,90 @@ fn carry_flow() {
     }
 }
 
+/// A clan of the civ's land with a basket of grain and salt pays its levy at the civ's market.
+fn levied(exchange: bool) -> (f64, f64) {
+    let (mut w, ids, _) = led();
+    w.config.exchange = exchange;
+    let red = ids[0];
+    let mid = w.civs[&red].market;
+    hold_land(&mut w, red, &[at_big(-4, 0)]);
+    let on = put(&mut w, &[at_big(-4, 0)], 4.0);
+    let c = w.clans.get_mut(&on).unwrap();
+    c.market = Some(mid);
+    c.basket = [0.0; N];
+    c.basket[GRAIN] = 10.0;
+    c.basket[SALT] = 4.0;
+    w.civs.get_mut(&red).unwrap().store = [0.0; N];
+    engine::leaning::land(&mut w, false);
+    engine::civs::levy(&mut w, mid);
+    let store = &w.civs[&red].store;
+    (store[GRAIN], store[SALT])
+}
+
+#[test]
+fn the_levy_takes_salt_at_its_own_share_with_exchange_on_and_the_food_share_with_it_off() {
+    let (grain, salt) = levied(true);
+    assert!((grain - CIV.levy * 10.0).abs() < 1e-9, "the food pays CIV.levy");
+    assert!((salt - KEEPING.levy * 4.0).abs() < 1e-9, "the salt pays KEEPING.levy");
+    let (grain, salt) = levied(false);
+    assert!((grain - CIV.levy * 10.0).abs() < 1e-9);
+    assert!((salt - CIV.levy * 4.0).abs() < 1e-9, "with exchange off, salt pays the food's share");
+}
+
+/// What stands between an army and a foreign market, a map at a time: run with `--ignored --nocapture`.
+#[test]
+#[ignore]
+fn army_flow() {
+    let lines: Vec<String> = std::thread::scope(|s| {
+        let jobs: Vec<_> = MAPS
+            .iter()
+            .map(|&(size, seed, turns)| {
+                s.spawn(move || {
+                    let mut w = engine::stage::Stage::retro(size, seed).unwrap().into_world();
+                    w.act(engine::Action::ChooseCiv { civ: None }).unwrap();
+                    let (mut camps, mut salted, mut low, mut bought, mut res, mut civt) = (0, 0, 0, 0, 0.0, 0);
+                    let (mut full, mut got) = (0, 0.0);
+                    for _ in 0..turns {
+                        w.run(1);
+                        for u in w.units.values().filter(|u| u.camp().is_some()) {
+                            camps += 1;
+                            if u.store[SALT] > 1e-9 {
+                                salted += 1;
+                                if engine::market::total(&u.store) < PLAN.trade_at * u.people * UNIT.food {
+                                    low += 1;
+                                }
+                            }
+                            if let Some(t) = u.traded.as_ref().filter(|t| t.food > 1e-6) {
+                                let own = w.civs.get(&u.civ).map(|c| c.market) == Some(t.market)
+                                    || engine::settle::of(&w, u.civ).any(|s| s.market == t.market);
+                                if !own {
+                                    bought += 1;
+                                    got += t.food;
+                                }
+                            }
+                        }
+                        for c in w.civs.values().filter(|c| !c.is_out()) {
+                            civt += 1;
+                            res += c.store[SALT];
+                            if c.store[SALT] >= 3.0 {
+                                full += 1;
+                            }
+                        }
+                    }
+                    format!(
+                        "{size} {seed}: camp-turns {camps}, with salt {salted}, with salt and low {low}, foreign army-turns {bought} (food {got:.2}); civ-turns {civt}, mean store salt {:.2}, store salt >= 3 on {full}",
+                        res / civt.max(1) as f64
+                    )
+                })
+            })
+            .collect();
+        jobs.into_iter().map(|j| j.join().unwrap()).collect()
+    });
+    for l in lines {
+        println!("{l}");
+    }
+}
+
 /// Two festivals three steps apart on the big world, a clan between them on festival A, holding salt A's
 /// last clearing didn't take (A trades grain only, B salt too), and two clans at B that want salt.
 fn two_festivals() -> (World, u32, u32, u32) {
@@ -205,15 +289,15 @@ fn fill_on_a_capital_moves_salt_from_the_store_into_the_pack_with_its_lots() {
     let (mut w, civs, _) = led();
     let source = at_big(3, 3);
     let capital = w.civs[&civs[0]].capital;
-    capital_salt(&mut w, civs[0], 5.0, source);
+    capital_salt(&mut w, civs[0], 100.0, source);
     let id = put_camp(&mut w, civs[0], capital);
     camp_mut(&mut w, id).actor.store = [0.0; N];
     let room = UNIT.salt * w.units[&id].people;
     w.order(civs[0], engine::orders::Order::Fill { unit: id }).expect("a store with salt, and room");
     let u = &w.units[&id];
-    let took = room.min(5.0);
+    let took = room.min(100.0);
     assert!((u.store[SALT] - took).abs() < 1e-9, "the pack took {took}: {}", u.store[SALT]);
-    assert!((w.civs[&civs[0]].store[SALT] - (5.0 - took)).abs() < 1e-9, "the store kept the rest");
+    assert!((w.civs[&civs[0]].store[SALT] - (100.0 - took)).abs() < 1e-9, "the store kept the rest");
     let lot = u.lots.of(SALT).next().expect("the pack has its lot");
     assert_eq!((lot.source, lot.markets.clone()), (source, Vec::<u32>::new()));
     // A full pack is refused with the reason.
