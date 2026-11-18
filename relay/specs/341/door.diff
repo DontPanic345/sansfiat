@@ -1,0 +1,33 @@
+diff --git a/engine/core/src/homes.rs b/engine/core/src/homes.rs
+index bc48fc7..eb0abe4 100644
+--- a/engine/core/src/homes.rs
++++ b/engine/core/src/homes.rs
+@@ -115,15 +115,19 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
+         }
+         actors::trim(w, home, &with, CLAN.territory_radius)
+     };
++    let festival = c.market.and_then(|m| w.markets.get(&m)).map(|m| m.tile);
+     let stay = land(c.home);
+     let now = value(prices, c.home, &stay);
+     let mut best: Option<(f64, Step)> = None;
++    let walk = |prices: &mut Prices, home: usize| prices.routes(w, c, home).iter().map(|r| r.cost).sum::<f64>();
++    let walk_now = walk(prices, c.home);
+     let mut weigh = |prices: &mut Prices, home: usize, territory: Vec<usize>, why: &'static str| {
+         if home == c.home {
+             return;
+         }
+         let v = value(prices, home, &territory);
+-        if v > now + TOWN.margin && best.as_ref().is_none_or(|(b, _)| v > *b) {
++        let at_door = festival == Some(home) && v >= now && walk(prices, home) < walk_now;
++        if (v > now + TOWN.margin || at_door) && best.as_ref().is_none_or(|(b, _)| v > *b) {
+             best = Some((v, Step { home, territory, why }));
+         }
+     };
+@@ -134,7 +138,6 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
+         let (home, _) = actors::recentre(w, c.home, changed, CLAN.territory_radius);
+         weigh(prices, home, land(home), "moved its home to the middle of its land");
+     }
+-    let festival = c.market.and_then(|m| w.markets.get(&m)).map(|m| m.tile);
+     if let Some(t) = festival.filter(|&t| farmer && t != c.home) {
+         let d = steps(w, c.home, t);
+         let near = neighbours(w, c.home)

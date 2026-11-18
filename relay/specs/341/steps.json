@@ -1,0 +1,27 @@
+[
+  {
+    "id": "build-1",
+    "title": "The door step, the capital's town proved, capital towns and trade outside in the judge, the mark on a capital",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 0 (door.diff is the rule, measured by the spec: 18 towns on 6 maps exactly; the judge's fields and sweep lines are named; the page's mark is checked with capitals on), New 1 (the judge group and the layer are adapted from their own code), Miss 1 (tests it writes and towns.mjs, with the sweep's exact 18 as the rule's check), Reach 2 (the home step runs every turn). An easel with an exact done; Haiku high, waiting on two sweeps of about 3 minutes (branch and main). About 10 files, 250 lines: homes.rs, data/clans.rs, world.rs, cli/tests/save.rs, judge_towns.rs, sweep_towns.rs, core/tests/towns.rs (472 lines: splits to town_homes.rs past 600), www/map/layers/towns.js or view.js, www/play/towns.mjs, towns.py, build-1-evidence.md."
+  },
+  {
+    "id": "build-2",
+    "title": "Capitals that become towns, and towns that hold",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 10,
+    "why": "Open 4 (searching the home rules for what holds clans on a capital's tile; the target, a capital town on two of four small maps, may not be reachable within the levers, and the answer is then why), New 1 (homes::step and civs::repair are there to change), Miss 3 (only the retro maps show it), Reach 2 (the move step every turn). A canvas at 10: Sonnet high. It waits on several 3-minute sweeps and one --floor run. About 5 files, 150 lines: homes.rs, civs.rs, data/clans.rs, core/tests/towns.rs, canvas.md, and the save pins if the digest moves."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "sonnet",
+    "effort": "high",
+    "why": "Main hasn't moved under the piece and the question is three measured scores against main's sweep: Sonnet high. It reruns the sweep, reads towns.py beside main, runs towns.mjs, and looks at one capital town on a small map."
+  }
+]
