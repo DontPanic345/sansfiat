@@ -62,7 +62,7 @@ fn goods_are_conserved_and_nobody_loses() {
         assert!((a[g] - b[g]).abs() < 1e-9, "good {g}: {} -> {}", a[g], b[g]);
     }
     for (x, y) in before.iter().zip(&c.after) {
-        assert!(utility(y) >= utility(x) - 1e-3, "{x:?} -> {y:?}");
+        assert!(utility(y, &[1.0; N]) >= utility(x, &[1.0; N]) - 1e-3, "{x:?} -> {y:?}");
     }
     let mean = c.goods.iter().map(|&g| libm::log(c.prices[g])).sum::<f64>() / c.goods.len() as f64;
     assert!(mean.abs() < 1e-12);

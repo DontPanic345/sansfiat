@@ -22,7 +22,7 @@ it should be, and everything else serves that.
   what moves the game, not what shows the code ran.
 - Prove on the maps the game is played on. A built test map shows a rule works; the retro
   maps show the piece does.
-- Every number lives in `engine/core/src/data.rs`. A rule's reason is one `note` beside it.
+- Every number lives in `engine/core/src/data/`, a file per system. A rule's reason is one `note` beside it.
 - Evidence goes in a file under `relay/specs/<n>/`, which the summary names. Never commit
   `relay/runs/`.
 - Write plainly, in the present tense. A comment says what is, not how it came to be: the

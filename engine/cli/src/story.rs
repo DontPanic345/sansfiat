@@ -11,7 +11,7 @@
 
 use std::fs;
 
-use engine::actors::walk_cost;
+use engine::actors::{walk_cost, Actor, Carrier};
 use engine::data::{Fighter, SIZES, UNIT};
 use engine::market::total;
 use engine::over::Why;
@@ -113,7 +113,8 @@ impl Story {
         let ok = |t: usize| {
             units::path_between(&self.w, t, cap).is_some_and(|(_, c)| {
                 let cost = walk_cost(c, 1.0);
-                cost <= 0.0 || people * UNIT.labour * UNIT.carry / cost + 1e-9 >= people * UNIT.food
+                cost <= 0.0
+                    || people * UNIT.labour * Actor::carry(Carrier::Warrior).load / cost + 1e-9 >= people * UNIT.food
             })
         };
         let way = self.way();

@@ -3,9 +3,10 @@
 mod common;
 
 use common::*;
-use engine::actors::{stride, Actor};
+use engine::actors::{carriers, stride, Actor, Carrier};
 use engine::data::*;
 use engine::land::step_cost;
+use engine::units;
 
 fn close(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-9
@@ -193,4 +194,23 @@ fn meal_eats_the_store_then_kin_biggest_first_ties_to_the_lower_id() {
     assert!(close(got, 2.5), "{got}");
     assert_eq!(a, [0.0; N]);
     assert_eq!(b, [0.0, 0.0, 1.5, 0.0, 0.0, 0.0, 0.0]);
+}
+
+#[test]
+fn carry_gives_each_carriers_load_and_pack() {
+    let of = |by| (Actor::carry(by).load, Actor::carry(by).pack);
+    assert_eq!(of(Carrier::Clan), (2.0, 0.0));
+    assert_eq!(of(Carrier::Warrior), (3.0, 5.0));
+    assert_eq!(of(Carrier::Scout), (3.0, 36.0));
+}
+
+#[test]
+fn carriers_walk_one_per_load_and_at_least_one() {
+    assert_eq!(carriers(4.0, Carrier::Clan), 2.0);
+    assert_eq!(carriers(0.5, Carrier::Clan), 1.0);
+}
+
+#[test]
+fn pack_cap_is_the_warriors_pack_times_food() {
+    assert_eq!(units::pack_cap(3.0), 3.0 * 5.0 * UNIT.food);
 }

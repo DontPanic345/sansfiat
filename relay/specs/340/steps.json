@@ -1,0 +1,36 @@
+[
+  {
+    "id": "build-1",
+    "title": "data as a folder; both CLAUDE.md files",
+    "part": "ford",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 2 (the move is exact, but the layout's wording a line a folder is the builder's), New 0 (a move), Miss 0 (the build, the tests and the 21 digests), Reach 1 (every caller of data, unchanged through the re-export). A ford with an exact done; Haiku medium. About 10 files, 1,200 lines moved and 80 written: data/ in seven files and mod.rs, CLAUDE.md, engine/CLAUDE.md's layout."
+  },
+  {
+    "id": "build-2",
+    "title": "The goods table's last readers; one carry on the actor",
+    "part": "ford",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 0 (the carry API and every reader are named in spec.md and the brief), New 1 (a rule table in data, as GOOD is), Miss 0 (the 21 digests catch a float reordered; a short test it writes), Reach 2 (the pack, the line and the festival walk run every turn). A ford; Haiku medium, with the order-of-operations warning in the brief. About 12 files, 200 lines: actors.rs, data/goods.rs, data/clans.rs or units.rs, market.rs, markets.rs, units/mod.rs, line.rs, forage.rs, story.rs, clear.rs, a test, engine/CLAUDE.md."
+  },
+  {
+    "id": "build-3",
+    "title": "The planner's paths cached, near bounded and reach a flood fill; no verdicts in the sweep; architecture.md",
+    "part": "ford",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 0 (the turn's cache, the flood fill and near's bound are settled; spec-review prototyped the bound, near-bound.diff: 21 digests the same, 41.3 -> 35.7 ms a turn in one session; the bench's done is below main in the same session), New 1 (a flood fill adapted from cost_map; Paths exists), Miss 0 (the digests and the bench), Reach 2 (the planner runs every turn). Haiku medium; it waits on two release builds, ten benches (about 1 minute) and the digests (52 to 76 s). About 9 files, 320 lines: units/paths.rs (new, ~100, so ai.rs shrinks), ai.rs, sweep_fields.rs, sweep_towns.rs, sweep_led.rs, a cli test if one reads a verdict, architecture.md, bench.md. Spec-review re-scored nothing; it added the bound, since a cache that lasts the turn saves about a tenth of the planner's path time and can't beat the noise alone."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "sonnet",
+    "effort": "high",
+    "why": "Main hasn't moved under the piece and the goal is two measured numbers: Sonnet high. It reruns digests.sh against digests-main.txt, benches branch and main five times each in one session, greps for the old constants and for pass/MISS, and reads data/ and carry cold."
+  }
+]

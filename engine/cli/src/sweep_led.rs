@@ -181,7 +181,7 @@ pub(crate) fn total_led(maps: &[MapJudged]) -> TotalLed {
     }
 }
 
-/// The led games as text: a line a map, then the totals; with a `floor`, the gain over idle is read less it.
+/// The led games as text: a line a map, then the totals; with a `floor`, the gain over idle is also read less it.
 pub(crate) fn print_led(maps: &[MapJudged], t: &TotalLed, floor: Option<f64>) {
     println!("led games (each civ led by the planner, beside the same civ led and idle):");
     for m in maps {
@@ -207,7 +207,7 @@ pub(crate) fn print_led(maps: &[MapJudged], t: &TotalLed, floor: Option<f64>) {
         t.early, t.games, t.fell, t.idle_early, t.idle_fell, t.won, t.idle_won
     );
     let read = match floor {
-        Some(f) => format!(", less the floor {f:.4}: {}", if t.over_idle - f > 0.0 { "pass" } else { "MISS" }),
+        Some(f) => format!(", less the floor {f:.4} reads {:+.4}", t.over_idle - f),
         None => String::new(),
     };
     println!(

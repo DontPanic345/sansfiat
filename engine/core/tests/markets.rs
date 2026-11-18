@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use engine::actors::walk_cost;
+use engine::actors::{walk_cost, Actor, Carrier};
 use engine::clans::harvest;
 use engine::data::*;
 use engine::land::{is_hearth, tend};
@@ -213,7 +213,7 @@ fn a_clan_that_carries_more_pays_more_days_to_the_same_festival() {
     let (mut few, a, mid) = carrying(2.0, 1.0);
     let (mut many, b, _) = carrying(20.0, 1.0);
     // Two people bring 0.4 food, under a load: one walker. Twenty bring 4: 4 ÷ load walkers.
-    let walkers = (MARKET.carry * 20.0 / CARRY.load).max(1.0);
+    let walkers = (MARKET.carry * 20.0 / Actor::carry(Carrier::Clan).load).max(1.0);
     assert!(walkers > 1.0, "a clan of twenty brings more than a load");
     let cost = |w: &World, id: u32, mid: u32| worths(w, &w.clans[&id]).iter().find(|x| x.0 == mid).unwrap().2;
     assert!((cost(&few, a, mid) - one_walker).abs() < EPS);

@@ -18,6 +18,7 @@ pub mod fight;
 mod forage;
 mod line;
 mod muster;
+mod paths;
 mod scout;
 mod search;
 
@@ -26,7 +27,7 @@ use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::actors::Actor;
+use crate::actors::{Actor, Carrier};
 use crate::claim;
 use crate::data::*;
 use crate::world::World;
@@ -368,15 +369,15 @@ pub fn scout(w: &World, civ: u32) -> Option<&Unit> {
 
 /// The food `people` warriors' packs hold.
 pub fn pack_cap(people: f64) -> f64 {
-    people * UNIT.pack * UNIT.food
+    people * Actor::carry(Carrier::Warrior).pack * UNIT.food
 }
 
-/// The food unit `u`'s pack holds: an army's by its people (`pack_cap`), a scout's `SCOUT.pack` turns
+/// The food unit `u`'s pack holds: an army's by its people (`pack_cap`), a scout's `CARRY.scout` turns
 /// of its eating.
 pub fn cap_of(u: &Unit) -> f64 {
     match u.kind() {
         UnitKind::Camp => pack_cap(u.people),
-        UnitKind::Scout => u.people * SCOUT.pack * UNIT.food,
+        UnitKind::Scout => u.people * Actor::carry(Carrier::Scout).pack * UNIT.food,
     }
 }
 

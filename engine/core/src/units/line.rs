@@ -7,7 +7,7 @@ use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
 
 use super::{UnitKind, EPS};
-use crate::actors::{stride, walk_cost};
+use crate::actors::{stride, walk_cost, Actor, Carrier};
 use crate::civs;
 use crate::claim;
 use crate::data::*;
@@ -38,7 +38,7 @@ pub fn route(w: &World, unit: u32) -> Option<(Vec<usize>, f64)> {
 /// rival civ (`civs::holder`: a rival's held tile blocks it, a rival's land unless this civ holds
 /// it; the line's ends never block it), its cost (`walk_cost` of the path cost, made there
 /// and back each turn) and the food it carries a turn with all the camp's labour (`people ×
-/// UNIT.labour`, at `UNIT.carry` a unit of labour over the cost). At the store the line is empty,
+/// UNIT.labour`, at a warrior's `Actor::carry` load a unit of labour over the cost). At the store the line is empty,
 /// costs nothing and carries without limit. `None` when no such path exists.
 pub fn line(w: &World, unit: u32) -> Option<(Vec<usize>, f64, f64)> {
     line_by(w, unit, true)
@@ -88,7 +88,8 @@ fn line_at(w: &World, unit: u32, from: usize, hold: bool) -> Option<(Vec<usize>,
     }
     let (_, cost, tiles) = best?;
     let cost = walk_cost(cost, 1.0);
-    let carry = if cost > 0.0 { u.people * UNIT.labour * UNIT.carry / cost } else { f64::INFINITY };
+    let carry =
+        if cost > 0.0 { u.people * UNIT.labour * Actor::carry(Carrier::Warrior).load / cost } else { f64::INFINITY };
     Some((tiles, cost, carry))
 }
 
@@ -100,8 +101,9 @@ pub fn store_of(w: &World, unit: u32) -> Option<usize> {
 
 /// The ring of civ `civ`: every walkable tile (land, or a built pass) from which a line may reach one
 /// of its stores (the tiles `line_at` accepts, reading held ground), with the share of an army's days
-/// its line takes to feed it there: `UNIT.food × walk_cost(path cost, 1) / (UNIT.labour × UNIT.carry)`,
-/// the cost of the cheapest line to any store, priced as `line_at` prices it. A store is 0. Inside the
+/// its line takes to feed it there: `UNIT.food × walk_cost(path cost, 1) / (UNIT.labour × load)`, where
+/// `load` is a warrior's (`Actor::carry`), the cost of the cheapest line to any store, priced as `line_at`
+/// prices it. A store is 0. Inside the
 /// ring the share is under one; it has no army size in it, so one map serves every army and scout of
 /// the civ. A fallen civ has none.
 pub fn ring(w: &World, civ: u32) -> BTreeMap<usize, f64> {
@@ -166,7 +168,7 @@ fn ring_from(w: &World, civ: u32, stores: &[usize]) -> BTreeMap<usize, f64> {
         if let Some((_, cost)) = b {
             if walkable(w, i) {
                 let cost = walk_cost(*cost, 1.0);
-                out.insert(i, UNIT.food * cost / (UNIT.labour * UNIT.carry));
+                out.insert(i, UNIT.food * cost / (UNIT.labour * Actor::carry(Carrier::Warrior).load));
             }
         }
     }
