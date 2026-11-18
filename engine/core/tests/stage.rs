@@ -164,6 +164,7 @@ fn a_spec_round_trips_and_builds_the_builders_world() {
         food: Vec::new(),
         sources: Vec::new(),
         tame: Vec::new(),
+        rivers: Vec::new(),
         civs: vec![TileRef::Mark { mark: 'A' }, TileRef::Mark { mark: 'B' }],
         people: Some(14.0),
         lead: Some(0),
@@ -283,6 +284,7 @@ fn sources_by_name_or_index_and_a_farming_clan_of_a_spec_are_set() {
         "marks": grid_text(12, &[(Hex { q: -5, r: 0 }, 'A'), (Hex { q: 5, r: 0 }, 'B'), (Hex { q: 0, r: 0 }, 'S'), (Hex { q: 1, r: 0 }, 'T')]),
         "sources": [{ "at": { "mark": "S" }, "good": "salt" }, { "at": { "mark": "T" }, "good": 6 }],
         "tame": [{ "at": { "mark": "T" }, "tame": 7 }],
+        "rivers": [{ "at": { "mark": "T" }, "flow": { "mark": "S" } }],
         "clans": [{ "home": { "mark": "S" }, "tiles": [], "people": 4, "fields": 0.5 }],
     });
     let spec: StageSpec = serde_json::from_value(json).unwrap();
@@ -291,6 +293,8 @@ fn sources_by_name_or_index_and_a_farming_clan_of_a_spec_are_set() {
     assert_eq!(stage.world().tiles[stage.mark('S')].source, salt, "a good by its name");
     assert_eq!(stage.world().tiles[stage.mark('T')].source, Some(6), "a good by its index");
     assert_eq!(stage.world().tiles[stage.mark('T')].tame, 7, "a tile's tame count");
+    let river = &stage.world().tiles[stage.mark('T')];
+    assert_eq!((river.river, river.flow), (1, Some(stage.mark('S'))), "a river tile and where it flows");
     let farmer = stage.world().clans.values().find(|c| c.home == stage.mark('S')).expect("the clan");
     assert_eq!(farmer.fields, 0.5, "the clan's share of its days to fields");
     let bad: StageSpec = serde_json::from_value(serde_json::json!({

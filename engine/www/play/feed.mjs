@@ -1,11 +1,29 @@
 // The feed and alerts (touch point 22-24): the feed lists newest first; it collapses and opens; a click on an
 // item selects its subject and centres the map; an alert stays in the alerts box after more turns until it
-// is clicked; the panel's reasons show for a clan and for the camp.   node www/play/feed.mjs [--out DIR]
-// (small seed 2)
+// is clicked; the panel's reasons show for a clan and for the camp. The staged game has grain on every tile, so its
+// clans are fed; a clan of no civ lives beside the led civ's capital, and the led civ's camp marches out until its
+// line is cut.
+//   node www/play/feed.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open, raiseArmy } from '../play.mjs';
+import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
+
+// Radius 12: the led civ's capital A at (-4, 0), the rival's B at (8, 0), a clan of no civ at P (-2, 1) beside A,
+// and the camp of three on A. Grain on every tile, so nobody starves in the first turns.
+const R = 12;
+const SPEC = {
+  map: plains(R),
+  marks: marks(R, { A: [-4, 0], B: [8, 0], P: [-2, 1] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+  armies: [{ civ: 0, at: { mark: 'A' }, people: 3 }],
+  clans: [{ home: { mark: 'P' }, tiles: [], people: 4 }],
+  // Grain on every tile, so the clans and the camp find food as they march.
+  food: Array.from({ length: 3 * R * (R + 1) + 1 }, (_, tile) => ({ at: { tile }, good: 1, amount: 200 })),
+};
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -24,12 +42,9 @@ const need = (ok, msg) => {
 const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 const alertTexts = () => page.eval("[...document.querySelectorAll('#alerts li')].map((l) => l.textContent.trim())");
 
-const page = await open('?size=small&seed=2&run=1');
+const page = await open('');
 try {
-  await page.until("document.body.dataset.phase === 'choose'");
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
-  await raiseArmy(page);
+  await stage(page, SPEC);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   for (let turn = 0; turn < 6; turn++) await page.button('End turn');

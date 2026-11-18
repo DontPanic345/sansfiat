@@ -1,11 +1,29 @@
 // Selecting on the map (touch point 21): a click on a clan's home selects the clan, with a panel and no
 // buttons; a festival selects, listing its clans, with their walkers drawn; a bare tile's panel names whose
 // it is; clicking again cycles a stack; Escape steps back through an armed Move to…, painting, then the
-// selection.   node www/play/select.mjs [--out DIR]     (small seed 1)
+// selection. The staged map has a clan's home on plains, a festival (a clan going to the led civ's market, which
+// is its capital's), a bare tile of the led civ's land, and a stack on the capital (its camp and scout).
+//   node www/play/select.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open, raiseArmy } from '../play.mjs';
+import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
+
+// Radius 8: two capitals A and B; a clan of no civ living at P, and one at Q going to A's market.
+const R = 8;
+const SPEC = {
+  map: plains(R),
+  marks: marks(R, { A: [-4, 0], B: [4, 0], P: [0, 3], Q: [0, -3] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+  armies: [{ civ: 0, at: { mark: 'A' }, people: 3 }],
+  clans: [
+    { home: { mark: 'P' }, tiles: [], people: 4 },
+    { home: { mark: 'Q' }, tiles: [], people: 4, market: 0 },
+  ],
+};
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -33,12 +51,9 @@ async function selectKey(page, key, i) {
   return false;
 }
 
-const page = await open('?size=small&seed=1&run=1');
+const page = await open('');
 try {
-  await page.until("document.body.dataset.phase === 'choose'");
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
-  await raiseArmy(page);
+  await stage(page, SPEC);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
 

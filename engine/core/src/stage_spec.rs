@@ -47,6 +47,14 @@ pub struct TameSpec {
     pub tame: u32,
 }
 
+/// A river tile, flowing to the tile `flow` beside it, as the map draws its rivers (`Tile.river` of 1, `Tile.flow`).
+/// A river glyph (`r`) is plains with no flow, so the rivers layer draws nothing for it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RiverSpec {
+    pub at: TileRef,
+    pub flow: TileRef,
+}
+
 /// A good's source on `at`, set as `sources::place` sets `Tile.source`. `good` is the good's name (`salt`,
 /// `obsidian`) or its index in `GOOD`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -146,6 +154,9 @@ pub struct StageSpec {
     /// Tiles' tame counts, set after the sources.
     #[serde(default)]
     pub tame: Vec<TameSpec>,
+    /// River tiles and where they flow, set after the tame counts.
+    #[serde(default)]
+    pub rivers: Vec<RiverSpec>,
     #[serde(default)]
     pub civs: Vec<TileRef>,
     #[serde(default)]
@@ -223,6 +234,12 @@ impl Stage {
         for t in &spec.tame {
             let i = stage.tile(&t.at)?;
             stage.world.tiles[i].tame = t.tame;
+        }
+        for r in &spec.rivers {
+            let i = stage.tile(&r.at)?;
+            let j = stage.tile(&r.flow)?;
+            stage.world.tiles[i].river = 1;
+            stage.world.tiles[i].flow = Some(j);
         }
         let mut ids = Vec::new();
         if !spec.civs.is_empty() {

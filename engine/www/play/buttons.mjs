@@ -88,7 +88,7 @@ const X = indexOf(...MARK.X);
 
 // ---- the page -----------------------------------------------------------------------------------------------
 
-const page = await open('?size=small&seed=2&run=1');
+const page = await open('');
 
 /** Stages a fresh game of `spec`: every case starts from one, so its effect never hides another's. */
 async function stage(spec = specFor()) {

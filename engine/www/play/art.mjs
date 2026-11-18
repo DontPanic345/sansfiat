@@ -1,25 +1,46 @@
 // The atlas: every cell of atlas.json lies inside atlas.png and is not blank, the map drew its terrain
-// from the atlas, and the map is shot at the pick.   node www/play/art.mjs [--out DIR]
+// from the atlas, and the map is shot. The staged map has every terrain glyph the map text reads, so each
+// tile kind is drawn from the atlas.   node www/play/art.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { open } from '../play.mjs';
 import { KINDS } from '../feed.js';
+import { grid, marks, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
 const out = resolve(at >= 0 ? args[at + 1] : mkdtempSync(join(tmpdir(), 'play-art-')));
 mkdirSync(out, { recursive: true });
 
-const page = await open('?size=small&seed=2&run=1');
+// Radius 6: sea on the rim, coast inside it, and every other glyph (plains with a river, a floodplain, a pass,
+// the three closed country glyphs, a lake) cycled over the rest. The two capitals stand on plains.
+const R = 6;
+const GLYPHS = ['.', 'f', 'h', '^', ':', '%', 'r', 'z', 'P', 'V', 'S', 'N', '=', ','];
+const dist = (q, r) => Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
+const CAPITALS = { A: [-2, 0], B: [2, 0] };
+const SPEC = {
+  map: grid(R, (q, r) => {
+    if (dist(q, r) === R) return '~';
+    if (dist(q, r) === R - 1) return ',';
+    if (Object.values(CAPITALS).some(([a, b]) => a === q && b === r)) return '.';
+    return GLYPHS[(((q * 5 + r * 3) % GLYPHS.length) + GLYPHS.length) % GLYPHS.length];
+  }),
+  marks: marks(R, CAPITALS),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+};
+
+const page = await open('');
 let failed = false;
 const fail = (msg) => {
   console.error(`art: ${msg}`);
   failed = true;
 };
 try {
-  await page.until("document.body.dataset.phase === 'choose'");
+  await stage(page, SPEC);
   const sheet = await page.eval(`(() => {
     const a = game.atlas, c = document.createElement('canvas');
     c.width = a.image.naturalWidth; c.height = a.image.naturalHeight;
@@ -47,8 +68,6 @@ try {
   for (const kind of Object.keys(KINDS)) if (!(kind in manifest)) fail(`sounds.json has no file for ${kind}`);
   const pageFiles = await page.eval('Object.keys(game.sound.files)');
   for (const kind of Object.keys(KINDS)) if (!pageFiles.includes(kind)) fail(`the page's sound bus has no file for ${kind}`);
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
   for (let i = 0; i < 10; i++) await page.button('End turn');
   const heard = await page.eval('({ ...game.sound.heard })');
   const kinds = Object.keys(heard);

@@ -1,6 +1,18 @@
 // A left click centres the camera: it eases to the clicked tile's middle with the zoom unchanged, and a second click
-// on the same tile (to cycle what is there) leaves the view still; a tile's tooltip names it (q, r).   node www/play/camera.mjs [--out DIR]     (small seed 1)
+// on the same tile (to cycle what is there) leaves the view still; a tile's tooltip names it (q, r). The
+// staged capital stands off the centre and not on the rim, with its scout on it.   node www/play/camera.mjs [--out DIR]
 import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
+
+// Radius 8: the led civ's capital at (-4, 0), the rival's at (4, 0).
+const R = 8;
+const SPEC = {
+  map: plains(R),
+  marks: marks(R, { A: [-4, 0], B: [4, 0] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+};
 
 let failed = false;
 const need = (ok, msg) => {
@@ -11,19 +23,21 @@ const need = (ok, msg) => {
 };
 const view = (page) => page.eval('(() => { const m = game.map; return { cx: m.cx, cy: m.cy, k: m.k }; })()');
 const settled = (page) => page.until('!game.map.anim');
+const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 
-const page = await open('?size=small&seed=1&run=1');
+const page = await open('');
 try {
-  await page.until("document.body.dataset.phase === 'choose'");
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
+  await stage(page, SPEC);
+  // The map is zoomed in off its fit: a panel that changes the map's box refits a map at its fit and drops any
+  // centring under way. Zoomed, the box only clamps the view.
+  await page.eval('game.map.zoomBy(2)');
   await settled(page);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
-  // A land tile of the player's, a few tiles off the capital's, well inside the map.
+  // The land tile of the player's nearest the capital, off it (the centre clamps at the map's edge, so not a far one).
   const target = await page.eval(`(() => { const v = game.view(), m = game.map;
     const near = v.civs[${me}].land.filter((t) => t !== ${cap} && Math.hypot(m.px[t] - m.px[${cap}], m.py[t] - m.py[${cap}]) > 0);
-    near.sort((a, b) => Math.hypot(m.px[b] - m.px[${cap}], m.py[b] - m.py[${cap}]) - Math.hypot(m.px[a] - m.px[${cap}], m.py[a] - m.py[${cap}]));
+    near.sort((a, b) => Math.hypot(m.px[a] - m.px[${cap}], m.py[a] - m.py[${cap}]) - Math.hypot(m.px[b] - m.px[${cap}], m.py[b] - m.py[${cap}]));
     return near[0]; })()`);
   const at = (i) => page.eval(`({ x: game.map.px[${i}], y: game.map.py[${i}] })`);
   const k0 = (await view(page)).k;
@@ -39,7 +53,7 @@ try {
   await settled(page);
   v = await view(page);
   p = await at(cap);
-  need(Math.abs(v.cx - p.x) < 1 && Math.abs(v.cy - p.y) < 1, 'a click on the capital centres it');
+  need(Math.abs(v.cx - p.x) < 1 && Math.abs(v.cy - p.y) < 1, `a click on the capital centres it (${v.cx.toFixed(1)}, ${v.cy.toFixed(1)} vs ${p.x.toFixed(1)}, ${p.y.toFixed(1)}; k ${v.k.toFixed(1)})`);
   const first = (await page.data()).selected;
   await page.click(cap);
   await settled(page);
