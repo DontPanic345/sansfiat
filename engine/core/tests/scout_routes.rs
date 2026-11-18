@@ -5,7 +5,7 @@
 //! scouts starved and scouts killed (`relay/specs/337/errand.md`).
 //! `cargo test --release -p engine --test scout_routes -- --ignored --nocapture`
 
-use engine::data::SCOUT;
+use engine::data::{CARRY, SCOUT};
 use engine::stage::Stage;
 use engine::units;
 use engine::{Action, EventKind, Order};
@@ -102,7 +102,7 @@ fn report(fight: bool) {
     println!(
         "fight {} | pack {} spare {} out {}",
         if fight { "on" } else { "off" },
-        SCOUT.pack,
+        CARRY.scout.pack,
         SCOUT.spare,
         SCOUT.out
     );
@@ -131,7 +131,7 @@ fn report(fight: bool) {
     println!(
         "SUMMARY fight {} pack {} spare {} out {}: routed {}; built by +50 {}, +100 {}, +200 {}; off {off}, filling {filling}, too far {toofar}; starved {}, killed {}, gone {}",
         if fight { "on" } else { "off" },
-        SCOUT.pack,
+        CARRY.scout.pack,
         SCOUT.spare,
         SCOUT.out,
         routed.len(),

@@ -1,21 +1,16 @@
 //! Units: scouts, the planner, the unit kinds, the fighters and the fight.
 
-use serde::{Deserialize, Serialize};
 use super::*;
+use serde::{Deserialize, Serialize};
 
 pub struct ScoutRules {
     /// People a scout is made with, from the civ's clans, one each.
     pub people: u32,
     /// Days to reveal a forest or hills tile (a mountain takes a whole turn's search labour).
     pub reveal: f64,
-    /// Turns of its eating a scout's pack holds: what it walks and works on between stores. A pack
-    /// doesn't spoil. Of the 42 routes between the retro maps' capitals (`relay/specs/337/errand.md`)
-    /// 24 builds 23, 36 builds 27 and 48 builds 27; a civ's store holds 30 turns of it (`CIV.store_cap`),
-    /// so a pack is filled over several turns at the store.
-    pub pack: f64,
     /// Turns of eating a scout keeps over the walk to its store when it turns for it: the turn it
-    /// spends working before it looks again, and the turn it arrives on. With a pack of 36 no scout
-    /// starves at 1 to 4 on the retro maps (`relay/specs/337/errand.md`); 3 leaves both turns.
+    /// spends working before it looks again, and the turn it arrives on. With a pack of 36 (`CARRY.scout`)
+    /// no scout starves at 1 to 4 on the retro maps (`relay/specs/337/errand.md`); 3 leaves both turns.
     pub spare: f64,
     /// The share of a full pack a scout with an errand waits for at a store before it sets out. A civ
     /// whose store gains about a food a turn (medium 9) holds a scout at the store for tens of turns
@@ -23,7 +18,7 @@ pub struct ScoutRules {
     pub out: f64,
 }
 
-pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 * DAY, pack: 36.0, spare: 3.0, out: 0.25 };
+pub const SCOUT: ScoutRules = ScoutRules { people: 2, reveal: 1.0 * DAY, spare: 3.0, out: 0.25 };
 
 /// The planner (`units/ai.rs`): what the AI's civs, and the automatic player, weigh each turn.
 pub struct PlanRules {
@@ -110,11 +105,6 @@ pub struct UnitRules {
     /// The warriors of a first army, where a script or the judge needs a number (`Lead`, the stories,
     /// the camp sweep's lever, the economy group's pack).
     pub first: u32,
-    /// Turns of food (food a person a turn) a warrior's share of the pack holds.
-    pub pack: f64,
-    /// Food a day of line per day it costs (a line of cost `c` days carries
-    /// `labour × carry / c` food).
-    pub carry: f64,
     /// Food a day a unit takes from a tile it forages (own or unclaimed land).
     pub forage: f64,
     /// Food a day a unit takes from a rival's tile it pillages.
@@ -140,8 +130,6 @@ pub const UNIT: UnitRules = UnitRules {
     min_clan: 2.0,
     start: 0,
     first: 3,
-    pack: 5.0,
-    carry: 3.0,
     forage: 0.5 / DAY,
     pillage: 1.0 / DAY,
     fallow: 5,
@@ -150,6 +138,41 @@ pub const UNIT: UnitRules = UnitRules {
     guard: 0.1 * DAY,
     inside: 0.2,
     zone: 2,
+};
+
+/// What one person of a carrier carries (`actors::Actor::carry`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Carry {
+    /// The weight a person carries on a route, there and back once a turn, against a unit of food. A
+    /// clan's walkers are what it brings over this, at least one (`actors::carriers`). A line of warriors
+    /// carries `UNIT.labour × load` over each day of its cost (`units::line`).
+    pub load: f64,
+    /// Turns of its own eating a carrier's pack holds: what it walks and works on between stores (`pack_cap`,
+    /// `cap_of`). A pack doesn't spoil. 0 where a carrier carries no pack.
+    pub pack: f64,
+}
+
+/// Who carries, one `Carry` each (`actors::Carrier`).
+pub struct CarryRules {
+    /// A clan's people on a festival route. A load of 2 food is about nine days' eating (a person eats a
+    /// food a turn of `CLAN.work`, 4.67 days), "some days' food" (`labour.md`). A clan brings at most
+    /// `MARKET.carry` × people, 0.2 a person, so a load of 3 or more sends every clan with one walker and
+    /// changes nothing, and 1 collapses the festivals (`walk.md`).
+    pub clan: Carry,
+    /// A warrior on a line, and in a pack: the pack's share of a warrior holds this many turns of its food
+    /// (`UNIT.food` a turn). A line's food is labour over its cost at this load (`Carry.load`).
+    pub warrior: Carry,
+    /// A scout's pack: of the 42 routes between the retro maps' capitals (`relay/specs/337/errand.md`) 24
+    /// builds 23, 36 builds 27 and 48 builds 27; a civ's store holds 30 turns of it (`CIV.store_cap`), so a
+    /// pack is filled over several turns at the store. Its load is not read yet: a scout's walks carry its
+    /// pack, not a line.
+    pub scout: Carry,
+}
+
+pub const CARRY: CarryRules = CarryRules {
+    clan: Carry { load: 2.0, pack: 0.0 },
+    warrior: Carry { load: 3.0, pack: 5.0 },
+    scout: Carry { load: 3.0, pack: 36.0 },
 };
 
 /// The kinds of fighter an army's people are (`war.md`): its stack counts its people by kind, and

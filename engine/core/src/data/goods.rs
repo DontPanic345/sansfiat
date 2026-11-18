@@ -16,7 +16,7 @@ pub enum Use {
 /// table has no row for a good without a use.
 pub struct Good {
     pub name: &'static str,
-    /// What a unit of it weighs against a unit of food: a carrier's load (`CARRY.load`) and a clan's
+    /// What a unit of it weighs against a unit of food: a carrier's load (`Actor::carry`) and a clan's
     /// festival basket (`MARKET.carry`) are counted in weight.
     pub weight: f64,
     /// The share of it a store loses a turn.
@@ -52,8 +52,27 @@ pub const GOODS: [&str; N] = {
     }
     out
 };
+/// How many goods are eaten: the first rows of `GOOD`, as the const check below holds.
+pub const FOOD_N: usize = 5;
+const _: () = {
+    let mut g = 0;
+    while g < N {
+        assert!(GOOD[g].eaten == (g < FOOD_N), "the eaten goods come first, and number FOOD_N");
+        g += 1;
+    }
+};
 /// The foods' names: the eaten goods, which come first in the table.
-pub const FOODS: [&str; 5] = ["game", "grain", "fruit", "fish", "shellfish"];
+pub const FOODS: [&str; FOOD_N] = {
+    let mut out = [""; FOOD_N];
+    let mut g = 0;
+    while g < FOOD_N {
+        out[g] = GOOD[g].name;
+        g += 1;
+    }
+    out
+};
+/// The rate a food spoils at a turn (`actors::worths` reads it): every food keeps alike, `GOOD[GAME]`'s.
+pub const FOOD_SPOIL: f64 = GOOD[GAME].spoil;
 
 pub const GAME: usize = 0;
 pub const GRAIN: usize = 1;

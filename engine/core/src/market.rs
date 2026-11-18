@@ -80,8 +80,9 @@ pub fn demand(basket: &Basket, prices: &Basket, goods: &[usize], worth: &Basket)
     out
 }
 
-pub fn utility(basket: &Basket) -> f64 {
-    basket.iter().map(|v| v.max(0.0).sqrt()).sum()
+/// A basket's utility to a trader at `worth` a good: Σ worth × √ amount, as `demand` values a basket.
+pub fn utility(basket: &Basket, worth: &Basket) -> f64 {
+    (0..N).map(|g| worth[g] * basket[g].max(0.0).sqrt()).sum()
 }
 
 #[derive(Clone, Copy, Debug)]

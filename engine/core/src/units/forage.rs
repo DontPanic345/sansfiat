@@ -4,6 +4,7 @@
 
 use super::line::line;
 use super::{cap_of, Unit, EPS};
+use crate::actors::{Actor, Carrier};
 use crate::data::*;
 use crate::market::{add, take, total};
 use crate::settle;
@@ -50,8 +51,9 @@ pub(super) fn supply(w: &mut World, id: u32, labour: f64, want: f64) -> (f64, f6
     let mut food = want.min(held);
     let mut used = 0.0;
     if cost > 0.0 {
-        food = food.min(labour * UNIT.carry / cost);
-        used = food * cost / UNIT.carry;
+        let load = Actor::carry(Carrier::Warrior).load;
+        food = food.min(labour * load / cost);
+        used = food * cost / load;
     }
     if food <= EPS {
         return (0.0, 0.0);

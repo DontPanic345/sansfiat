@@ -1,6 +1,7 @@
 mod common;
 
 use common::*;
+use engine::actors::{Actor, Carrier};
 use engine::civs::{self, levy};
 use engine::clans::{adjust, eat, harvest};
 use engine::data::*;
@@ -35,7 +36,7 @@ fn founding_with_no_centre_clan_makes_the_biggest_near_clan_the_civ_and_moves_no
 }
 
 fn pack_total(people: f64) -> f64 {
-    people * UNIT.pack * UNIT.food
+    people * Actor::carry(Carrier::Warrior).pack * UNIT.food
 }
 
 #[test]
@@ -293,14 +294,14 @@ fn a_far_camps_line_costs_more_and_carries_less() {
         assert_eq!(path.len() as i32, k);
         assert_eq!(*path.last().unwrap(), cap);
         assert!((cost - 2.0 * f64::from(k) * DAY).abs() < 1e-9);
-        assert!((carry - 3.0 * UNIT.labour * UNIT.carry / cost).abs() < 1e-9);
+        assert!((carry - 3.0 * UNIT.labour * Actor::carry(Carrier::Warrior).load / cost).abs() < 1e-9);
         seen.push((cost, carry, units::cut_off(&w, id)));
     }
     assert!(seen.windows(2).all(|p| p[0].0 < p[1].0 && p[0].1 > p[1].1));
     // Cut off once the line costs more than a warrior's labour carries of their food, whatever the
     // camp's size: at the tuned numbers five plains steps out is fed and six is not.
     for s in &seen {
-        assert_eq!(s.2, s.0 > UNIT.labour * UNIT.carry / UNIT.food, "{s:?}");
+        assert_eq!(s.2, s.0 > UNIT.labour * Actor::carry(Carrier::Warrior).load / UNIT.food, "{s:?}");
     }
     assert_eq!(seen.iter().map(|s| s.2).collect::<Vec<_>>(), [false, false, false, true]);
 }
@@ -780,8 +781,14 @@ fn guarding_costs_labour_only_when_deployed() {
     };
     let (off, on) = (supplied(false), supplied(true));
     let (cost, need) = (2.0 * 3.0 * DAY, 3.0 * UNIT.food);
-    assert!((off - (3.0 * UNIT.labour * UNIT.carry / cost).min(pack_total(3.0))).abs() < 1e-9, "{off}");
-    assert!((on - (3.0 * (UNIT.labour - UNIT.guarding) * UNIT.carry / cost)).abs() < 1e-9, "{on}");
+    assert!(
+        (off - (3.0 * UNIT.labour * Actor::carry(Carrier::Warrior).load / cost).min(pack_total(3.0))).abs() < 1e-9,
+        "{off}"
+    );
+    assert!(
+        (on - (3.0 * (UNIT.labour - UNIT.guarding) * Actor::carry(Carrier::Warrior).load / cost)).abs() < 1e-9,
+        "{on}"
+    );
     assert!(on < off && on + 1e-9 >= need, "guarding leaves less, but enough to eat: {on} {off}");
 }
 

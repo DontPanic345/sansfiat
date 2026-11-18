@@ -41,7 +41,14 @@ pub(crate) fn clear_file(path: &str) -> Result<(), String> {
     println!("{:>8}  {}", "prices", pick(&c.prices));
     println!("{:>8}  {}", "volume", pick(&c.volume));
     for (i, (b, a)) in baskets.iter().zip(&c.after).enumerate() {
-        println!("{:>8}  {}  ->  {}  utility {:.3} -> {:.3}", i, pick(b), pick(a), utility(b), utility(a));
+        println!(
+            "{:>8}  {}  ->  {}  utility {:.3} -> {:.3}",
+            i,
+            pick(b),
+            pick(a),
+            utility(b, &[1.0; N]),
+            utility(a, &[1.0; N])
+        );
     }
     Ok(())
 }

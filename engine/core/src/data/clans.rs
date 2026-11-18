@@ -1,4 +1,4 @@
-//! Clans: what they carry, the market they bring to a festival, the pre-game and a clan's rules, and the field and town readings.
+//! Clans: the market they bring to a festival, the pre-game and a clan's rules, and the field and town readings.
 
 use super::*;
 
@@ -58,20 +58,6 @@ pub const TOWN: TownRules = TownRules {
            A home step must beat staying by the field split's margin, `FIELD.margin`. Tuned on the retro maps \
            (relay/specs/156/canvas.md): 0.005 and 0.02 form no more towns.",
 };
-
-/// What a person carries on a route: a walk beyond the territory is paid by every person carrying
-/// what the actor brings (`actors::carriers`).
-pub struct CarryRules {
-    /// Food a person carries on a route. A route's walkers are what the actor brings over this, at
-    /// least one: a clan's festival route, and a civ clan's route to the capital.
-    pub load: f64,
-}
-
-/// A load of 2 food is about nine days' eating (a person eats a food a turn of `CLAN.work`, 4.67 days),
-/// "some days' food" (`labour.md`). A clan brings at most `MARKET.carry` × people, 0.2 a person, so a load
-/// of 3 or more sends every clan with one walker and changes nothing, and 1 collapses the festivals
-/// (`walk.md`).
-pub const CARRY: CarryRules = CarryRules { load: 2.0 };
 
 pub struct MarketRules {
     /// Turns a home must have been held for a market to form there.

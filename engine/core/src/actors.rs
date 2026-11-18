@@ -45,6 +45,15 @@ impl Actor {
         self.routes.iter().map(|r| r.cost).sum()
     }
 
+    /// What one person of `by` carries (`CARRY`): on a route, on a line, in a pack.
+    pub fn carry(by: Carrier) -> Carry {
+        match by {
+            Carrier::Clan => CARRY.clan,
+            Carrier::Warrior => CARRY.warrior,
+            Carrier::Scout => CARRY.scout,
+        }
+    }
+
     /// The store spoils a turn (`spoil`). Returns the food lost.
     pub fn spoil(&mut self) -> f64 {
         spoil(&mut self.store)
@@ -105,7 +114,7 @@ pub fn spoil(store: &mut Basket) -> f64 {
 pub fn worths(b: &Basket, people: f64) -> Basket {
     let spare = (total(b) - people).max(0.0);
     let bare = (spare - keepers(b) * KEEPING.keeps).max(0.0);
-    let loss = if people > 0.0 { bare * GOOD[0].spoil / people } else { 0.0 };
+    let loss = if people > 0.0 { bare * FOOD_SPOIL / people } else { 0.0 };
     std::array::from_fn(|g| match GOOD[g].uses {
         Use::Food => 1.0,
         Use::Keeps => (loss / KEEPING.want_at).min(1.0),
@@ -175,10 +184,18 @@ pub fn walk_cost(path_cost: f64, weight: f64) -> f64 {
     2.0 * path_cost * weight
 }
 
-/// The people who walk a route carrying `brought` food, a load (`CARRY.load`) each, at least one: a
-/// route's yearly cost is its path's cost times this.
-pub fn carriers(brought: f64) -> f64 {
-    (brought / CARRY.load).max(1.0)
+/// Who carries (`Actor::carry`): a clan's people on a route, a warrior, a scout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Carrier {
+    Clan,
+    Warrior,
+    Scout,
+}
+
+/// The people who walk a route carrying `brought` food, each a `by` load (`Actor::carry`), at least one:
+/// a route's yearly cost is its path's cost times this.
+pub fn carriers(brought: f64, by: Carrier) -> f64 {
+    (brought / Actor::carry(by).load).max(1.0)
 }
 
 /// The walks from home to each tile of a territory over the territory's own tiles.

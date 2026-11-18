@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::actors;
-use crate::actors::{carriers, walk_cost, Route};
+use crate::actors::{carriers, walk_cost, Carrier, Route};
 use crate::civs;
 use crate::clans::{nutrition, surplus, Clan};
 use crate::data::*;
@@ -74,7 +74,7 @@ pub fn desire(m: &Market, surplus: bool) -> f64 {
 /// The people who walk a clan's festival route: the carriers of what it brought last turn, its basket
 /// capped at `MARKET.carry × people` as `trade` caps it (`actors::carriers`).
 pub fn walkers(clan: &Clan) -> f64 {
-    carriers(weight(&clan.basket).min(MARKET.carry * clan.people))
+    carriers(weight(&clan.basket).min(MARKET.carry * clan.people), Carrier::Clan)
 }
 
 /// A festival in reach of a home: its id, the cheapest route's cost from the home and its tiles
