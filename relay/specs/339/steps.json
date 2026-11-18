@@ -1,0 +1,45 @@
+[
+  {
+    "id": "build-1",
+    "title": "Stage tests as data, the runner, the wasm door, judge.rs and scout.rs off the pick",
+    "part": "ford",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 2 (the format is settled to the field in spec.md; whether each scout.rs test holds on a built map is found by running it), New 1 (adapted from StageSpec and Sim.stage), Miss 1 (stage_list.rs, a check.mjs case and the moved tests it writes), Reach 1 (the web crate and the test files). A ford with an exact done; Haiku high for the serde and wasm care. About 10 files, 700 lines: stage_spec.rs split (~380 moved and new), stage_test.rs (~300), four JSON tests, stage_list.rs, lib.rs (~50), check.mjs (~30), judge.rs and scout.rs (~60), CLAUDE.md."
+  },
+  {
+    "id": "build-2",
+    "title": "The Tests screen",
+    "part": "ford",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 2 (the layout and pace are the builder's; the done is tests.mjs's checks and three screenshots), New 1 (a screen module and a MapView, as start.js and play.js), Miss 1 (tests.mjs, which it writes), Reach 0 (a new screen). About 6 files, 450 lines: screens/tests.js (~250), index.html, main.js, start.js, tests.mjs (~120), all.mjs, CLAUDE.md."
+  },
+  {
+    "id": "build-3",
+    "title": "The page scripts of units and the civ move to the stage",
+    "part": "ford",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 2 (each script's stage is found by trying; the done is that every check stays, counted in moves.md), New 0 (buttons, towns and settle already stage), Miss 1 (the scripts check themselves; a weakened check shows in moves.md's counts), Reach 0 (scripts and setup-only StageSpec fields). Many files cost minutes, not a bigger model. About 12 files, 600 changed lines: army, camp (the hold run), civ, fields, goods, ring, scout; stage.mjs; settle, towns, buttons onto it; stage_spec.rs and core/tests/stage.rs (~80)."
+  },
+  {
+    "id": "build-4",
+    "title": "The page scripts of the map and the bar move to the stage; the recount",
+    "part": "ford",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 2 (as build-3; feed's alert and bar's pre-game counts are found by trying), New 0 (build-3's stage.mjs and rule), Miss 1 (the scripts and moves.md), Reach 0. About 9 files, 450 changed lines: art, bar, buttons (its opening), camera, feed, select, views; recount.md and moves.md; a StageSpec field if one is needed."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "sonnet",
+    "effort": "high",
+    "why": "Main hasn't moved under the piece and the goal is a count plus a screen to look at: Sonnet high. It recounts with count.md's rule against 19 of 22 and 10 of 45, watches scout-errand pass and a broken copy fail on the Tests screen, breaks a hold in a data file to see cargo test name it, and reads a moved script's checks side by side."
+  }
+]
