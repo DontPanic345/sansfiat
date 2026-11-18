@@ -42,6 +42,31 @@ The control is main as it stands.
   18 to 11. Not taken: it's a trade rule the owner hasn't agreed to, and it works against the
   piece's motion. It goes to the owner as an idea.
 
+## The door step beside main, with the noise (spec-review)
+
+Spec-review reran rule A's sweep (2 m 44 s) and main's with `--floor` (6 min), and the two match
+the spec's tables exactly. Main's report with its floors is `main-floor.json.gz`. Gunzip it and
+use it as the control in `judge --compare`, so no later step has to rerun main. `door-vs-main.txt`
+is `judge --compare` for main against A. The rows past the floor (`*`):
+
+| metric | main | A | floor |
+|---|---|---|---|
+| towns at +200 | 10 | 18 | 1 |
+| town clans at +200 | 59 | 78 | 8 |
+| town traded per person a turn | 0.0427 | 0.0476 | 0.0028 |
+| all clans traded per person a turn | 0.0789 | 0.0982 | 0.0171 |
+| standing: aligned at +200 | 0.522 | 0.504 | 0.008 |
+| goods run: starving | 0.0265 | 0.0294 | 0.0019 |
+| warriors starved | 329 | 290 | 16 |
+| fight: taken / claim taken | 25 / 220 | 13 / 108 | 9 / 79 |
+
+Starving everywhere else (all clans, farmers outside, town clans, the fields run's shares) is within
+the floor. Camps kept and lost don't move, and there are no digest mismatches. The war's fall is one
+map: small 2 goes from 10 tiles taken to none (claim taken 129 → 11), and every other map is within
+a few tiles. So the easel starts a little past main's noise on aligned standing and on the goods
+run's starving (small 6 0.030 → 0.047, small 9 0.015 → 0.024). The canvas reads its own rule
+against both main and the easel.
+
 ## What the piece delivers
 
 1. **The door step** (build-1): rule A in `homes::step`, its reason a line in `TOWN.note`.
@@ -67,6 +92,7 @@ they hold, and only the maps answer that: the canvas (build-2). The canvas may c
 ## Settled here, by running
 
 - Main's sweep and A's, A + B's and A + C's (`tables.txt`).
+- Main's noise floor and A's health beside it (spec-review: `main-floor.json.gz`, `door-vs-main.txt`).
 - Rule A's numbers: 18 towns at +200 on 6 maps. build-1's sweep must give them exactly, since
   it builds the same rule.
 - B (the whole basket at the door) is not taken, and C (repair to a capital resident) does
@@ -77,7 +103,9 @@ they hold, and only the maps answer that: the canvas (build-2). The canvas may c
 Whether a capital becomes a town at +200 on more small maps than main's one (small 9), and holds.
 The canvas aims for **a capital town at +200 on at least two of the four small maps**, with towns
 over the seven at least main's 10 on at least 4 maps, health no worse than main's past the
-`--floor` noise, and the trade-per-person rows reported. If no rule within the levers below gets
+`--floor` noise in `main-floor.json.gz`, and the trade-per-person rows reported. The easel already
+sits a little past the floor on the goods run's starving and on aligned standing (above). The canvas
+brings them back within it or says map by map why it can't. If no rule within the levers below gets
 there, the canvas's answer is why, with the maps to show it. That is an answer to a question about
 motion, not a failure.
 
@@ -86,6 +114,14 @@ toward a festival from two tiles out), the civ's own clan (`civs::repair`, the p
 `TOWN`'s numbers. Not its levers: trade (`MARKET`, `markets::trade`), field ground, the town
 rule's three homes, and any rule that pulls a clan to a capital because it is a capital. The design
 says a town has no rule of its own.
+
+The civ's own clan is the one exception the design already makes: farming.md's Decided (#155) says
+it "stays on the capital". When the civ's clan is gone, `civs::repair` passes the civ to its biggest
+clan wherever that clan lives, and the pin then holds the new civ clan *off* the capital. #155
+doesn't cover that case. Read in #155's spirit, the civ's clan lives on the capital. So the canvas may
+pass the civ to a clan living on the capital first, or bring the new civ clan home to the capital.
+That is the civ's own clan keeping its place, not a draw on other clans, and the canvas records it as
+a decision if it keeps it.
 
 ## Decisions I made
 
@@ -114,8 +150,8 @@ changed here.
 ## For the review
 
 - `sansfiat sweep --judge --json` on the branch: `python3 -I relay/specs/341/towns.py main.json
-  branch.json` (main's report: `git worktree add /tmp/main main`, or rerun it), and `judge --compare`
-  for health. Give the three scores beside main in the PR, with `--floor` noise for towns at +200
+  branch.json` (main's report is `main-floor.json.gz`, if main hasn't moved; otherwise rerun it),
+  and `judge --compare` for health, read against the floors. Give the three scores beside main in the PR, with `--floor` noise for towns at +200
   if build-2 reports it.
 - Which capitals are towns at +200, map by map, from the sweep's towns lines.
 - `node engine/www/play/towns.mjs`: the town mark shows on the capital with the capitals layer on.

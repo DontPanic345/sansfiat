@@ -69,12 +69,16 @@ layer and pass on yours: run it once before your change and say so in the eviden
 After `cargo build --release`, run `sansfiat sweep --judge --json > /tmp/b1.json` (about 3 minutes)
 and `sansfiat sweep --judge` for the text's towns lines. In the evidence file: the `towns.py` table
 for your run (main's is in `tables.txt`), the capital towns map by map, and `judge --compare`
-against main's report (`git worktree add /tmp/main main`, build there, run the same sweep) for
-Standing, doubt, armies and starving totals.
+against main's report for Standing, doubt, armies and starving totals. Main's report, with its
+`--floor` noise, is `relay/specs/341/main-floor.json.gz` (`gunzip -k`). Don't build or run main.
 
 Done: towns at +200 **18 on 6 maps** exactly, as `tables.txt` gives for rule A (the rule is the
-same). If they differ, find out why before you go on: the rule isn't the prototype's. Capital
-towns: 6 of 21 at +200, 1 on the small maps (small 9), per the spec's probe.
+same). Every row that was already in the report before your change must match
+`relay/specs/341/door-vs-main.txt`'s B column exactly too. The sweep is deterministic, and spec-review
+got the spec's numbers to the last digit. For example: aligned standing 0.5035, warriors starved 290,
+goods-run starving 0.0294. If they differ, find out why before you go on: the rule isn't the
+prototype's. Capital towns: 6 at +200, 1 on the small maps (small 9), per the spec's probe. The
+denominator is the civs alive at +200, whatever it reads.
 
 Run `engine/check.sh` once at the end. Commit as `#341 build-1: the door step, capital towns in the
 judge, the mark on a capital`.

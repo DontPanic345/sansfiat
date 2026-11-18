@@ -16,15 +16,24 @@ and you may change the easel (build-1's door step) where the maps call for it.
   prints the per-map table from any `--json` report.
 - **The mark** shows on a capital's town on the page.
 
+## The control
+
+Main's report with its `--floor` noise is `relay/specs/341/main-floor.json.gz` (main at 8d1b4ed:
+`gunzip -k` it and pass it to `judge --compare` and `towns.py`). Don't rerun main unless main has
+moved (`git log -1 origin/main`). `door-vs-main.txt` is the easel's rule beside it. The easel is
+already a little past main's floor on aligned standing (0.522 → 0.504, floor 0.008) and on the goods
+run's starving (0.0265 → 0.0294, floor 0.0019; small 6 and small 9 carry it). Its war falls by
+half, but that is all small 2 (10 tiles taken → 0).
+
 ## What you are after
 
 A capital that is a town at +200 on **at least two of the four small maps** (main and the easel:
 one, small 9's), with:
 
 - towns at +200 over the seven maps at least main's 10, on at least 4 maps;
-- health no worse than main's past the noise: starving (town clans, outside, all), the armies
-  (`warriors_starved`, camps kept and lost) and digest mismatches 0. Run `sweep --judge --floor`
-  once, on your final rule, for the noise;
+- health no worse than main's past main's floor: starving (town clans, outside, all, and the goods
+  run's), the armies (`warriors_starved`, camps kept and lost) and digest mismatches 0. Where the
+  easel's goods-run starving or aligned standing stays past the floor, say map by map why;
 - trade per person in a town against outside, reported (not a target).
 
 If no rule within your levers gets there, say why, map by map, with the evidence: which capitals
@@ -59,6 +68,14 @@ owner's idea now), field ground (`FIELD`), the town rule's three homes (decided)
 draws a clan to a capital because it is a capital. A town has no rule of its own (farming.md); what
 holds a clan on a capital must hold it on any festival's tile.
 
+The civ's own clan is the exception the design already makes ("the civ's own clan stays on the
+capital", farming.md Decided, #155). A repaired civ clan pinned off the capital is a case #155
+doesn't cover, so passing the civ to a clan on the capital first, or bringing the new civ clan home
+to the capital, is within your levers (spec.md, Its levers). Find out first how the civ's clan goes
+by +20 on small 6 and small 3: merged at its festival (`markets::merge`, under `CLAN.min_pop`), dead
+(`clans::eat`'s `dead`), or something else. Whether a rule fixes the cause or the repair depends on
+what you find.
+
 Each rule you keep gets its reason in a `note` beside its number, a test in `core/tests/towns.rs`
 (or `town_homes.rs` if build-1 split it) on a built map, and a line in `homes::step`'s doc. Bump
 `SAVE_VERSION` and the pins once, at the end, if the digest moved since build-1.
@@ -66,7 +83,7 @@ Each rule you keep gets its reason in a `note` beside its number, a test in `cor
 ## Evidence (`relay/specs/341/canvas.md`)
 
 Each rule you try: what it is, the `towns.py` table, capital towns map by map, and the health
-totals beside main (`judge --compare`). For the rule you keep: the `--floor` run, and the three
+totals beside main (`judge --compare`). For the rule you keep: `judge --compare` against `main-floor.json.gz`, and the three
 scores of spec.md beside main's and the easel's. Keep it short: a row a try.
 
 Run `engine/check.sh` once at the end. Commit as `#341 build-2: capitals that become towns`.
