@@ -170,7 +170,12 @@ pub fn civ_holds(cap: f64, packs: f64) -> Basket {
 
 /// What each good is worth to a civ's store at its market: it wants salt and obsidian both, at
 /// `KEEPING.civ_want` with none, falling to 0 as `store` fills to what it holds (`civ_holds`).
-pub fn civ_worths(store: &Basket, cap: f64, packs: f64) -> Basket {
+pub fn civ_worths(store: &Basket, cap: f64) -> Basket {
+    civ_worths_packs(store, cap, 0.0)
+}
+
+/// `civ_worths` with the salt a store keeps for its packs (`KEEPING.packs`, with exchange on).
+pub fn civ_worths_packs(store: &Basket, cap: f64, packs: f64) -> Basket {
     let holds = civ_holds(cap, packs);
     std::array::from_fn(|g| {
         if GOOD[g].eaten {

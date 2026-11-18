@@ -324,7 +324,7 @@ fn clear_at(w: &mut World, mid: u32, ids: &[u32], carriers: &[u32]) {
         if posted > 0.0 {
             brought.push(basket);
             kept.push(w.civs[&civ].store);
-            worths.push(actors::civ_worths(&w.civs[&civ].store, CIV.store_cap, exchange::packs(w)));
+            worths.push(actors::civ_worths_packs(&w.civs[&civ].store, CIV.store_cap, exchange::packs(w)));
             owners.push(exchange::Owner::Civ(civ));
         }
         let c = w.civs.get_mut(&civ).unwrap();
