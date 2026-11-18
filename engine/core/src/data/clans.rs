@@ -56,7 +56,9 @@ pub const TOWN: TownRules = TownRules {
     note: "Three is the least that reads as many hearths on one tile, and two clans side by side are \
            neighbours (relay/specs/156/spec.md). The sketch's towns at three came out on 5 of 7 maps. \
            A home step must beat staying by the field split's margin, `FIELD.margin`. Tuned on the retro maps \
-           (relay/specs/156/canvas.md): 0.005 and 0.02 form no more towns.",
+           (relay/specs/156/canvas.md): 0.005 and 0.02 form no more towns. Walking less to the festival buys \
+           a clan nothing in food when its fields are capped by their ground and its gathering by its tiles' \
+           food, so a step onto the festival's tile that feeds it as well is taken (relay/specs/341/measure.md).",
 };
 
 pub struct MarketRules {

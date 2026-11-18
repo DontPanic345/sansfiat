@@ -93,8 +93,10 @@ pub struct Step {
 /// step has it. Each step is valued from its home by what its labour could reap (`clans::could_reap`):
 /// the territory with the new home in it, less the tiles another clan holds other than the home, trimmed
 /// to the radius, and the festival route priced from there. A step is taken when it feeds the clan
-/// better than staying by `TOWN.margin`, the better of the two if both do. `None` when the rule does not apply (towns off, fields closed, neither
-/// a farmer nor on a shared home): the move step's own home step then runs.
+/// better than staying by `TOWN.margin`, the better of the two if both do. A step onto the festival's
+/// tile is also taken when it feeds the clan as well as staying and its festival walk from there is less.
+/// `None` when the rule does not apply (towns off, fields closed, neither a farmer nor on a shared home):
+/// the move step's own home step then runs.
 pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Option<Step> {
     let farmer = fields::farmer(c);
     let shared = prices.homes[c.home] > 1 || !gathers(w, c.id, c.home);
@@ -115,15 +117,19 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
         }
         actors::trim(w, home, &with, CLAN.territory_radius)
     };
+    let festival = c.market.and_then(|m| w.markets.get(&m)).map(|m| m.tile);
     let stay = land(c.home);
     let now = value(prices, c.home, &stay);
     let mut best: Option<(f64, Step)> = None;
+    let walk = |prices: &mut Prices, home: usize| prices.routes(w, c, home).iter().map(|r| r.cost).sum::<f64>();
+    let walk_now = walk(prices, c.home);
     let mut weigh = |prices: &mut Prices, home: usize, territory: Vec<usize>, why: &'static str| {
         if home == c.home {
             return;
         }
         let v = value(prices, home, &territory);
-        if v > now + TOWN.margin && best.as_ref().is_none_or(|(b, _)| v > *b) {
+        let at_door = festival == Some(home) && v >= now && walk(prices, home) < walk_now;
+        if (v > now + TOWN.margin || at_door) && best.as_ref().is_none_or(|(b, _)| v > *b) {
             best = Some((v, Step { home, territory, why }));
         }
     };
@@ -134,7 +140,6 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
         let (home, _) = actors::recentre(w, c.home, changed, CLAN.territory_radius);
         weigh(prices, home, land(home), "moved its home to the middle of its land");
     }
-    let festival = c.market.and_then(|m| w.markets.get(&m)).map(|m| m.tile);
     if let Some(t) = festival.filter(|&t| farmer && t != c.home) {
         let d = steps(w, c.home, t);
         let near = neighbours(w, c.home)

@@ -470,3 +470,91 @@ fn the_civs_own_clan_stays_and_towns_off_never_lands_on_a_held_tile() {
         assert_eq!(w.clans[&own].home, centre, "the civ's own clan stays on the capital");
     }
 }
+
+#[test]
+fn a_civs_capital_reads_as_a_town_when_three_clans_live_on_it() {
+    let (mut w, centre) = staged();
+    let (m, capital) = {
+        let civ = w.civs.values().next().unwrap();
+        (civ.market, civ.capital)
+    };
+    assert_eq!(capital, centre);
+    assert!(w.markets.contains_key(&m), "the capital's market is a festival in World.markets");
+    clan(&mut w, centre, &[centre], 4.0);
+    clan(&mut w, centre, &[centre], 4.0);
+    assert!(towns(&w).is_empty(), "two clans on the capital are neighbours, not a town");
+    clan(&mut w, centre, &[centre], 4.0);
+    let found = towns(&w);
+    assert_eq!((found.len(), found[0].tile, found[0].market, found[0].clans.len()), (1, centre, m, 3));
+    form_and_fade(&mut w);
+    let formed: Vec<String> = w.events.iter().filter(|e| e.kind == EventKind::TownFormed).map(|e| e.text(&w)).collect();
+    assert_eq!(formed, vec!["A town forms at (0, 0): 3 clans live by the festival".to_string()]);
+}
+
+#[test]
+fn the_judge_counts_a_capital_town_under_its_civ_and_the_clans_outside_a_town() {
+    let (mut w, centre) = staged();
+    let civ = w.civs.values().next().unwrap().id;
+    for _ in 0..3 {
+        clan(&mut w, centre, &[centre], 4.0);
+    }
+    let far = index(RADIUS, Hex { q: -3, r: 0 }).unwrap();
+    clan(&mut w, far, &[far], 4.0);
+    let mut watch = Watch::new(&w);
+    for _ in 0..200 {
+        watch.turn(&w);
+    }
+    let s = watch.scores(&w, &[]).towns;
+    assert_eq!((s.total.capital_towns_100, s.total.capital_towns_200), (1, 1), "the capital reads as a town");
+    assert_eq!(s.civs[&civ].capital_towns_200, 1, "counted under its civ");
+    assert_eq!(s.capitals_200, 1, "one civ alive at +200");
+    // Clan-turns after +100: three clans in the town, one clan outside it (no fields, so no farmer).
+    assert_eq!((s.total.town.clan_turns, s.total.outside.clan_turns), (300, 100));
+    assert_eq!((s.total.farmers_outside.clan_turns, s.total.all.clan_turns), (0, 400));
+}
+
+/// A farmer of `people` carrying `carried` on (1, -1), one tile from its festival at (1, 0), with its
+/// market there. Its land is rich on every tile it could hold, so the food from its festival's tile is the
+/// food from its home.
+fn farmer_beside_festival(people: f64, carried: f64) -> (World, u32, usize, usize) {
+    let (mut w, _) = staged();
+    let fest = index(RADIUS, Hex { q: 1, r: 0 }).unwrap();
+    let home = index(RADIUS, Hex { q: 1, r: -1 }).unwrap();
+    let m = raise(&mut w, fest);
+    let west = index(RADIUS, Hex { q: 0, r: -1 }).unwrap();
+    let north = index(RADIUS, Hex { q: 1, r: -2 }).unwrap();
+    let id = clan(&mut w, home, &[home, west, north, fest], people);
+    for t in [home, west, north, fest] {
+        w.tiles[t].stock = [500.0; engine::data::N];
+    }
+    let c = w.clans.get_mut(&id).unwrap();
+    c.fields = FIELD.farmer;
+    c.basket[GRAIN] = carried;
+    c.market = Some(m);
+    send(&mut w, id);
+    (w, id, home, fest)
+}
+
+#[test]
+fn a_farmer_steps_onto_its_festivals_tile_when_that_feeds_it_as_well_and_walks_less() {
+    let (w, id, home, fest) = farmer_beside_festival(150.0, 30.0);
+    assert!(w.clans[&id].routes[0].cost > 0.0, "carrying makes the walk home dear");
+    assert_eq!(chosen(&w, id), fest, "the festival's tile feeds it as well and is nearer: it steps onto it");
+    assert_ne!(chosen(&w, id), home);
+}
+
+#[test]
+fn a_farmer_stays_when_the_festivals_tile_would_feed_it_less() {
+    // Carrying nothing, the walk home is still dear, but the festival's tile feeds the clan less than home.
+    let (w, id, home, _) = farmer_beside_festival(150.0, 0.0);
+    assert!(w.clans[&id].routes[0].cost > 0.0, "the walk is there to save");
+    assert_eq!(chosen(&w, id), home, "a step that feeds it less is not taken");
+}
+
+#[test]
+fn a_farmer_steps_onto_its_festivals_tile_only_with_towns_on() {
+    let (mut w, id, _, _) = farmer_beside_festival(150.0, 30.0);
+    w.config.towns = false;
+    let c = w.clans[&id].clone();
+    assert!(homes::step(&w, &mut homes::Prices::new(&w), &c, &c.territory).is_none(), "towns off: no home step");
+}
