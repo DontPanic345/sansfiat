@@ -36,6 +36,7 @@ pub mod settle;
 pub mod sources;
 pub mod stage;
 pub mod stage_spec;
+pub mod stage_test;
 pub mod stats;
 pub mod towns;
 pub mod units;

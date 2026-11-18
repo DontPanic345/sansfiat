@@ -17,7 +17,9 @@ use crate::units::{self, Plan, Unit};
 use crate::world::Phase;
 use crate::{civs, claim, maptext, Action, EventKind, Market, Order, World};
 
-pub use crate::stage_spec::{ArmySpec, ClanSpec, FoodSpec, HiddenSpec, RetroSpec, SignpostSpec, StageSpec, TileRef};
+pub use crate::stage_spec::{
+    ArmySpec, ClanSpec, FoodSpec, HiddenSpec, RetroSpec, ScoutSpec, SignpostSpec, StageSpec, StoreSpec, TileRef,
+};
 
 /// The seven maps of the retro: each size with its seeds.
 pub const RETRO: [(&str, &[u32]); 3] = [("small", &[2, 3, 6, 9]), ("medium", &[8, 9]), ("large", &[8])];
