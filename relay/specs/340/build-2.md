@@ -2,14 +2,16 @@
 
 Read `relay/specs/340/spec.md` ("What the piece delivers", items 2 and 3). build-1 made
 `core/src/data/` a folder; you edit `data/goods.rs` and `data/clans.rs` and `data/units.rs`.
-Nothing a player meets changes: the proof is `relay/specs/340/digests.sh` (after
+Nothing a player meets changes: the proof is `relay/specs/340/digests.sh` (from `engine/`, after
 `cargo build --release`), byte for byte `digests-main.txt`, and `SAVE_VERSION` stays 26.
 
 ## 1. The goods table
 
 - `market::utility(basket)` sums √ of every good. Make it `utility(basket, worth)`, Σ worth × √
-  amount, as `demand` values a basket; its callers (`cli/src/clear.rs`, `core/tests/market.rs`)
-  pass `FOOD_WORTH`.
+  amount, as `demand` values a basket; its callers pass the worth they cleared with:
+  both `cli/src/clear.rs` and `core/tests/market.rs` clear every trader at `[1.0; N]`, so they
+  pass `&[1.0; N]` (not `FOOD_WORTH`, which would drop salt and obsidian from the test's
+  "nobody loses").
 - `FOODS` is a hand-written list. Derive it from `GOOD` in a `const` block, as `GOODS` is, with
   a const assertion that the eaten goods come first and number 5 (`FOODS` stays `[&str; 5]`, so
   the web crate and `core/tests/land.rs` build unchanged).
@@ -44,10 +46,12 @@ impl Actor { pub fn carry(by: Carrier) -> Carry }
     `UNIT.food * cost / (UNIT.labour * load)`), `forage::supply`, `cli/src/story.rs`.
 - **Keep every product's order of operations exactly as it is** (`people * pack * food`, not
   `pack * people * food`): floating point is not associative, and the digests are bit for bit.
-- `grep -rn 'UNIT\.carry\|UNIT\.pack\|SCOUT\.pack\|CARRY\.load' engine/` finds nothing outside
-  `data/` when you are done.
+- `grep -rn 'UNIT\.carry\|UNIT\.pack\|SCOUT\.pack\|CARRY\.load' engine/` finds nothing when you
+  are done, docs and tests included: the tests that read them now are `core/tests/units.rs`
+  (`pack_total`, the line and forage asserts), `core/tests/scout_routes.rs` (`SCOUT.pack`) and
+  `core/tests/markets.rs` (`CARRY.load`); `Good.weight`'s doc and `line.rs`'s docs name them too.
 - A test in `core/tests/` (an existing actors or units test file): `Actor::carry` gives each
-  carrier's numbers, and `pack_cap(3.0)` equals `3.0 * 5.0`. Seconds, not a game.
+  carrier's numbers, and `pack_cap(3.0)` equals `3.0 * 5.0 * UNIT.food`. Seconds, not a game.
 - `engine/CLAUDE.md`'s `core/src/` row names `carry` beside `spoil`, `eat` and `walk_cost` in a
   few words.
 

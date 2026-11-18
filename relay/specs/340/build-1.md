@@ -25,7 +25,7 @@ Keep the items in each file in the order they stand in `data.rs`. Each file star
 in your summary. A `use super::DAY;` (or `use super::*`) where a file needs another's item.
 
 Done: `git diff --stat` shows `data.rs` deleted and the folder added with about the same line
-count; `cargo build` and `cargo test -p engine` pass; `relay/specs/340/digests.sh` (after
+count; `cargo build` and `cargo test -p engine` pass; `relay/specs/340/digests.sh` (from `engine/`, after
 `cargo build --release`) is byte for byte `digests-main.txt`.
 
 ## 2. CLAUDE.md, the root

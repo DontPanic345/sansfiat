@@ -19,12 +19,12 @@
   },
   {
     "id": "build-3",
-    "title": "The planner's paths cached and reach a flood fill; no verdicts in the sweep; architecture.md",
+    "title": "The planner's paths cached, near bounded and reach a flood fill; no verdicts in the sweep; architecture.md",
     "part": "ford",
     "model": "haiku",
     "effort": "medium",
     "points": 3,
-    "why": "Open 0 (the cache and the flood fill are settled; the bench's done is below main in one session), New 1 (a flood fill adapted from cost_map; Paths exists), Miss 0 (the digests and the bench), Reach 2 (the planner runs every turn). Haiku medium; it waits on two release builds and ten benches (about 1 minute) and the digests (52 s). About 9 files, 300 lines: units/paths.rs (new, ~90, so ai.rs shrinks), ai.rs, sweep_fields.rs, sweep_towns.rs, sweep_led.rs, a cli test if one reads a verdict, architecture.md, bench.md."
+    "why": "Open 0 (the turn's cache, the flood fill and near's bound are settled; spec-review prototyped the bound, near-bound.diff: 21 digests the same, 41.3 -> 35.7 ms a turn in one session; the bench's done is below main in the same session), New 1 (a flood fill adapted from cost_map; Paths exists), Miss 0 (the digests and the bench), Reach 2 (the planner runs every turn). Haiku medium; it waits on two release builds, ten benches (about 1 minute) and the digests (52 to 76 s). About 9 files, 320 lines: units/paths.rs (new, ~100, so ai.rs shrinks), ai.rs, sweep_fields.rs, sweep_towns.rs, sweep_led.rs, a cli test if one reads a verdict, architecture.md, bench.md. Spec-review re-scored nothing; it added the bound, since a cache that lasts the turn saves about a tenth of the planner's path time and can't beat the noise alone."
   },
   {
     "id": "review",

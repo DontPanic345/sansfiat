@@ -19,7 +19,3 @@ medium 9 --state: 400 e72c6d9417cd9015
 large 8 ai: 400 7a2f99c3ef1e0171
 large 8 --lead: 400 14a3b40b3cd0ae69
 large 8 --state: 400 cbd8b819082a5ecf
-
-real	0m51.650s
-user	0m51.501s
-sys	0m0.278s
