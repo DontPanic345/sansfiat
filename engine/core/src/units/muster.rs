@@ -142,6 +142,7 @@ fn join(w: &mut World, civ: u32, k: f64, pack: Basket, fighter: Fighter, into: O
                 banked: 0.0,
                 hungry: 0,
                 state: UnitState::Camp(CampState::new(capital, [0.0; 2])),
+                traded: None,
             };
             unit.add_people(fighter, k);
             w.units.insert(id, unit);
@@ -175,6 +176,7 @@ pub(crate) fn make_camp(w: &mut World, civ: u32) -> u32 {
         banked: 0.0,
         hungry: 0,
         state: UnitState::Camp(CampState::new(capital, [0.0; 2])),
+        traded: None,
     };
     w.units.insert(id, unit);
     w.civs.get_mut(&civ).unwrap().army.raised += 1;
@@ -218,7 +220,8 @@ fn make_scout(w: &mut World, civ: u32, k: f64, capital: usize) -> u32 {
     actor.store = pack;
     let id = w.next_id;
     w.next_id += 1;
-    let unit = Unit { id, civ, actor, banked: 0.0, hungry: 0, state: UnitState::Scout(ScoutState::new()) };
+    let unit =
+        Unit { id, civ, actor, banked: 0.0, hungry: 0, state: UnitState::Scout(ScoutState::new()), traded: None };
     w.units.insert(id, unit);
     id
 }
@@ -253,6 +256,10 @@ pub fn give_up(w: &mut World, id: u32, clan: u32) {
     let Some(u) = w.units.remove(&id) else { return };
     if let Some(k) = w.clans.get_mut(&clan) {
         k.people += u.people;
+        if w.config.exchange {
+            let held = k.store;
+            k.actor.lots.arrive(&held, &u.store, &u.lots);
+        }
         add(&mut k.store, &u.store);
     }
 }
@@ -355,7 +362,13 @@ pub fn disband_kind(w: &mut World, id: u32, n: Option<u32>, fighter: Option<Figh
     }
     let tile = w.units[&id].home;
     let amount = total(&w.units[&id].store) * k / people;
-    let share = take(&mut w.units.get_mut(&id).unwrap().store, amount);
+    let mut share = take(&mut w.units.get_mut(&id).unwrap().store, amount);
+    // The pack's wares leave in the same proportion, with their lots.
+    for g in (0..N).filter(|&g| !GOOD[g].eaten) {
+        let pack = &mut w.units.get_mut(&id).unwrap().store;
+        share[g] = pack[g] * k / people;
+        pack[g] -= share[g];
+    }
     {
         let u = w.units.get_mut(&id).unwrap();
         match fighter {
@@ -370,6 +383,10 @@ pub fn disband_kind(w: &mut World, id: u32, n: Option<u32>, fighter: Option<Figh
     let clan = home_clan(w, civ);
     if let Some(c) = clan.and_then(|id| w.clans.get_mut(&id)) {
         c.people += k;
+        if w.config.exchange {
+            let (held, lots) = (c.store, w.units[&id].lots.clone());
+            c.actor.lots.arrive(&held, &share, &lots);
+        }
         add(&mut c.store, &share);
     }
     if k + EPS >= people {

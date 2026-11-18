@@ -32,6 +32,8 @@ pub(crate) struct Total {
     pub(crate) towns_vs_control: TotalTowns,
     pub(crate) settle_vs_control: crate::sweep_settle::TotalSettle,
     pub(crate) goods_vs_control: crate::sweep_goods::TotalGoods,
+    /// Trade over the seven maps, beside the exchange-off control (`sweep_trade`).
+    pub(crate) trade_vs_control: crate::sweep_trade::TotalTrade,
     pub(crate) led: crate::sweep_led::TotalLed,
 }
 

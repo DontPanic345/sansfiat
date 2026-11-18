@@ -87,6 +87,9 @@ pub(crate) struct MapJudged {
     /// The same map with `Config.goods` off, and the run read against it (`sweep_goods`).
     pub(crate) no_goods: Scores,
     pub(crate) goods_vs_control: crate::sweep_goods::MapGoods,
+    /// The same map with `Config.exchange` off, and the run's trade read against it (`sweep_trade`).
+    pub(crate) no_exchange: Scores,
+    pub(crate) trade_vs_control: crate::sweep_trade::MapTrade,
     /// Each civ led by the planner and led idle, to the game's end (`sweep_led`).
     pub(crate) led: Vec<LedGame>,
     /// Each civ's name, for the text (the ids are not the names' places in `CIVS`).
@@ -169,6 +172,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
         Config { towns: false, ..base },
         Config { signposts: false, ..base },
         Config { goods: false, ..base },
+        Config { exchange: false, ..base },
     ];
     let mut runs = played_all(&configs, draws).into_iter();
     let (w, watch) = runs.next().expect("the army run");
@@ -180,6 +184,7 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
     let (towns_off, towns_off_watch) = runs.next().expect("the control with no towns");
     let (unposted, unposted_watch) = runs.next().expect("the control with no signposts");
     let (sourceless, sourceless_watch) = runs.next().expect("the control with no sources");
+    let (exchange_off, exchange_off_watch) = runs.next().expect("the control with exchange off");
     let civs: Vec<u32> = w.civs.keys().copied().collect();
     let kept = civs.iter().filter(|&&c| kept_camp(&w, c)).count() as u32;
     let people = |w: &World| stats::summary(w).people;
@@ -214,9 +219,13 @@ fn judge_map(name: &str, radius: i32, seed: u32, solo: bool, draws: u32) -> MapJ
     let settle_vs_control = crate::sweep_settle::map_settle(&scores, &no_signposts, people(&w), people(&unposted));
     let no_goods = sourceless_watch.scores(&sourceless, &civs);
     let goods_vs_control = crate::sweep_goods::map_goods(&scores, &no_goods, people(&w), people(&sourceless));
+    let no_exchange = exchange_off_watch.scores(&exchange_off, &civs);
+    let trade_vs_control = crate::sweep_trade::map_trade(&scores, &no_exchange);
     MapJudged {
         no_goods,
         goods_vs_control,
+        no_exchange,
+        trade_vs_control,
         led: map_led(base, &civs, draws),
         size: name.to_string(),
         seed,
@@ -338,6 +347,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
         towns_vs_control: total_towns(maps),
         settle_vs_control: crate::sweep_settle::total_settle(maps),
         goods_vs_control: crate::sweep_goods::total_goods(maps),
+        trade_vs_control: crate::sweep_trade::total_trade(maps),
         led: total_led(maps),
     }
 }

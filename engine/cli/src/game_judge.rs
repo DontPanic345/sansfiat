@@ -308,6 +308,21 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
         cl.store_turns_at_pack,
         j.turns
     );
+    let t = &j.game.trade;
+    println!(
+        "trade (game): fills {}, army-turns fed at a foreign market {} (food {:.1} of {:.1} needed), at its own {}, unit-turns trading {}; trades {}, largest count share at +200 {} {:.1}%, by worth {} {:.1}%",
+        t.fills,
+        t.army_turns_foreign,
+        t.food_foreign,
+        t.need_foreign,
+        t.army_turns_own,
+        t.unit_turns,
+        t.trades,
+        t.largest_count_good,
+        100.0 * t.largest_count_200,
+        t.largest_worth_good,
+        100.0 * t.largest_worth_200
+    );
     let p = &j.player;
     let kinds: Vec<String> = p.orders_by_kind.iter().map(|(k, v)| format!("{k} {v}")).collect();
     println!(

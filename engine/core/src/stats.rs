@@ -237,7 +237,13 @@ pub fn mean_ratio(reports: &[CentreReport]) -> Option<f64> {
 /// One value that changes if any bit of the world does, so two builds (native and wasm) can be
 /// compared turn by turn: FNV-1a 64 over the world's JSON, as 16 lowercase hex digits.
 pub fn digest(w: &World) -> String {
-    fnv(&serde_json::to_string(w).unwrap())
+    fnv(&world_json(w))
+}
+
+/// The world's JSON as the digest reads it: the config's `exchange` switch left out when off, so the
+/// control (no lot written, no unit trading) digests as the world before exchange did.
+fn world_json(w: &World) -> String {
+    serde_json::to_string(w).unwrap().replacen(",\"exchange\":false}", "}", 1)
 }
 
 /// The digest of the world without its `log`: the same FNV-1a 64 over the world's JSON as a
@@ -246,6 +252,11 @@ pub fn digest(w: &World) -> String {
 pub fn state_digest(w: &World) -> String {
     let mut v = serde_json::to_value(w).unwrap();
     v.as_object_mut().unwrap().remove("log");
+    if let Some(config) = v.get_mut("config").and_then(|c| c.as_object_mut()) {
+        if config.get("exchange") == Some(&serde_json::Value::Bool(false)) {
+            config.remove("exchange");
+        }
+    }
     fnv(&serde_json::to_string(&v).unwrap())
 }
 

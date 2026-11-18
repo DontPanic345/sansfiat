@@ -30,6 +30,8 @@ pub struct PlanRules {
     pub full: f64,
     /// Turns of its mouths' food the store keeps beyond a new warrior's pack.
     pub reserve: f64,
+    /// Turns of its food a pack holds under which an army with salt goes to a market to buy food.
+    pub trade_at: f64,
     /// The most of a civ's people its army may be, a share.
     pub army: f64,
     /// Food a turn it gives while a clan at its festival is a rival's or leans to one.
@@ -67,6 +69,7 @@ pub const PLAN: PlanRules = PlanRules {
     feed: 1.5,
     full: 0.75,
     reserve: 2.0,
+    trade_at: 2.0,
     army: 0.25,
     gift_contested: 4.0,
     widen: 1,
@@ -121,6 +124,9 @@ pub struct UnitRules {
     pub inside: f64,
     /// Tiles (hex steps) of its line the AI's zone covers past the camp's own, at most `people − 1`.
     pub zone: usize,
+    /// Salt a person's pack takes from a store of its civ (`Order::Fill`): the pack's salt room. A pack's
+    /// salt keeps its food, using about half a unit a person a turn, so 3 leaves some to sell after a march.
+    pub salt: f64,
 }
 
 pub const UNIT: UnitRules = UnitRules {
@@ -138,6 +144,7 @@ pub const UNIT: UnitRules = UnitRules {
     guard: 0.1 * DAY,
     inside: 0.2,
     zone: 2,
+    salt: 3.0,
 };
 
 /// What one person of a carrier carries (`actors::Actor::carry`).

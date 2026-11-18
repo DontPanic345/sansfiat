@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::data::*;
 use crate::land::{grid, neighbours, passable, step_cost, steps};
+use crate::lots::Lots;
 use crate::market::{take, total, Basket};
 use crate::world::World;
 
@@ -32,12 +33,23 @@ pub struct Actor {
     pub territory: Vec<usize>,
     pub routes: Vec<Route>,
     pub market: Option<u32>,
+    /// Where the wares in its store (and, for a clan, its basket) came from (`lots.rs`).
+    #[serde(default, skip_serializing_if = "Lots::is_empty")]
+    pub lots: Lots,
 }
 
 impl Actor {
     /// An actor of `people` at `home`, holding only home.
     pub fn new(home: usize, people: f64) -> Actor {
-        Actor { people, home, store: [0.0; N], territory: vec![home], routes: Vec::new(), market: None }
+        Actor {
+            people,
+            home,
+            store: [0.0; N],
+            territory: vec![home],
+            routes: Vec::new(),
+            market: None,
+            lots: Lots::default(),
+        }
     }
 
     /// What its routes cost a turn.
@@ -91,18 +103,27 @@ fn keepers(store: &Basket) -> f64 {
 /// food a unit, sparing that food `KEEPING.slows` of its spoiling, and the salt that kept food is used
 /// up. Returns the food lost.
 pub fn spoil(store: &mut Basket) -> f64 {
+    spoil_keeping(store, 0.0)
+}
+
+/// `spoil`, with `back` of the store's salt held back from its keeping: that salt keeps nothing and spoils
+/// at no more than the salt's own rate, so a pack can be filled from it (`KEEPING.packs`).
+pub fn spoil_keeping(store: &mut Basket, back: f64) -> f64 {
     let food = total(store);
     let salt = keepers(store);
-    let kept = food.min(salt * KEEPING.keeps);
+    let back = back.min(salt).max(0.0);
+    let free = salt - back;
+    let kept = food.min(free * KEEPING.keeps);
     let spared = if food > 0.0 { KEEPING.slows * kept / food } else { 0.0 };
-    let used = if salt > 0.0 { kept / KEEPING.keeps / salt } else { 0.0 };
+    let used = if free > 0.0 { kept / KEEPING.keeps / free } else { 0.0 };
     for g in 0..N {
         let rate = match GOOD[g].uses {
             Use::Food => GOOD[g].spoil * (1.0 - spared),
             Use::Keeps => GOOD[g].spoil + (1.0 - GOOD[g].spoil) * used,
             Use::Arms => GOOD[g].spoil,
         };
-        store[g] *= 1.0 - rate;
+        let held_back = if GOOD[g].uses == Use::Keeps && salt > 0.0 { store[g] * back / salt } else { 0.0 };
+        store[g] = held_back + (store[g] - held_back) * (1.0 - rate);
     }
     food - total(store)
 }
@@ -137,11 +158,12 @@ pub fn keeps_back(b: &Basket, people: f64) -> Basket {
 }
 
 /// The most a civ's store of food cap `cap` holds of each good that isn't eaten: the salt that keeps a
-/// full store for a turn, and `ARMS.hold` of obsidian. Infinite for a food: the cap counts food.
-pub fn civ_holds(cap: f64) -> Basket {
+/// full store for a turn, and the `packs` it keeps back for its packs (`KEEPING.packs`, or 0 with exchange
+/// off), and `ARMS.hold` of obsidian. Infinite for a food: the cap counts food.
+pub fn civ_holds(cap: f64, packs: f64) -> Basket {
     std::array::from_fn(|g| match GOOD[g].uses {
         Use::Food => f64::INFINITY,
-        Use::Keeps => cap / KEEPING.keeps,
+        Use::Keeps => cap / KEEPING.keeps + packs,
         Use::Arms => ARMS.hold,
     })
 }
@@ -149,7 +171,12 @@ pub fn civ_holds(cap: f64) -> Basket {
 /// What each good is worth to a civ's store at its market: it wants salt and obsidian both, at
 /// `KEEPING.civ_want` with none, falling to 0 as `store` fills to what it holds (`civ_holds`).
 pub fn civ_worths(store: &Basket, cap: f64) -> Basket {
-    let holds = civ_holds(cap);
+    civ_worths_packs(store, cap, 0.0)
+}
+
+/// `civ_worths` with the salt a store keeps for its packs (`KEEPING.packs`, with exchange on).
+pub fn civ_worths_packs(store: &Basket, cap: f64, packs: f64) -> Basket {
+    let holds = civ_holds(cap, packs);
     std::array::from_fn(|g| {
         if GOOD[g].eaten {
             1.0

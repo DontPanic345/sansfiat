@@ -80,6 +80,7 @@ pub fn divide_land(w: &mut World, id: u32) {
     homes::claim_land(w, did, &hers);
     let mut d = new_clan(did, home, c.people / 2.0);
     d.store = c.store.map(|v| v / 2.0);
+    d.actor.lots = c.lots.clone();
     d.since = c.since;
     d.fed_ratio = c.fed_ratio;
     d.civ = c.civ;
@@ -119,6 +120,7 @@ pub fn split(w: &mut World, id: u32, posted_only: bool) -> bool {
     d.gifts = c.gifts.clone();
     d.parent = Some(id);
     d.store = c.store.map(|v| v * share);
+    d.actor.lots = c.lots.clone();
     d.fields = c.fields;
     let posted = crate::settle::draw(w, c.civ, d.id, c.home, people, &d.store, SETTLE.fed).map(|(site, _)| site);
     let site = match posted {

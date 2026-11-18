@@ -59,6 +59,16 @@ pub struct Config {
     /// tile has one, so neither good exists. Old saves load with it on.
     #[serde(default = "yes")]
     pub goods: bool,
+    /// Whether units trade and goods pass between markets (`exchange.rs`), and whether stores record where
+    /// their goods came from (`lots.rs`): off is the control, in which no unit trades, no good passes, no lot
+    /// is written and the world is the one before exchange. Old saves load with it on. Last, and written
+    /// only when off (`stats::digest` leaves it out, so the control's digest is the world before exchange's).
+    #[serde(default = "yes", skip_serializing_if = "is_true")]
+    pub exchange: bool,
+}
+
+fn is_true(b: &bool) -> bool {
+    *b
 }
 
 fn yes() -> bool {
@@ -81,6 +91,7 @@ impl Default for Config {
             towns: true,
             signposts: true,
             goods: true,
+            exchange: true,
         }
     }
 }

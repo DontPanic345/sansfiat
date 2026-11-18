@@ -33,6 +33,8 @@ pub struct Scores {
     pub settle: crate::judge_settle::SettleScores,
     /// How far salt and obsidian move: the festivals they trade at, and who holds them at +200.
     pub goods: crate::judge_goods::GoodsScores,
+    /// Who trades with whom (`judge_trade`).
+    pub trade: crate::judge_trade::TradeScores,
     pub end: EndScores,
 }
 
