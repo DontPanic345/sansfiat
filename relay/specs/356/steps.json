@@ -1,0 +1,45 @@
+[
+  {
+    "id": "build-1",
+    "title": "Lots, a unit in the clearing, and how a good passes between markets (both measured, one kept)",
+    "part": "clay",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 10,
+    "why": "Open 2 (the passing is chosen by one measured number, obsidian's mean steps at +200, both ways), New 3 (nothing here tracks where a good came from; a second route per clan or stores posting wares are new), Miss 3 (the choice is only seen on the retro maps; the lots invariant is a test it writes), Reach 2 (trade runs every turn). A clay at 10: Sonnet high. About 14 files, 900 lines: lots.rs (new, ~200), exchange.rs (new, ~250), markets.rs, civs.rs, clans.rs, dividing.rs, settle.rs, units/mod.rs, data/game.rs, data/goods.rs, two test files, pins, engine/CLAUDE.md, pass.md. Waits on two sweeps (~4 min each) and the digests (~1 min)."
+  },
+  {
+    "id": "build-2",
+    "title": "The Fill order, the store's salt for packs, the planner trading, the judge's trade group, the text view",
+    "part": "kiln",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 0 (every rule and the group's definitions are in spec.md and the brief; the numbers are starting ones the glaze tunes), New 1 (an order, a judge group and a sweep config each adapted from goods'), Miss 1 (tests it writes; one sweep to show the rows), Reach 2 (the planner runs every turn). A kiln at 5: Haiku high. About 12 files, 600 lines: orders.rs, units/trade.rs (new, so ai.rs stays as it is), ai.rs (calls), actors.rs, data/units.rs, data/goods.rs, judge_trade.rs (new), judge.rs, sweep_trade.rs (new), sweep.rs, game_judge.rs, view.rs or view_goods.rs, a test, engine/CLAUDE.md, kiln.md."
+  },
+  {
+    "id": "build-3",
+    "title": "The page: a store's goods selectable, the flow layer, Fill salt, the play script",
+    "part": "kiln",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 2 (the layer's look is by eye; what it must draw is exact), New 1 (a layer like lines.js, a button like the others), Miss 1 (a play script it writes, and a screenshot), Reach 0 (the page alone). A kiln at 4: Haiku high. About 9 files, 400 lines: web/src/lib.rs, www/model.js, www/panels-goods.js (new; panels.js is 592), panels.js, map/layers/flow.js (new), map/view.js, play/exchange.mjs (new), play/all.mjs, play/buttons.mjs."
+  },
+  {
+    "id": "build-4",
+    "title": "Glaze: tune the pack's salt, the store's salt for packs and the planner's trade, and write the scores",
+    "part": "glaze",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 9,
+    "why": "Open 4 (searching for numbers that put armies fed on others' markets without breaking health), New 0 (numbers in data/), Miss 3 (only the retro maps' sweep shows it), Reach 2 (every turn's trade and planner). A glaze at 9: Sonnet high. About 3 files and scores.md, 150 lines; up to five sweeps of ~5 minutes."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "sonnet",
+    "effort": "high",
+    "why": "Main hasn't moved under the piece and the question is two numbers on the sweep, with the page proved by its play script and the play step: Sonnet high. It runs the digests with exchange off, reads scores.md against sweep-final.json, runs exchange.mjs, and plays one small map to see an army fed at a festival and a chain drawn."
+  }
+]
