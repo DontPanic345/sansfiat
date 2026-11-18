@@ -1,7 +1,12 @@
 # #342 build-1 (clay): the herd on the actor
 
-Read `relay/specs/342/spec.md` first: items 1–10 are this step, and its decisions are settled. You
+Read `relay/specs/342/spec.md` first: items 1–11 are this step, and its decisions are settled. You
 shape the core the kilns and the glaze build on. Keep the start numbers: the glaze tunes them.
+
+The spec step sketched this on main (`probe.diff`, `probe.md`): read it for where each piece hooks
+in, not to copy. Its switches are environment variables and its `jobs` stayed in `fields.rs`; build
+it properly. Its setting p4 is what you build: a herd started at `HERD.start` a person, the notch
+reckoning the steady yield, the clan taking all of the increase.
 
 ## What you build
 
@@ -24,14 +29,21 @@ shape the core the kilns and the glaze build on. Keep the start numbers: the gla
 4. **`core/src/herds.rs`**: `open(w)`, `graze(w, t)` (`HERD.graze[terrain] × fertility`, land only),
    `carries(w, tiles, days) -> f64` (Σ `min(graze, days × HERD.tend)`), `breed(h, k) -> f64` (the
    increase, negative above `k`, never past `k`; `h` to 0 at `k` 0 by the same rule), `herder(c)`,
-   `radius(c)`, `start(w, id)` (catch `HERD.start × people` from the game on its own tiles, in
-   proportion to their game stock, capped by it), `notch(w, id)`, and `head(c) -> f64` (its herd:
-   `store[ANIMALS]`, or the herd it would start when it has a share and none, for reckoning).
+   `radius(c)`, `start(w, id)` (a herd of `HERD.start × people`; the game on its own tiles pays
+   what it can, in proportion to their stock, and the rest comes from beyond its land),
+   `offtake(h, inc, k) -> f64` (what the clan takes of the increase: all of it, `inc.max(0)`; one
+   function so the glaze can change it to what grows past `k ÷ 2`), `steady(k) -> f64`
+   (`HERD.breed × k ÷ 4`), `notch(w, id)`, and `head(c) -> f64` (its herd: `store[ANIMALS]`, or the
+   herd it would start when it has a share and none, for reckoning).
 5. **Through the turn** (`clans.rs`, kept thin: it calls `herds::`):
    - `Clan.herds: f64`, `#[serde(default)]`. A daughter starts at her mother's; a clan that moves
      on keeps it (the herd is its store, so it goes too).
-   - `reap`/`reap_within`: the herding job's `carries` and `breed(head, K)` give `Reaped.herd` (the
-     increase, at least 0) inside the same budget factor as gathering and grain. `Reaped::food`
+   - `reap`/`reap_within`: the herding job's `carries` and `breed(head, K)` give the herd's change,
+     and `offtake` gives `Reaped.herd`, inside the same budget factor as gathering and grain.
+     `Reaped` carries the change and `K` too.
+   - `worth` (so `value`, `value_at` and the notch): a herding share counts `steady(K)` less what
+     the harvest takes, on top of the food, as `worth` counts a source's dig whether or not the clan
+     keeps it. Without this no civ herds (`probe.md`, p1–p3). `Reaped::food`
      adds it to `ANIMALS`. The budget leaves the herd out: `surplus_target × people` less the
      store's food without `ANIMALS`. Only once `herds::open`.
    - `harvest`: the herd breeds (a fall above `K` comes off the store); `basket` is the store
@@ -59,12 +71,13 @@ shape the core the kilns and the glaze build on. Keep the start numbers: the gla
   herd; a daughter takes half the herd; with `herds` off nothing herds.
 - A stage test in `core/stage/` (listed in `stage_test.rs`'s `LIST`), after `fields`'s pattern:
   a plains map with no river, one civ's clan, played past the pick: by a named turn its herding
-  share is above 0, it holds animals, its territory is past radius 2, and it ate animals.
+  share is above 0, it holds animals and it ate animals. (Its territory past radius 2 is a unit
+  test, not the stage's: on the retro maps herders don't yet widen, which is the glaze's.)
 
 ## Done
 
 - The tests pass; `engine/check.sh` green.
-- **Herds off equals main.** Build main in a worktree (`git worktree add /tmp/main main`), and on
+- **Herds off equals main.** The probe met this in all 19,953 numbers, so it is exact. Build main in a worktree (`git worktree add /tmp/main main`), and on
   the branch set `herds: false` in `Config::default()` locally (don't commit it): `sweep --judge
   --json` (about 3.5 minutes) gives every map's scores equal to main's. A digest can't match (the
   save has a new slot), the scores must. A score that moves is a fault: find it (a float reordered,
@@ -72,7 +85,8 @@ shape the core the kilns and the glaze build on. Keep the start numbers: the gla
 - **Herds on, one sweep** (`sweep --judge --json`, herds on): write `relay/specs/342/clay.md` with,
   per map, the herders and animals at +200, and per civ its herding share and its Standing beside
   main's (`relay/specs/342/main.md`). Read them however you can (a temporary print, not committed: the judge's group is build-2's). This is for the glaze, not a bound: the start numbers need only
-  run. If no clan anywhere herds, find why (the notch's reckoning, the start) before you finish.
+  run. Expect about p4 (`probe.md`): some 9 civs herd, about 200 herder clans and 350 animals at
+  +200, starving near 1.15 times. Far below that, find why before you finish.
 - `engine/CLAUDE.md`'s layout names `jobs.rs` and `herds.rs` in the `core/src/` row (stays under 8 KB).
 
 Where the spec doesn't hold in the code, make the smallest change that works and record it as a

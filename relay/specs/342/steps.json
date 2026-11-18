@@ -6,7 +6,7 @@
     "model": "sonnet",
     "effort": "high",
     "points": 8,
-    "why": "Open 2 (the rules, names and start numbers are settled; how the herd threads harvest, trade and eat is the builder's), New 1 (a third job in fields' split, and game's logistic rule on a store), Miss 3 (herds-off equal to main in every map's scores catches a broken food sum, but whether a herd starts and lives shows only on the retro maps), Reach 2 (harvest, eat, move and every basket sum run every turn). A clay at 8: Sonnet high, on the clay rung. About 22 files, 750 lines: data/goods.rs and data/map.rs (the new slot), data/herds.rs (~60 new), data/game.rs, jobs.rs (~130, moved from fields.rs and grown), herds.rs (~180 new), clans.rs (~40), dividing.rs, homes.rs, fields.rs, events.rs, world.rs, a few Use matches in actors.rs, market.rs, civs.rs and web/src/lib.rs, core/tests/herds.rs (~220), a stage JSON and stage_test.rs, cli/tests/save.rs pins, engine/CLAUDE.md, clay.md."
+    "why": "Open 2 (the rules, names and start numbers are settled, and the spec step's probe ran them: probe.md, p4; how the herd threads harvest, trade and eat is the builder's), New 1 (a third job in fields' split, and game's logistic rule on a store), Miss 3 (herds-off equal to main in every map's scores catches a broken food sum, but whether a herd starts and lives shows only on the retro maps), Reach 2 (harvest, eat, move and every basket sum run every turn). A clay at 8: Sonnet high, on the clay rung. About 22 files, 750 lines: data/goods.rs and data/map.rs (the new slot), data/herds.rs (~60 new), data/game.rs, jobs.rs (~130, moved from fields.rs and grown), herds.rs (~180 new), clans.rs (~40), dividing.rs, homes.rs, fields.rs, events.rs, world.rs, a few Use matches in actors.rs, market.rs, civs.rs and web/src/lib.rs, core/tests/herds.rs (~220), a stage JSON and stage_test.rs, cli/tests/save.rs pins, engine/CLAUDE.md, clay.md."
   },
   {
     "id": "build-2",
@@ -30,10 +30,10 @@
     "id": "build-4",
     "title": "Herds that pay",
     "part": "glaze",
-    "model": "sonnet",
-    "effort": "high",
-    "points": 10,
-    "why": "Open 4 (nine HERD numbers and a weight tuned together against six bounds), New 1 (fields' canvas is the method), Miss 3 (only the sweep against the no-herds control catches a miss), Reach 2 (the rules run every turn). Glaze at 10: Sonnet high. I expect eight to twelve 4-minute sweeps, perhaps the grazing-takes-game lever, and an ask if the Standing bound won't move. About 4 files, 150 lines: data/herds.rs, herds.rs or jobs.rs for a rule it changes, core/tests/herds.rs, glaze.md."
+    "model": "opus",
+    "effort": "medium",
+    "points": 12,
+    "why": "Open 4 (nine HERD numbers, a weight and the offtake tuned together against six bounds), New 3 (the spec step's probe, probe.md, found two failures no number fixed: herders hold narrower land than gatherers in all nine settings, and the rule that grows real herds doubles starving; the rule between them has no pattern here), Miss 3 (only the sweep against the no-herds control catches a miss), Reach 2 (the rules run every turn). Re-scored after the probe: New 1 to 3, so 12 and Opus medium, the top, where the spec first had Sonnet high at 10. I expect eight to twelve 4-minute sweeps, a rule change for the offtake and one for wide land, and an ask if wide land won't come. About 5 files, 200 lines: data/herds.rs, herds.rs, jobs.rs, core/tests/herds.rs, glaze.md."
   },
   {
     "id": "review",

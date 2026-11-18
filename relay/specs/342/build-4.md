@@ -1,7 +1,7 @@
 # #342 build-4 (glaze): herds that pay
 
-Read `relay/specs/342/spec.md` whole, and the summaries and files of builds 1–3 (`clay.md`,
-`judge.md`). The rules are built; their numbers only work together. Tune them on the retro maps
+Read `relay/specs/342/spec.md` whole, `probe.md` (nine settings the spec step ran on a sketch),
+and the summaries and files of builds 1–3 (`clay.md`, `judge.md`). The rules are built; their numbers only work together. Tune them on the retro maps
 against the no-herds control until every bound in the spec's table holds, read from
 `sansfiat sweep --judge --json --floor` (its floor; one civ swings by up to half a point,
 `main.md`). You may change the clay's and the kilns' rules where a bound needs it: record each change
@@ -10,7 +10,7 @@ as a decision with the sweep that shows why, and keep `core/tests/herds.rs`, the
 
 ## What you tune
 
-Every number in `HERD` (`data/herds.rs`), and animals' `weight` in `GOOD`. The bounds that matter
+Every number in `HERD` (`data/herds.rs`), animals' `weight` in `GOOD`, and `herds::offtake`. The bounds that matter
 most, in order:
 
 1. **Herding civs gain Standing**: at least 4 civs herd at +200; they gain at least +0.01 on average
@@ -24,13 +24,21 @@ most, in order:
 
 ## What the spec expects you to meet
 
-- **Herds that don't start or don't live.** If few clans herd, look first at the notch's reckoning
-  of a clan with no herd (`herds::head`), `HERD.start` and `HERD.tend`, before raising `breed`.
+The probe (`probe.md`) starts you at p4: 9 civs herd and 8 gain, +0.033, starving 1.15 times, and
+two failures it couldn't fix:
+
+- **Narrow land.** In every setting herders hold fewer tiles a person than gatherers (0.36–0.64
+  against 0.70–0.94). The likely cause: a herding share of a tenth or a fifth gives few days, so
+  `K` is bound by days × `tend`, not the grass, and another grass tile adds nothing to `steady(K)`.
+  Look at which binds on real herders before turning the radius or the walk.
+- **A trickle of animals.** Taking every increase keeps a herd at its start (341 animals over the
+  seven maps). Taking only past `K ÷ 2` grows herds three- to fourfold but doubles starving
+  (p6, p7); a notch that only a fed clan may raise kills herding (p8, p9); breed 0.5 brings
+  starving to 1.79 (p5). Something between — a clan that keeps part of the increase while its herd
+  is young, or a lean that only a herd past `K ÷ 2` gives — is yours to find.
 - **Herds everywhere.** If every plains gatherer herds and farmers or the starving bound suffer,
   the spec's first lever is grazing that takes game: a grazed tile's game cap falls by the herd's
   share of its room. It's a rule: record it.
-- **Narrow land.** If herders hold no wider land, `HERD.radius` and `HERD.walk` are the levers; the
-  land a herder adds is weighed by `value`, so the herd's increase must pay for the walk.
 - **Lean.** If short clans empty their herds and starve after, lower `HERD.lean`.
 
 Settings are one draw each: run each as one `sweep --judge --json` (about 4 minutes), two at a time
