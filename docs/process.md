@@ -60,7 +60,7 @@ numbers are.
 | Routes with rests: campsites, caches, caravanserai | `routes.md` | Needed before M7 |
 
 A design file holds rules and relations, never values: "a floor", "more than", "a small
-share". The values live in `engine/core/src/data.rs` so a build can tune them, and a design
+share". The values live in `engine/core/src/data/` so a build can tune them, and a design
 file names a number only to say that one exists.
 
 ## Scores
