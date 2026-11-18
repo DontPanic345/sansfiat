@@ -1,5 +1,5 @@
 // A left click centres the camera: it eases to the clicked tile's middle with the zoom unchanged, and a second click
-// on the same tile (to cycle what is there) leaves the view still.   node www/play/camera.mjs [--out DIR]     (small seed 1)
+// on the same tile (to cycle what is there) leaves the view still; a tile's tooltip names it (q, r).   node www/play/camera.mjs [--out DIR]     (small seed 1)
 import { open } from '../play.mjs';
 
 let failed = false;
@@ -46,6 +46,11 @@ try {
   const again = await view(page);
   need((await page.data()).selected !== first, `the second click changes the selection (${first} to ${(await page.data()).selected})`);
   need(again.cx === v.cx && again.cy === v.cy, 'and the view does not move');
+  // A tile's tooltip names it (q, r), as refusals, the feed and the reach line name tiles.
+  const R = await page.eval('game.map.radius');
+  const qr = await page.eval(`(() => { for (let q = -${R}; q <= ${R}; q++) for (let r = -${R}; r <= ${R}; r++) if (game.map.at(q, r) === ${target}) return [q, r]; })()`);
+  const tip = (await page.tip(target)) ?? '';
+  need(tip.includes(`(${qr[0]}, ${qr[1]})`), `the tooltip names the tile (${qr[0]}, ${qr[1]}): ${tip.slice(0, 60)}`);
   for (const e of page.errors()) need(false, `page error: ${e}`);
 } catch (e) {
   need(false, e.stack ?? String(e));

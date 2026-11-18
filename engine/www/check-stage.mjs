@@ -302,4 +302,27 @@ for (const kind of ['camp', 'scout']) pressAll(kind);
   assert.match(row.value, /^\d+\.\d a turn · reaches 1 clan · gave 0\.0 · left \d+\.\d$/, `the Gift row: ${row.value}`);
 }
 
+// The capital and reach lines in the led civ's panel: who holds the capital, and what is in reach.
+{
+  const rows = (spec) => {
+    const sim = staged(spec);
+    const v = JSON.parse(sim.view());
+    const n = shapeOf(sim, { kind: 'civ', civ: v.player }).numbers;
+    return { v, cap: n.find((r) => r.label === 'Capital'), reach: n.find((r) => r.label === 'Reach') };
+  };
+  let { cap, reach } = rows(SPEC);
+  assert.match(cap?.value ?? '', /^held by your army, 4\.6 warriors; /, `the Capital row names its guard: ${cap?.value}`);
+  assert.ok(reach?.value, 'the Reach row is always there');
+  ({ cap } = rows({ ...SPEC, armies: [{ civ: 1, at: { mark: 'B' }, people: 3 }] }));
+  assert.match(cap.value, /^no army of yours on it: a rival army that ends its turn there takes it, and the game; \S+'s army of 3\.0 is \d+ steps away$/, `with no guard it says what that means: ${cap.value}`);
+  // An army cut off by a rival's land says it surrenders, not that hunger thins it.
+  const cut = { ...SPEC, marks: '  . . .\n . . . .\n. A . B C\n . . . .\n  . . .\n', armies: [{ civ: 0, at: { mark: 'C' }, people: 4.6 }] };
+  const sim = staged(cut);
+  const v = JSON.parse(sim.view());
+  const army = Object.values(v.units).find((u) => u.kind === 'camp' && u.civ === v.player);
+  assert.equal(army.cut_by, Object.values(v.civs).find((c) => c.id !== v.player).id, 'the rival whose land cuts its line');
+  const doing = shapeOf(sim, { kind: "unit", id: army.id }).doing;
+  assert.match(doing, /^Cut off by \S+’s land: hungry 3 turns standing here, it surrenders$/, `the army's line: ${doing}`);
+}
+
 console.log('ok: staged arm (shapes, digest, Disband all), the end, a staged town, a signpost and its settlement');

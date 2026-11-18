@@ -5,7 +5,7 @@
 import { MapView } from '../map/view.js';
 import { build } from '../model.js';
 import { Feed } from '../feed.js';
-import { f2, keyOf, tileOf, alive, candidates, describe, subjectOf, tileKind, marketOn, clanRole, unitOrder } from '../panels.js';
+import { f2, hex, keyOf, tileOf, alive, candidates, describe, subjectOf, tileKind, marketOn, clanRole, unitOrder } from '../panels.js';
 import * as panel from '../panel.js';
 import { app } from '../app.js';
 import { autosave } from '../save.js';
@@ -707,7 +707,8 @@ function fillTip(i) {
   const { TERRAIN } = app.data;
   tipTile = i;
   const h = view.clanAt(i);
-  const lines = [`<b>${tileKind(ctx(), i)}</b>`];
+  // The tile's (q, r), as refusals, the feed and the reach line name tiles.
+  const lines = [`<b>${tileKind(ctx(), i)}</b> (${hex(ctx(), i)})`];
   if (layout.terrain[i] !== 0 && TERRAIN[layout.terrain[i]].land) {
     lines.push(h ? clanTip(i, h) : 'Held by nobody');
     for (const u of model.holders(i)) lines.push(`Held by ${v.civs[u.civ]?.name ?? '?'}'s army`);

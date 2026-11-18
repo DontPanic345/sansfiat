@@ -74,7 +74,8 @@ async function serve(query) {
     m = /^@(\d+),(\d+)(?:,([\d.]+))?$/.exec(t);
     if (m) {
       const s = Number(m[3] ?? shotScale);
-      const i = await page.eval(`game.map.tileAt(${m[1] / s}, ${m[2] / s})`);
+      // A screenshot's pixel is the window's; the map reads its canvas's, below the top bar.
+      const i = await page.eval(`(() => { const r = game.map.canvas.getBoundingClientRect(); return game.map.tileAt(${m[1] / s} - r.left, ${m[2] / s} - r.top); })()`);
       if (i == null || i < 0) throw new Error(`no tile at pixel ${m[1]},${m[2]}`);
       return i;
     }
@@ -137,16 +138,32 @@ async function serve(query) {
     right: async ([t]) => page.command(await tileOf(t)),
     drag: async ([a, b]) => page.drag(await tileOf(a), await tileOf(b)),
     key: async ([name]) => page.key(name),
-    button: async (label) => page.button(label.join(' ')),
+    button: async (label) => {
+      const t = label.join(' ');
+      // A fold's heading (the legend's) is pressed as a button is.
+      const fold = await page.eval(`(() => { const s = [...document.querySelectorAll('summary')].find((s) => s.offsetParent && s.textContent.trim().replace(/^[▶▼]\\s*/, '') === ${JSON.stringify(t)}); if (s) s.click(); return !!s; })()`);
+      if (!fold) await page.button(t);
+    },
     stepper: async ([label, n = '1', ...rest]) => {
       const go = rest[rest.length - 1] === 'go';
       if (go) rest.pop();
       const r = await page.stepper(label, { n: Number(n), option: rest.join(' ') || null, go });
       return `stepper ${label}: ${JSON.stringify(r)}`;
     },
-    tip: async ([t]) => {
+    tip: async (words) => {
+      const t = words.join(' ');
+      // A button's label or a panel number's reads its tooltip, as hovering it does; else a tile or a selector.
+      const b = await page.eval(`(() => {
+        const b = [...document.querySelectorAll('button')].find((b) => b.offsetParent && b.textContent.trim() === ${JSON.stringify(t)});
+        const n = [...document.querySelectorAll('.num')].find((n) => n.firstElementChild?.textContent.trim() === ${JSON.stringify(t)});
+        return (b ?? n)?.title ?? null;
+      })()`);
+      if (b != null) return `tooltip: ${b || 'none'}`;
       const target = /^[@\d-]/.test(t) ? await tileOf(t) : t;
-      return `tooltip: ${(await page.tip(target)) ?? 'none'}`;
+      // The page's tooltip is lines in one box; a ' / ' keeps them apart in print.
+      const text = await page.tip(target);
+      const lines = await page.eval(`(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.innerText.split('\\n').filter(Boolean).join(' / ') : null; })()`);
+      return `tooltip: ${lines ?? text ?? 'none'}`;
     },
     end: async ([n = '1']) => {
       const before = new Set(await alertIds());
@@ -218,6 +235,9 @@ async function serve(query) {
           } else if (!run[c]) text = `unknown command "${c}"`;
           else {
             const said = await run[c](a);
+            // The view eases after a click or a selection; what prints and the next pixel are read once it rests.
+            await sleep(30);
+            await page.until('!game.map.anim').catch(() => {});
             text = [said, await show()].filter(Boolean).join('\n');
           }
         } catch (e) {

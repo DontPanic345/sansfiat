@@ -201,7 +201,11 @@ function campShape(ctx, u) {
   const marching = u.dest != null;
   const r = marching ? JSON.parse(sim.route(u.id)) : null;
   let base;
-  if (u.hungry > 0) base = `Hungry ${plural(u.hungry, 'turn')}: loses a warrior at ${rules.hungry_turns}`;
+  // A camp cut off by a rival's land, hungry `fight.surrender` turns and not marching, surrenders whole.
+  const yields = u.cut_by != null && (u.dest == null || u.dest === u.tile) && rules.fight.surrender <= rules.hungry_turns;
+  if (u.hungry > 0 && yields) base = `Hungry ${plural(u.hungry, 'turn')}, cut off by ${civName(ctx, u.cut_by)}’s land: surrenders to ${civName(ctx, u.cut_by)} at ${rules.fight.surrender}`;
+  else if (u.hungry > 0) base = `Hungry ${plural(u.hungry, 'turn')}: loses a warrior at ${rules.hungry_turns}`;
+  else if (yields) base = `Cut off by ${civName(ctx, u.cut_by)}’s land: hungry ${rules.fight.surrender} turns standing here, it surrenders`;
   else if (u.cut_at) base = `Cut off: ${civName(ctx, u.cut_at.by)}'s army holds its line at ${hex(ctx, u.cut_at.at)}`;
   else if (u.cut_off) base = "Cut off: its line can't feed it";
   else if (marching) base = `Marching to ${hex(ctx, u.dest)}${r ? `: ${plural(r.turns, 'turn')}` : ': no route'}`;
@@ -446,6 +450,8 @@ function civShape(ctx, c) {
     { label: 'Joined', value: c.joined, tip: 'Clans joined since founding' },
     ...claimNumbers(ctx, c.id),
     giftRow(c),
+    ...(c.reach_line ? [{ label: 'Reach', value: c.reach_line, tip: 'What you can order now that brings a clan or a rival’s land: a claim that joins a clan’s home, the gift, an army that ends its turn on a rival’s tile' }] : []),
+    ...(c.capital_line ? [{ label: 'Capital', value: c.capital_line, tip: 'A rival army that ends its turn on your capital with no army of yours there takes it, and you lose' }] : []),
     {
       label: 'Keep',
       value: `${f2(c.keep)}${c.keep_set == null ? ` (not set: the default, a full pack for its camps, ${f2(c.keep)} now)` : ''}`,

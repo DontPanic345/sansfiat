@@ -1,0 +1,21 @@
+turn 258 (+0): civ 200 8.9%, civ 201 8.5%, civ 202 7.4%; leader civ 200
+turn 268 (+10): civ 200 8.1%, civ 201 7.8%, civ 202 19.5%; leader civ 202
+turn 278 (+20): civ 200 14.5%, civ 201 11.4%, civ 202 17.2%; leader civ 202
+turn 288 (+30): civ 200 22.3%, civ 201 16.5%, civ 202 15.2%; leader civ 200
+turn 298 (+40): civ 200 27.1%, civ 201 21.1%, civ 202 14.3%; leader civ 200
+turn 308 (+50): civ 200 28.8%, civ 201 27.2%, civ 202 13.5%; leader civ 200
+turn 318 (+60): civ 200 28.9%, civ 201 29.6%, civ 202 13.2%; leader civ 201
+turn 328 (+70): civ 200 28.7%, civ 201 30.5%, civ 202 14.6%; leader civ 201
+turn 338 (+80): civ 200 28.9%, civ 201 32.3%, civ 202 14.5%; leader civ 201
+turn 348 (+90): civ 200 28.8%, civ 201 32.6%, civ 202 14.7%; leader civ 201
+turn 358 (+100): civ 200 28.8%, civ 201 31.3%, civ 202 16.3%; leader civ 201
+led civ 202: Standing at +101 16.5% (rank 3) in the game, 29.7% (rank 1) with every civ on the AI, 0.0% (rank 3) idle led civ
+end (game / control / idle): goes on +101 rank 3 / goes on +101 rank 1 / fell +3 rank 3
+land (game / control): 61 / 66 tiles claimed
+doubt (game / control): lead changes 3 / 3, spread +101 0.148 / 0.297, swings 5 / 0
+motion (game / control): clans changed 73 / 56, people 377.5 / 283.0, land tiles 157 / 110, clans left 18 / 0, claimed tiles taken 15 / 1
+fight (game / control): people fallen 0.00 / 4.14, tiles taken 0 / 3, armies surrendered 1 / 0
+fight by civ (game): 200: fallen 0.00 taken 0 surrendered 0; 201: fallen 0.00 taken 0 surrendered 0; 202: fallen 0.00 taken 0 surrendered 1
+fields (game / control): farming share at +200 - / -, field tiles at +200 - / -, store turns at a pack 53 / 5 of 101
+player orders: 58 (claim 45, move 6, raise 3, setGift 4), 57.43 per 100 turns; turns with none 92 of 101, longest run 39
+player lines: 0 refused, 0 noted

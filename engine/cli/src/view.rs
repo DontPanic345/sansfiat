@@ -1,7 +1,7 @@
 //! The text view of the led civ: what a player of the page can see, in text, read at every decision
 //! by `play`. Every number is read off the world; nothing here changes it.
 
-use engine::data::{Fighter, CIV, LEANING, SETTLE, UNIT};
+use engine::data::{Fighter, CIV, FIGHT, LEANING, SETTLE, UNIT};
 use engine::data::{ARMS, GOOD, KEEPING, N};
 use engine::market::total;
 use engine::over::{self, Why};
@@ -125,6 +125,9 @@ pub(crate) fn text(w: &World, since: usize) -> String {
         c.gifted,
         c.joined
     );
+
+    out += &format!("reach: {}\n", engine::outlook::reach_line(w, me));
+    out += &format!("capital: {}\n", engine::outlook::capital_line(w, me));
 
     let units: Vec<&Unit> = w.units.values().filter(|u| u.civ == me).collect();
     if units.is_empty() {
@@ -346,6 +349,12 @@ fn unit_line(w: &World, u: &Unit) -> String {
             let cut_at = units::cut_at(w, u.id)
                 .map(|(_, at, by)| format!(", cut at {} by civ {by}", tile(w, at)))
                 .unwrap_or_default();
+            let cut_at = match units::cut_by_rival(w, u.id) {
+                Some(by) if cs.dest.is_none() => {
+                    format!("{cut_at}, cut off by civ {by}'s land: surrenders hungry {} turns in a row", FIGHT.surrender)
+                }
+                _ => cut_at,
+            };
             let draws = draws_on(w, u);
             let bows = if cs.bows { ", making bows" } else { "" };
             let bows = format!("{bows}, {:.0}% armed with obsidian", cs.armed * 100.0);
