@@ -104,7 +104,8 @@ impl Sim {
     /// army (its `units::Counters`), keep (the food it keeps
     /// in force, `civs::keep`), keep_set
     /// (the food the player set it to, null for the default), gift
-    /// (the most it gives a turn), posted (food posted to its market last turn), given (food given
+    /// (the most it gives a turn), gift_reach (the clans not its own at its capital market, which its gift
+    /// reaches: `civs::gift_reach`), posted (food posted to its market last turn), given (food given
     /// last turn), joined (clans joined since founding), gifted (food given since founding), living
     /// (`{gathering, farming, army}`: its people by what they do, gathering over their land (Σ people ×
     /// (1 − fields) over its clans), working fields (Σ people × fields over its clans), or in its units
@@ -179,6 +180,7 @@ impl Sim {
                     "keep": civs::keep(w, c.id),
                     "keep_set": c.keep,
                     "gift": c.gift,
+                    "gift_reach": civs::gift_reach(w, c.id),
                     "posted": c.posted,
                     "given": c.given,
                     "joined": c.joined,

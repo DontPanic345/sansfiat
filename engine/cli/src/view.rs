@@ -105,16 +105,23 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     out += &sources(w, me);
     let set = match c.keep {
         Some(k) => format!("set to {k:.1}"),
-        None => "the default, the camp's full pack".to_string(),
+        None => format!("not set: the default, a full pack for its camps, {:.1} now", civs::keep(w, me)),
+    };
+    let reach = civs::gift_reach(w, me);
+    let reaches = match reach {
+        0 => "reaches no clan at your market".to_string(),
+        1 => "reaches 1 clan".to_string(),
+        n => format!("reaches {n} clans"),
     };
     out += &format!(
-        "keep {:.1} in force ({set}); gift {:.1} a turn, the most {:.0}; last turn posted {:.1}, gave {:.1}; since \
-         founding gave {:.1}, clans joined {}\n",
+        "keep {:.1} in force ({set}); gift {:.1} a turn, the most {:.0}, {reaches}: gave {:.1}, left {:.1}; last turn \
+         posted {:.1}; since founding gave {:.1}, clans joined {}\n",
         civs::keep(w, me),
         c.gift,
         CIV.store_cap,
-        c.posted,
         c.given,
+        (c.gift - c.given).max(0.0),
+        c.posted,
         c.gifted,
         c.joined
     );
@@ -524,7 +531,7 @@ fn legal(w: &World, me: u32) -> String {
                     near.iter().copied().filter(|&t| ok(Order::Route { unit: id, from, to: t })).collect();
                 if !places.is_empty() {
                     out += &format!(
-                        "  {{\"type\":\"route\",\"unit\":{id},\"from\":{from},\"to\":<tile>}}  to: {}\n",
+                        "  {{\"type\":\"route\",\"unit\":{id},\"from\":{from},\"to\":<tile>}}  to: any tile it may route to, such as {}\n",
                         tiles(w, &places)
                     );
                 }

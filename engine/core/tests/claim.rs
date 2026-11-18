@@ -33,6 +33,8 @@ fn a_claim_must_be_connected_to_the_capital_and_on_land() {
         v.sort_unstable();
         v
     });
+    let err = claim::check(&w, red, &[at_big(-3, 0)]).unwrap_err();
+    assert!(err.ends_with(&format!("{} is not", w.at(at_big(-3, 0)))), "the refusal names the unjoined tile: {err}");
     // The capital may be left out: it is added.
     assert_eq!(claim::check(&w, red, &[at_big(-4, 0)]).unwrap().len(), 2);
     // Water is refused.

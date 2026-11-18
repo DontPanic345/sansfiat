@@ -570,3 +570,18 @@ fn a_rival_leaning_under_leave_at_never_draws_a_clan_away() {
     assert_eq!(w.clans[&k].civ, Some(blue), "a crumb of leaning is not drawn");
     assert_eq!(w.clans[&k].drawn, 0);
 }
+
+#[test]
+fn the_gift_reaches_the_clans_at_its_market_that_are_not_its_own() {
+    let (mut w, civ, mid) = scene();
+    assert_eq!(civs::gift_reach(&w, civ), 0, "no clan at the market");
+    let a = visitor(&mut w, mid, at_big(-5, 2), 5.0, [0.0; N]);
+    visitor(&mut w, mid, at_big(-4, 2), 5.0, [0.0; N]);
+    assert_eq!(civs::gift_reach(&w, civ), 2, "two visitors");
+    w.clans.get_mut(&a).unwrap().civ = Some(civ);
+    assert_eq!(civs::gift_reach(&w, civ), 1, "the civ's own clan is not reached");
+    let other = *w.civs.keys().nth(1).unwrap();
+    let theirs = w.civs[&other].market;
+    visitor(&mut w, theirs, at_big(-3, 2), 5.0, [0.0; N]);
+    assert_eq!(civs::gift_reach(&w, civ), 1, "a clan at another market is not reached");
+}

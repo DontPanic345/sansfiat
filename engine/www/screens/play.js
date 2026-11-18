@@ -475,6 +475,7 @@ function syncSelection() {
 
 /** A left-click: the first thing on the tile, or the next one if something there is already selected. */
 function onPick(i) {
+  if (i >= 0) view.centreOn(i, { smooth: true });
   if (routing.arm) {
     armedPick(i, host());
     return;

@@ -76,8 +76,9 @@ pub fn check(w: &World, civ: u32, tiles: &[usize]) -> Result<Vec<usize>, String>
     all.extend(crate::settle::roots(w, civ));
     all.sort_unstable();
     all.dedup();
-    if connected_part(w, civ, &all).len() != all.len() {
-        return Err("a claim must be joined to the capital or a settlement".to_string());
+    let joined = connected_part(w, civ, &all);
+    if let Some(&t) = tiles.iter().find(|t| !joined.contains(t)) {
+        return Err(format!("a claim must be joined to the capital or a settlement: {} is not", w.at(t)));
     }
     Ok(all)
 }

@@ -466,6 +466,13 @@ pub fn keep(w: &World, civ: u32) -> f64 {
     }
 }
 
+/// The clans not `civ`'s own whose market is now its capital market: the clans its gift reaches
+/// next time the market meets. Derived, never saved.
+pub fn gift_reach(w: &World, civ: u32) -> usize {
+    let Some(c) = w.civs.get(&civ) else { return 0 };
+    w.clans.values().filter(|k| k.market == Some(c.market) && k.civ != Some(civ)).count()
+}
+
 /// The levy at market `mid`, a capital's or a settlement's: each clan there that is the civ's pays
 /// `CIV.levy` of what it brought (its basket, salt and obsidian with the food) into the store there (the civ's at its capital, the
 /// settlement's own), in id order until the store is at its cap (`CIV.store_cap`,

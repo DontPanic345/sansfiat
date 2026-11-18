@@ -283,4 +283,23 @@ for (const kind of ['camp', 'scout']) pressAll(kind);
   assert.ok(candidates(ctxOf(sim)(w), s.tile).some((c) => c.kind === 'settlement' && c.id === s.id), 'a click on its tile can pick it');
 }
 
+// The gift line: the clans at the led civ's market that are not its own, and the Gift row that says so.
+{
+  const gift = (spec) => {
+    const sim = staged(spec);
+    const v = JSON.parse(sim.view());
+    const c = v.civs[v.player];
+    const row = shapeOf(sim, { kind: 'civ', civ: v.player }).numbers.find((n) => n.label === 'Gift');
+    return { c, row };
+  };
+  const three = { ...SPEC, clans: [{ home: { mark: 'A' }, tiles: [], people: 5, market: 0 }, { home: { mark: 'B' }, tiles: [], people: 5, market: 1 }] };
+  let { c, row } = gift(SPEC);
+  assert.equal(c.gift_reach, 0, 'no clan at the market: the gift reaches none');
+  assert.match(row.value, /reaches no clan · gave 0\.0 · left /, `the Gift row says it reaches no clan: ${row.value}`);
+  assert.match(row.tip, /no clan at your market is not already yours.*only clans that trade there/, 'and why');
+  ({ c, row } = gift(three));
+  assert.equal(c.gift_reach, 1, 'a clan of another civ at the market is reached');
+  assert.match(row.value, /^\d+\.\d a turn · reaches 1 clan · gave 0\.0 · left \d+\.\d$/, `the Gift row: ${row.value}`);
+}
+
 console.log('ok: staged arm (shapes, digest, Disband all), the end, a staged town, a signpost and its settlement');
