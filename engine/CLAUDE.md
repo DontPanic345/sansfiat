@@ -34,7 +34,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/fields.rs` | The field job: `ground`, `yield_a_day`, `open`, `sow`, the split's `notch`, a farmer's `home_toward`, `plots`. |
 | `core/src/market.rs`, `markets.rs` | Barter clearing; festivals: reach, the `go` step, trading, forming, fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
-| `core/src/claim.rs` | A civ's claim, which is its land: `check`, `held`, `tile_civ`, `change`, and the `claim` step, where a rival army takes a tile. |
+| `core/src/claim.rs` | A civ's claim, which is its land: `check`, `held`, `tile_civ`, `change`, and the `claim` step; `outlook.rs`, the reach and capital lines. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
 | `core/src/settle.rs`, `judge_settle.rs` | Signposts and settlements: `draw`, `found`, `take`, `roots`; the `settle` group. |

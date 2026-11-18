@@ -69,7 +69,11 @@ fn a_rival_tile_inside_the_ring_is_the_army_reach_and_a_capital_comes_first() {
     w.civs.get_mut(&blue).unwrap().capital = at_big(-1, 0);
     let a = outlook::army_to(&w, red).expect("in reach");
     assert_eq!((a.tile, a.capital), (at_big(-1, 0), true));
-    assert!(outlook::reach_line(&w, red).contains("can take Blue's capital at (-1, 0)"), "{}", outlook::reach_line(&w, red));
+    assert!(
+        outlook::reach_line(&w, red).contains("can take Blue's capital at (-1, 0)"),
+        "{}",
+        outlook::reach_line(&w, red)
+    );
     assert_eq!(a.army, Some(camp_id(&w, red)), "the army named is Red's");
     if a.capital {
         assert_eq!(w.civs[&a.rival].capital, a.tile);
@@ -113,5 +117,8 @@ fn the_capital_line_names_its_guard_and_the_nearest_rival_army() {
     let camp = camp_id(&w, red);
     w.units.remove(&camp);
     let line = outlook::capital_line(&w, red);
-    assert!(line.starts_with("no army of yours on it: a rival army that ends its turn there takes it, and the game"), "{line}");
+    assert!(
+        line.starts_with("no army of yours on it: a rival army that ends its turn there takes it, and the game"),
+        "{line}"
+    );
 }

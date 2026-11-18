@@ -20,7 +20,7 @@ Split your 90 minutes roughly: 35 playing, 5 writing the faults, 35 fixing and t
 - Play to win: raise, move, claim, gift, signpost, route, as the page lets you find them. When
   nothing seems worth doing, `end` several turns, and write down that nothing was.
 - Save to `relay/specs/338/play/small-61288.json`, copy `live.lines.jsonl` beside it as
-  `small-61288.lines.jsonl`, and run `engine/target/release/sansfiat judge` on the save into
+  `small-61288.live.jsonl` (not `.lines.jsonl`: `sansfiat judge` reads that name as `sansfiat play` lines), and run `engine/target/release/sansfiat judge` on the save into
   `small-61288.judge.txt`. Keep the screenshots you cite in `relay/specs/338/play/` (half size or
   smaller; no more than a dozen).
 

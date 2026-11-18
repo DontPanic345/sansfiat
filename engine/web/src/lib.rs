@@ -5,7 +5,8 @@ use engine::script::Lead;
 use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
 use engine::{
-    civs, fields, markets, outlook, settle, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, GOODS, TERRAIN,
+    civs, fields, markets, outlook, settle, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, GOODS,
+    TERRAIN,
 };
 use std::collections::BTreeMap;
 

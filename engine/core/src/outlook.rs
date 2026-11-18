@@ -146,13 +146,7 @@ pub fn claim_to(w: &World, civ: u32) -> Option<ClaimTo> {
         claim::check(w, civ, &all).ok()?;
         let covered: Vec<&crate::clans::Clan> =
             w.clans.values().filter(|k| k.civ != Some(civ) && tiles.contains(&k.home)).collect();
-        Some(ClaimTo {
-            clan,
-            home,
-            clans: covered.len(),
-            people: covered.iter().map(|k| k.people).sum(),
-            tiles,
-        })
+        Some(ClaimTo { clan, home, clans: covered.len(), people: covered.iter().map(|k| k.people).sum(), tiles })
     })
 }
 

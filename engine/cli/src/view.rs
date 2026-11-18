@@ -115,7 +115,7 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     };
     out += &format!(
         "keep {:.1} in force ({set}); gift {:.1} a turn, the most {:.0}, {reaches}: gave {:.1}, left {:.1}; last turn \
-         posted {:.1}; since founding gave {:.1}, clans joined {}\n",
+         posted {:.1}; since founding gave {:.1}, clans joined {}; ",
         civs::keep(w, me),
         c.gift,
         CIV.store_cap,
@@ -126,8 +126,8 @@ pub(crate) fn text(w: &World, since: usize) -> String {
         c.joined
     );
 
-    out += &format!("reach: {}\n", engine::outlook::reach_line(w, me));
-    out += &format!("capital: {}\n", engine::outlook::capital_line(w, me));
+    out +=
+        &format!("reach: {}; capital: {}\n", engine::outlook::reach_line(w, me), engine::outlook::capital_line(w, me));
 
     let units: Vec<&Unit> = w.units.values().filter(|u| u.civ == me).collect();
     if units.is_empty() {
@@ -351,7 +351,10 @@ fn unit_line(w: &World, u: &Unit) -> String {
                 .unwrap_or_default();
             let cut_at = match units::cut_by_rival(w, u.id) {
                 Some(by) if cs.dest.is_none() => {
-                    format!("{cut_at}, cut off by civ {by}'s land: surrenders hungry {} turns in a row", FIGHT.surrender)
+                    format!(
+                        "{cut_at}, cut off by civ {by}'s land: surrenders hungry {} turns in a row",
+                        FIGHT.surrender
+                    )
                 }
                 _ => cut_at,
             };
