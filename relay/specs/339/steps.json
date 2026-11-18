@@ -6,7 +6,7 @@
     "model": "haiku",
     "effort": "high",
     "points": 5,
-    "why": "Open 2 (the format is settled to the field in spec.md; whether each scout.rs test holds on a built map is found by running it), New 1 (adapted from StageSpec and Sim.stage), Miss 1 (stage_list.rs, a check.mjs case and the moved tests it writes), Reach 1 (the web crate and the test files). A ford with an exact done; Haiku high for the serde and wasm care. About 10 files, 700 lines: stage_spec.rs split (~380 moved and new), stage_test.rs (~300), four JSON tests, stage_list.rs, lib.rs (~50), check.mjs (~30), judge.rs and scout.rs (~60), CLAUDE.md."
+    "why": "Open 2 (the format is settled to the field in spec.md; whether each scout.rs test holds on a built map is found by running it), New 1 (adapted from StageSpec and Sim.stage), Miss 1 (stage_list.rs, a check.mjs case and the moved tests it writes), Reach 1 (the web crate and the test files). A ford with an exact done; Haiku high for the serde and wasm care. About 10 files, 700 lines: stage_spec.rs split (~380 moved and new), stage_test.rs (~300), four JSON tests, stage_list.rs, web/src/stage_test.rs (~70, so lib.rs stays under 600), check.mjs (~30), judge.rs and scout.rs (~60, the replay test moved to stage.rs), CLAUDE.md. Spec-review checked by digest that the errand's data world is the Rust test's exactly, so the format holds; the scores stand."
   },
   {
     "id": "build-2",
@@ -24,7 +24,7 @@
     "model": "haiku",
     "effort": "medium",
     "points": 3,
-    "why": "Open 2 (each script's stage is found by trying; the done is that every check stays, counted in moves.md), New 0 (buttons, towns and settle already stage), Miss 1 (the scripts check themselves; a weakened check shows in moves.md's counts), Reach 0 (scripts and setup-only StageSpec fields). Many files cost minutes, not a bigger model. About 12 files, 600 changed lines: army, camp (the hold run), civ, fields, goods, ring, scout; stage.mjs; settle, towns, buttons onto it; stage_spec.rs and core/tests/stage.rs (~80)."
+    "why": "Open 2 (each script's stage is found by trying; the done is that every check stays, counted in moves.md), New 0 (buttons, towns and settle already stage), Miss 1 (the scripts check themselves; a weakened check shows in moves.md's counts), Reach 0 (scripts and setup-only StageSpec fields). Many files cost minutes, not a bigger model. About 12 files, 600 changed lines: army, camp (the hold run), civ, fields, goods, ring, scout; www/play-stage.mjs (outside www/play/, which all.mjs runs whole); settle, towns, buttons onto it; stage_spec.rs and core/tests/stage.rs (~80)."
   },
   {
     "id": "build-4",

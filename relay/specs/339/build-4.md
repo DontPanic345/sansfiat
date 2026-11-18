@@ -1,7 +1,7 @@
 # #339 build-4 (ford): the page scripts of the map and the bar move to the stage; the recount
 
 Read `relay/specs/339/spec.md` (7), `count.md`, and build-3's summary and `moves.md`. build-3
-moved the unit and civ scripts and wrote `www/play/stage.mjs`; follow its rule ("The rule for
+moved the unit and civ scripts and wrote `www/play-stage.mjs`; follow its rule ("The rule for
 each move" in `build-3.md`, copied here):
 
 - The script opens `open('')` and stages its world; no `?size=…&seed=`, no `lead(page, {seed})`.

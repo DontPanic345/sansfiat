@@ -12,7 +12,7 @@ id="screen-tests">` in `index.html`, and `tests` in `main.js`'s `SCREENS`.
 - **Reached** from Start by a Tests button beside New game / Continue / Load, and by URL:
   `?tests` opens the list, `?tests=NAME` opens that test chosen. A Back button returns to Start.
 - **The list**: one row per test from `tests()`: its name and its claim. Choosing a row builds
-  its `Sim` through `Sim.stage_test` with the test's file JSON and shows it.
+  its `Sim` through `Sim.stage_test` with the test's `json` (the file's text, which `tests()` carries) and shows it.
 - **The chosen test**: the claim, the kept stores in a line when it has any ("the store is kept
   at 50 each turn": the stage's hand, said plainly), the turn (`0 of 40`), the map at fit, and
   the holds, each with its words and a mark: pending, held (and the turn it settled), failed

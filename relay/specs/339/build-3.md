@@ -17,12 +17,15 @@ on what you leave.
   a store to fill when the spec gives it a store.
 - Run each script on its own as you move it, and once more under `all.mjs` at the end.
 
-## Shared helpers: `www/play/stage.mjs`
+## Shared helpers: `www/play-stage.mjs`
 
 `grid(R, cell)` (the map-text builder `settle.mjs`, `towns.mjs` and `buttons.mjs` each copy),
 `plains(R)` (sea on the ring, plains inside), `marks(R, {A: [q, r], …})`, and
 `stage(page, spec)` (stage, wait for `phase === 'main'`, two frames). Move `settle.mjs`,
 `towns.mjs` and `buttons.mjs` onto it; their checks don't change.
+
+It lives in `www/`, beside `play.mjs`, not in `www/play/`: `all.mjs` runs every `.mjs` in
+`www/play/` as a script, and the recount counts them.
 
 ## What the stage needs, and where it grows
 
@@ -48,7 +51,7 @@ A field is setup, never a rule: no `SAVE_VERSION` bump, no digest change.
 
 ## Done
 
-- The seven scripts and the three moved onto `stage.mjs` pass alone and under
+- The seven scripts and the three moved onto `play-stage.mjs` pass alone and under
   `node www/play/all.mjs`; none of the seven opens a seeded page or leads a seed
   (`grep -n "seed" www/play/{army,camp,civ,fields,goods,ring,scout}.mjs` finds none but in
   comments, if those).
@@ -57,8 +60,8 @@ A field is setup, never a rule: no `SAVE_VERSION` bump, no digest change.
   `need`/`fail` calls), and any check whose meaning changed, with why. The count after is never
   lower without a line saying which check went and why it was never the script's point.
 - `engine/check.sh` passes; digest pins and `SAVE_VERSION` unchanged. `engine/CLAUDE.md`'s
-  `www/play/` row says the scripts stage their worlds through `stage.mjs`.
+  `www/play/` row says the scripts stage their worlds through `../play-stage.mjs`.
 
 About 12 files, 600 changed lines: seven scripts (~40-80 each of setup replaced),
-`stage.mjs` (~60), three scripts onto it (~-60), `stage_spec.rs` (~40), `core/tests/stage.rs`
+`play-stage.mjs` (~60), three scripts onto it (~-60), `stage_spec.rs` (~40), `core/tests/stage.rs`
 (~40), `moves.md`.

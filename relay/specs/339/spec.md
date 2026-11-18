@@ -4,8 +4,8 @@
 float change that moves the pick breaks them though their point isn't the pick? The control is
 main at 63b941e, counted in `count.md`: **page scripts 19 of 22, core test files 10 of 45.**
 (The issue's 16 of 19 and 10 of 39 are M4's count in `relay/retro/m4/architecture.md` §3; main
-has grown since, and `count.md` recounts it the same way.) The piece's target: **5 of 22 page
-scripts** (game, layout, pick, save, start: their point is a seeded game) and **8 of 45 core
+has grown since, and `count.md` recounts it the same way.) The piece's target: **5 of 23 page
+scripts** (`tests.mjs` is the 23rd, and stages) (game, layout, pick, save, start: their point is a seeded game) and **8 of 45 core
 files**. The review recounts on the branch with the same rule (`count.md`, top) and puts both
 rows beside the control in the PR.
 
@@ -32,7 +32,8 @@ Beside the count, two health lines, reported not targeted:
    the errand (one trip to the store, done by turn 10) first, then a rival army kills a scout, a
    scout in a rival's zone stays until it lifts, and a scout walks round a zone. They move to
    data and `scout_feed.rs` goes.
-5. **The wasm stage door**: `tests()` gives the list (name, claim, turns, the holds as words);
+5. **The wasm stage door**: `tests()` gives the list (name, claim, turns, the kept stores and the
+   holds as words, and `json`, the file's own text, which the page hands back to build it);
    `Sim.stage_test(json)` builds a test's world with its run attached; `test_step()` plays one
    turn and returns the holds' states; `test_state()` reads them. The verdict is core's, never
    the page's.
@@ -45,8 +46,11 @@ Beside the count, two health lines, reported not targeted:
    now. `camp.mjs`'s hold, skipped since the start had no rival army, runs on a staged rival
    camp at its post. One check may keep a seed: `bar.mjs`'s pre-game counts need a pre-game,
    which a stage hasn't; if so bar counts as reading a seed (6 of 23) and `recount.md` says why.
-8. **Two core files off the retro pick**: `judge.rs`'s three economy tests and `scout.rs`'s
-   nine move to built stages.
+8. **Two core files off the retro pick**: `judge.rs`'s three economy tests and eight of
+   `scout.rs`'s nine move to built stages. The ninth, `a_route_order_replays_to_the_same_world`,
+   can't: `World::replay` rebuilds from `World::new(config)` and a staged world's tiles are set
+   outside the log, so a stage never replays. Its point is a real game's save, so it moves to
+   `core/tests/stage.rs` beside the retro round trips, a file that already reads the pick.
 
 ## Shape: Henry Ford
 
@@ -100,9 +104,15 @@ rest build on it.
   `stock` is: the Tests screen shows it beside the claim ("the store is kept at 50").
 - **`orders`**: before the turn after `turn` turns have ended (turn 0 is before the first),
   civ `civ` gives `order`, an `Order` as JSON in which any `{"mark": c}` or `{"tile": i}` is a
-  tile and any `{"scout": k}` or `{"camp": k}` is that civ's unit's id, resolved by walking the
-  JSON before it is read as an `Order`. The led civ's go through `act` as the player's do; the
+  tile and any `{"scout": k}` or `{"camp": k}` is the id of civ `k`'s scout or camp, resolved by
+  walking the JSON before it is read as an `Order`. Only a one-key object is resolved, so
+  `{"type":"signpost","tile":{"mark":"a"}}` reads as tile `a` and a bare number stays a number. The led civ's go through `act` as the player's do; the
   others through `World::order`. A refused order fails the test with the engine's reason.
+- **Every `civ` in a test** (in `scouts`, `stores`, `orders`, facts and refs) is an index into
+  `civs`, as `armies` and `clans` already are; the runner keeps the ids and the marks, which
+  `Stage::into_world` drops.
+- **Numbers are written as serde prints them**: a hidden trail cost of one day is
+  `1.3333333333333333` (`DAY`), so the data world is the Rust test's world exactly.
 - **`holds`**, each one of:
   - `{"every": FACT}`: holds after every turn;
   - `{"by": N, "fact": FACT}`: holds after some turn up to N;
@@ -127,6 +137,19 @@ rest build on it.
   fails at the first failed hold; the runner plays on to the end either way, so the page shows
   every hold settled.
 
+## Checked by running (spec-review)
+
+- The four scout tests' world rebuilds from the data form exactly: `Stage::flat(BIG)`, civs,
+  lead, `plain()` and the errand's paint give the same `stats::state_digest` (`f81d47a26acde6cb`
+  for the errand, `973a5aaf19d0d654` bare) as `Stage::from_spec` of the map text with `'f'` and
+  `'^'` glyphs and `hidden` at `DAY`, with no `plain` step. So `from_spec` needs no plain step,
+  and the led civ's revealed set is empty either way.
+- `count.md`'s control recounts: 20 scripts in `www/play/` name a seed, `live.mjs` is the driver,
+  19 counted; 45 `.rs` files in `core/tests/`, 10 call `Stage::retro`.
+- `www/play/all.mjs` runs every `.mjs` in `www/play/` but `all.mjs` and `live.mjs`, so a shared
+  helper there would be run and counted as a script: it lives at `www/play-stage.mjs`, beside
+  `play.mjs`.
+
 ## Decisions I made
 
 - The list is the tests written as data, starting with C's four scout tests. Other stage tests
@@ -147,7 +170,8 @@ rest build on it.
 - Core: `judge.rs`'s economy tests and `scout.rs`'s rule tests move to built stages; the files
   whose point is the seven maps (`cases`, `scout_errand`, `scout_routes`, `scout_orders`'s
   search over every map, `ring`'s bands, `walk`, `wear`, `stage`'s cache) stay, as the issue
-  leaves the retro maps' bound tests out of scope.
+  leaves the retro maps' bound tests out of scope. `scout.rs`'s replay test joins `stage.rs`'s
+  round trips, since a staged world doesn't replay.
 
 ## Unsettled
 
@@ -173,4 +197,5 @@ None of the milestone's open ideas is about tests or the stage.
   naming the test, the hold and the turn (don't commit that).
 - For each moved page script, read its old and new checks side by side for one or two scripts
   and confirm none was dropped or weakened (a `need` that became an `if`).
+- `scout.rs` reads no `Stage::retro`; its replay test runs in `stage.rs`.
 - `stats::digest` and `SAVE_VERSION` unchanged.
