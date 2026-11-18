@@ -1,12 +1,12 @@
 [
   {
     "id": "build-1",
-    "title": "Lots, a unit in the clearing, and how a good passes between markets (both measured, one kept)",
+    "title": "Lots, a unit in the clearing, and Carry: a clan takes unsold wares to a second festival",
     "part": "clay",
     "model": "sonnet",
     "effort": "high",
     "points": 10,
-    "why": "Open 2 (the passing is chosen by one measured number, obsidian's mean steps at +200, both ways), New 3 (nothing here tracks where a good came from; a second route per clan or stores posting wares are new), Miss 3 (the choice is only seen on the retro maps; the lots invariant is a test it writes), Reach 2 (trade runs every turn). A clay at 10: Sonnet high. About 14 files, 900 lines: lots.rs (new, ~200), exchange.rs (new, ~250), markets.rs, civs.rs, clans.rs, dividing.rs, settle.rs, units/mod.rs, data/game.rs, data/goods.rs, two test files, pins, engine/CLAUDE.md, pass.md. Waits on two sweeps (~4 min each) and the digests (~1 min)."
+    "why": "Open 2 (when Carry's second walk is worth a clan's days is found by running, judged by health on the sweep; spec-review settled Carry over Lines by probe, probe.md, so nothing is built twice), New 3 (nothing here tracks where a good came from, and no clan walks a second route), Miss 3 (Carry's cost to clans shows only on the retro maps; the lots invariant is a test it writes), Reach 2 (trade runs every turn). A clay at 10: Sonnet high. About 12 files, 750 lines: lots.rs (new, ~200), exchange.rs (new, ~250), markets.rs, civs.rs, clans.rs, dividing.rs, settle.rs, units/mod.rs, data/game.rs, data/goods.rs, two test files, pins, engine/CLAUDE.md, pass.md. Waits on one sweep (~3 min) and the digests (~1 min)."
   },
   {
     "id": "build-2",
@@ -15,7 +15,7 @@
     "model": "haiku",
     "effort": "high",
     "points": 5,
-    "why": "Open 0 (every rule and the group's definitions are in spec.md and the brief; the numbers are starting ones the glaze tunes), New 1 (an order, a judge group and a sweep config each adapted from goods'), Miss 1 (tests it writes; one sweep to show the rows), Reach 2 (the planner runs every turn). A kiln at 5: Haiku high. About 12 files, 600 lines: orders.rs, units/trade.rs (new, so ai.rs stays as it is), ai.rs (calls), actors.rs, data/units.rs, data/goods.rs, judge_trade.rs (new), judge.rs, sweep_trade.rs (new), sweep.rs, game_judge.rs, view.rs or view_goods.rs, a test, engine/CLAUDE.md, kiln.md."
+    "why": "Open 0 (every rule, the store's salt reserve kept from its keeping included, and the group's definitions are in spec.md and the brief; the numbers are starting ones the glaze tunes), New 1 (an order, a judge group and a sweep config each adapted from goods'), Miss 1 (tests it writes; one sweep to show the rows), Reach 2 (the planner runs every turn). A kiln at 5: Haiku high. About 12 files, 600 lines: orders.rs, units/trade.rs (new, so ai.rs stays as it is), ai.rs (calls), actors.rs (spoil's reserve, civ_holds), data/units.rs, data/goods.rs, judge_trade.rs (new), judge.rs, sweep_trade.rs (new), sweep.rs, game_judge.rs, view.rs or view_goods.rs, a test, engine/CLAUDE.md, kiln.md."
   },
   {
     "id": "build-3",
@@ -33,7 +33,7 @@
     "model": "sonnet",
     "effort": "high",
     "points": 9,
-    "why": "Open 4 (searching for numbers that put armies fed on others' markets without breaking health), New 0 (numbers in data/), Miss 3 (only the retro maps' sweep shows it), Reach 2 (every turn's trade and planner). A glaze at 9: Sonnet high. About 3 files and scores.md, 150 lines; up to five sweeps of ~5 minutes."
+    "why": "Open 4 (searching for numbers that put armies fed on others' markets without breaking health; probe.md shows salt reaching stores is scarce, so it may add a levy share for salt), New 0 (numbers in data/, at most one share), Miss 3 (only the retro maps' sweep shows it), Reach 2 (every turn's trade and planner). A glaze at 9: Sonnet high. About 3 files and scores.md, 150 lines; up to five sweeps of ~3 minutes."
   },
   {
     "id": "review",

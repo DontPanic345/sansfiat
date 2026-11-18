@@ -1,6 +1,6 @@
 # #356 build-1 (clay): lots, a unit in the clearing, and how a good passes between markets
 
-You shape the core of Exchange. Read `spec.md` here first, then `docs/design/goods.md`,
+You shape the core of Exchange. Read `spec.md` and `probe.md` here first, then `docs/design/goods.md`,
 `actors.md` (Markets) and `clans.md` (Festivals). The code: `core/src/market.rs` (`clear`),
 `core/src/markets.rs` (`trade`, `go`, `walkers`), `core/src/civs.rs` (`levy`),
 `core/src/actors.rs` (`spoil`, `keeps_back`, `civ_holds`, `civ_worths`), `core/src/clans.rs`
@@ -39,23 +39,21 @@ goods move).
    in its pack on a festival's tile with clans that want salt ends the trade step with more food
    and less salt; on a rival's capital market it trades nothing.
 
-4. **The passing, both ways, one kept.** Build Carry and Lines as `spec.md` (3) gives them,
-   behind a switch of your choosing (a `Config` field while you measure). Run
-   `cargo run -p sansfiat --release -- sweep --judge --json` with each (about 4 minutes each),
-   and read the goods group's obsidian `mean_steps_200` and `max_steps_200`, and salt's, beside
-   main's (`sweep-main.json` here: obsidian 5.35 / 18, salt 3.52 / 11) and the health line
-   (people over control, starving). Keep the one whose obsidian mean is higher (the furthest
-   breaks a tie); if neither moves obsidian further than main by a step, keep the one that
-   moves it most and say so. Delete the other's code and its switch. Write both rows, and
-   festivals where a ware trades, in `pass.md`.
-
-   Carry: the clan's second route reads the same `festival_costs` search its home already did
-   this turn; its walk is `walk_cost` on the wares' weight (`carriers`), paid from its days as a
-   route; it trades at the second festival in the same `trade` step, after the first festival's
-   clearing (a second pass over markets for these clans only is fine). Lines: settlement
-   markets post their stores as the capital's does, wares included, and a ware moves between a
-   civ's stores along `line`'s path at the line's cost a unit of weight; give it a reach in
-   `data/`.
+4. **Carry** (`exchange.rs`), as `spec.md` (3) gives it. Spec-review settled Carry against
+   Lines by probe (`probe.md`): build Carry only. The second route reads the same
+   `festival_costs` search its home already did this turn; its walk is `walk_cost` on the
+   wares' weight (`carriers`), paid from its days as a route; it trades at the second festival
+   in the same `trade` step, after the first festival's clearing (a second pass over markets for
+   these clans only is fine). What you find by running: when the walk is worth a clan's days
+   (the wares' worth at that festival's last prices against the walk, as `worths_from` weighs a
+   festival, is a fair start) so that starving clan-turns and people stay within
+   `judge --compare`'s floor of main. Obsidian sells only at a capital with room (`probe.md`),
+   so don't expect its steps to move much; a probe-sized flow of a few hundred units a map is
+   right. Run `cargo run -p sansfiat --release -- sweep --judge --json` (about 3 minutes) and
+   write in `pass.md`: obsidian's and salt's `mean_steps_200` and `max_steps_200` beside main's
+   (`sweep-main.json`: obsidian 5.35 / 18, salt 3.52 / 11), the wares carried a map, festivals
+   where a ware trades, and the health line (people over control, starving). Carry's numbers
+   go in `data/goods.rs` with a `note`.
 
 ## What the kiln relies on
 

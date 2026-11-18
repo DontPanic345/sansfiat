@@ -10,9 +10,13 @@ smallest fix that works and record it as a decision.
    are). The unit stands on a store of its civ (`settle::store`); it takes salt, with its lots
    (`Lots::mix` into the pack), up to `UNIT.salt` a person less what it holds (`data/units.rs`,
    start 1.0). Refused with a reason off a store, with no salt there, or with a full salt room.
-   `actors::civ_holds`' salt becomes `cap / KEEPING.keeps + KEEPING.packs` (`data/goods.rs`,
-   start 10): this is the levy's and the market's want too, so the economy moves; that's
-   expected. Test in `core/tests/exchange.rs`: Fill on a capital moves salt from store to pack;
+   A store (capital and settlement) keeps `KEEPING.packs` salt (`data/goods.rs`, start 10)
+   back from its keeping: `actors::spoil` on a civ or settlement store uses only the salt
+   beyond it (a clan's store and a pack spoil as now), and `actors::civ_holds`' salt becomes
+   `cap / KEEPING.keeps + KEEPING.packs`, which is the levy's and the market's want too. Both
+   only with `exchange` on, so the control stays main's. Today the keeping uses every unit of
+   salt the turn it arrives (`probe.md`), so a cap alone would leave Fill nothing. Fill takes
+   what there is up to the room. Test in `core/tests/exchange.rs`: Fill on a capital moves salt from store to pack;
    off a store it is refused. A disband gives the pack's wares and lots to the clan it joins
    (build-1 may have done it; check).
 
@@ -29,7 +33,10 @@ smallest fix that works and record it as a decision.
    `judge_goods.rs` is): exactly as `spec.md` (6) defines it. Whatever the clearing must keep for
    it (each row's net, the prices) is kept on the `Market` as last turn's, `#[serde(default)]`,
    as `ware` is. **Army-turns fed at a market not the civ's** count turns where an army bought
-   more than 1e-6 food at a market neither its civ's capital market nor its settlements'.
+   more than 1e-6 food at a market neither its civ's capital market nor its settlements'. Beside
+   the count, report the food those army-turns bought over what the armies making them ate
+   those turns, so the count's size reads (at `probe.md`'s prices a full pack buys a fraction of
+   a turn).
 
 4. **The sweep** (`cli/src/sweep_trade.rs`, new; `sweep.rs` adds the config): the
    `exchange`-off control beside each map, a line a map and the totals: army-turns fed at a

@@ -62,29 +62,35 @@ floor of the control, or the review says why not.
    Its own civ's markets count: an army at a settlement trades there too. A unit's trade gives
    no clan a leaning. The feed says "bought N food at the festival at (q, r) with salt".
 
-3. **A good passes between markets** (build-1, the clay's open item). The piece names two ways
-   and asks for the one that moves obsidian further on the retro maps:
+3. **A good passes between markets: Carry** (build-1). A clan holding a ware its own festival
+   didn't take this turn (nobody there wanted it, so it went home unsold) walks a second route,
+   the next turn, to the nearest other festival in its reach where that good last traded,
+   carrying only its wares, and trades them there. Its walk is costed as every route, on the
+   wares' weight.
 
-   - **Carry**: a clan holding a ware its own festival didn't take this turn (nobody there
-     wanted it, so it went home unsold) walks a second route, the next turn, to the nearest
-     other festival in its reach where that good last traded, carrying only its wares, and
-     trades them there. Its walk is costed as every route, on the wares' weight.
-   - **Lines**: a civ's stores, capital and settlements, post their wares beyond their keep at
-     their own markets (today only the capital posts, and only food), and send a ware along the
-     line to the civ's store that wants it most, costed as a line is.
+   The piece asked the designer to settle Carry against Lines (a civ's stores posting wares and
+   sending them along lines) by which moves obsidian further. Spec-review settled it by probe
+   (`probe.md`): Lines can move only what settlement stores hold, ~0 salt and at most 2.6
+   obsidian on average on the one map with the most, within one civ, to a capital that mostly
+   wants none; Carry has 12–455 clan-turns a map of obsidian that a capital in reach would take
+   and 68–3,950 of salt that another festival would. Lines isn't built.
 
-   build-1 builds both behind a switch, runs the sweep with each, keeps the one whose obsidian
-   at +200 sits further from its source (mean steps; the furthest breaks a tie), and deletes
-   the other. `pass.md` holds both rows. My expectation, unproven: Carry, since 4 of 21 civs
-   keep a settlement to +200 and Lines moves goods only within one civ.
+   Obsidian is bought only where a civ posts and wants it (a capital's market under
+   `ARMS.hold`), so Carry takes obsidian only to capitals: expect its steps from source to move
+   little. What Carry leaves open is what the second walk costs a clan and when it is worth it,
+   judged by health on the sweep (build-1).
 
 4. **The pack filled with salt** (build-2). `Order::Fill { unit }`: the unit stands on a store
    of its civ (capital or settlement) and takes salt from it up to its pack's salt room,
-   `UNIT.salt` a person (start 1 unit: about two turns of a warrior's food at the prices #355's
-   festivals clear at; the glaze tunes it). Refused, with the reason, off a store or with no
-   salt there. A civ's store holds salt for packs as well as for keeping: `civ_holds`' salt is
-   `cap / KEEPING.keeps + KEEPING.packs` (start 10), so a store that keeps its food still has
-   salt to hand out. Disbanding a unit gives its pack's wares, with their lots, to the clan it
+   `UNIT.salt` a person (start 1 unit; at the festivals' median price, 0.34 food a unit of salt
+   (`probe.md`), that is a third of a warrior-turn of food; the glaze tunes it). It takes what
+   there is: refused, with the reason, only off a store, with no salt there or with its room
+   full. A civ's store, capital or settlement, keeps salt for packs back from its keeping: its
+   spoil uses only the salt beyond `KEEPING.packs` (start 10), and `civ_holds`' salt is
+   `cap / KEEPING.keeps + KEEPING.packs`, so its levy and its market still want salt while the
+   reserve is short. Both only with `exchange` on. Today every unit of salt that reaches a store
+   is used by its keeping the turn it arrives (`probe.md`), so a cap alone would leave nothing to
+   fill a pack with. Disbanding a unit gives its pack's wares, with their lots, to the clan it
    joins.
 
 5. **The planner trades** (build-2, `core/src/units/trade.rs`, new: `ai.rs` is 631 lines). An
@@ -100,7 +106,9 @@ floor of the control, or the review says why not.
    goods, of the trades each is in; by worth, the volume times the price it cleared at over the
    sum of every good's. The group reports both shares, each good's, at +200 (that turn) and over
    the watch; the largest share of each at +200; and army-turns fed at a market not the civ's
-   (and at its own, and units' trades). The sweep runs the `exchange`-off control as a config,
+   (and at its own, and units' trades), with the food those trades bought over the eating of
+   the armies that made them, so the count's size reads: an army-turn counts with any food
+   bought, and at the probe's salt prices a full pack buys a fraction of a turn. The sweep runs the `exchange`-off control as a config,
    prints a line a map and the totals, and keeps them in the JSON for `judge --compare`.
    `judge FILE` shows the group for a played game.
 
@@ -116,27 +124,37 @@ floor of the control, or the review says why not.
 
 ## Shape: Clay, Kiln and Glaze
 
-The issue said Clay and Kiln. I add a glaze: the planner's trading and the pack's salt room
+The issue said Clay and Kiln, with the passing as the clay's unsettled core. Spec-review
+settled the passing by probe (Carry); the clay still holds the lots model, which every arrival
+of a ware must write, the unit as a row, and what Carry's second walk costs, judged on the
+sweep. I add a glaze: the planner's trading and the pack's salt room
 are rules settled here, but whether an army ever stands on a foreign market fed, the
 question's first number, rests on three numbers (`UNIT.salt`, `KEEPING.packs`,
 `PLAN.trade_at`) that only work together on the retro maps. A kiln that tuned them would hold
 Open 2 and Miss 3, which the ladder says is unsettled work.
 
-- **build-1, clay:** lots, a unit as a clearing row, and the passing, measured both ways and
-  one kept. It leaves `Lots` and its invariant, `exchange::unit_rows`, the switch, and the tests.
+- **build-1, clay:** lots, a unit as a clearing row, and Carry, measured beside main. It leaves `Lots` and its invariant, `exchange::unit_rows`, the switch, and the tests.
 - **build-2, kiln (engine):** the order, the store's pack salt, the planner, the judge's trade
   group, the sweep's control, the text view.
 - **build-3, kiln (page):** the panel's goods, the flow layer, the Fill button, the play script.
-- **build-4, glaze:** tunes `UNIT.salt`, `KEEPING.packs`, `PLAN.trade_at` (and the passing's
-  numbers if the clay left any) on the sweep, and writes `scores.md`: both numbers and health
+- **build-4, glaze:** tunes `UNIT.salt`, `KEEPING.packs`, `PLAN.trade_at` (and Carry's
+  numbers if the clay left any), and may raise the salt a store gets on the sweep, and writes `scores.md`: both numbers and health
   beside the control.
 
 ## Settled here
 
 - G is #355, merged; main is 8d1b4ed. Main's sweep is `sweep-main.txt`/`.json` (run in this
-  step). Civ stores hold no salt at +200 on main ("civ stores holding it 0" on every map in
-  #355's sweep): the store uses all its levied salt the turn it arrives, so without
-  `KEEPING.packs` a Fill would find nothing.
+  step). Civ stores hold no salt at +200 on main ("civ stores holding it 0" on every map): the
+  store's keeping uses all its salt the turn it arrives (`probe.md`: 0–0.63 salt a turn reaches
+  a capital, mean about 0.18; half the civs get under 0.1). The levy's cap never binds, so the
+  reserve is salt the spoil doesn't use, not a higher cap.
+- Carry, not Lines (`probe.md`, item 3).
+- `relay/specs/340/digests-main.txt` is this branch's base: spec-review ran `digests.sh` at
+  943eac6 and all 21 matched.
+- **Expect the first number small.** A median civ's store gets about 20 salt over 200 turns,
+  which buys about 7 food at the median price: half a turn of one army of 14. The count can
+  pass 0 on most maps (any food bought counts) while the food is a rounding error. The glaze
+  reports both, and may raise the salt reaching a store if numbers alone can't (below).
 - Obsidian on main at +200 (`sweep-main.json`): mean 5.35 steps from a source, furthest 18;
   salt 3.52 and 11. That is the baseline both passings are read against.
 - There is food to buy for: on main 1,643 army-turns stand outside the ring and 710 of them go
@@ -148,16 +166,19 @@ Open 2 and Miss 3, which the ladder says is unsettled work.
 
 ## Unsettled, and who holds it
 
-- Carry or Lines (build-1): obsidian's mean steps from source at +200, both rows in `pass.md`.
+- Carry's second walk: when it is worth a clan's days and what it costs (build-1), by health
+  on the sweep beside main; obsidian and salt steps reported.
 - `UNIT.salt`, `KEEPING.packs`, `PLAN.trade_at` (build-4): army-turns fed at a market not the
-  civ's, read beside health.
+  civ's and the food they bought, read beside health. If the reserve can't fill on most civs,
+  the glaze may give the levy its own share for salt (`KEEPING.levy`, today `CIV.levy`'s 0.2)
+  and records it as a decision.
 
 ## Decisions I made
 
 - **Design says "One route. Each clan walks one route, to one festival"** and lists "More than
   one festival per clan" out of scope (`clans.md`). The piece's Decided names a clan carrying
-  light goods to a second festival as one way to pass goods, so if Carry wins, a clan with
-  unsold wares walks a second route that carries only them; its own festival stays one.
+  light goods to a second festival as one way to pass goods, so a clan with unsold wares walks
+  a second route that carries only them; its own festival stays one.
 - **Design says "Every unit of a good in a store remembers the market it last traded at."** A
   lot holds its whole chain, not only the last market: chasing the last market back through
   every store each time the page asks would need history the world doesn't keep. Chains are
@@ -168,7 +189,11 @@ Open 2 and Miss 3, which the ladder says is unsettled work.
 - A unit brings only the salt that buys its pack's room, so trade never overfills a pack.
 - A unit's trade gives no leaning: leaning by trade is what a civ's posting does.
 - Scouts trade as armies do; the army-turns score counts armies only.
-- A civ's store keeps `KEEPING.packs` salt for packs beyond what keeps its food.
+- A civ's store keeps `KEEPING.packs` salt for packs back from its keeping: its spoil uses
+  only the salt beyond it. (Spec-review: a higher cap alone holds nothing, `probe.md`.)
+- **Design says** the designer settles Carry or Lines "by which moves obsidian further on the
+  retro maps". Spec-review settled it by probing what each could move (`probe.md`) rather than
+  building both: Lines has almost nothing to move. Carry's own sweep row is in `pass.md`.
 - The trade group counts a trade per row per clearing, not per pair: barter clears all rows at
   once, so there are no pairs to count.
 - The exchange-off control is the branch with `Config.exchange` off, proved equal to main by
@@ -186,7 +211,7 @@ clans, and obsidian's strength in the raise view (G's view, not exchange).
 - The sweep's trade group: army-turns fed at a market not the civ's (control 0) and the largest
   share by count and by worth at +200, beside the control, in the PR. Health within the floor
   of `judge --compare sweep-main.json <branch>.json`.
-- `pass.md`: both passings' obsidian rows; the kept one's code alone remains.
+- `pass.md`: Carry's obsidian and salt rows beside main's, and health.
 - Run `node www/play/exchange.mjs`: Fill moves salt store to pack; the flow layer draws a chain
   from a source.
 - Play a small map as one civ: fill an army's pack, march it past the ring to a festival, and
