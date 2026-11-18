@@ -71,11 +71,14 @@ const day = (n) => new Date(resets.getTime() - 7 * 86400_000 + (n - 1) * 86400_0
 test("pace starts a step only while the 5-hour window is under 75%", () => {
     assert.equal(pace({ session: 74.6, weekly: 0, weeklyResetsAt: resets }, day(1)).ok, true);
     assert.equal(pace({ session: 75, weekly: 0, weeklyResetsAt: resets }, day(1)).ok, false);
-    assert.equal(pace({ session: 33.333, weekly: 4.0001, weeklyResetsAt: resets }, day(1)).reason, "5-hour 33%, weekly 4%");
+    assert.equal(pace({ session: 33.333, weekly: 4.0001, weeklyResetsAt: resets }, day(1)).reason, "5-hour 33%, weekly 4% < 13.6% (day 1)");
 });
 
-test("pace ignores the weekly window", () => {
-    assert.equal(pace({ session: 0, weekly: 99, weeklyResetsAt: resets }, day(1)).ok, true);
+test("pace spreads the weekly budget across the cycle", () => {
+    assert.equal(pace({ session: 0, weekly: 12, weeklyResetsAt: resets }, day(1)).ok, true);
+    assert.equal(pace({ session: 0, weekly: 14, weeklyResetsAt: resets }, day(1)).ok, false);
+    assert.equal(pace({ session: 0, weekly: 94, weeklyResetsAt: resets }, day(7)).ok, true);
+    assert.equal(pace({ session: 0, weekly: 95, weeklyResetsAt: resets }, day(7)).ok, false);
 });
 
 test("a stop says when it lifts", () => {
@@ -83,6 +86,11 @@ test("a stop says when it lifts", () => {
     const five = pace({ session: 80, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: at }, day(1));
     assert.equal(waitingOn(five), "5-hour usage, until 15:20");
     assert.match(five.reason, /resets 2026-10-11T02:20:00\.000Z/);
+    // 14% on day 1 lifts on day 2, when the ramp reaches 27.1%.
+    const weekly = pace({ session: 0, weekly: 14, weeklyResetsAt: resets }, day(1));
+    assert.equal(weekly.until.getTime(), resets.getTime() - 6 * 86400_000);
+    assert.equal(waitingOn(weekly), "weekly usage, until Sun 22:00");
+    assert.equal(pace({ session: 0, weekly: 96, weeklyResetsAt: resets }, day(7)).until, resets);
     assert.equal(waitingOn(pace({ session: 0, weekly: 0, weeklyResetsAt: resets }, day(1))), "");
 });
 
@@ -228,8 +236,16 @@ test("findings sort into fix and ask", () => {
 test("the crew rewrites the PR's steps table, or puts it under Closes", () => {
     const table = "| Step | State |\n|---|---|\n| #1 review | done |\n\n$1.00 at list price so far.";
     const old = "Closes #9.\n\n| Step | State |\n|---|---|\n| #1 review | pending |\n\n$0.50 at list price so far.\n\n## Verdict\n\nmerge";
-    assert.equal(withTable(old, table), `Closes #9.\n\n${table}\n\n## Verdict\n\nmerge`);
-    assert.equal(withTable("Closes #9.\n\n## Verdict", table), `Closes #9.\n\n${table}\n\n\n## Verdict`);
+    assert.equal(withTable(old, table, 9), `Closes #9.\n\n${table}\n\n## Verdict\n\nmerge`);
+    assert.equal(withTable("Closes #9.\n\n## Verdict", table, 9), `Closes #9.\n\n${table}\n\n\n## Verdict`);
+});
+
+test("a PR description the review rewrote without Closes gets it back", () => {
+    const table = "| Step | State |\n|---|---|\n| #1 review | done |\n\n$1.00 at list price so far.";
+    const rewritten = "| Step | State |\n|---|---|\n| #1 review | pending |\n\n$0.50 at list price so far.\n\n## Verdict\n\nmerge";
+    assert.equal(withTable(rewritten, table, 9), `Closes #9.\n\n${table}\n\n## Verdict\n\nmerge`);
+    assert.equal(withTable("## Verdict", table, 9), `Closes #9.\n\n${table}\n\n\n## Verdict`);
+    assert.equal(withTable(null, table, 9), `Closes #9.\n\n${table}\n\n\n`);
 });
 
 test("a milestone is built when every open piece is paused", () => {
@@ -543,7 +559,7 @@ test("a merged proposal's Ideas section names the proposed issues it takes or dr
 test("the run log is one issue per milestone, and its report gives both windows", () => {
     assert.equal(logTitle({ title: "M5" }), "Relay log: M5");
     assert.equal(logTitle(null), "Relay log");
-    assert.equal(usageReport({ session: 54.6, weekly: 60, weeklyResetsAt: resets }), "5-hour 55%, week 60%");
+    assert.equal(usageReport({ session: 54.6, weekly: 60, weeklyResetsAt: resets }, day(5)), "5-hour 55%, week 60% of the 67.9% day 5 allows");
 });
 
 test("the usage hook speaks every ten minutes and as the window passes a mark, and says to commit, then to stop", () => {
