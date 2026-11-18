@@ -1,0 +1,224 @@
+diff --git a/engine/cli/tests/save.rs b/engine/cli/tests/save.rs
+index c98d274..d4bce35 100644
+--- a/engine/cli/tests/save.rs
++++ b/engine/cli/tests/save.rs
+@@ -6,7 +6,7 @@ use std::process::Command;
+ use engine::world::SAVE_VERSION;
+ 
+ /// The version these digests are for.
+-const VERSION: u32 = 27;
++const VERSION: u32 = 28;
+ 
+ /// `sansfiat digest` for `seed` on the small map, from turn 0 to `turn`, and the digest it prints
+ /// for that turn (the last line).
+@@ -40,12 +40,12 @@ fn the_save_version_pins_the_rules() {
+     // to turn 300, past its pick at 287: the turns are fixed, whatever the picks.
+     assert_eq!(digest("1", "290", false), "8714e14d6ffe46bd");
+     assert_eq!(digest("2", "279", false), "2bdd0ae3534e4722");
+-    assert_eq!(digest("3", "308", false), "d8a90a872d75f75d");
+-    assert_eq!(digest("2", "300", true), "b2762414c24eb5ed");
++    assert_eq!(digest("3", "308", false), "e6f5ba0dbd580000");
++    assert_eq!(digest("2", "300", true), "9716235ff5d66173");
+ }
+ 
+ #[test]
+ fn the_led_game_state_digest_is_its_baseline() {
+     // The led game's world without its log: the rules' fingerprint, which the log's shape does not move.
+-    assert_eq!(digest_with("2", "300", true, true), "e8658ae8df7bd236");
++    assert_eq!(digest_with("2", "300", true, true), "1b4f60166e061582");
+ }
+diff --git a/engine/core/src/data/clans.rs b/engine/core/src/data/clans.rs
+index 4f8c20d..49c5627 100644
+--- a/engine/core/src/data/clans.rs
++++ b/engine/core/src/data/clans.rs
+@@ -46,6 +46,9 @@ pub struct TownRules {
+     /// Food a person a turn by which a farmer's home step (toward its fields or its festival) must beat
+     /// staying (`homes::step`).
+     pub margin: f64,
++    /// Hex steps from its festival within which a farmer's step toward it is taken on a tie in food
++    /// (`homes::step`).
++    pub drift: i32,
+     /// Why this number: where it came from.
+     pub note: &'static str,
+ }
+@@ -53,12 +56,18 @@ pub struct TownRules {
+ pub const TOWN: TownRules = TownRules {
+     homes: 3,
+     margin: 0.01,
++    drift: 4,
+     note: "Three is the least that reads as many hearths on one tile, and two clans side by side are \
+            neighbours (relay/specs/156/spec.md). The sketch's towns at three came out on 5 of 7 maps. \
+            A home step must beat staying by the field split's margin, `FIELD.margin`. Tuned on the retro maps \
+            (relay/specs/156/canvas.md): 0.005 and 0.02 form no more towns. Walking less to the festival buys \
+            a clan nothing in food when its fields are capped by their ground and its gathering by its tiles' \
+-           food, so a step onto the festival's tile that feeds it as well is taken (relay/specs/341/measure.md).",
++           food, so a step onto the festival's tile, or one tile toward it, that feeds a clan carrying something \
++           as well and walks it less is taken (relay/specs/341/measure.md, canvas.md): farming.md's drift to \
++           the market, which a food tie hid. The step toward it from up to `drift` tiles out gathers a capital's \
++           farmers and holds them there, where the step onto the tile alone left clans two tiles out. Tuned on \
++           the retro maps (relay/specs/341/canvas.md): 2 and 3 leave small 9 without a capital town; 5 and \
++           over give the same capital towns but cut small 2's army off at +100 (core/tests/units.rs).",
+ };
+ 
+ pub struct MarketRules {
+diff --git a/engine/core/src/homes.rs b/engine/core/src/homes.rs
+index f0f7780..7cca597 100644
+--- a/engine/core/src/homes.rs
++++ b/engine/core/src/homes.rs
+@@ -94,7 +94,10 @@ pub struct Step {
+ /// the territory with the new home in it, less the tiles another clan holds other than the home, trimmed
+ /// to the radius, and the festival route priced from there. A step is taken when it feeds the clan
+ /// better than staying by `TOWN.margin`, the better of the two if both do. A step onto the festival's
+-/// tile is also taken when it feeds the clan as well as staying and its festival walk from there is less.
++/// tile, or the step one tile toward it from within `TOWN.drift` tiles, is also taken when the clan has
++/// something to carry, it feeds the clan as well as staying and its festival walk from there is less:
++/// freed days buy a clan nothing in food when its fields and its tiles cap it, so a tie in food goes to
++/// the home nearer the market (`TOWN.note`).
+ /// `None` when the rule does not apply (towns off, fields closed, neither a farmer nor on a shared home):
+ /// the move step's own home step then runs.
+ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Option<Step> {
+@@ -123,22 +126,23 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
+     let mut best: Option<(f64, Step)> = None;
+     let walk = |prices: &mut Prices, home: usize| prices.routes(w, c, home).iter().map(|r| r.cost).sum::<f64>();
+     let walk_now = walk(prices, c.home);
+-    let mut weigh = |prices: &mut Prices, home: usize, territory: Vec<usize>, why: &'static str| {
++    let carries = crate::market::weight(&c.basket) > 0.0;
++    let mut weigh = |prices: &mut Prices, home: usize, territory: Vec<usize>, why: &'static str, toward: bool| {
+         if home == c.home {
+             return;
+         }
+         let v = value(prices, home, &territory);
+-        let at_door = festival == Some(home) && v >= now && walk(prices, home) < walk_now;
+-        if (v > now + TOWN.margin || at_door) && best.as_ref().is_none_or(|(b, _)| v > *b) {
++        let drifts = carries && (festival == Some(home) || toward) && v >= now && walk(prices, home) < walk_now;
++        if (v > now + TOWN.margin || drifts) && best.as_ref().is_none_or(|(b, _)| v > *b) {
+             best = Some((v, Step { home, territory, why }));
+         }
+     };
+     if let Some(target) = fields::home_toward(w, c, changed) {
+         let (home, _) = actors::step_toward(w, c.home, target, changed, CLAN.territory_radius);
+-        weigh(prices, home, land(home), "moved its home toward its fields");
++        weigh(prices, home, land(home), "moved its home toward its fields", false);
+     } else if !farmer {
+         let (home, _) = actors::recentre(w, c.home, changed, CLAN.territory_radius);
+-        weigh(prices, home, land(home), "moved its home to the middle of its land");
++        weigh(prices, home, land(home), "moved its home to the middle of its land", false);
+     }
+     if let Some(t) = festival.filter(|&t| farmer && t != c.home) {
+         let d = steps(w, c.home, t);
+@@ -146,7 +150,7 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
+             .filter(|&n| TERRAIN[w.tiles[n].terrain].land && passable(w, n) && steps(w, n, t) < d)
+             .min();
+         if let Some(n) = near {
+-            weigh(prices, n, land(n), "moved its home toward its festival");
++            weigh(prices, n, land(n), "moved its home toward its festival", d <= TOWN.drift);
+         }
+     }
+     Some(match best {
+diff --git a/engine/core/src/world.rs b/engine/core/src/world.rs
+index 5ce0cca..1987b87 100644
+--- a/engine/core/src/world.rs
++++ b/engine/core/src/world.rs
+@@ -179,7 +179,7 @@ pub const TURN: &[Step] = &[
+ /// The save format's version. Any change that moves a world's digest bumps it with the constants
+ /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
+ /// into a different world.
+-pub const SAVE_VERSION: u32 = 27;
++pub const SAVE_VERSION: u32 = 28;
+ 
+ /// What a save holds: enough to replay the world. A save without `version` reads as 0.
+ #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+diff --git a/engine/core/tests/save.rs b/engine/core/tests/save.rs
+index 3ba4ebf..52f7452 100644
+--- a/engine/core/tests/save.rs
++++ b/engine/core/tests/save.rs
+@@ -11,7 +11,7 @@ fn a_save_carries_its_version_and_round_trips() {
+     let save = w.save();
+     assert_eq!(save.version, SAVE_VERSION);
+     let json = serde_json::to_string(&save).unwrap();
+-    assert!(json.starts_with("{\"version\":27,"), "the version comes first: {json}");
++    assert!(json.starts_with("{\"version\":28,"), "the version comes first: {json}");
+     let back: Save = serde_json::from_str(&json).unwrap();
+     assert_eq!(World::replay(&back).unwrap(), w);
+ }
+@@ -23,7 +23,7 @@ fn a_save_without_a_version_is_refused_naming_it() {
+     let save: Save = serde_json::from_value(json).unwrap();
+     assert_eq!(save.version, 0, "a save without a version reads as 0");
+     let err = World::replay(&save).unwrap_err();
+-    assert_eq!(err, "this save is from an older build (no version); this build reads version 27");
++    assert_eq!(err, "this save is from an older build (no version); this build reads version 28");
+ }
+ 
+ #[test]
+@@ -31,5 +31,5 @@ fn a_save_of_another_version_is_refused_naming_both() {
+     let mut save = World::new(Config::default()).save();
+     save.version = 1;
+     let err = World::replay(&save).unwrap_err();
+-    assert_eq!(err, "this save is version 1; this build reads version 27");
++    assert_eq!(err, "this save is version 1; this build reads version 28");
+ }
+diff --git a/engine/core/tests/towns.rs b/engine/core/tests/towns.rs
+index e63fd47..c3f8442 100644
+--- a/engine/core/tests/towns.rs
++++ b/engine/core/tests/towns.rs
+@@ -558,3 +558,47 @@ fn a_farmer_steps_onto_its_festivals_tile_only_with_towns_on() {
+     let c = w.clans[&id].clone();
+     assert!(homes::step(&w, &mut homes::Prices::new(&w), &c, &c.territory).is_none(), "towns off: no home step");
+ }
++
++/// A farmer of `people` carrying `carried` on (1, -2), two tiles from its festival at (1, 0), holding
++/// rich land around its home and the middle tile (1, -1): `farmer_beside_festival` one tile further out,
++/// so a step toward the festival reaps what staying does.
++fn farmer_two_from_festival(people: f64, carried: f64) -> (World, u32, usize, usize) {
++    let (mut w, _) = staged();
++    let fest = index(RADIUS, Hex { q: 1, r: 0 }).unwrap();
++    let home = index(RADIUS, Hex { q: 1, r: -2 }).unwrap();
++    let m = raise(&mut w, fest);
++    let land: Vec<usize> =
++        [(1, -2), (0, -2), (1, -3), (1, -1)].iter().map(|&(q, r)| index(RADIUS, Hex { q, r }).unwrap()).collect();
++    let id = clan(&mut w, home, &land, people);
++    for &t in &land {
++        w.tiles[t].stock = [500.0; engine::data::N];
++    }
++    let c = w.clans.get_mut(&id).unwrap();
++    c.fields = FIELD.farmer;
++    c.basket[GRAIN] = carried;
++    c.market = Some(m);
++    send(&mut w, id);
++    (w, id, home, fest)
++}
++
++#[test]
++fn a_farmer_two_tiles_out_steps_toward_its_festival_when_that_feeds_it_as_well_and_walks_less() {
++    let (w, id, home, fest) = farmer_two_from_festival(150.0, 30.0);
++    let to = chosen(&w, id);
++    assert_ne!(to, home, "the step toward the festival feeds it as well and walks it less");
++    assert_eq!(engine::land::steps(&w, to, fest), 1, "one tile nearer, not onto the festival yet");
++    let (empty, id, home, _) = farmer_two_from_festival(150.0, 0.0);
++    assert_eq!(chosen(&empty, id), home, "with nothing to carry the step feeds it less: it stays");
++}
++
++#[test]
++fn a_farmer_two_tiles_out_stays_when_the_step_toward_its_festival_feeds_it_less() {
++    let (mut w, id, home, _) = farmer_two_from_festival(150.0, 30.0);
++    // Its land lies on the far side of its home: a step toward the festival trims it away.
++    for (q, r) in [(0, -1), (1, -1), (2, -2), (2, -1)] {
++        w.tiles[index(RADIUS, Hex { q, r }).unwrap()].stock = [0.0; engine::data::N];
++    }
++    let c = w.clans.get_mut(&id).unwrap();
++    c.territory = vec![home];
++    assert_eq!(chosen(&w, id), home, "a step that feeds it less is not taken");
++}
+diff --git a/engine/www/check.mjs b/engine/www/check.mjs
+index 6e52ec4..7abf8a7 100644
+--- a/engine/www/check.mjs
++++ b/engine/www/check.mjs
+@@ -487,7 +487,7 @@ for (const e of JSON.parse(sim.events(0))) assert.ok(e.text.length > 0 && KINDS.
+ 
+ // A save carries its version, and one without it is refused with a reason that names the version.
+ const save = JSON.parse(sim.save());
+-assert.equal(save.version, 27, 'a save carries its version');
++assert.equal(save.version, 28, 'a save carries its version');
+ assert.doesNotThrow(() => Sim.load(JSON.stringify(save)), 'a save of this build loads');
+ const { version, ...unversioned } = save;
+ assert.throws(() => Sim.load(JSON.stringify(unversioned)), /version/, 'a save without a version fails, naming it');
