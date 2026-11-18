@@ -10,18 +10,18 @@
   },
   {
     "id": "build-2",
-    "title": "Play the page on small 61288, fix the three worst, say when nothing reaches",
+    "title": "Play the page on small 61288, fix the three worst, the reach line",
     "part": "canvas",
     "model": "opus",
     "effort": "medium",
     "points": 11,
-    "why": "Open 4 (what is worst is found by playing), New 3 (a 'nothing in reach' analysis has no pattern, and finding faults by play has none in a build), Miss 3 (only play and the real maps catch it), Reach 1 (the page, the text view, one core predicate). Opus medium, as the issue's Magnum suggested: the hard judgement is all here. 6-10 files, 300-500 lines plus play files; size unknown until play."
+    "why": "Open 4 (what is worst is found by playing), New 3 (a reach line over claims, gifts and armies has no pattern, and finding faults by play has none in a build), Miss 3 (only play and the real maps catch it), Reach 1 (the page, the text view, one core predicate). Opus medium, as the issue's Magnum suggested: the hard judgement is all here. 6-10 files, 300-500 lines plus play files; size unknown until play. Spec-review: (b) holds on every sample of both small maps (probe-review.md), so the line is always shown and names what is in reach; the canvas plays card 3, not card 2, which falls by +20 under the AI."
   },
   {
     "id": "review",
     "title": "Review the piece",
     "model": "opus",
     "effort": "medium",
-    "why": "The goal is judged by play: the review checks the three fixed faults were the worst that need no rule change, sets the played games' orders beside the control, plays the camera and the gift line through the driver, and adds the ledger lines."
+    "why": "The goal is judged by play: the review checks the three fixed faults were the worst that need no rule change, sets the played games' orders beside the control, plays the camera and the gift line through the driver, and adds the ledger lines. It presses the claim the reach line names and sees the clan join."
   }
 ]

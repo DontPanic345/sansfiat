@@ -4,14 +4,15 @@ Read `relay/specs/338/spec.md` whole, `docs/design/page.md` and `docs/design/fou
 build-1's summary and `relay/specs/338/live.md`. You may change build-1's driver and readouts
 where play shows they fall short; say what you changed.
 
-Split your 90 minutes roughly: 35 playing, 5 writing the faults, 35 fixing and the Standing line,
+Split your 90 minutes roughly: 35 playing, 5 writing the faults, 35 fixing and the reach line,
 15 for checks and the summary. Check `date -u` as you go.
 
 ## 1. Play the page (before your fixes)
 
 - `engine/build-web.sh`, `cargo build --release -p sansfiat`. Start the driver in the background
   (`node engine/www/play/live.mjs start "?size=small&seed=61288&run=1" --dir /tmp/live` with
-  `run_in_background`), and lead the second card (`lead` its name).
+  `run_in_background`), and lead the third card (civ 202: cards are in civ id order; `lead` its name). The second card
+  falls to a rival by +20 under the AI (`probe-review.md`).
 - Play 100 turns from the pick as `relay/prompts/play.md` says a player plays: a note before
   each decision, in a scratch file, and the page is all you read: the driver's printouts,
   tooltips and screenshots (read them as images; take one at the pick, at the first of each new
@@ -42,22 +43,27 @@ order the player meets is pressed in `www/play/buttons.mjs` with its effect on t
 checked. No `data.rs` number, rule, order kind or `SAVE_VERSION` change. Say in `faults.md`
 which three you fixed and how.
 
-## 4. When nothing reaches: the Standing line
+## 4. The reach line
 
-Build the line `spec.md` settles (What build-2 leaves to play, the Standing readout): when none
-of (a), (b), (c) holds for the led civ, the text view and the civ's panel say in one line that
-nothing it can order now brings a clan or a rival's land to it, and name the nearest clan not
-its own and the nearest rival tile, each with what would bring it nearer. The predicate is one
-core function (in a module that fits: `core/src/claim.rs` is 212 lines, `civs.rs` larger; a new
-`core/src/reach.rs` if neither fits) with stage tests for each of (a), (b), (c) holding and for
-none holding. The wording and the helper for (c) with no army are yours; record them as
-decisions.
+Build the line `spec.md` settles (What build-2 leaves to play, the Standing readout). Read
+`probe-review.md` first: a claim has no size limit, so on both small maps some clan not the civ's
+is always one claim away, and a line shown only when nothing is in reach would never show. So the
+led civ's panel and the text view carry the reach line always: the nearest thing in reach of each
+kind (a, b, c) with the order that takes it (for (b), the fewest new claim tiles that join a clan's
+home and how many people that brings), or, when none holds, that nothing the civ can order now
+brings a clan or a rival's land, naming the nearest of each and what would bring it nearer.
 
-Proof on the real map: on your saved game, the line appears on the turns it should (the owner's
-small 61288 has an idle stretch with nothing in reach, `relay/retro/m4/game.md`), and on
-`relay/specs/337/play/small-2.json` it doesn't appear while an army has a rival capital in
-reach. Run your game file through `sansfiat play --game COPY` at a few turns, and the page
-through the driver (`load`), and write the turns where it shows in `faults.md`.
+The predicate and the nearest-of-each are one core function in a module that fits:
+`core/src/claim.rs` is 212 lines; `core/src/reach.rs` already exists and is the festival search,
+so a new module needs another name. Stage tests for each of (a), (b), (c) holding and for none
+holding. The wording and the helper for (c) with no army are yours; record them as decisions.
+
+Proof on the real map: in your saved game the line names a claim, and a play script (or the
+driver, logged in `faults.md`) presses Claim on the page to the tile it names and sees the clan
+join (the civ's clans up by one, the feed's join line). On `relay/specs/337/play/small-2.json` the
+line names the army's reach while an army has a rival capital in reach. Run your game file through
+`sansfiat play --game COPY` at a few turns and the page through the driver (`load`), and write what
+the line said in `faults.md`.
 
 ## 5. The rest
 
@@ -68,7 +74,7 @@ fits one Ford build is a `fix` with its repro.
 ## Done
 
 `faults.md` written worst first with the three fixed marked; the played game, its lines and its
-judge in `relay/specs/338/play/`; the Standing line built and seen on the real maps;
+judge in `relay/specs/338/play/`; the reach line built, its claim pressed on the real map;
 `engine/check.sh` passes; digest pins and `SAVE_VERSION` unchanged. Your summary gives the judge's
 `player orders` line for your game beside the control's (11 in 103, 95 turns with none) and
 says what the play step should watch for on small 2.

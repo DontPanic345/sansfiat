@@ -56,7 +56,8 @@ Proof: a play script `www/play/camera.mjs`, added to `all.mjs`: click a tile tha
 centre and check the map's centre (`game.map.cx`, `cy` after `!game.map.anim`) is that tile's
 middle (`game.map.px[i]`, `py[i]`) to a pixel; click the same tile again with two things on it
 (the capital with its scout, at the pick) and check the selection changed and the centre didn't.
-It fails on main. Other scripts that read screen positions after a click may need to wait on
+It fails on main. `clampView` holds the centre inside the map's extent, so pick a tile whose
+middle the view can centre on (not on the rim). Other scripts that read screen positions after a click may need to wait on
 `!game.map.anim` (`play.mjs` `tile()` already does); fix any that break.
 
 ## 3. The gift line
@@ -69,7 +70,11 @@ It fails on main. Other scripts that read screen positions after a click may nee
 - The civ's panel (`www/panels.js` `civShape`, ~line 448): the Gift row reads
   `6.0 a turn · reaches 3 clans · gave 4.2 · left 1.8`, where left is `gift − given` (never
   below 0). With no clan reached it reads `reaches no clan`, and the tooltip says why: no clan at
-  your market is not already yours, and a gift reaches only clans that trade there. The "Last
+  your market is not already yours, and a gift reaches only clans that trade there. When it
+  reaches clans and leaves some, the tooltip says the store held less than keep plus gift (the
+  pool is `gift.min(store − keep)`, `markets.rs` `trade`). Under the AI the gift reaches no clan
+  on either small map (`probe-review.md`), so the "reaches no clan" form is the one players read:
+  make it plain. The "Last
   turn" row drops `given` (it's in the Gift row now). `panels.js` is 570 lines: if this takes it
   past 600, move the civ's shape to `www/panels-civ.js`.
 - The text view (`cli/src/view.rs` ~line 110): the same three numbers in the civ's line:
@@ -87,8 +92,8 @@ file loaded in the page through the driver: record both new lines in `live.md`.
 ## 4. The words
 
 - `core/src/claim.rs` `check` (~line 79): the refusal names the first tile of `tiles` not in the
-  connected part: `a claim must be joined to the capital or a settlement: (q, r) is not`. Use the
-  coordinates the page and the text view print. A core test asserts the tile is named.
+  connected part: `a claim must be joined to the capital or a settlement: (q, r) is not`, with the
+  tile written by `World::at`, as `claim::change` writes its tiles. A core test asserts the tile is named.
 - `cli/src/view.rs` legal orders, the scout's route (~line 527): `to: any tile it may route to,
   such as …` with the near list as the examples.
 - The keep's default label, in the panel (`civShape`, the Keep row) and the text view: say the

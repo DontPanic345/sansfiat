@@ -7,7 +7,7 @@ and turns with none out of the turns played. The control is the M4 check's game 
 as civ 1 (`relay/retro/m4/play.md`): **11 orders in 103 turns (10.7 per 100), 95 turns with
 none.** The piece's played games:
 
-- build-2's game on the page, small 61288 (the owner's map), played **before** its fixes: what it
+- build-2's game on the page, small 61288 (the owner's map) as its third card (civ 202), played **before** its fixes: what it
   finds is the evidence for the fixes, and its count is the page as it stands.
 - the play step's game on the page, small 2 as civ 1 (the control's map and civ), played **with**
   every fix in. This is the number the review sets beside the control.
@@ -50,8 +50,12 @@ the rest. The canvas may change the easel.
    - *Left*: `gift − given`, the part of the gift that went unspent (it stays in the store or is
      posted). When it reaches none, the line says so and why (no clan at your market is not
      already yours).
+   When it reaches clans and still leaves some, the store held less than keep plus gift
+   (`markets.rs` gives `gift.min(store − keep)`), and the tooltip says so.
    This takes the idea **'gave 0.0' stays zero while gift is set and clans join**: the line now
-   shows it gave nothing because it reached no one.
+   shows it gave nothing because it reached no one. `probe-review.md`: on small 61288 and small 2
+   under the AI the gift reaches no clan of any civ at any sample, so "reaches no clan" and its
+   reason are the line the player will mostly read.
 4. **Readout ideas that are only words**, taken because each is a line the player reads wrongly
    today and its fix touches no rule:
    - **A refused claim does not name the unjoined tile**: the refusal in `claim.rs` (`check`)
@@ -64,8 +68,8 @@ the rest. The canvas may change the easel.
 
 ## What build-2 leaves to play (the canvas)
 
-- **Playing the page.** small 61288, the second card (piece 338 mod 3 + 1), 100 turns from the
-  pick, through the driver, before any fix of build-2's own. The player reads the page only:
+- **Playing the page.** small 61288, the third card (piece 338 mod 3 + 1 = 3; civ 202, as cards
+  are in id order), 100 turns from the pick, through the driver, before any fix of build-2's own. The player reads the page only:
   printouts and screenshots. A note before each decision, as `relay/prompts/play.md` asks.
 - **What's worst**, written worst first in `relay/specs/338/faults.md`, each with its turn, a
   screenshot or a lines-file repro, and whether it needs a rule change.
@@ -73,23 +77,31 @@ the rest. The canvas may change the easel.
   one of build-1's (the camera, the gift line) doesn't count toward the three. Each fix has a
   play script or a `check.mjs` case that fails without it.
 - **The Standing readout** (issue, Decided): when nothing a player can order would change
-  Standing, the view says so and names what would bring a clan or a rival in reach. Settled
-  here: the predicate is "nothing in reach", where in reach is any of
+  Standing, the view says so and names what would bring a clan or a rival in reach. In reach is any
+  of:
   (a) a clan not the civ's trades at its capital market (the gift reaches it);
-  (b) a clan not the civ's lives on a tile the civ may claim now (`claim::check` accepts it with
-  the claim), since a claim covering its home brings it at once;
+  (b) a clan not the civ's lives on land a claim could join now (`claim::check` would accept a claim
+  chained from the civ's land to its home), since a claim covering its home brings it at once
+  (`leaning::land`);
   (c) a rival's tile or capital lies inside an army's reach from one of the civ's stores, since
   an army ending its turn on it takes it. `units::past_reach(w, unit, tile)` answers it for an
   army the civ has; a civ with no army needs the same answer for an army it could raise at a
   store (`units/line.rs` `line_at` reads the unit only for its civ and people, so a helper over a
   civ and a head count is the likely shape).
-  When none holds, the text view and the civ's panel say so in one line, and name the nearest
-  clan not the civ's (steps from the claim, its market) and the nearest rival tile (steps from
-  the nearest store), each with the order that would bring it nearer (a claim grown toward it, a
-  signpost toward it, a scout's route). Unsettled, for the canvas: the wording, the helpers it
-  reads, and the shape of (c) for a civ with no army. It is proved on
-  small 61288 (the owner's idle civ is "second from the pick to the limit and nothing reaches
-  it", `relay/retro/m4/game.md`), where the line must appear in the played game.
+  **Measured (`probe-review.md`): (b) holds for every civ at every sample on small 61288 and small
+  2,** because a claim has no size limit. So a line shown only when nothing is in reach would never
+  show in a played game. Settled here: the civ's panel and the text view carry one **reach line**
+  for the led civ, always. When something is in reach it names the nearest of each kind with its
+  order: (b) the clan home the fewest new claim tiles join (`claim 4 tiles to (q, r): brings a clan
+  of 12`), (a) the clans the gift reaches, (c) the nearest rival tile an army could take. When none
+  holds it says nothing the civ can order now brings a clan or a rival's land, and names the nearest
+  clan not the civ's and the nearest rival tile with what would bring each nearer (a signpost, a
+  scout's route). One core function answers it (not `core/src/reach.rs`, which is the festival
+  search), with stage tests for (a), (b), (c) each holding and for none. Unsettled, for the canvas:
+  the wording, the shape of (c) for a civ with no army, and whether the line also points the map at
+  the tile it names. Proved on the real maps: in build-2's game the line names a claim, and pressing
+  that claim on the page (the Claim button, painted to the named tile) brings the clan, its clans
+  count up by one; the "nothing in reach" form on a stage.
 - **The rest as ideas** in `result.json`, at most three, the others in `faults.md`.
 
 ## Decisions I made
@@ -107,8 +119,13 @@ the rest. The canvas may change the easel.
 - The two named fixes (camera, gift) are build-1's, and build-2 fixes three more from play.
 - "Nothing in reach" is (a) or (b) or (c) above. Raising, disbanding and signposts are not in
   it: they move people within the civ or move where its clans live, not whose they are.
-- The play step plays small 2 as civ 1, not civ 2 as `play.md` computes, so its game sits on the
-  control's map and civ. The canvas plays small 61288 as civ 2, so the piece meets both.
+- The issue's Standing line is shown only when nothing is in reach; on the real maps that never
+  happens (a claim always reaches a clan, `probe-review.md`), so the same line, always shown, names
+  the nearest thing in reach and its order. The "nothing in reach" form is the issue's line as
+  decided.
+- The play step plays small 2 as civ 1, not civ 3 as `play.md` computes, so its game sits on the
+  control's map and civ. The canvas plays small 61288 as card 3 (civ 202), as `play.md` computes:
+  card 2 (civ 201) falls to a rival by +20 under the AI, which would leave few turns to count.
 
 ## Unsettled
 
@@ -126,5 +143,5 @@ helpers. Its Open score is 4.
   95 with none) in the PR, and say plainly if the played count didn't rise. Run
   `node engine/www/play/all.mjs`; open the page with the driver, click a tile, click it again,
   and confirm the view didn't move the second time; read the gift line in the civ's panel and
-  in the text view on a game where the gift reaches no one; find the Standing line in
-  build-2's game. Add the decisions that matter to `page.md`'s and `founding.md`'s ledgers.
+  in the text view on a game where the gift reaches no one; find the reach line in
+  build-2's game, press the claim it names and see the clan join. Add the decisions that matter to `page.md`'s and `founding.md`'s ledgers.
