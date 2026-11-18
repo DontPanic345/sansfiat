@@ -20,6 +20,7 @@ pub mod judge_ring;
 pub mod judge_scores;
 pub mod judge_settle;
 pub mod judge_towns;
+pub mod judge_trade;
 pub mod land;
 pub mod leaning;
 pub mod lots;

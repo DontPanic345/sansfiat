@@ -41,6 +41,69 @@ pub enum Owner {
     Civ(u32),
 }
 
+/// The salt a civ's store keeps back from its keeping for its packs: `KEEPING.packs` with exchange on, else 0.
+pub fn packs(w: &World) -> f64 {
+    if w.config.exchange {
+        KEEPING.packs
+    } else {
+        0.0
+    }
+}
+
+/// The lots of civ `civ`'s store on `tile`: the capital's or a settlement's of its own there.
+pub fn store_lots(w: &World, civ: u32, tile: usize) -> Option<&Lots> {
+    let c = w.civs.get(&civ)?;
+    if c.capital == tile {
+        return Some(&c.actor.lots);
+    }
+    settle::of(w, civ).find(|s| s.tile == tile).map(|s| &s.lots)
+}
+
+/// The salt a unit's pack has room for: `UNIT.salt` a person, less what it holds.
+pub fn salt_room(u: &Unit) -> f64 {
+    (UNIT.salt * u.people - u.store[SALT]).max(0.0)
+}
+
+/// Checks `Order::Fill` for unit `u` of `civ`: exchange is on, it stands on a store of its civ with salt in
+/// it, and its pack has room for salt.
+pub fn check_fill(w: &World, civ: u32, u: &Unit) -> Result<(), String> {
+    if !w.config.exchange {
+        return Err("exchange is off".to_string());
+    }
+    let Some(store) = settle::store(w, civ, u.tile()) else {
+        return Err("it stands off a store: a unit fills its pack at its civ's capital or a settlement".to_string());
+    };
+    if store[SALT] <= 1e-9 {
+        return Err("there is no salt in that store".to_string());
+    }
+    if salt_room(u) <= 1e-9 {
+        return Err("its pack's salt is full".to_string());
+    }
+    Ok(())
+}
+
+/// Applies `Order::Fill` for unit `id`, checked: it takes what salt the store has, up to its room, with the
+/// store's lots (`Lots::mix`), and the store keeps the rest.
+pub fn fill(w: &mut World, civ: u32, id: u32) {
+    let (tile, room) = {
+        let u = &w.units[&id];
+        (u.tile(), salt_room(u))
+    };
+    let have = settle::store(w, civ, tile).map_or(0.0, |s| s[SALT]);
+    let got = room.min(have);
+    if got <= 0.0 {
+        return;
+    }
+    let from = store_lots(w, civ, tile).cloned().unwrap_or_default();
+    settle::store_mut(w, civ, tile).expect("checked: a store")[SALT] -= got;
+    let u = w.units.get_mut(&id).expect("checked: a unit");
+    let held = u.store[SALT];
+    u.actor.store[SALT] += got;
+    u.actor.lots.mix(SALT, held, got, &from);
+    let name = settle::store_name(w, civ, tile);
+    w.note(id, format!("filled its pack with {got:.2} salt from {name}"));
+}
+
 /// The start of the `trade` step: no unit has traded yet this turn.
 pub fn begin(w: &mut World) {
     for u in w.units.values_mut() {
@@ -49,7 +112,7 @@ pub fn begin(w: &mut World) {
 }
 
 /// Whether market `mid` is a rival's to `civ`: another living civ's capital market or settlement market.
-fn rival(w: &World, civ: u32, mid: u32) -> bool {
+pub fn rival(w: &World, civ: u32, mid: u32) -> bool {
     civs::alive(w).any(|c| c.market == mid && c.id != civ)
         || settle::of_market(w, mid).is_some_and(|s| s.civ != civ && w.civs.get(&s.civ).is_some_and(|c| !c.is_out()))
 }

@@ -114,12 +114,15 @@ pub struct KeepingRules {
     /// What a civ's store with none wants salt and obsidian at, against a food's 1; it falls to 0 as the
     /// store fills to what it holds (`actors::civ_room`).
     pub civ_want: f64,
+    /// Salt a civ's store (capital or settlement) keeps back from its keeping, for the packs to fill from
+    /// (`Order::Fill`, `exchange.rs`). Only with `Config.exchange`.
+    pub packs: f64,
 }
 
 /// A unit of salt keeps 10 food and spares it half its spoiling: half a food saved for a unit of salt,
 /// so salt is worth about half its measure in food to a full store and nothing to an empty one. A clan
 /// at its surplus target loses 0.2 food a person a turn, and wants salt as it wants a food.
-pub const KEEPING: KeepingRules = KeepingRules { keeps: 10.0, slows: 0.5, want_at: 0.2, civ_want: 1.0 };
+pub const KEEPING: KeepingRules = KeepingRules { keeps: 10.0, slows: 0.5, want_at: 0.2, civ_want: 1.0, packs: 10.0 };
 
 /// How obsidian arms warriors (`units/muster.rs`, `units/fight.rs`).
 pub struct ArmsRules {

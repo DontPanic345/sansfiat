@@ -21,6 +21,7 @@ mod muster;
 mod paths;
 mod scout;
 mod search;
+pub mod trade;
 
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};

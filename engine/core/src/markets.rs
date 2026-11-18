@@ -48,6 +48,17 @@ pub struct Market {
     /// Last turn's volume, good by good.
     #[serde(default)]
     pub ware: Basket,
+    /// This turn's clearings here, each row's net and the prices it cleared at (`judge_trade`). Written
+    /// only with `Config.exchange`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cleared: Vec<Cleared>,
+}
+
+/// One clearing at a market: each row's net (what it bought, `+`, and sold, `-`) and the prices it cleared at.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Cleared {
+    pub nets: Vec<Basket>,
+    pub prices: Basket,
 }
 
 /// Path cost from the market's tile over passable tiles, out to `MARKET.reach`: the land around
@@ -246,6 +257,9 @@ pub fn trade(w: &mut World) {
     for c in w.civs.values_mut() {
         c.levied = 0.0;
     }
+    for m in w.markets.values_mut() {
+        m.cleared.clear();
+    }
     w.traded.clear();
     w.carried.clear();
     w.levied.clear();
@@ -310,7 +324,7 @@ fn clear_at(w: &mut World, mid: u32, ids: &[u32], carriers: &[u32]) {
         if posted > 0.0 {
             brought.push(basket);
             kept.push(w.civs[&civ].store);
-            worths.push(actors::civ_worths(&w.civs[&civ].store, CIV.store_cap));
+            worths.push(actors::civ_worths(&w.civs[&civ].store, CIV.store_cap, exchange::packs(w)));
             owners.push(exchange::Owner::Civ(civ));
         }
         let c = w.civs.get_mut(&civ).unwrap();
@@ -349,6 +363,11 @@ fn clear_at(w: &mut World, mid: u32, ids: &[u32], carriers: &[u32]) {
     }
     if volume > 0.0 {
         w.note(mid, "its clans traded here: traders swapped goods".to_string());
+    }
+    if c.cleared && w.config.exchange {
+        let nets: Vec<Basket> =
+            (0..brought.len()).map(|i| std::array::from_fn(|g| c.after[i][g] - brought[i][g])).collect();
+        w.markets.get_mut(&mid).unwrap().cleared.push(Cleared { nets, prices: c.prices });
     }
     if c.cleared && w.config.exchange && wares(&c.volume) > 0.0 {
         exchange::pass_lots(w, mid, &owners, &kept, &brought, &c.after);
@@ -574,6 +593,7 @@ pub fn raise(w: &mut World, tile: usize) -> u32 {
         town: false,
         wares: 0.0,
         ware: [0.0; N],
+        cleared: Vec::new(),
     };
     w.markets.insert(id, m);
     id

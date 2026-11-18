@@ -52,6 +52,9 @@ pub enum Order {
     Signpost { tile: usize },
     /// Remove the civ's signpost on a tile. `{"type":"unpost","tile":58}`
     Unpost { tile: usize },
+    /// Fill the unit's pack with salt from the store it stands on (its civ's capital or a settlement), up to
+    /// its room (`exchange::salt_room`). `{"type":"fill","unit":12}`
+    Fill { unit: u32 },
     /// Send the camp to a tile; it moves when the turn ends. `{"type":"move","unit":12,"to":5}`
     Move { unit: u32, to: usize },
     /// Spread the camp over a zone: the painted tiles (the camp's own may be left out), which replace
@@ -87,6 +90,7 @@ impl Order {
             Order::Claim { .. } => "claim",
             Order::Signpost { .. } => "signpost",
             Order::Unpost { .. } => "unpost",
+            Order::Fill { .. } => "fill",
             Order::Move { .. } => "move",
             Order::Zone { .. } => "zone",
             Order::Switches { .. } => "switches",
@@ -114,6 +118,10 @@ impl World {
             Order::Claim { tiles } => claim::check(self, civ, tiles).map(|_| ()),
             Order::Signpost { tile } => crate::settle::check_post(self, civ, *tile),
             Order::Unpost { tile } => crate::settle::check_unpost(self, civ, *tile),
+            Order::Fill { unit } => {
+                let u = unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout])?;
+                crate::exchange::check_fill(self, civ, u)
+            }
             Order::Disband { unit, n, fighter } => {
                 let u = unit_among(self, civ, *unit, &[UnitKind::Camp, UnitKind::Scout])?;
                 if let Some(f) = fighter {
@@ -197,6 +205,7 @@ fn apply(w: &mut World, civ: u32, order: Order) {
         }
         Order::Signpost { tile } => crate::settle::post(w, civ, tile),
         Order::Unpost { tile } => crate::settle::unpost(w, civ, tile),
+        Order::Fill { unit } => crate::exchange::fill(w, civ, unit),
         Order::Move { unit, to } => {
             order_move(w, unit, to);
             if let Some(c) = w.units.get_mut(&unit).and_then(|u| u.camp_mut()) {

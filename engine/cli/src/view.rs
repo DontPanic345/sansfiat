@@ -102,6 +102,7 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     let c = &w.civs[&me];
     let stock: Vec<String> = GOODS.iter().zip(c.store.iter()).map(|(f, v)| format!("{f} {:.1}", v.max(0.0))).collect();
     out += &format!("store {:.1} food: {}\n", total(&c.store), stock.join(", "));
+    out += &crate::view_goods::store_chains(w, me, &c.store, &c.actor.lots);
     out += &sources(w, me);
     let set = match c.keep {
         Some(k) => format!("set to {k:.1}"),
@@ -284,6 +285,9 @@ fn settle_lines(w: &World, me: u32) -> String {
             p.land.len(),
             tiles(w, &p.land)
         );
+        if let Some(lots) = crate::view_goods::settlement_lots(w, p.tile) {
+            out += &crate::view_goods::store_chains(w, me, &p.store, lots);
+        }
     }
     out
 }
@@ -359,11 +363,12 @@ fn unit_line(w: &World, u: &Unit) -> String {
                 _ => cut_at,
             };
             let draws = draws_on(w, u);
+            let wares = crate::view_goods::pack_wares(u);
             let bows = if cs.bows { ", making bows" } else { "" };
             let bows = format!("{bows}, {:.0}% armed with obsidian", cs.armed * 100.0);
             let dest = cs.dest.map_or("none".to_string(), |t| tile(w, t));
             format!(
-                "  army {} at {}: {:.1} warriors, {:.1} archers, pack {pack:.1} of {:.1} ({feeds:.1} turns), entrenched {} turns{bows}, dest {dest}, {line}, {draws}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",
+                "  army {} at {}: {:.1} warriors, {:.1} archers, pack {pack:.1} of {:.1} ({feeds:.1} turns){wares}, entrenched {} turns{bows}, dest {dest}, {line}, {draws}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",
                 u.id,
                 tile(w, u.tile()),
                 cs.stack[Fighter::Warriors.index()],
@@ -495,6 +500,12 @@ fn legal(w: &World, me: u32) -> String {
         let near: Vec<usize> = engine::land::neighbours(w, u.tile()).collect();
         match u.kind() {
             UnitKind::Camp => {
+                if ok(Order::Fill { unit: id }) {
+                    out += &format!(
+                        "  {{\"type\":\"fill\",\"unit\":{id}}}  fills its pack with salt from the store it stands on, up to {:.1}\n",
+                        engine::data::UNIT.salt * u.people
+                    );
+                }
                 if ok(Order::Disband { unit: id, n: None, fighter: None }) {
                     out += &format!("  {{\"type\":\"disband\",\"unit\":{id}}}\n");
                 }

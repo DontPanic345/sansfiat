@@ -404,6 +404,10 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
         if dest == Some(to) || (dest.is_none() && home == to) {
             return;
         }
+        // An army marching past its ring fills its pack with salt at the store it stands on first.
+        if super::trade::fills_before(w, civ, id, to) {
+            let _ = give(w, civ, Decision::Order(Order::Fill { unit: id }));
+        }
         w.note(id, why);
         let _ = give(w, civ, Decision::Order(Order::Move { unit: id, to }));
     };
@@ -415,6 +419,11 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
     }
     let ground = civs::tile_civ(w, here);
     let home_ground = ground == Some(civ);
+    // With salt in its pack and no line to feed it, it buys food at a market before it forages (`units/trade.rs`).
+    if super::trade::plan(w, civ, id, paths, give) {
+        return;
+    }
+    let u = &w.units[&id];
     let low = total(&u.store) < PLAN.low * people * UNIT.food;
     if low && !home_ground && w.tiles[here].fallow == 0 && total(&w.tiles[here].stock) > EPS {
         if dest.is_some() {
@@ -425,6 +434,7 @@ fn direct(w: &mut World, civ: u32, id: u32, paths: &mut Paths, give: Give) {
         let _ = give(w, civ, Decision::Order(order));
         return;
     }
+    let u = &w.units[&id];
     if here != home && (u.hungry > 0 || (low && !home_ground)) {
         let why = if u.hungry > 0 {
             "hungry: it marches home"

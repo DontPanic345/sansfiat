@@ -19,7 +19,9 @@ mod sweep_settle;
 mod sweep_text;
 mod sweep_total;
 mod sweep_towns;
+mod sweep_trade;
 mod view;
+mod view_goods;
 
 use std::{env, process::exit};
 

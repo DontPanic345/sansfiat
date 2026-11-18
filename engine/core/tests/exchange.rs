@@ -192,3 +192,82 @@ fn a_carrier_trades_its_wares_at_the_second_festival_and_its_lots_go_with_them()
     let lot = buyer.lots.of(SALT).next().unwrap();
     assert_eq!((lot.source, lot.markets.clone()), (at_big(-2, 1), vec![b]));
 }
+
+/// Civ `civ`'s capital holds `salt` dug at `source`, with its lots.
+fn capital_salt(w: &mut World, civ: u32, salt: f64, source: usize) {
+    let c = w.civs.get_mut(&civ).unwrap();
+    c.store[SALT] = salt;
+    c.actor.lots = Lots::dug(SALT, source);
+}
+
+#[test]
+fn fill_on_a_capital_moves_salt_from_the_store_into_the_pack_with_its_lots() {
+    let (mut w, civs, _) = led();
+    let source = at_big(3, 3);
+    let capital = w.civs[&civs[0]].capital;
+    capital_salt(&mut w, civs[0], 5.0, source);
+    let id = put_camp(&mut w, civs[0], capital);
+    camp_mut(&mut w, id).actor.store = [0.0; N];
+    let room = UNIT.salt * w.units[&id].people;
+    w.order(civs[0], engine::orders::Order::Fill { unit: id }).expect("a store with salt, and room");
+    let u = &w.units[&id];
+    let took = room.min(5.0);
+    assert!((u.store[SALT] - took).abs() < 1e-9, "the pack took {took}: {}", u.store[SALT]);
+    assert!((w.civs[&civs[0]].store[SALT] - (5.0 - took)).abs() < 1e-9, "the store kept the rest");
+    let lot = u.lots.of(SALT).next().expect("the pack has its lot");
+    assert_eq!((lot.source, lot.markets.clone()), (source, Vec::<u32>::new()));
+    // A full pack is refused with the reason.
+    let err = w.order(civs[0], engine::orders::Order::Fill { unit: id }).unwrap_err();
+    assert!(err.contains("full"), "{err}");
+}
+
+#[test]
+fn fill_off_a_store_is_refused_and_with_exchange_off_it_is_refused_too() {
+    let (mut w, civs, _) = led();
+    let tile = at_big(0, 3);
+    capital_salt(&mut w, civs[0], 5.0, at_big(3, 3));
+    let id = put_camp(&mut w, civs[0], tile);
+    let err = w.order(civs[0], engine::orders::Order::Fill { unit: id }).unwrap_err();
+    assert!(err.contains("off a store"), "{err}");
+    let capital = w.civs[&civs[0]].capital;
+    put_camp(&mut w, civs[0], capital);
+    w.config.exchange = false;
+    let err = w.order(civs[0], engine::orders::Order::Fill { unit: id }).unwrap_err();
+    assert!(err.contains("exchange is off"), "{err}");
+}
+
+#[test]
+fn a_store_keeps_its_pack_salt_back_from_its_keeping_and_a_clans_store_does_not() {
+    let mut store = [0.0; N];
+    store[GAME] = 40.0;
+    store[SALT] = 12.0;
+    let mut clan = store;
+    engine::actors::spoil_keeping(&mut store, KEEPING.packs);
+    // The store's 12 salt keeps 2 beyond its reserve: all 2 are used, and the reserve of 10 stays whole.
+    assert!((store[SALT] - KEEPING.packs).abs() < 1e-9, "the reserve stays: {}", store[SALT]);
+    engine::actors::spoil(&mut clan);
+    assert!(clan[SALT] < 12.0 - 1e-9, "a clan's salt keeps its food: {}", clan[SALT]);
+    assert!(clan[SALT] < store[SALT], "a clan's salt is used where a store's reserve is not");
+}
+
+#[test]
+fn an_army_with_salt_and_no_food_marches_to_a_festival_to_buy_food() {
+    let (mut w, civs, _, tile) = scene();
+    w.act(engine::Action::ChooseCiv { civ: Some(civs[0]) }).unwrap();
+    // The camp stands a step from the festival with salt and no food; its line may feed it, so the test
+    // checks the planner's order, not its feeding.
+    let start = engine::land::neighbours(&w, tile).next().unwrap();
+    let id = pack_salt(&mut w, civs[0], start, 3.0, at_big(3, 3));
+    let mut give = |w: &mut World, civ: u32, d: engine::units::Decision| match d {
+        engine::units::Decision::Order(o) => w.order(civ, o),
+        engine::units::Decision::Gift(_) => Ok(()),
+    };
+    engine::units::plan(&mut w, civs[0], &mut give);
+    let u = &w.units[&id];
+    assert!(
+        u.dest() == Some(tile) || u.home == tile,
+        "it marches to the festival to buy food: dest {:?}, home {}",
+        u.dest(),
+        u.home
+    );
+}
