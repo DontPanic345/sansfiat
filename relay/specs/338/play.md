@@ -43,4 +43,4 @@ The camera fix held: selecting tiles one after another (t313) cycled the units o
 
 ## Page scripts
 
-`node engine/www/play/all.mjs`: see the end of this file.
+`node engine/www/play/all.mjs`: every script passed (army, art, bar, buttons, camera, camp, civ, end, feed, fields, game, goods, layout, pick, ring, save, scout, select, settle, start, towns, views). Screenshots of the played game: `play/pick.png`, `play/small-2-end.png`.
