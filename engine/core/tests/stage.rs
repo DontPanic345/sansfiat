@@ -162,6 +162,8 @@ fn a_spec_round_trips_and_builds_the_builders_world() {
         marks: Some(grid_text(12, &[(Hex { q: -5, r: 0 }, 'A'), (Hex { q: 5, r: 0 }, 'B')])),
         hidden: Vec::new(),
         food: Vec::new(),
+        sources: Vec::new(),
+        tame: Vec::new(),
         civs: vec![TileRef::Mark { mark: 'A' }, TileRef::Mark { mark: 'B' }],
         people: Some(14.0),
         lead: Some(0),
@@ -272,4 +274,32 @@ fn rows_scouts_and_stores_of_a_spec_are_set() {
     assert_eq!(stage.store(ids[0]), 50.0);
     let as_text: StageSpec = serde_json::from_value(serde_json::json!({ "map": text, "retro": null })).unwrap();
     assert_eq!(as_text.map.as_deref(), Some(text.as_str()), "a string reads as it is");
+}
+
+#[test]
+fn sources_by_name_or_index_and_a_farming_clan_of_a_spec_are_set() {
+    let json = serde_json::json!({
+        "map": Stage::flat(12).ascii().lines().map(String::from).collect::<Vec<String>>(),
+        "marks": grid_text(12, &[(Hex { q: -5, r: 0 }, 'A'), (Hex { q: 5, r: 0 }, 'B'), (Hex { q: 0, r: 0 }, 'S'), (Hex { q: 1, r: 0 }, 'T')]),
+        "sources": [{ "at": { "mark": "S" }, "good": "salt" }, { "at": { "mark": "T" }, "good": 6 }],
+        "tame": [{ "at": { "mark": "T" }, "tame": 7 }],
+        "clans": [{ "home": { "mark": "S" }, "tiles": [], "people": 4, "fields": 0.5 }],
+    });
+    let spec: StageSpec = serde_json::from_value(json).unwrap();
+    let stage = Stage::from_spec(&spec).unwrap();
+    let salt = engine::data::GOODS.iter().position(|g| *g == "salt");
+    assert_eq!(stage.world().tiles[stage.mark('S')].source, salt, "a good by its name");
+    assert_eq!(stage.world().tiles[stage.mark('T')].source, Some(6), "a good by its index");
+    assert_eq!(stage.world().tiles[stage.mark('T')].tame, 7, "a tile's tame count");
+    let farmer = stage.world().clans.values().find(|c| c.home == stage.mark('S')).expect("the clan");
+    assert_eq!(farmer.fields, 0.5, "the clan's share of its days to fields");
+    let bad: StageSpec = serde_json::from_value(serde_json::json!({
+        "map": Stage::flat(3).ascii().lines().map(String::from).collect::<Vec<String>>(),
+        "sources": [{ "at": { "tile": 0 }, "good": "gold" }],
+    }))
+    .unwrap();
+    match Stage::from_spec(&bad) {
+        Err(e) => assert!(e.contains("no good gold"), "{e}"),
+        Ok(_) => panic!("an unknown good is refused"),
+    }
 }

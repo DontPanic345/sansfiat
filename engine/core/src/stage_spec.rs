@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::data::N;
+use crate::data::{GOODS, N};
 use crate::stage::Stage;
 use crate::units;
 
@@ -27,6 +27,9 @@ pub struct ClanSpec {
     /// The civ (by its place in `civs`) whose capital market the clan trades at, or none.
     #[serde(default)]
     pub market: Option<usize>,
+    /// The share of the clan's days to fields (`Clan.fields`) when the stage is built; the notch moves it after.
+    #[serde(default)]
+    pub fields: f64,
 }
 
 /// A signpost of civ `civ` (by its place in `civs`) on `at`, posted without the order's checks.
@@ -34,6 +37,30 @@ pub struct ClanSpec {
 pub struct SignpostSpec {
     pub civ: usize,
     pub at: TileRef,
+}
+
+/// A tile's tame count set to `tame` (`Tile.tame`, the tending that makes its grain domestic): a field tile
+/// yields once its grain is tame.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TameSpec {
+    pub at: TileRef,
+    pub tame: u32,
+}
+
+/// A good's source on `at`, set as `sources::place` sets `Tile.source`. `good` is the good's name (`salt`,
+/// `obsidian`) or its index in `GOOD`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SourceSpec {
+    pub at: TileRef,
+    pub good: GoodRef,
+}
+
+/// A good by its name or its index.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GoodRef {
+    Name(String),
+    Index(usize),
 }
 
 /// A retro pick: a size from `RETRO` and a seed.
@@ -113,6 +140,12 @@ pub struct StageSpec {
     pub hidden: Vec<HiddenSpec>,
     #[serde(default)]
     pub food: Vec<FoodSpec>,
+    /// Goods' sources, placed after the food.
+    #[serde(default)]
+    pub sources: Vec<SourceSpec>,
+    /// Tiles' tame counts, set after the sources.
+    #[serde(default)]
+    pub tame: Vec<TameSpec>,
     #[serde(default)]
     pub civs: Vec<TileRef>,
     #[serde(default)]
@@ -176,6 +209,21 @@ impl Stage {
             }
             stage.food(t, f.good, f.amount);
         }
+        for s in &spec.sources {
+            let t = stage.tile(&s.at)?;
+            let good = match &s.good {
+                GoodRef::Name(name) => {
+                    GOODS.iter().position(|g| g == name).ok_or(format!("sources: there is no good {name}"))?
+                }
+                GoodRef::Index(k) if *k < N => *k,
+                GoodRef::Index(k) => return Err(format!("sources: good {k} is not one of {N}")),
+            };
+            stage.world.tiles[t].source = Some(good);
+        }
+        for t in &spec.tame {
+            let i = stage.tile(&t.at)?;
+            stage.world.tiles[i].tame = t.tame;
+        }
         let mut ids = Vec::new();
         if !spec.civs.is_empty() {
             let people = spec.people.ok_or("civs need people")?;
@@ -190,6 +238,7 @@ impl Stage {
             let home = stage.tile(&k.home)?;
             let tiles = k.tiles.iter().map(|r| stage.tile(r)).collect::<Result<Vec<_>, _>>()?;
             let id = stage.living_clan(home, &tiles, k.people);
+            stage.world.clans.get_mut(&id).unwrap().fields = k.fields;
             if let Some(n) = k.civ {
                 let civ = *ids.get(n).ok_or(format!("clans: there is no civ {n}"))?;
                 stage.world.clans.get_mut(&id).unwrap().civ = Some(civ);

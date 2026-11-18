@@ -1,19 +1,21 @@
 // A camp in the page (touch points 15-18): its panel has a name, a doing line, numbers with tooltips, its
 // reasons and one button row (Move to…, Paint, Unpaint, Forage, Pillage, Resupply, the two switches,
 // Disband…); Move to… arms a click and sets `dest`; right-click moves; P and drag paint a zone and U
-// unpaints; each action applies or is greyed with a reason; Disband… opens a count. Then the hold: a
-// thicker army marches onto a rival camp's post and cuts its line (small seed 4: see HOLD_SEED), which is
-// skipped: a civ starts with no army.   node www/play/camp.mjs [--out DIR]
+// unpaints; each action applies or is greyed with a reason; Disband… opens a count. The line home: a camp
+// walks out on its land and goes hungry past its line's reach. Then the hold: a thicker army raises to seven
+// warriors, marches onto a rival camp's post and cuts its line. Each part is a staged game on a plains map of
+// radius 8, the led civ's capital at A (-4, 0) and the rival's at B (4, 0); grain lies on every tile, so the
+// camps do not starve on the march.   node www/play/camp.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { open, raiseArmy } from '../play.mjs';
+import { open } from '../play.mjs';
+import { grid, marks, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
 const out = resolve(at >= 0 ? args[at + 1] : mkdtempSync(join(tmpdir(), 'play-camp-')));
 mkdirSync(out, { recursive: true });
-const hs = args.indexOf('--hold-seed');
 
 let failed = false;
 const fail = (msg) => {
@@ -36,13 +38,58 @@ async function selectKey(page, key, i) {
   throw new Error(`clicking tile ${i} never selected ${key}`);
 }
 
-// The seed the page's checks run on, and the seed the hold runs on.
-const SEED = 3;
-// The hold's map: seed 4. On seed 7 the camp's march starves ten warriors down to four, too few to hold the
-// ring (the zone holds one tile a warrior), so the cut never comes; seed 4 is where it does.
-const HOLD_SEED = hs >= 0 ? Number(args[hs + 1]) : 4;
+// The staged games: the led civ's capital at A, the rival's at B, the rival's camp's post at P (hold only). Grain lies
+// on the led civ's land (within three steps of A), so a camp there is fed; past that it goes hungry.
+const R = 8;
+const A = [-7, 0];
+const FOOD = [];
+for (let q = -R; q <= R; q++) for (let r = -R; r <= R; r++) if (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) <= R && Math.max(Math.abs(q - A[0]), Math.abs(r - A[1]), Math.abs(q - A[0] + r - A[1])) <= 3) FOOD.push({ at: { tile: indexOf(q, r) }, good: 1, amount: 200 });
+// A wall of sea down the column q = 1 cuts the led civ's side off from the rival's: its army can't walk to the capital.
+// The hold's map has a gap at (1, 0), so its camp can march to the rival's post.
+const wall = (gap) => grid(R, (q, r) => (q === 1 && !(gap && r === 0) ? '~' : Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) === R ? '~' : '.'));
+const BASE = {
+  map: wall(false),
+  marks: marks(R, { A: [-7, 0], B: [4, 0], P: [3, 0], X: [-5, 0], Z: [-5, 1] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 40,
+  lead: 0,
+  stores: [{ civ: 0, food: 400 }],
+  food: FOOD,
+};
+// The panel and the line home: the led civ's camp of three warriors on its capital.
+// The led civ's claim is the capital's ring; the page paints X and Z (two and three steps out) into it before the
+// checks that need land (`paintClaim`).
+const SPEC = { ...BASE, armies: [{ civ: 0, at: { mark: 'A' }, people: 3 }] };
+// The hold: a camp of one warrior on the capital (raised to seven by the hold), and a rival camp of three on its post.
+// The hold's march is across the gap: grain lies on every tile of its map, so the camp is fed on the way.
+const ALL = [];
+for (let q = -R; q <= R; q++) for (let r = -R; r <= R; r++) if (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) < R) ALL.push({ at: { tile: indexOf(q, r) }, good: 1, amount: 200 });
+const HOLD_SPEC = { ...BASE, map: wall(true), food: ALL, armies: [{ civ: 0, at: { mark: 'A' }, people: 1 }, { civ: 1, at: { mark: 'P' }, people: 3 }] };
+
+/** The tile index of (q, r) on a radius-R map, as `map::index` numbers it: column by column, each from the top. */
+function indexOf(q, r) {
+  let i = 0;
+  for (let c = -R; c < q; c++) i += 2 * R + 1 - Math.abs(c);
+  return i + r - Math.max(-R, -q - R);
+}
+
+/** Paints `tiles` into the led civ's claim, as a player does: the civ selected from the bar, P, a click a tile, Escape. */
+async function paintClaim(page, tiles) {
+  const civ = await page.eval('game.view().player');
+  await page.eval(`document.querySelector('button.chip[data-civ="${civ}"]').click()`);
+  await page.eval(frames);
+  await page.key('p');
+  for (const t of tiles) {
+    await page.click(t);
+    await page.eval(frames);
+  }
+  await page.key('Escape');
+  const claim = await page.eval(`game.view().civs[${civ}].claim`);
+  need(tiles.every((t) => claim.includes(t)), `the claim takes the tiles painted into it (${tiles.join(', ')})`);
+}
 
 async function panelChecks(page) {
+  await page.button('End turn');
   const civ = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${civ}].capital`);
   const camp = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${civ} && u.kind === 'camp').id`);
@@ -141,16 +188,11 @@ async function panelChecks(page) {
   for (const e of page.errors()) fail(`page error: ${e}`);
 }
 
-/** The hold: the army raises warriors through its own Raise… stepper until it has ten, the camp marches onto the
+/** The hold: the army raises warriors through its own Raise… stepper until it has seven, the camp marches onto the
  *  nearest rival camp's post (its tile), the ring round it is painted, and turns end until the rival's
  *  line is cut by our army and its camp goes hungry. */
 async function hold(page) {
-  // The store at the pick fills one warrior's pack, so the hold raises seven, not ten.
   const WARRIORS = 7;
-  await page.until("document.body.dataset.phase === 'choose'");
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
-  await raiseArmy(page);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   const mine = () => page.eval(`(() => { const u = Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp');
@@ -167,7 +209,7 @@ async function hold(page) {
       await page.button('End turn');
     }
   }
-  console.log(JSON.stringify({ seed: HOLD_SEED, raised: raised.people, refusals, turn: Number((await page.data()).turn) }));
+  console.log(JSON.stringify({ raised: raised.people, refusals, turn: Number((await page.data()).turn) }));
   if (raised.people < WARRIORS) throw new Error(`raised only ${raised.people} warriors through the stepper`);
   need(true, `the army's Raise… raises warriors to the camp (${raised.people})`);
 
@@ -193,6 +235,14 @@ async function hold(page) {
     const full = await page.eval(`(() => { const u = game.view().units[${camp.id}]; return u.store.reduce((a, b) => a + b, 0) + 0.5 >= u.pack_cap; })()`);
     if (full) break;
     await page.button('End turn');
+  }
+  // The capital keeps five warriors of its own while the camp is away, raised from the civ's panel as an army of
+  // their own: a capital with no army of its civ falls to a rival's.
+  const HOME = 5;
+  const home = () => page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${me} && u.kind === 'camp' && u.id !== ${camp.id}).reduce((a, u) => a + u.people, 0)`);
+  for (let k = 0; k < 20 && (await home()) < HOME; k++) {
+    await selectKey(page, `civ:${me}`, cap);
+    if (!(await page.stepper('Raise…', { n: 1, option: 'warriors', go: true })).go) await page.button('End turn');
   }
   await selectKey(page, `unit:${camp.id}`, cap);
   await page.button('Move to…');
@@ -235,6 +285,9 @@ async function lineHome(page) {
   const civ = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${civ}].capital`);
   const camp = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${civ} && u.kind === 'camp').id`);
+  // The capital keeps a warrior of its own while the camp is away (a capital with no army of its civ falls to a rival's).
+  await selectKey(page, `civ:${civ}`, cap);
+  await page.stepper('Raise…', { n: 1, option: 'warriors', go: true });
   await selectKey(page, `unit:${camp}`, cap);
   const post = await page.eval(`(() => { const v = game.view(), L = game.layout(), cap = v.civs[${civ}].capital;
     const steps = (a, b) => { const dq = L.q[a] - L.q[b], dr = L.r[a] - L.r[b]; return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr)); };
@@ -273,24 +326,20 @@ async function lineHome(page) {
 }
 
 {
-  const page = await open(`?size=small&seed=${SEED}&run=1`);
+  const page = await open('');
   try {
-    await page.until("document.body.dataset.phase === 'choose'");
-    await page.button('Lead ');
-    await page.until("document.body.dataset.phase === 'main'");
-    await raiseArmy(page);
+    await stage(page, SPEC);
+    await paintClaim(page, [indexOf(-5, 0), indexOf(-5, 1)]);
     await panelChecks(page);
   } finally {
     await page.close();
   }
 }
 {
-  const page = await open(`?size=small&seed=${SEED}&run=1`);
+  const page = await open('');
   try {
-    await page.until("document.body.dataset.phase === 'choose'");
-    await page.button('Lead ');
-    await page.until("document.body.dataset.phase === 'main'");
-    await raiseArmy(page);
+    await stage(page, SPEC);
+    await paintClaim(page, [indexOf(-5, 0), indexOf(-5, 1)]);
     await lineHome(page);
   } catch (e) {
     fail(e.stack ?? String(e));
@@ -298,7 +347,15 @@ async function lineHome(page) {
     await page.close();
   }
 }
-// The hold is skipped: it needs a rival camp standing at a post from the pick, and a civ starts with
-// none (`relay/specs/152`, The start); the planner raises one only once its levy feeds it.
-console.log(`skip hold (seed ${HOLD_SEED}): it needs a rival camp at a post at the pick, and a civ starts with none`);
+{
+  const page = await open('');
+  try {
+    await stage(page, HOLD_SPEC);
+    await hold(page);
+  } catch (e) {
+    fail(e.stack ?? String(e));
+  } finally {
+    await page.close();
+  }
+}
 process.exitCode = failed ? 1 : 0;

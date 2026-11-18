@@ -1,21 +1,48 @@
-// A scout in the page (touch point 19). On small seed 2: Move to… sends it to a tile (its march is drawn, and it
-// stands there after a few turns); Route from… rings the start on the capital; Route to… sets the route from it;
-// Clear route clears it; its panel gives the pack and the store, with no
-// switch or feeding button. On small seed 12 the scout's route to the rival's
-// capital leaves a mountain unrevealed, and the panel lists it. Four screenshots go into --out: the march, the start ring,
-// the unrevealed list and the pack panel.
+// A scout in the page (touch point 19). On a staged game of forest and hills on a plains map, the led civ's scout on its
+// capital: Move to… sends it to a forest tile (its march is drawn, and it stands there after a few turns); Route from…
+// rings the start on the capital; Route to… sets the route from it; Clear route clears it; its panel gives the pack and
+// the store, with no switch or feeding button. A second staged game, with a mountain of hidden trail cost on the way to
+// the rival's capital, has the scout's route leave the mountain unrevealed, and the panel lists it. Four screenshots go
+// into --out: the march, the start ring, the unrevealed list and the pack panel.
 //   node www/play/scout.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { open } from '../play.mjs';
+import { grid, marks, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
 const out = resolve(at >= 0 ? args[at + 1] : mkdtempSync(join(tmpdir(), 'play-scout-')));
 mkdirSync(out, { recursive: true });
 
-let TARGET; // seed 2, small: the first forest or hills tile seven steps from the capital (the pick moves it)
+let TARGET; // the forest tile the scout marches to (mark T)
+// Radius 8: the led civ's capital at A (-6, 0), the rival's at B (6, 0); a forest on the way at T (-3, 0) and round A's
+// ring, hills at (-1, 0) and (1, 1); sea on the rim.
+const R = 8;
+const FOREST = [[-3, 0], [-3, 1], [-2, -1], [-5, 0]];
+const HILLS = [[-1, 0], [1, 1]];
+const plainsMap = (mountain) =>
+  grid(R, (q, r) => {
+    if (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) === R) return '~';
+    if (mountain && q === 0 && r === 0) return '^';
+    if (FOREST.some(([a, b]) => a === q && b === r)) return 'f';
+    if (HILLS.some(([a, b]) => a === q && b === r)) return 'h';
+    return '.';
+  });
+const MARKS = { A: [-6, 0], B: [6, 0], T: [-3, 0], M: [0, 0] };
+const SPEC = (mountain) => ({
+  map: plainsMap(mountain),
+  marks: marks(R, MARKS),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+  // The led civ's camp at the capital and its scout, with a pack of 30 grain; the rival's scout is set as a rival's is.
+  scouts: [{ civ: 0, at: { mark: 'A' }, pack: 30 }, { civ: 1, at: { mark: 'B' }, pack: 30 }],
+  stores: [{ civ: 0, food: 50 }],
+  // Hidden trail cost on the mountain: the scout's search leaves it unrevealed.
+  hidden: mountain ? [{ at: { mark: 'M' }, trailCost: 9 }] : [],
+});
 let failed = false;
 const fail = (msg) => {
   console.error(`scout: ${msg}`);
@@ -35,12 +62,10 @@ async function tipAt(page, i) {
   return page.eval("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()");
 }
 
-/** Leads the first civ of `seed` into its main phase and selects its scout (on its capital, where the camp
- *  stands too). Returns the ids the script needs. */
-async function leadAndSelectScout(page) {
-  await page.until("document.body.dataset.phase === 'choose'");
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
+/** Stages `spec` and selects the led civ's scout (on its capital, where the camp stands too). Returns the ids the
+ *  script needs. */
+async function stageAndSelectScout(page, spec) {
+  await stage(page, spec);
   const me = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${me}].capital`);
   const scout = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'scout').id`);
@@ -51,25 +76,15 @@ async function leadAndSelectScout(page) {
   return { me, cap, scout };
 }
 
-/** The tiles `steps` land steps from `from`, nearest first (a breadth-first walk over the land). */
-const ringAt = (page, from, steps) =>
-  page.eval(`(() => { const m = game.map; const seen = new Map([[${from}, 0]]); let frontier = [${from}];
-    for (let d = 0; d < ${steps}; d++) { const next = []; for (const i of frontier) for (let k = 0; k < 6; k++) { const j = m.nb[i * 6 + k];
-      if (j >= 0 && m.land[j] && !seen.has(j)) { seen.set(j, d + 1); next.push(j); } } frontier = next; }
-    return frontier; })()`);
-
 const scoutOf = (page, id) => page.eval(`game.view().units[${id}]`);
 
-// ---- small seed 2: the errands, the start ring, the reach warning and the hunger -----------------------------------
+// ---- the errands, the start ring and the pack: the staged forest game ----------------------------------------------
 
-const page = await open('?size=small&seed=2&run=1');
+const page = await open('');
 try {
-  const { cap, scout } = await leadAndSelectScout(page);
+  const { cap, scout } = await stageAndSelectScout(page, SPEC(false));
   need((await page.data()).selected === `unit:${scout}`, `clicking the capital selects the scout ${scout}`);
-  const ring7 = await ringAt(page, cap, 7);
-  const wild = await page.eval(`(() => { const L = game.layout(), T = game.terrain();
-    return ${JSON.stringify(ring7)}.filter((i) => ['forest', 'hills'].includes(T[L.terrain[i]].name)); })()`);
-  TARGET = (wild.length ? wild : ring7)[0];
+  TARGET = await page.eval(`game.layout().q.findIndex((q, i) => q === ${MARKS.T[0]} && game.layout().r[i] === ${MARKS.T[1]})`);
   let p = await page.panel();
   need(/'s scout \d+$/.test(p.name) && !!p.doing, `the scout's panel is named "${p.name}" with a doing line`);
   const labels = p.buttons.map((b) => b.label);
@@ -144,13 +159,11 @@ try {
   await page.close();
 }
 
-// ---- small seed 12: the route to the rival's capital leaves one mountain unrevealed ----------------------------------
-// (Seed 9's scout to the rival is lost by turn 8 under the feeding at the starting numbers, build-5 tunes that; seed 12's
-// lives to turn 60 with one mountain left, `relay/specs/153/page.md`.)
+// ---- the route to the rival's capital: a mountain of hidden trail cost is left unrevealed (its own staged game) ---------
 
-const nine = await open('?size=small&seed=12&run=1');
+const nine = await open('');
 try {
-  const { me, cap, scout } = await leadAndSelectScout(nine);
+  const { me, cap, scout } = await stageAndSelectScout(nine, SPEC(true));
   const rival = await nine.eval(`(() => { const v = game.view(); return v.civs[Object.keys(v.civs).map(Number).find((k) => k !== ${me})].capital; })()`);
   await nine.button('Route to…');
   await nine.click(rival);

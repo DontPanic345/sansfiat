@@ -1,13 +1,14 @@
 // A civ in the page (touch point 20): the bar's chip selects it; its panel has Standing with its parts in the
 // tooltip, its store and its claim's count; Raise… raises warriors and a scout; Gift + and −, and Keep, move
 // their numbers; P paints the claim and U unpaints it, and the border and counts show; an unaligned clan
-// leans to the civ within 30 turns of a raised gift. On small seed 6: the store fills its packs within a few
-// turns there (on seed 2 the camp at the capital draws the store down faster than it fills).
+// leans to the civ within 30 turns of a raised gift. A staged game on a plains map: the led civ's store holds 50
+// grain (its packs fill at once), and an unaligned clan lives out at K, at the civ's market.
 //   node www/play/civ.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -25,11 +26,21 @@ const need = (ok, msg) => {
 };
 const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 
-const page = await open('?size=small&seed=6&run=1');
+// Radius 8: the led civ's capital at A (-4, 0), the rival's at B (4, 0), and the unaligned clan's home at K (0, 3).
+const R = 8;
+const SPEC = {
+  map: plains(R),
+  marks: marks(R, { A: [-4, 0], B: [4, 0], K: [0, 3] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }],
+  people: 12,
+  lead: 0,
+  stores: [{ civ: 0, food: 50 }],
+  clans: [{ home: { mark: 'K' }, tiles: [], people: 4, market: 0 }],
+};
+
+const page = await open('');
 try {
-  await page.until("document.body.dataset.phase === 'choose'");
-  await page.button('Lead ');
-  await page.until("document.body.dataset.phase === 'main'");
+  await stage(page, SPEC);
   const civ = await page.eval('game.view().player');
   const cap = await page.eval(`game.view().civs[${civ}].capital`);
   const name = await page.eval(`game.view().civs[${civ}].name`);

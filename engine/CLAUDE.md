@@ -56,7 +56,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim`, and the panel context both share. |
 | `www/play.mjs` | Drives the page in headless Chrome (clicks, waits, screenshots); `play/live.mjs` holds one page across shell calls. |
-| `www/play/` | One script per touch point of `docs/design/page.md`, each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button on a staged game; `all.mjs` runs them. |
+| `www/play/` | One script per touch point of `docs/design/page.md`, each exiting non-zero when its touch point is missing; each stages its world through `../play-stage.mjs`; `all.mjs` runs them. |
 
 ## Adding a mechanic
 

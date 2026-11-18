@@ -9,6 +9,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { open } from '../play.mjs';
+import { marks, plains, stage } from '../play-stage.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--out');
@@ -25,19 +26,9 @@ const need = (ok, msg) => {
 const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 
 const R = 8;
-const grid = (cell) => {
-  let text = '';
-  for (let r = -R; r <= R; r++) {
-    text += ' '.repeat(2 * Math.max(-R, -r - R) + r + 2 * R);
-    const row = [];
-    for (let q = Math.max(-R, -r - R); q <= Math.min(R, -r + R); q++) row.push(cell(q, r));
-    text += `${row.join(' ')}\n`;
-  }
-  return text;
-};
 const SPEC = {
-  map: grid((q, r) => (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) === R ? '~' : '.')),
-  marks: grid((q, r) => (q === -4 && r === 0 ? 'A' : q === 4 && r === 0 ? 'B' : q === 0 && r === 0 ? 'P' : '.')),
+  map: plains(R),
+  marks: marks(R, { A: [-4, 0], B: [4, 0], P: [0, 0] }),
   civs: [{ mark: 'A' }, { mark: 'B' }],
   people: 12,
   lead: 0,
@@ -47,9 +38,7 @@ const SPEC = {
 
 const page = await open('');
 try {
-  await page.eval(`game.stage(${JSON.stringify(SPEC)})`);
-  await page.until("document.body.dataset.phase === 'main'");
-  await page.eval(frames);
+  await stage(page, SPEC);
 
   const v0 = await page.eval('game.view()');
   need(v0.signposts.length === 1 && v0.settlements.length === 0, 'the staged view has one signpost and no settlement');
