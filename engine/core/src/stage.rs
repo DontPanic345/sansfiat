@@ -142,6 +142,11 @@ impl Stage {
                 let civ = *ids.get(n).ok_or(format!("clans: there is no civ {n}"))?;
                 stage.world.clans.get_mut(&id).unwrap().civ = Some(civ);
             }
+            if let Some(n) = k.market {
+                let civ = *ids.get(n).ok_or(format!("clans: there is no civ {n}"))?;
+                let market = stage.world.civs[&civ].market;
+                stage.world.clans.get_mut(&id).unwrap().market = Some(market);
+            }
         }
         for p in &spec.signposts {
             let civ = *ids.get(p.civ).ok_or(format!("signposts: there is no civ {}", p.civ))?;
@@ -460,6 +465,9 @@ pub struct ClanSpec {
     /// The civ (by its place in `civs`) the clan belongs to, or none.
     #[serde(default)]
     pub civ: Option<usize>,
+    /// The civ (by its place in `civs`) whose capital market the clan trades at, or none.
+    #[serde(default)]
+    pub market: Option<usize>,
 }
 
 /// A signpost of civ `civ` (by its place in `civs`) on `at`, posted without the order's checks.

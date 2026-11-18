@@ -1,0 +1,12 @@
++0 civ 467: in reach: claim 1 tile to (4, 6) ((4, 6)): brings clan 184, 7.7 people
++10 civ 467: in reach: claim 1 tile to (8, 3) ((8, 3)): brings clan 143, 6.9 people
++20 civ 467: in reach: claim 2 tiles to (10, 1) ((9, 2), (10, 1)): brings clan 298, 4.9 people
++30 civ 467: in reach: claim 2 tiles to (10, 1) ((9, 2), (10, 1)): brings clan 298, 4.9 people
++40 civ 467: in reach: claim 1 tile to (12, -1) ((12, -1)): brings clan 177, 7.1 people
++50 civ 467: in reach: claim 2 tiles to (-3, 6) ((-2, 6), (-3, 6)): brings clan 98, 5.4 people
++60 civ 467: in reach: claim 2 tiles to (-3, 9) ((-4, 9), (-3, 9)): brings clan 39, 7.3 people; army 477 can take Gold's land at (4, -9): march it there
++70 civ 467: in reach: claim 1 tile to (3, 10) ((3, 10)): brings clan 261, 2.6 people; army 477 can take Gold's land at (4, -7): march it there
++80 civ 467: in reach: claim 3 tiles to (-4, 13) ((-2, 12), (-3, 12), (-4, 13)): brings clan 256, 5.3 people
++90 civ 467: in reach: claim 2 tiles to (-4, 13) ((-3, 12), (-4, 13)): brings clan 256, 5.3 people; army 477 can take Gold's land at (4, -7): march it there
++100 civ 467: in reach: claim 2 tiles to (-9, 15) ((-8, 14), (-9, 15)): brings clan 263, 3.4 people; army 477 can take Gold's land at (4, -6): march it there
++110 civ 467: in reach: claim 2 tiles to (-5, -1) ((-5, 0), (-5, -1)): brings clan 605, 5.4 people; army 477 can take Gold's land at (4, -6): march it there

@@ -1,4 +1,4 @@
-// Runs every other script in www/play/ with a temporary --out and prints a table: the script, pass or
+// Runs every other script in www/play/ (not live.mjs, the session driver) with a temporary --out and prints a table: the script, pass or
 // fail, its seconds. Exits non-zero if any fails. Without Chrome it fails under CI and skips with a
 // warning otherwise.   node www/play/all.mjs
 import { spawnSync, execFileSync } from 'node:child_process';
@@ -35,7 +35,7 @@ if (!haveChrome()) {
   process.exit(0);
 }
 
-const scripts = readdirSync(here).filter((f) => f.endsWith('.mjs') && f !== 'all.mjs').sort();
+const scripts = readdirSync(here).filter((f) => f.endsWith('.mjs') && f !== 'all.mjs' && f !== 'live.mjs').sort();
 const out = mkdtempSync(join(tmpdir(), 'play-all-'));
 const extra = {};
 const rows = [];

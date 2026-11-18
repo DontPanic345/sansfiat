@@ -1,0 +1,21 @@
+turn 287 (+0): civ 467 21.8%, civ 468 15.7%, civ 469 4.5%; leader civ 467
+turn 297 (+10): civ 467 31.5%, civ 468 22.2%, civ 469 6.8%; leader civ 467
+turn 307 (+20): civ 467 35.5%, civ 468 30.5%, civ 469 6.9%; leader civ 467
+turn 317 (+30): civ 467 37.3%, civ 468 35.9%, civ 469 8.2%; leader civ 467
+turn 327 (+40): civ 467 39.5%, civ 468 36.6%, civ 469 8.9%; leader civ 467
+turn 337 (+50): civ 467 41.0%, civ 468 37.3%, civ 469 9.4%; leader civ 467
+turn 347 (+60): civ 467 42.1%, civ 468 37.8%, civ 469 9.3%; leader civ 467
+turn 357 (+70): civ 467 43.4%, civ 468 38.1%, civ 469 9.1%; leader civ 467
+turn 367 (+80): civ 467 45.0%, civ 468 37.9%, civ 469 9.2%; leader civ 467
+turn 377 (+90): civ 467 46.0%, civ 468 38.2%, civ 469 8.9%; leader civ 467
+turn 387 (+100): civ 467 47.5%, civ 468 38.3%, civ 469 9.3%; leader civ 467
+led civ 467: Standing at +102 47.4% (rank 1) in the game, 45.9% (rank 1) with every civ on the AI, 30.1% (rank 2) idle led civ
+end (game / control / idle): goes on +102 rank 1 / goes on +102 rank 1 / goes on +102 rank 2
+land (game / control): 138 / 123 tiles claimed
+doubt (game / control): lead changes 0 / 2, spread +102 0.382 / 0.387, swings 0 / 0
+motion (game / control): clans changed 81 / 71, people 425.3 / 359.1, land tiles 168 / 229, clans left 18 / 13, claimed tiles taken 7 / 63
+fight (game / control): people fallen 0.00 / 7.17, tiles taken 0 / 2, armies surrendered 0 / 0
+fight by civ (game): 467: fallen 0.00 taken 0 surrendered 0; 468: fallen 0.00 taken 0 surrendered 0; 469: fallen 0.00 taken 0 surrendered 0
+fields (game / control): farming share at +200 - / -, field tiles at +200 - / -, store turns at a pack 17 / 99 of 102
+player orders: 103 (claim 86, raise 4, route 1, setGift 12), 100.98 per 100 turns; turns with none 58 of 102, longest run 4
+player lines: 0 refused, 0 noted

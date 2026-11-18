@@ -1,7 +1,7 @@
 //! The text view of the led civ: what a player of the page can see, in text, read at every decision
 //! by `play`. Every number is read off the world; nothing here changes it.
 
-use engine::data::{Fighter, CIV, LEANING, SETTLE, UNIT};
+use engine::data::{Fighter, CIV, FIGHT, LEANING, SETTLE, UNIT};
 use engine::data::{ARMS, GOOD, KEEPING, N};
 use engine::market::total;
 use engine::over::{self, Why};
@@ -105,19 +105,29 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     out += &sources(w, me);
     let set = match c.keep {
         Some(k) => format!("set to {k:.1}"),
-        None => "the default, the camp's full pack".to_string(),
+        None => format!("not set: the default, a full pack for its camps, {:.1} now", civs::keep(w, me)),
+    };
+    let reach = civs::gift_reach(w, me);
+    let reaches = match reach {
+        0 => "reaches no clan at your market".to_string(),
+        1 => "reaches 1 clan".to_string(),
+        n => format!("reaches {n} clans"),
     };
     out += &format!(
-        "keep {:.1} in force ({set}); gift {:.1} a turn, the most {:.0}; last turn posted {:.1}, gave {:.1}; since \
-         founding gave {:.1}, clans joined {}\n",
+        "keep {:.1} in force ({set}); gift {:.1} a turn, the most {:.0}, {reaches}: gave {:.1}, left {:.1}; last turn \
+         posted {:.1}; since founding gave {:.1}, clans joined {}; ",
         civs::keep(w, me),
         c.gift,
         CIV.store_cap,
-        c.posted,
         c.given,
+        (c.gift - c.given).max(0.0),
+        c.posted,
         c.gifted,
         c.joined
     );
+
+    out +=
+        &format!("reach: {}; capital: {}\n", engine::outlook::reach_line(w, me), engine::outlook::capital_line(w, me));
 
     let units: Vec<&Unit> = w.units.values().filter(|u| u.civ == me).collect();
     if units.is_empty() {
@@ -339,6 +349,15 @@ fn unit_line(w: &World, u: &Unit) -> String {
             let cut_at = units::cut_at(w, u.id)
                 .map(|(_, at, by)| format!(", cut at {} by civ {by}", tile(w, at)))
                 .unwrap_or_default();
+            let cut_at = match units::cut_by_rival(w, u.id) {
+                Some(by) if cs.dest.is_none() => {
+                    format!(
+                        "{cut_at}, cut off by civ {by}'s land: surrenders hungry {} turns in a row",
+                        FIGHT.surrender
+                    )
+                }
+                _ => cut_at,
+            };
             let draws = draws_on(w, u);
             let bows = if cs.bows { ", making bows" } else { "" };
             let bows = format!("{bows}, {:.0}% armed with obsidian", cs.armed * 100.0);
@@ -524,7 +543,7 @@ fn legal(w: &World, me: u32) -> String {
                     near.iter().copied().filter(|&t| ok(Order::Route { unit: id, from, to: t })).collect();
                 if !places.is_empty() {
                     out += &format!(
-                        "  {{\"type\":\"route\",\"unit\":{id},\"from\":{from},\"to\":<tile>}}  to: {}\n",
+                        "  {{\"type\":\"route\",\"unit\":{id},\"from\":{from},\"to\":<tile>}}  to: any tile it may route to, such as {}\n",
                         tiles(w, &places)
                     );
                 }

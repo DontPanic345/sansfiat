@@ -34,7 +34,7 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/fields.rs` | The field job: `ground`, `yield_a_day`, `open`, `sow`, the split's `notch`, a farmer's `home_toward`, `plots`. |
 | `core/src/market.rs`, `markets.rs` | Barter clearing; festivals: reach, the `go` step, trading, forming, fading. |
 | `core/src/pregame.rs` | The pre-game's end: centres, land cover, `top_up`. |
-| `core/src/claim.rs` | A civ's claim, which is its land: `check`, `held`, `tile_civ`, `change`, and the `claim` step, where a rival army takes a tile. |
+| `core/src/claim.rs` | A civ's claim, which is its land: `check`, `held`, `tile_civ`, `change`, and the `claim` step; `outlook.rs`, the reach and capital lines. |
 | `core/src/civs.rs` | Civs: `found`, the levy, `keep`, the `civs` step and the pick's `cards`. |
 | `core/src/leaning.rs` | Leanings: fading, land, gifts, joining and leaving. |
 | `core/src/settle.rs`, `judge_settle.rs` | Signposts and settlements: `draw`, `found`, `take`, `roots`; the `settle` group. |
@@ -49,13 +49,13 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/src/towns.rs`, `judge_towns.rs` | Towns: `towns` (a festival with `TOWN.homes` homes on its tile) and `check`, which keeps `Market.town` and `TownFormed`; the `towns` group: towns, town clans and their walk, trade and starving, and home moves. |
 | `core/src/sources.rs`, `judge_goods.rs` | Goods: placing salt and obsidian sources (`place`, `of`, `steps_from`); the `goods` group. |
 | `core/src/hex.rs`, `rng.rs` | Axial hexes; Mulberry32, matching the JS prototypes bit for bit. |
-| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields), `sweep_towns.rs` (towns), `sweep_goods.rs` (goods against the no-sources control), `sweep_led.rs` (led games beside idle), `sweep_total.rs` (its totals), `sweep_text.rs` (its text) and `game_judge.rs` (the file's judge), `view.rs` (the text view), `story.rs` (stories of war). |
+| `cli/src/` | The `sansfiat` binary, one module per command; `sweep_judge.rs` (the sweep's judge), `sweep_fields.rs` (fields), `sweep_towns.rs` (towns), `sweep_goods.rs` (goods against the no-sources control), `sweep_led.rs` (led games beside idle), `sweep_total.rs`, `sweep_text.rs` and `game_judge.rs` (the file's judge), `view.rs` (the text view), `story.rs` (stories of war). |
 | `web/src/lib.rs` | The wasm `Sim` the page drives: `layout`, `view`, `act`/`check`, the orders; `Sim.stage` builds one. |
 | `www/` | The page: `main.js` (the router), `app.js`, `screens/`, `bar.js`, `panel.js`, `panels.js` (a selection's shape and its buttons) and `panels-land.js` (festival, tile, settlement shapes), `model.js` (the view model), `map/` (`MapView`, a file per layer: `towns.js`, `sources.js`), `feed.js`, `save.js`, `sound.js`, `atlas.js` and `assets/`. |
 | `www/check.mjs` | The page's data checks under Node, through `Sim`. |
 | `www/check-stage.mjs`, `check-ctx.mjs` | The panel arm of `check.mjs`, over a staged `Sim`: the panel shapes as data, and the panel context both share. |
-| `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`. |
-| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, ..., towns, settle, goods), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button of every panel once on a staged game; `end.mjs` ends staged games (conquest, the led civ's fall, the limit), then Play on and New game; `all.mjs` runs them. |
+| `www/play.mjs` | Drives the page in headless Chrome: clicks by tile and label, waits, screenshots, `panel()`, `stepper()`; `play/live.mjs` holds one page across shell calls (header). |
+| `www/play/` | One script per touch point of `docs/design/page.md` (start, pick, ..., towns, settle, goods), each exiting non-zero when its touch point is missing; `buttons.mjs` presses every button once on a staged game; `end.mjs` ends staged games, then Play on and New game; `all.mjs` runs them. |
 
 ## Adding a mechanic
 

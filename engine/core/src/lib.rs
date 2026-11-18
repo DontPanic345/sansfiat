@@ -26,6 +26,7 @@ mod maptext;
 pub mod market;
 pub mod markets;
 pub mod orders;
+pub mod outlook;
 pub mod over;
 pub mod pregame;
 pub mod reach;

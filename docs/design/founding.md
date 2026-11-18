@@ -68,3 +68,4 @@ says.
 - Winning and losing are in: a civ loses when its capital falls (`vision.md`, Winning). (#152)
 - A settlement is a market that never fades and a store of its own, which only the levy of its civ's clans at that market fills; it holds half the capital's, and nothing draws on it yet. A claim holds where it joins the capital or a settlement, and a settlement a rival army stands on, with no army of its civ there, is taken with its store. (#353)
 - A unit is raised at any store, capital or settlement, from the clans that go to its market, with a pack from it. Warriors added to an army come from the store its line ends at. A settlement's store feeds the units whose line ends there. (#354)
+- The gift's readout is the clans it reaches now (those not the civ's own that trade at its capital market), what it gave, and what was left unspent. (#338)

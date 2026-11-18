@@ -5,7 +5,8 @@ use engine::script::Lead;
 use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
 use engine::{
-    civs, fields, markets, settle, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, GOODS, TERRAIN,
+    civs, fields, markets, outlook, settle, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, GOODS,
+    TERRAIN,
 };
 use std::collections::BTreeMap;
 
@@ -104,11 +105,13 @@ impl Sim {
     /// army (its `units::Counters`), keep (the food it keeps
     /// in force, `civs::keep`), keep_set
     /// (the food the player set it to, null for the default), gift
-    /// (the most it gives a turn), posted (food posted to its market last turn), given (food given
+    /// (the most it gives a turn), gift_reach (the clans not its own at its capital market, which its gift
+    /// reaches: `civs::gift_reach`), posted (food posted to its market last turn), given (food given
     /// last turn), joined (clans joined since founding), gifted (food given since founding), living
     /// (`{gathering, farming, army}`: its people by what they do, gathering over their land (Σ people ×
     /// (1 − fields) over its clans), working fields (Σ people × fields over its clans), or in its units
-    /// (the people of all its units: camps and scouts))}}`. Each
+    /// (the people of all its units: camps and scouts)); for the led civ also reach_line and capital_line
+    /// (`outlook::reach_line`, `outlook::capital_line`)}}`. Each
     /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ), `routes`
     /// (its festival route: `[{to, path, cost}]`, the path from home, so its walk is home then the path),
     /// `levied` (the food it paid in levy this turn, null when it paid none), `land` (the civ whose land
@@ -121,7 +124,7 @@ impl Sim {
     /// `tile`, `draws_on` (`{tile, label, name}`: the store its line ends at, `label` "capital" or "settlement"; null with no line), `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
     /// (`{path, cost, carry}`: the path after its tile to the capital, its cost, and the food it carries
     /// a turn with all its labour; carry null is without limit, at the capital; `line` itself null when
-    /// there is no line), `cut_off`, `territory` (its zone, sorted, its tile in it), `held` (the zone's
+    /// there is no line), `cut_off`, `cut_by` (the rival whose land cuts its line, `units::cut_by_rival`, else null), `territory` (its zone, sorted, its tile in it), `held` (the zone's
     /// tiles its warriors hold) with `guard` (each one's guard share after its walk), `zone_cap` (the
     /// most tiles its zone may have) and `cut_at` (`{path, at, by}` when a rival's held ground cuts the
     /// line: the line it would have without held ground, the first tile on it a rival holds and that
@@ -179,6 +182,7 @@ impl Sim {
                     "keep": civs::keep(w, c.id),
                     "keep_set": c.keep,
                     "gift": c.gift,
+                    "gift_reach": civs::gift_reach(w, c.id),
                     "posted": c.posted,
                     "given": c.given,
                     "joined": c.joined,
@@ -191,6 +195,11 @@ impl Sim {
                     "fallen": c.fallen,
                     "living": { "gathering": gathering, "farming": farming, "army": army },
                 });
+                let mut row = row;
+                if w.player == Some(c.id) && !c.is_out() {
+                    row["reach_line"] = outlook::reach_line(w, c.id).into();
+                    row["capital_line"] = outlook::capital_line(w, c.id).into();
+                }
                 (c.id, row)
             })
             .collect();
@@ -217,6 +226,7 @@ impl Sim {
                     })
                     .into();
                 row["cut_off"] = units::cut_off(w, u.id).into();
+                row["cut_by"] = units::cut_by_rival(w, u.id).into();
                 row["zone_cap"] = units::zone_cap(u).into();
                 row["cut_at"] = units::cut_at(w, u.id)
                     .map(|(path, at, by)| serde_json::json!({ "path": path, "at": at, "by": by }))

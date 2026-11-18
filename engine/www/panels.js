@@ -201,7 +201,11 @@ function campShape(ctx, u) {
   const marching = u.dest != null;
   const r = marching ? JSON.parse(sim.route(u.id)) : null;
   let base;
-  if (u.hungry > 0) base = `Hungry ${plural(u.hungry, 'turn')}: loses a warrior at ${rules.hungry_turns}`;
+  // A camp cut off by a rival's land, hungry `fight.surrender` turns and not marching, surrenders whole.
+  const yields = u.cut_by != null && (u.dest == null || u.dest === u.tile) && rules.fight.surrender <= rules.hungry_turns;
+  if (u.hungry > 0 && yields) base = `Hungry ${plural(u.hungry, 'turn')}, cut off by ${civName(ctx, u.cut_by)}’s land: surrenders to ${civName(ctx, u.cut_by)} at ${rules.fight.surrender}`;
+  else if (u.hungry > 0) base = `Hungry ${plural(u.hungry, 'turn')}: loses a warrior at ${rules.hungry_turns}`;
+  else if (yields) base = `Cut off by ${civName(ctx, u.cut_by)}’s land: hungry ${rules.fight.surrender} turns standing here, it surrenders`;
   else if (u.cut_at) base = `Cut off: ${civName(ctx, u.cut_at.by)}'s army holds its line at ${hex(ctx, u.cut_at.at)}`;
   else if (u.cut_off) base = "Cut off: its line can't feed it";
   else if (marching) base = `Marching to ${hex(ctx, u.dest)}${r ? `: ${plural(r.turns, 'turn')}` : ': no route'}`;
@@ -440,13 +444,19 @@ function civShape(ctx, c) {
     ...wareRows(ctx, c.store, true, 'its store'),
     {
       label: 'Last turn',
-      value: `kept ${f2(c.keep)} · posted ${f2(c.posted)} · given ${f2(c.given)}`,
-      tip: 'Food kept in its store, posted to festivals and given to clans last turn',
+      value: `kept ${f2(c.keep)} · posted ${f2(c.posted)}`,
+      tip: 'Food kept in its store and posted to festivals last turn; the gift row says what was given',
     },
     { label: 'Joined', value: c.joined, tip: 'Clans joined since founding' },
     ...claimNumbers(ctx, c.id),
-    { label: 'Gift', value: `${f2(c.gift)} a turn`, tip: 'Food a turn given to clans, which draws them to lean to the civ' },
-    { label: 'Keep', value: `${f2(c.keep)}${c.keep_set == null ? ' (the default)' : ''}`, tip: 'The food the civ keeps in its store out of posting and gifts' },
+    giftRow(c),
+    ...(c.reach_line ? [{ label: 'Reach', value: c.reach_line, tip: 'What you can order now that brings a clan or a rival’s land: a claim that joins a clan’s home, the gift, an army that ends its turn on a rival’s tile' }] : []),
+    ...(c.capital_line ? [{ label: 'Capital', value: c.capital_line, tip: 'A rival army that ends its turn on your capital with no army of yours there takes it, and you lose' }] : []),
+    {
+      label: 'Keep',
+      value: `${f2(c.keep)}${c.keep_set == null ? ` (not set: the default, a full pack for its camps, ${f2(c.keep)} now)` : ''}`,
+      tip: 'The food the civ keeps in its store out of posting and gifts; unset, it is a full pack for its camps and moves as they do',
+    },
   ];
   const buttons = [];
   if (mine) {
@@ -489,6 +499,18 @@ function civShape(ctx, c) {
     buttons,
     hint,
   };
+}
+
+/** The Gift row: the gift, the clans it reaches now, what it gave and what was left unspent. */
+function giftRow(c) {
+  const left = Math.max(0, c.gift - c.given);
+  const n = c.gift_reach;
+  const reach = n === 0 ? 'reaches no clan' : `reaches ${n} clan${n === 1 ? '' : 's'}`;
+  let tip = 'Food a turn given to clans not its own at its market, which draws them to lean to the civ. ';
+  if (n === 0) tip += 'It reaches no clan: no clan at your market is not already yours, and a gift reaches only clans that trade there.';
+  else if (left > 0.005) tip += `It left ${f1(left)} unspent: the store held less than keep plus gift.`;
+  else tip += 'The whole gift was given.';
+  return { label: 'Gift', value: `${f1(c.gift)} a turn · ${reach} · gave ${f1(c.given)} · left ${f1(left)}`, tip };
 }
 
 /** A clan's panel (spec item 16, Clan): nothing to order, so no buttons. */
