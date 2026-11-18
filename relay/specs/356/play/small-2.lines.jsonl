@@ -1,0 +1,54 @@
+{"turn":287,"line":"note meant: get an army to carry salt to markets did: raise 1 warrior at capital; store has 10 grain only surprised: gift reaches no clan","result":"noted"}
+{"turn":287,"line":"{\"type\":\"raise\",\"n\":1}","result":"ok"}
+{"turn":287,"line":"note meant: win clan 275 (6.9 people) did: claim the 2 tiles offered, 14,-10 and 14,-9; cheap reach surprised: nothing","result":"noted"}
+{"turn":287,"line":"{\"type\":\"claim\",\"tiles\":[767,768,764]}","result":"refused: a claim can only cover land"}
+{"turn":287,"line":"view","result":"ok"}
+{"turn":287,"line":"note meant: win clan 275 did: claim existing 21 tiles plus 769 and 770 (tile numbers from the clan at 770) surprised: first try refused, a claim needs land only","result":"noted"}
+{"turn":287,"line":"{\"type\":\"claim\",\"tiles\":[632,633,657,680,681,702,703,704,725,726,745,746,747,765,766,767,768,783,784,785,786,769,770]}","result":"ok"}
+{"turn":287,"line":"note meant: let clans settle and see store/levy did: end 5 turns surprised: nothing","result":"noted"}
+{"turn":292,"line":"end 5","result":"ok"}
+{"turn":292,"line":"view","result":"ok"}
+{"turn":292,"line":"map","result":"ok"}
+{"turn":292,"line":"note meant: see how a unit trades at a market other than my capital did: move army 473 toward 770 where clan 275 trades at market 295 surprised: no fill-pack order offered, store has no salt","result":"noted"}
+{"turn":292,"line":"{\"type\":\"move\",\"unit\":473,\"to\":770}","result":"ok"}
+{"turn":295,"line":"end 3","result":"ok"}
+{"turn":295,"line":"note meant: learn why the army is cut off and whether it trades did: why 473 surprised: cut off though line is 16 days and pack falling","result":"noted"}
+{"turn":295,"line":"why 473","result":"ok"}
+{"turn":295,"line":"note meant: protect capital and feed the army did: move 473 back to 725 since its line is cut and capital is open surprised: unit with no goods at a market gives no trade line in the view","result":"noted"}
+{"turn":295,"line":"{\"type\":\"move\",\"unit\":473,\"to\":725}","result":"ok"}
+{"turn":295,"line":"note meant: use the scout did: route scout 472 from capital to 657 (9,-12), toward clan 280 surprised: nothing","result":"noted"}
+{"turn":295,"line":"{\"type\":\"route\",\"unit\":472,\"from\":725,\"to\":657}","result":"ok"}
+{"turn":300,"line":"end 5","result":"ok"}
+{"turn":300,"line":"note meant: stop wasting food, gift reaches no clan at my market did: setGift 0 surprised: Standing slid 5.4 to 4.5 after the claim","result":"noted"}
+{"turn":300,"line":"{\"type\":\"setGift\",\"food\":0}","result":"ok"}
+{"turn":300,"line":"note meant: grow standing did: raise 2 warriors into army 473 surprised: nothing","result":"noted"}
+{"turn":300,"line":"{\"type\":\"raise\",\"n\":2,\"into\":473}","result":"ok"}
+{"turn":310,"line":"end 10","result":"ok"}
+{"turn":310,"line":"note meant: see why a clan left and whether a rival nears did: end 10 and read the feed surprised: clans fell 7 to 6","result":"noted"}
+{"turn":320,"line":"end 10","result":"ok"}
+{"turn":320,"line":"note meant: win clan 280 (6 people) and halt Standing slide did: claim existing 23 tiles plus 607 and 581 surprised: Standing falls 4.5 to 4.1 while rivals reach 30 and 28","result":"noted"}
+{"turn":320,"line":"{\"type\":\"claim\",\"tiles\":[632,633,657,680,681,702,703,704,725,726,745,746,747,765,766,767,768,783,784,785,786,769,770,607,581]}","result":"ok"}
+{"turn":320,"line":"note meant: win clan 162 (7 people) did: claim 580 and 552 on top of 25 tiles surprised: nothing","result":"noted"}
+{"turn":320,"line":"{\"type\":\"claim\",\"tiles\":[632,633,657,680,681,702,703,704,725,726,745,746,747,765,766,767,768,783,784,785,786,769,770,607,581,580,552]}","result":"ok"}
+{"turn":325,"line":"end 5","result":"ok"}
+{"turn":325,"line":"note meant: chain to the next clan did: claim 524 and 525 as well surprised: each claim reveals the next clan, chain of 2 tiles","result":"noted"}
+{"turn":325,"line":"{\"type\":\"claim\",\"tiles\":[632,633,657,680,681,702,703,704,725,726,745,746,747,765,766,767,768,783,784,785,786,769,770,607,581,580,552,524,525]}","result":"ok"}
+{"turn":330,"line":"end 5","result":"ok"}
+{"turn":330,"line":"note meant: look at the market trade did: why 295 surprised: nothing yet","result":"noted"}
+{"turn":330,"line":"why 295","result":"ok"}
+{"turn":330,"line":"view","result":"ok"}
+{"turn":330,"line":"note meant: grow people by raising nothing more; hold and let clans settle did: end 10 surprised: claim chain gives 9 clans, Standing 5.6","result":"noted"}
+{"turn":340,"line":"end 10","result":"ok"}
+{"turn":340,"line":"view","result":"ok"}
+{"turn":340,"line":"note meant: try the signpost lever did: signpost at 524 (4,-10), far from my capital, no good site was listed surprised: view lists none free nearby","result":"noted"}
+{"turn":340,"line":"{\"type\":\"signpost\",\"tile\":524}","result":"ok"}
+{"turn":360,"line":"end 20","result":"ok"}
+{"turn":360,"line":"note meant: reach +100 did: end 20 and check surprised: nothing","result":"noted"}
+{"turn":380,"line":"end 20","result":"ok"}
+{"turn":380,"line":"note meant: finish did: end 7 surprised: nothing","result":"noted"}
+{"turn":387,"line":"end 7","result":"ok"}
+{"turn":387,"line":"note could not tell: gift: whether any clan would ever be reached, it reaches none at my market","result":"noted"}
+{"turn":387,"line":"note could not tell: land and guard: which clan is worth a claim, a reach line names only the next two or three tiles and no tile number math is shown","result":"noted"}
+{"turn":387,"line":"note could not tell: army: whether it trades at a market, it carries only food and the view shows no pack to fill or any salt order; store never held salt","result":"noted"}
+{"turn":387,"line":"note could not tell: scout: what its route did for me or for any good, nothing shows","result":"noted"}
+{"turn":387,"line":"note could not tell: signpost: whether 524 was accepted, no result shown","result":"noted"}
