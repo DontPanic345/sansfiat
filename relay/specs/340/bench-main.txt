@@ -1,0 +1,9 @@
+seed 8: world 67.7 ms, pre-game 2267.8 ms, 50 turns past the pick 1271.4 ms (25.429 ms a turn)
+
+real	0m3.609s
+user	0m3.601s
+sys	0m0.008s
+seed 8: world 67.3 ms, pre-game 2265.9 ms, 50 turns past the pick 1255.9 ms (25.118 ms a turn)
+seed 8: world 67.3 ms, pre-game 2305.2 ms, 50 turns past the pick 1238.4 ms (24.768 ms a turn)
+seed 8: world 64.3 ms, pre-game 2303.5 ms, 50 turns past the pick 1318.5 ms (26.370 ms a turn)
+seed 8: world 98.8 ms, pre-game 2366.0 ms, 50 turns past the pick 1260.2 ms (25.203 ms a turn)

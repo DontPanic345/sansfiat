@@ -1,0 +1,25 @@
+small 2 ai: 400 4a0cff28244231d4
+small 2 --lead: 400 15f4833364d018a5
+small 2 --state: 400 dc5e161032bebd12
+small 3 ai: 400 eddf59c1468f9ef2
+small 3 --lead: 400 c664478a46595d40
+small 3 --state: 400 3036678841275470
+small 6 ai: 400 73ffecb30e5b9310
+small 6 --lead: 400 4bc9affcffdac272
+small 6 --state: 400 acf403c4bd117a5a
+small 9 ai: 400 8bc9711d907cf1ae
+small 9 --lead: 400 8b748e510670f501
+small 9 --state: 400 35203a56039a06be
+medium 8 ai: 400 8ac4b066f89ecd30
+medium 8 --lead: 400 18237fade79726ec
+medium 8 --state: 400 c7398e4261713500
+medium 9 ai: 400 02d9eca9f273e2c5
+medium 9 --lead: 400 02d9eca9f273e2c5
+medium 9 --state: 400 e72c6d9417cd9015
+large 8 ai: 400 7a2f99c3ef1e0171
+large 8 --lead: 400 14a3b40b3cd0ae69
+large 8 --state: 400 cbd8b819082a5ecf
+
+real	0m51.650s
+user	0m51.501s
+sys	0m0.278s
