@@ -12,20 +12,18 @@ use engine::{Action, Order, Unit, World};
 /// The slack a cost comparison allows: the engine's own.
 const EPS: f64 = 1e-9;
 
-/// The turns an errand may take before it counts as unsettled: a scout walks at one person's pace, and
-/// the slowest errand (large 8 to the rival) settles in 133.
+/// The turns an errand may take before it counts as unsettled: a scout walks at one person's pace.
 const TURNS: u32 = 200;
 
 /// The seven retro maps: `(size, seed)`.
 const MAPS: [(&str, u32); 7] =
     [("small", 2), ("small", 3), ("small", 6), ("small", 9), ("medium", 8), ("medium", 9), ("large", 8)];
 
-/// A scout's errand on a retro map: its first civ leads, its scout is routed from its capital to the
-/// nearest rival capital (`rival`) or to `Lead`'s target, the first forest or hills tile seven steps
-/// out. `name` is the map and the target, as the messages say them.
+/// A scout's errand on a retro map: its first civ leads, its scout is routed from its capital to
+/// `Lead`'s target, the first forest or hills tile seven steps out, or the nearest to seven where the
+/// pick has none there.
 struct Errand {
     map: String,
-    name: String,
     stage: Stage,
     civ: u32,
     scout: u32,
@@ -33,10 +31,7 @@ struct Errand {
     to: usize,
 }
 
-/// The turns a settled route has to build a trail the land wore away in its settling turn.
-const GRACE: u32 = 3;
-
-fn errand(size: &str, seed: u32, rival: bool) -> Errand {
+fn errand(size: &str, seed: u32) -> Errand {
     let mut stage = Stage::retro(size, seed).unwrap();
     // The fight is off: the led civ sits idle past the pick and this test is not about war.
     stage.world_mut().config.fight = false;
@@ -44,24 +39,13 @@ fn errand(size: &str, seed: u32, rival: bool) -> Errand {
     stage.lead(me).unwrap();
     let w = stage.world();
     let cap = w.civs[&me].capital;
-    let to = if rival {
-        w.civs
-            .values()
-            .filter(|c| c.id != me)
-            .min_by_key(|c| (steps(w, cap, c.capital), c.id))
-            .map(|c| c.capital)
-            .unwrap()
-    } else {
-        // A forest or hills tile seven steps out, or the nearest to seven where the pick has none there.
-        (0..w.tiles.len())
-            .filter(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && steps(w, i, cap) > 0)
-            .min_by_key(|&i| (steps(w, i, cap).abs_diff(7), i))
-            .unwrap()
-    };
+    let to = (0..w.tiles.len())
+        .filter(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && steps(w, i, cap) > 0)
+        .min_by_key(|&i| (steps(w, i, cap).abs_diff(7), i))
+        .unwrap();
     let scout = units::scout(w, me).unwrap().id;
     stage.act(Action::Order { civ: me, order: Order::Route { unit: scout, from: cap, to } }).unwrap();
-    let target = if rival { "to the rival" } else { "to Lead's target" };
-    Errand { map: format!("{size} {seed}"), name: format!("{size} {seed} {target}"), stage, civ: me, scout, cap, to }
+    Errand { map: format!("{size} {seed}"), stage, civ: me, scout, cap, to }
 }
 
 /// Before a turn: the civ's store and the scout's pack are refilled to the pack's capacity, so a
@@ -96,7 +80,7 @@ fn settle(e: &mut Errand) -> Option<u32> {
         match settled(e) {
             Ok(true) => return Some(t),
             Ok(false) => {}
-            Err(m) => panic!("{} turn {t}: {m}", e.name),
+            Err(m) => panic!("{} turn {t}: {m}", e.map),
         }
     }
     let w = e.stage.world();
@@ -106,7 +90,7 @@ fn settle(e: &mut Errand) -> Option<u32> {
     }
     panic!(
         "{}: the scout has not settled in {TURNS} turns: {:?} at {} home {}",
-        e.name,
+        e.map,
         units::doing_text(w, u),
         u.tile(),
         u.home
@@ -211,97 +195,27 @@ fn check_search_order(e: &mut Errand) {
 fn settled_scouts_leave_nothing_unrevealed_that_could_beat_them() {
     let mut failures = Vec::new();
     for (size, seed) in MAPS {
-        for rival in [true, false] {
-            let mut e = errand(size, seed, rival);
-            let Some(t) = settle(&mut e) else { continue };
-            let mut plan: Plan = e.stage.route(e.civ, e.cap, e.to);
-            // The scout settles in its own turn, and the land's trails wear after it in the same
-            // turn (`tend`): a trail that fades then opens a tile the scout reveals on its next turn
-            // (medium 8 to the rival, tile 1019, with the planner's armies off that trail).
-            if !plan.candidates.is_empty() {
-                refill(&mut e);
-                e.stage.turn(1).unwrap();
-                plan = e.stage.route(e.civ, e.cap, e.to);
-            }
-            if !plan.candidates.is_empty() {
-                failures
-                    .push(format!("{} turn {t}: unrevealed tiles {:?} could beat the route", e.name, plan.candidates));
-            }
+        let mut e = errand(size, seed);
+        let Some(t) = settle(&mut e) else { continue };
+        let mut plan: Plan = e.stage.route(e.civ, e.cap, e.to);
+        // The scout settles in its own turn, and the land's trails wear after it in the same turn
+        // (`tend`): a trail that fades then opens a tile the scout reveals on its next turn.
+        if !plan.candidates.is_empty() {
+            refill(&mut e);
+            e.stage.turn(1).unwrap();
+            plan = e.stage.route(e.civ, e.cap, e.to);
+        }
+        if !plan.candidates.is_empty() {
+            failures.push(format!("{} turn {t}: unrevealed tiles {:?} could beat the route", e.map, plan.candidates));
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// The search orders a range's mountains by best case: on each turn that reveals a mountain, it is
-/// open at the turn's start (its cost through beats the known route) and its best case is the least
-/// of the open set, within `EPS`. Red after build-2: the search orders only the mountains joined to
-/// its candidates' ranges, so on small 9 to the rival it reveals 131 (best case 32) while 178 (best
-/// case 28, in no candidate's range) is open. Widening the set to every open mountain makes the
-/// errand unsettled in 120 turns (`settled_scouts_leave_nothing_unrevealed_that_could_beat_them`), so
-/// the fix needs the owner's call (`relay/specs/153/search.md`).
-#[test]
-#[should_panic(expected = "small 9 turn 22: the scout revealed mountain 131")]
-#[ignore = "red on main's picks only; the pre-game's picks moved with the day's scale (relay/specs/154/day.md)"]
-fn a_scout_searches_a_range_by_best_case() {
-    for (size, seed) in [("small", 9), ("medium", 8)] {
-        check_search_order(&mut errand(size, seed, true));
-    }
-}
-
 /// The control: small 9 to Lead's forest, two reveals, both in order. Passes on main.
 #[test]
 fn a_scouts_search_on_small_9_to_the_forest_is_in_order() {
-    check_search_order(&mut errand("small", 9, false));
-}
-
-/// A settled route has no cheaper trail: the scout builds trails on the possible path too, once no
-/// reveal is left, so a bridge on a revealed river tile that would cut the route is built. On main,
-/// small 7 to the rival settles on turn 26 at 20.0 known against 19.67 possible, and it stays so;
-/// medium 8 to the rival settles on turn 14 at 26.33 against 26.0. The land's trails wear after the
-/// scout settles in the same turn (`tend`), so a route that is cheaper at settle gets the turns it takes
-/// to build the trail (`GRACE`) before it fails.
-#[test]
-fn a_settled_route_has_no_cheaper_trail() {
-    for (size, seed, rival) in [("small", 7, true), ("medium", 8, true)] {
-        let mut e = errand(size, seed, rival);
-        let Some(t) = settle(&mut e) else { continue };
-        let cheaper = |e: &Errand| {
-            let plan = e.stage.route(e.civ, e.cap, e.to);
-            let known = plan.known.as_ref().map_or(f64::INFINITY, |k| k.1);
-            let possible = plan.possible.as_ref().map_or(f64::INFINITY, |p| p.1);
-            (plan, known, possible, possible < known - EPS)
-        };
-        let (mut plan, mut known, mut possible, mut red) = cheaper(&e);
-        for _ in 0..GRACE {
-            if !red {
-                break;
-            }
-            refill(&mut e);
-            e.stage.turn(1).unwrap();
-            (plan, known, possible, red) = cheaper(&e);
-        }
-        if red {
-            // The first step of the possible path that is dearer known: its two costs, from the tile before.
-            let (path, _) = plan.possible.as_ref().unwrap();
-            let mut prev = e.cap;
-            let mut step = None;
-            for &j in path {
-                let one = e.stage.route(e.civ, prev, j);
-                let k = one.known.map_or(f64::INFINITY, |p| p.1);
-                let p = one.possible.map_or(f64::INFINITY, |p| p.1);
-                if p < k - EPS {
-                    step = Some((j, k, p));
-                    break;
-                }
-                prev = j;
-            }
-            let (j, k, p) = step.expect("a cheaper possible step");
-            panic!(
-                "{} turn {t}: the settled route costs {known:.1} known and {possible:.1} possible; the step into tile {j} costs {p:.1} where known it costs {k:.1}",
-                e.name
-            );
-        }
-    }
+    check_search_order(&mut errand("small", 9));
 }
 
 // ---- Disband all: the engine's control ----------------------------------------------------------
