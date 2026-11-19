@@ -74,8 +74,6 @@ pub struct MarketRules {
     pub fade: f64,
     /// A market whose activity (clans that came, smoothed) falls under this goes.
     pub min_attendance: f64,
-    /// The most food a clan brings to a festival, food a person.
-    pub carry: f64,
     /// A starving clan offers this × people × (1 − fed_ratio) people at a festival.
     pub shed: f64,
     /// Days a clan with a surplus is willing to walk to gather, on top of `desire`.
@@ -103,7 +101,6 @@ pub const MARKET: MarketRules = MarketRules {
     reach_walk: 14.0 * DAY,
     fade: 0.9,
     min_attendance: 0.5,
-    carry: 0.2,
     shed: 1.0,
     gather_bonus: 8.0 * DAY,
     desire: 3.0 * DAY,

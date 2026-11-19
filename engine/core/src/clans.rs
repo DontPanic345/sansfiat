@@ -38,6 +38,10 @@ pub struct Clan {
     pub since: u32,
     /// What its walks inside its territory cost this turn.
     pub walk: f64,
+    /// The people who walk its festival route this turn (`markets::Load`): its route's cost is the walk
+    /// there and back times them.
+    #[serde(default)]
+    pub walkers: f64,
     /// The civ it belongs to, once founding has made civs; its daughters belong too.
     pub civ: Option<u32>,
     /// How far an unaligned clan leans towards each civ (civ id to leaning); empty once it
@@ -135,6 +139,7 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         hungry: 0,
         since: 0,
         walk: 0.0,
+        walkers: 0.0,
         civ: None,
         leaning: BTreeMap::new(),
         gifts: BTreeMap::new(),

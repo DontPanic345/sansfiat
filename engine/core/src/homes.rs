@@ -5,12 +5,12 @@
 
 use std::collections::BTreeMap;
 
-use crate::actors::{self, walk_cost, Route};
+use crate::actors::{self, Route};
 use crate::clans::{self, Clan};
 use crate::data::*;
 use crate::fields;
 use crate::land::{neighbours, passable, steps};
-use crate::markets::{festival_costs, walkers, Festival};
+use crate::markets::{festival_costs, route, Festival};
 use crate::reach::Scratch;
 use crate::world::World;
 
@@ -71,7 +71,7 @@ impl Prices {
         let scratch = &mut self.scratch;
         let found = self.found.entry(home).or_insert_with(|| festival_costs(w, scratch, home));
         match found.iter().find(|f| f.market == m.id) {
-            Some(f) => vec![Route { to: m.tile, path: f.path.clone(), cost: walk_cost(f.cost, 1.0) * walkers(c) }],
+            Some(f) => vec![route(w, c, m.id, f.path.clone(), f.cost).0],
             None => c.routes.clone(),
         }
     }
