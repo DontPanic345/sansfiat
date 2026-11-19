@@ -42,8 +42,8 @@ nothing).
 ## Decisions the piece left open
 
 - What a clan brings is its surplus, the food beyond a food a person, not its whole basket. "Whole
-  surplus" is the Decided line's word, and bringing the whole basket starved town clans (3.4% of their
-  turns) for fewer towns (`sweep.md`, variants).
+  surplus" is the Decided line's word, and bringing the whole basket ran medium 9's pre-game to the
+  backstop (`sweep.md`, variants).
 - The first load rides with the walker who goes anyway: a clan going to a festival brings up to one
   load of its surplus whatever the walk; the walk's days are paid in going (`worths`).
 - A load's worth is what it trades for at the market's last prices, in food at `CLAN.harvest_labour`
