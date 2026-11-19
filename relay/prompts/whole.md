@@ -8,14 +8,17 @@ them what helps.
 ## The window
 
 You started on a 5-hour usage window that was at most half used, and what is left of it is the
-budget. The prompt gives both windows as you start and a hook repeats them every ten minutes,
-and tells you to stop at 85%. Helpers spend the same window.
+budget: the piece is yours for this one window. The prompt gives both windows as you start and a
+hook repeats them every ten minutes, and tells you to commit at 70% and stop at 85%. Helpers
+spend the same window.
 
 - Spend the window on what only you can do: the design, the core, the rules that have to be
   right. Hand on what a cheaper session can do from a brief (below).
 - Keep `relay/specs/<piece>/progress.md` current: the plan, and what is done.
-- Commit and push before every long run and at least every twenty minutes. When the window runs
-  out the session ends where it stands, and the next attempt has only the branch.
+- Commit and push before every long run and at least every twenty minutes.
+- At 70%, plan the hand-on. At 85%, hand on: write a brief for each part still to build, list
+  them in `steps.json` before the review, push, and finish `done`. Finish `pending` only when
+  the window ends you before you can.
 
 ## Handing on
 
@@ -25,8 +28,8 @@ its build needs, then `review`. The crew makes those steps, and adds a play step
 review when the piece's `Play:` line names a model. A review alone is the usual hand-on: a cold
 reader judges what you built on a different axis than you can, and gives the merge verdict.
 
-Hand on what is settled. What is still open when you stop is yours to finish, or to say plainly
-in `progress.md` and your summary.
+Hand on what is settled. What is still open when you stop goes in a build's brief as a question
+with what you found, and in your summary.
 
 ## Done
 
