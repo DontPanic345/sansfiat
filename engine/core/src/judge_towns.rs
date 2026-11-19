@@ -65,6 +65,8 @@ pub struct TownCiv {
     pub town_clans_200: u32,
     pub town_farmers_200: u32,
     pub towns_fields_200: u32,
+    /// Towns at +200 on a civ's capital market.
+    pub capital_towns_200: u32,
     /// Town clans, farmers outside towns and all clans, over the clan-turns after +100.
     pub town: TownGroup,
     pub farmers_outside: TownGroup,
@@ -78,6 +80,7 @@ impl TownCiv {
         self.town_clans_200 += o.town_clans_200;
         self.town_farmers_200 += o.town_farmers_200;
         self.towns_fields_200 += o.towns_fields_200;
+        self.capital_towns_200 += o.capital_towns_200;
         self.town.add(&o.town);
         self.farmers_outside.add(&o.farmers_outside);
         self.all.add(&o.all);
@@ -238,6 +241,7 @@ impl Towns {
                 let f = self.by.entry(civ).or_default();
                 f.towns_200 += 1;
                 f.towns_fields_200 += works as u32;
+                f.capital_towns_200 += w.civs.values().any(|c| c.market == t.market) as u32;
                 for id in &t.clans {
                     let c = &w.clans[id];
                     let g = self.by.entry(c.civ).or_default();

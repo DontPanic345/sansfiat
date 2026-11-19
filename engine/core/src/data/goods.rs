@@ -17,7 +17,7 @@ pub enum Use {
 pub struct Good {
     pub name: &'static str,
     /// What a unit of it weighs against a unit of food: a carrier's load (`Actor::carry`) and a clan's
-    /// festival basket (`MARKET.carry`) are counted in weight.
+    /// festival loads (`markets::load`) are counted in weight.
     pub weight: f64,
     /// The share of it a store loses a turn.
     pub spoil: f64,

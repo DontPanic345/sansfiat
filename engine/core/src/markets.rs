@@ -87,30 +87,30 @@ pub fn gain(m: &Market, basket: &Basket, people: f64, share: f64) -> f64 {
 
 /// What a clan with `basket` and `people` brings to `m` over a route of `walk` days a walker, there and
 /// back. It brings its salt and obsidian (less the salt its own store will use, `actors::keeps_back`), and
-/// its food a load at a time, each food in the same share: the first load goes with the walker who goes
-/// anyway, and each further load goes when the food it trades for (`gain`, at `CLAN.harvest_labour` a
-/// food) is worth more than the days its walker spends on the route. It stops at the first load that
-/// costs more than it brings. A clan on its festival's tile walks nothing, so it brings all its food.
+/// its surplus (the food beyond a food a person) a load at a time, each food in the same share: the first
+/// load goes with the walker who goes anyway, and each further load goes when the food it trades for
+/// (`gain`, at `CLAN.harvest_labour` a food) is worth more than the days its walker spends on the route.
+/// It stops at the first load that costs more than it brings. A clan on its festival's tile walks
+/// nothing, so it brings its whole surplus.
 pub fn load(m: &Market, basket: &Basket, people: f64, walk: f64) -> Load {
     let back = actors::keeps_back(basket, people);
     let light: f64 = (0..N).filter(|&g| !GOOD[g].eaten).map(|g| (basket[g] - back[g]) * GOOD[g].weight).sum();
     let food: f64 = (0..N).filter(|&g| GOOD[g].eaten).map(|g| basket[g] * GOOD[g].weight).sum();
     let gain = |share: f64| gain(m, basket, people, share);
     let walkers = |share: f64| carriers(light + share * food, Carrier::Clan);
-    if food <= 0.0 {
-        return Load { share: 0.0, walkers: walkers(0.0), gain: gain(0.0) };
-    }
-    if walk <= 0.0 {
-        return Load { share: 1.0, walkers: walkers(1.0), gain: gain(1.0) };
+    // Its surplus: the food beyond a food a person.
+    let most = if food > 0.0 { ((food - people) / food).clamp(0.0, 1.0) } else { 0.0 };
+    if walk <= 0.0 || most <= 0.0 {
+        return Load { share: most, walkers: walkers(most), gain: gain(most) };
     }
     let unit = Actor::carry(Carrier::Clan).load;
     // The first load: what the first walker carries beside the wares.
-    let mut share = ((unit - light) / food).clamp(0.0, 1.0);
+    let mut share = ((unit - light) / food).clamp(0.0, most);
     let mut got = gain(share);
     let mut k = 1.0;
-    while share < 1.0 {
+    while share < most {
         k += 1.0;
-        let next = ((k * unit - light) / food).clamp(0.0, 1.0);
+        let next = ((k * unit - light) / food).clamp(0.0, most);
         let more = gain(next);
         if (more - got) * CLAN.harvest_labour <= walk * (walkers(next) - walkers(share)) {
             break;

@@ -183,11 +183,13 @@ fn a_clan_keeps_its_festival_unless_another_beats_it_by_the_margin() {
     let enough = (MARKET.switch_margin / MARKET.company).floor() as usize + 1;
     assert!(enough <= MARKET.company_cap);
     w.markets.get_mut(&a).unwrap().traders = enough - 1;
-    assert_eq!(pick(&w), Some(b));
+    let x = worths(&w, &w.clans[&id]);
+    assert!((x[0].1 - x[1].1 - MARKET.company * (enough - 1) as f64).abs() < EPS);
+    let keep = MARKET.keep_turns;
+    assert_eq!(choose(&[(a, 1.0 + MARKET.switch_margin, 2.0), (b, 1.0, 2.0)], Some(b), keep), Some(b));
     w.markets.get_mut(&a).unwrap().traders = enough;
     assert_eq!(pick(&w), Some(a));
     // A current festival worth a little under nothing is kept; worth less than the margin it is left.
-    let keep = MARKET.keep_turns;
     assert_eq!(choose(&[(a, 0.5, 2.0), (b, -1.0, 2.0)], Some(b), keep), Some(a));
     assert_eq!(choose(&[(a, -0.5, 2.0), (b, -1.0, 2.0)], Some(b), keep), Some(b));
     assert_eq!(choose(&[(a, -0.5, 2.0), (b, -MARKET.stay_margin - 0.1, 2.0)], Some(b), keep), None);
@@ -216,7 +218,7 @@ fn a_clan_brings_each_load_whose_trade_beats_its_walkers_days_and_stops_at_the_f
     let m = &w.markets[&mid];
     let b = [0.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let unit = Actor::carry(Carrier::Clan).load;
-    let mut last = 1.0;
+    let mut last = 0.5;
     for walk in [0.0, 0.05, 0.2, 0.5, 1.0, 2.0, 6.0].map(|d| d * DAY) {
         let l = load(m, &b, 20.0, walk);
         let brought = l.share * 40.0;
@@ -226,22 +228,24 @@ fn a_clan_brings_each_load_whose_trade_beats_its_walkers_days_and_stops_at_the_f
         assert!((l.walkers - (brought / unit).max(1.0)).abs() < EPS, "a walker for each 2 food");
         assert!((l.gain - gain(m, &b, 20.0, l.share)).abs() < EPS);
         if walk == 0.0 {
-            assert_eq!(l.share, 1.0, "a clan on its festival's tile walks nothing and brings it all");
+            assert_eq!(l.share, 0.5, "a clan on its festival's tile walks nothing and brings its whole surplus");
             continue;
         }
         // Every load it brought paid its walker's days; the next does not.
-        let at = |k: f64| gain(m, &b, 20.0, (k * unit / 40.0).min(1.0));
+        let at = |k: f64| gain(m, &b, 20.0, (k * unit / 40.0).min(0.5));
         let n = (brought / unit).round();
         for k in 2..=n as usize {
             let k = k as f64;
             assert!((at(k) - at(k - 1.0)) * CLAN.harvest_labour > walk, "load {k} at {walk}");
         }
-        if l.share < 1.0 {
+        if l.share < 0.5 {
             assert!((at(n + 1.0) - at(n)) * CLAN.harvest_labour <= walk, "load {} at {walk}", n + 1.0);
         }
     }
     assert!(load(m, &b, 20.0, 0.05 * DAY).share > load(m, &b, 20.0, 6.0 * DAY).share, "the door brings more");
     assert_eq!(load(m, &b, 20.0, 6.0 * DAY).share * 40.0, unit, "a long walk brings one load");
+    // Only the food beyond a food a person goes: a clan with none brings none.
+    assert_eq!(load(m, &[0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0], 20.0, 0.0).share, 0.0);
 }
 
 #[test]
