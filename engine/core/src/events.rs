@@ -122,7 +122,7 @@ impl Event {
         let market = self.market.unwrap_or(0);
         match self.kind {
             EventKind::ClanDivided => {
-                format!("Clan {clan} divides; clan {} settles at {at}", self.other.unwrap_or(0))
+                format!("Clan {clan} divides; clan {} makes its home at {at}", self.other.unwrap_or(0))
             }
             EventKind::ClanStarving => format!("Clan {clan} is starving"),
             EventKind::ClanMerged => format!("Clan {clan} merges into clan {}", self.other.unwrap_or(0)),
