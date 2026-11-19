@@ -52,15 +52,15 @@ const WHOLE_TIMEOUT_MS = Number(process.env.RELAY_WHOLE_MIN ?? 300) * 60_000;
 // Written into transcripts, which become a workflow artifact anyone signed in can read.
 export const SECRETS = ["CLAUDE_CODE_OAUTH_TOKEN", "RELAY_APP_KEY", "DISPATCH_TOKEN", "RELAY_BOARD_TOKEN"];
 
-export const MODELS = ["haiku", "sonnet", "opus", "fable"];
+export const MODELS = ["haiku", "sonnet", "opus"];
 export const EFFORTS = ["low", "medium", "high"];
 // A build step's part in its piece's shape (prompts/spec.md).
 export const PARTS = ["ford", "easel", "canvas", "clay", "kiln", "glaze", "magnum"];// The steps that judge, which never run at low effort.
 const JUDGES = ["spec-review", "review"];
 
 const SESSION_STOP = 75;
-// A whole step starts on a 5-hour window that is all but unused, so the window lasts its session.
-export const WHOLE_STOP = 10;
+// A whole step starts on a 5-hour window that is at most half used.
+export const WHOLE_STOP = 50;
 // How long a retro waits for the owner's notes.
 export const RETRO_WAIT_MS = 72 * 3600_000;
 
@@ -155,7 +155,7 @@ export const playChoice = (body) => {
     return { model, effort: words.find((w) => EFFORTS.includes(w)) ?? "medium", seeds, why: line };
 };
 
-// `**Whole:** fable medium`: one session does the whole piece, on this model and effort.
+// `**Whole:** opus medium`: one session does the whole piece, on this model and effort.
 export const wholeChoice = (body) => readChoice(pieceField(body, "Whole"));
 
 // `**After:** #31, #32`: the pieces this one waits to see merged.
@@ -200,7 +200,7 @@ export const stepKind = (id) => {
     return ["spec", "spec-review", "play", "review", "whole"].includes(id) ? id : "build";
 };
 // The steps whose `result.json` carries the merge verdict the crew acts on.
-const VERDICTS = ["review", "whole"];
+const VERDICTS = ["review"];
 // How long a step's session may run, and the 5-hour usage it may start at.
 export const capOf = (id) => (stepKind(id) === "whole" ? WHOLE_TIMEOUT_MS : SESSION_TIMEOUT_MS);
 export const stopOf = (id) => (stepKind(id) === "whole" ? WHOLE_STOP : SESSION_STOP);
@@ -250,6 +250,21 @@ export const checkSteps = (text, builds = 1) => {
         if (!s.why) return { error: `${s.id}: no why for its model and effort` };
     }
     return { steps };
+};
+
+// A finished step's result as the crew takes it. A review is done only with its merge verdict. A
+// whole step is done only by handing on to the steps its steps.json lists, which end in the review:
+// it gives no verdict. `stepsError` is why that steps.json can't be read, or null.
+export const checkDone = (kind, result, stepsError) => {
+    if (result?.status !== "done") return { result, handed: false };
+    if (kind === "whole") {
+        if (!stepsError) return { result, handed: true };
+        return { result: { status: "pending", note: `You reported done, but a whole step hands on to the review, and steps.json can't be read: ${stepsError}.` }, handed: false };
+    }
+    if (VERDICTS.includes(kind) && typeof result.merge !== "boolean") {
+        return { result: { status: "pending", note: 'You reported done without `merge`: result.json needs `"merge": true` or `false`.' }, handed: false };
+    }
+    return { result, handed: false };
 };
 
 // The open pieces a fixes piece waits for: its milestone's others that aren't paused.
@@ -404,7 +419,7 @@ export const sessionPrompt = (piece, step, files) => {
             "spec-review": "Review the spec, the briefs and steps.json for this piece",
             play: `Play this piece's branch and write its play note, on ${playChoice(piece.body)?.seeds ?? 1} seed${(playChoice(piece.body)?.seeds ?? 1) > 1 ? "s" : ""}`,
             review: "Review this piece as built",
-            whole: "Do this whole piece in this one session, from its plan to its merge verdict",
+            whole: "Plan and build this whole piece in this one session, then hand it to the review",
         }[kind];
         const like = kind === "spec" && files.lastSpec ? ` Write \`spec.md\` and the briefs as \`${files.lastSpec}/\` did.` : "";
         parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what}, as agreed with the owner.${like} The piece:`);
@@ -643,6 +658,15 @@ const clip = (text, n) => (text.length > n ? `${text.slice(0, n - 1)}…` : text
 // What a session's outcome does to its step's meta. Returns { meta, outcome }, where outcome
 // is "done", "pending" or "blocked"; `why` says what blocked it.
 // `said` is the session's last message, which stands in for a note it didn't write.
+// Why a session that ended unfinished costs its step no attempt, or null: the usage limit ended it
+// ("limit"), or it stopped itself as the hook told it to when the 5-hour window passed its last
+// mark ("window"). Neither is the step's doing.
+export const freeStop = ({ limited, exitOk, result, after }) => {
+    if (limited) return "limit";
+    if (exitOk && result?.status === "pending" && (after?.session ?? 0) >= MARKS[1]) return "window";
+    return null;
+};
+
 export const applyResult = (meta, result, exitOk, said = null) => {
     const next = { ...meta };
     // A session that crashed may not have read the reply, so the next one gets it again.
@@ -1458,12 +1482,9 @@ const runStep = async (piece, step, before) => {
         const { error } = readSteps(piece);
         if (error) result = { status: "pending", note: `You reported done, but steps.json can't be read: ${error}` };
     }
-    // A whole step ends with its verdict, or hands on to the steps it wrote in steps.json.
-    const handed = kind === "whole" && result?.status === "done" && typeof result.merge !== "boolean" && !readSteps(piece, 0).error;
-    if (VERDICTS.includes(kind) && result?.status === "done" && typeof result.merge !== "boolean" && !handed) {
-        const hand = kind === "whole" ? `, or a \`steps.json\` the crew can read to hand on (${readSteps(piece, 0).error})` : "";
-        result = { status: "pending", note: `You reported done without \`merge\`: result.json needs \`"merge": true\` or \`false\`${hand}.` };
-    }
+    const checked = checkDone(kind, result, kind === "whole" ? readSteps(piece, 0).error : null);
+    result = checked.result;
+    const { handed } = checked;
     let after = null;
     try {
         after = await usage();
@@ -1474,12 +1495,15 @@ const runStep = async (piece, step, before) => {
     const applied = applyResult(step.meta, result, exitOk, said);
     let { outcome, why } = applied;
     const { meta } = applied;
-    // The usage limit ending a session isn't the step's doing, so it costs no attempt.
-    if (limited && outcome !== "done") {
+    const free = freeStop({ limited, exitOk, result, after });
+    if (free && outcome !== "done") {
         outcome = "pending";
         meta.status = "pending";
         meta.attempts = step.meta.attempts ?? 0;
-        meta.note = `The usage limit ended the last session, not anything it did. The branch's last commit is \`${head}\`.`;
+        meta.note =
+            free === "limit"
+                ? `The usage limit ended the last session, not anything it did. The branch's last commit is \`${head}\`.`
+                : `${result.note ?? ""} The last session stopped as the 5-hour window passed ${MARKS[1]}%. The branch's last commit is \`${head}\`.`.trim();
     }
     if (kept && outcome !== "done") meta.note = `${meta.note ?? ""} The crew committed what the session left uncommitted, as the branch's last commit: it may not build.`.trim();
     if (handed) meta.handed = true;

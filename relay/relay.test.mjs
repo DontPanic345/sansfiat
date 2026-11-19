@@ -53,6 +53,8 @@ import {
     writeMeta,
     planSteps,
     wholeChoice,
+    checkDone,
+    freeStop,
     capOf,
     stopOf,
     WHOLE_STOP,
@@ -480,10 +482,10 @@ test("redact hides secrets of eight characters or more, and any GitHub token", (
     assert.equal(redact("ghost_writer ghs_short", []), "ghost_writer ghs_short");
 });
 
-const WHOLE = ["**Goal:** a rival.", "**Whole:** fable medium: the free reset", "**Design:** docs/design/map.md"].join("\n");
+const WHOLE = ["**Goal:** a rival.", "**Whole:** opus medium: one session", "**Design:** docs/design/map.md"].join("\n");
 
 test("a Whole line gives the piece one step, with no spec, that runs and then is finished", () => {
-    assert.deepEqual(wholeChoice(WHOLE), { model: "fable", effort: "medium", why: "fable medium: the free reset" });
+    assert.deepEqual(wholeChoice(WHOLE), { model: "opus", effort: "medium", why: "opus medium: one session" });
     assert.equal(wholeChoice(piece(1, []).body), null);
     assert.equal(holdReason(piece(1, [], [], { body: WHOLE })), null);
     assert.equal(stepKind("whole"), "whole");
@@ -491,21 +493,21 @@ test("a Whole line gives the piece one step, with no spec, that runs and then is
     assert.equal(pieceAction(piece(1, [], [step("whole", "closed")], { body: WHOLE })), null);
 });
 
-test("a whole step runs five hours, and starts only on a 5-hour window that is nearly unused", () => {
+test("a whole step runs five hours, and starts only on a 5-hour window that is at most half used", () => {
     assert.equal(capOf("whole"), 300 * 60_000);
     assert.equal(capOf("build-1"), 90 * 60_000);
     assert.equal(stopOf("whole"), WHOLE_STOP);
-    assert.equal(pace({ session: 9, weekly: 0, weeklyResetsAt: resets }, day(1), stopOf("whole")).ok, true);
-    const used = pace({ session: 30, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: resets }, day(1), stopOf("whole"));
+    assert.equal(pace({ session: 49, weekly: 0, weeklyResetsAt: resets }, day(1), stopOf("whole")).ok, true);
+    const used = pace({ session: 60, weekly: 0, weeklyResetsAt: resets, sessionResetsAt: resets }, day(1), stopOf("whole"));
     assert.equal(used.ok, false);
     assert.equal(used.until, resets);
-    assert.equal(pace({ session: 30, weekly: 0, weeklyResetsAt: resets }, day(1), stopOf("review")).ok, true);
+    assert.equal(pace({ session: 60, weekly: 0, weeklyResetsAt: resets }, day(1), stopOf("review")).ok, true);
 });
 
 test("a whole session gets the piece, its design, its cap and the whole prompt", () => {
     const f = files({ prompts: { whole: "# Whole step", session: "# Every session" }, started: "2026-11-10T00:00:00.000Z", cap: 300 });
-    const text = sessionPrompt(piece(4, [], [], { body: WHOLE }), step("whole", "open", { model: "fable" }), f);
-    assert.match(text, /Do this whole piece in this one session/);
+    const text = sessionPrompt(piece(4, [], [], { body: WHOLE }), step("whole", "open", { model: "opus" }), f);
+    assert.match(text, /Plan and build this whole piece in this one session, then hand it to the review/);
     assert.match(text, /stops it after 300 minutes/);
     assert.match(text, /a rival/);
     assert.match(text, /Rivers run downhill/);
@@ -524,9 +526,22 @@ test("a whole step may hand on: the crew plans from its steps.json, the review a
     assert.deepEqual(planSteps([review], null), [review]);
 });
 
+test("a whole step gives no verdict: it is done only by handing on to the review", () => {
+    assert.deepEqual(checkDone("whole", { status: "done", summary: "s" }, null), { result: { status: "done", summary: "s" }, handed: true });
+    assert.equal(checkDone("whole", { status: "done", merge: true }, null).handed, true);
+    const unread = checkDone("whole", { status: "done", merge: true }, "steps.json isn't JSON");
+    assert.equal(unread.handed, false);
+    assert.equal(unread.result.status, "pending");
+    assert.match(unread.result.note, /hands on to the review/);
+    assert.equal(checkDone("review", { status: "done" }, null).result.status, "pending");
+    assert.equal(checkDone("review", { status: "done", merge: false }, null).result.status, "done");
+    assert.equal(checkDone("build", { status: "done" }, null).result.status, "done");
+    assert.equal(checkDone("whole", { status: "pending", note: "n" }, null).result.status, "pending");
+});
+
 test("a session's prompt gives its usage windows, and a designer's the milestone's open ideas", () => {
     const f = files({ prompts: { whole: "# Whole step", session: "# Every session" }, usage: { session: 3.2, weekly: 41 }, ideas: "- [ ] **Ports**: a harbour (#9 build-1)" });
-    const text = sessionPrompt(piece(4, [], [], { body: WHOLE }), step("whole", "open", { model: "fable" }), f);
+    const text = sessionPrompt(piece(4, [], [], { body: WHOLE }), step("whole", "open", { model: "opus" }), f);
     assert.match(text, /stands at 3% and the week at 41% as you start, and a hook tells you both again every 10 minutes/);
     assert.match(text, /# The milestone's open ideas[\s\S]*\*\*Ports\*\*/);
     assert.doesNotMatch(sessionPrompt(piece(4, []), step("build-1"), files({ brief: "# b", ideas: "- [ ] **Ports**" })), /Ports/);
@@ -580,4 +595,13 @@ test("the usage hook speaks every ten minutes and as the window passes a mark, a
     fs.writeFileSync(file, JSON.stringify({ session: 88, weekly: 40, sessionResetsAt: now }));
     assert.deepEqual(fromFile(file), { session: 88, weekly: 40, sessionResetsAt: now });
     fs.rmSync(file);
+});
+
+test("a session stopped by the usage limit, or by itself past the window's last mark, costs no attempt", () => {
+    const pending = { status: "pending", note: "n" };
+    assert.equal(freeStop({ limited: true, exitOk: false, result: null, after: null }), "limit");
+    assert.equal(freeStop({ limited: false, exitOk: true, result: pending, after: { session: 86 } }), "window");
+    assert.equal(freeStop({ limited: false, exitOk: true, result: pending, after: { session: 60 } }), null);
+    assert.equal(freeStop({ limited: false, exitOk: false, result: pending, after: { session: 90 } }), null);
+    assert.equal(freeStop({ limited: false, exitOk: true, result: { status: "blocked" }, after: { session: 90 } }), null);
 });

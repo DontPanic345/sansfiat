@@ -49,21 +49,20 @@ the briefs and `steps.json` live on the piece's branch, `relay/<number>`, in
 
 | Step | What it does |
 |---|---|
-| `whole` | One session on the model the piece's `Whole` line names, up to five hours, that plans and builds the piece however it chooses (`prompts/whole.md`). It ends the piece itself, with `"merge": true` or `false` as a review does, or hands on: it writes `steps.json` with any builds and their briefs, then `review`, and finishes without `merge` |
+| `whole` | One session on the model the piece's `Whole` line names, up to five hours, that plans and builds the piece however it chooses (`prompts/whole.md`). It always hands on: it writes `steps.json` with any builds and their briefs, then `review`, which gives the verdict |
 | `spec` | A stepped piece's first step. The designer settles what it can, picks a shape, and writes the spec, a brief per build, and `steps.json` with each build's part and each step's model, effort, points and why (`prompts/spec.md` has the shapes and the ladder). Runs on the model the piece's `Spec` line names |
 | `spec-review` | Reads the code each settled rule touches, runs the sweep or a play script where minutes settle a number, and fixes the plan where the run disagrees with the reading. Runs on the model the piece's `Spec-review` line names, never at low effort |
 | `build-N` | Builds what its brief says |
 | `play` | Plays the branch through `sansfiat play` for 100 turns from the pick (`relay/players/player.md`), judges the game (`relay/players/judge.md`), and writes `play.md` with each finding classed `fix` or `ask`. The crew adds it before the review when the piece's `Play` line names a model |
 | `review` | Merges `main` in, judges the change against `main` with the rubric in `relay/players/judge.md`, reviews the whole piece against the piece and its design on the axes the builds couldn't check, fixes what is small, adds a decision of the ledger's weight to a design file's `## Decided` ledger, writes the PR description for the owner to read on a phone (the judge's verdict, the steps table, the answer in the scores, the ledger lines, screenshots and a merge verdict), and waits for CI on its own head commit. Its `result.json` must say `"merge": true` or `false`. The crew then rewrites the steps table with the review's row, marks the PR ready, and on a merge verdict waits up to ten minutes for CI to go green and merges it |
 
-A whole step starts only while the 5-hour window is under 10%, so the session gets a whole
-window, and only in a job with five hours left, so a run that has already spent its time starts
-a fresh one. The prompt gives the session both usage windows as it starts, and a hook
+A whole step starts only while the 5-hour window is under 50%, and only in a job with five
+hours left, so a run that has already spent its time starts a fresh one. The prompt gives the session both usage windows as it starts, and a hook
 (`usage-hook.mjs`) repeats them every ten minutes, on every session. The crew reads the windows
 from the session's own stream as it runs, helpers included, so the hook also speaks as the
 5-hour window passes 70% (commit) and 85% (stop: commit, push, write the result and end). A
-session the usage limit ends costs its step no attempt: the next attempt waits for the reset
-and is told why the last one ended and the branch's last commit.
+session the usage limit ends, or that stops itself past 85%, costs its step no attempt: the next
+attempt waits for the reset and is told why the last one ended and the branch's last commit.
 
 A session ends when its turn does, and its helpers may run until then. When a session ends
 unfinished, the crew commits what it left uncommitted to the piece's branch and tells the next
@@ -175,7 +174,7 @@ pieces comparable. The usage probe reads the whole account, so the owner's own s
 the same hours land on Relay's steps. A crashed attempt has no result frame and records no
 cost. Usage is read once at each step boundary and rounded.
 
-A step starts only while the 5-hour window is under 75% (10% for a whole step), and the weekly
+A step starts only while the 5-hour window is under 75% (50% for a whole step), and the weekly
 window under its share of the week: day / 7 × 95% on day 1 to 7 of the weekly cycle. A stop on
 either window starts a `wait` run, which sleeps until the window lifts, five hours at most, and
 starts a crew run, which waits again if the lift is further off. So a stop costs the window, not
@@ -203,7 +202,7 @@ with Status first, so one that fails doesn't stop the rest:
 |---|---|---|
 | Status | Single select | Ready, Spec, Building, Waiting, Review, Done |
 | Step | Single select | spec, spec-review, build, play, review, whole, retro |
-| Model | Single select | haiku, sonnet, opus, fable |
+| Model | Single select | haiku, sonnet, opus |
 | Effort | Single select | low, medium, high |
 | Attempts (sessions run), List $, Minutes, Points, 5-hour points, Weekly points | Number | |
 | Waiting on | Text | Set on a piece: "5-hour usage, until 14:20", "weekly usage, until Thu 09:00", "your answer", "your merge" |
