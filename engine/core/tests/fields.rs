@@ -206,8 +206,18 @@ fn field_grain_leaves_no_stock_and_no_wear_and_days_stay_under_ground() {
     let id = hold(w, &[f, p], 10.0, 0.5);
     let c = w.clans[&id].clone();
     let (_, yearly) = engine::clans::walks(w, c.home, &c.territory);
-    let reaped =
-        reap(w, c.id, c.people, &c.store, &c.routes, &c.territory, &yearly, c.fields, &vec![true; c.territory.len()]);
+    let reaped = reap(
+        w,
+        c.id,
+        c.people,
+        &c.store,
+        &c.routes,
+        &c.territory,
+        &yearly,
+        c.fields,
+        0.0,
+        &vec![true; c.territory.len()],
+    );
     let k = c.territory.iter().position(|&t| t == p).unwrap();
     let kf = c.territory.iter().position(|&t| t == f).unwrap();
     let grain_before = w.tiles[f].stock[GRAIN];
@@ -270,10 +280,10 @@ fn fields_off_or_before_the_pick_keep_the_share_at_zero_and_reap_as_before() {
     notch(w, id);
     assert_eq!(w.clans[&id].fields, 0.0);
     let (_, yearly) = engine::clans::walks(w, f, &[f]);
-    let store = [1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let store = [1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     for share in [0.0, 0.5] {
         assert_eq!(
-            reap(w, 0, 10.0, &store, &[], &[f], &yearly, share, &[true]).takes,
+            reap(w, 0, 10.0, &store, &[], &[f], &yearly, share, 0.0, &[true]).takes,
             old_reap(w, 10.0, &store, &[], &[f], &yearly)
         );
     }
@@ -295,9 +305,10 @@ fn fields_off_or_before_the_pick_keep_the_share_at_zero_and_reap_as_before() {
     let c = w.clans[&id].clone();
     let (_, yearly) = engine::clans::walks(w, c.home, &c.territory);
     let tiles = c.territory.clone();
-    for (pop, store) in [(10.0, [0.0; N]), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])] {
+    for (pop, store) in [(10.0, [0.0; N]), (2.0, [0.0; N]), (40.0, [9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])] {
         for share in [0.0, 0.5] {
-            let got = reap(w, c.id, pop, &store, &c.routes, &tiles, &yearly, share, &vec![true; tiles.len()]).takes;
+            let got =
+                reap(w, c.id, pop, &store, &c.routes, &tiles, &yearly, share, 0.0, &vec![true; tiles.len()]).takes;
             assert_eq!(got, old_reap(w, pop, &store, &c.routes, &tiles, &yearly), "pop {pop} share {share}");
         }
     }
@@ -320,9 +331,19 @@ fn on_real_maps_with_fields_off_reap_is_the_old_reap() {
         for c in w.clans.values() {
             let (_, yearly) = engine::clans::walks(&w, c.home, &c.territory);
             for (pop, store) in [(c.people, c.store), (2.0, [0.0; N])] {
-                let got =
-                    reap(&w, c.id, pop, &store, &c.routes, &c.territory, &yearly, 0.5, &vec![true; c.territory.len()])
-                        .takes;
+                let got = reap(
+                    &w,
+                    c.id,
+                    pop,
+                    &store,
+                    &c.routes,
+                    &c.territory,
+                    &yearly,
+                    0.5,
+                    0.0,
+                    &vec![true; c.territory.len()],
+                )
+                .takes;
                 assert_eq!(got, old_reap(&w, pop, &store, &c.routes, &c.territory, &yearly));
             }
         }

@@ -96,7 +96,7 @@ fn festival(w: &mut World, civs: [u32; 2], mid: u32) -> (u32, u32, u32) {
         let c = w.clans.get_mut(&id).unwrap();
         c.civ = Some(civ);
         c.market = Some(mid);
-        c.harvest = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        c.harvest = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     }
     let c = w.clans.get_mut(&starving).unwrap();
     c.starving = true;

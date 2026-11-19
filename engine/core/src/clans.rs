@@ -13,7 +13,9 @@ use crate::data::*;
 use crate::dividing;
 use crate::events::{Event, EventKind};
 use crate::fields;
+use crate::herds;
 use crate::homes;
+use crate::jobs::jobs;
 use crate::land::{neighbours, passable};
 use crate::map::{self, Country};
 use crate::market::{sum, total, Basket};
@@ -65,6 +67,11 @@ pub struct Clan {
     /// reads it next turn, to leave the other clans their share of the ground.
     #[serde(default)]
     pub sown: Vec<(usize, f64)>,
+    /// The share of its days left after its routes that go to herding (`herds.rs`); its herd is the animals
+    /// in its store. A daughter starts at her mother's, and a clan that moves on keeps it: its herd walks
+    /// with it. A clan works fields or herds, never both.
+    #[serde(default)]
+    pub herds: f64,
 }
 
 impl Deref for Clan {
@@ -143,6 +150,7 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         parent: None,
         fields: 0.0,
         sown: Vec::new(),
+        herds: 0.0,
     }
 }
 
@@ -174,18 +182,34 @@ pub struct Reaped {
     pub grain: Vec<f64>,
     /// Field days per tile, never above the room the tile leaves the clan (`fields::room`).
     pub days: Vec<f64>,
+    /// The herd's increase the clan takes this turn (`herds::offtake`), within the budget: animals, drawn
+    /// from no stock.
+    pub herd: f64,
+    /// The herd's whole change this turn: negative when it falls toward what its land carries.
+    pub change: f64,
+    /// What the herd's land carries, `K` (`herds::carries`).
+    pub carry: f64,
 }
 
 impl Reaped {
     /// Nothing reaped from `n` tiles.
     pub fn empty(n: usize) -> Reaped {
-        Reaped { dug: [0.0; N], takes: vec![[0.0; N]; n], grain: vec![0.0; n], days: vec![0.0; n] }
+        Reaped {
+            dug: [0.0; N],
+            takes: vec![[0.0; N]; n],
+            grain: vec![0.0; n],
+            days: vec![0.0; n],
+            herd: 0.0,
+            change: 0.0,
+            carry: 0.0,
+        }
     }
 
-    /// The whole harvest: gathered food and field grain.
+    /// The whole harvest: gathered food, field grain and the herd's increase taken.
     pub fn food(&self) -> Basket {
         let mut food = sum(&self.takes);
         food[GRAIN] += self.grain.iter().sum::<f64>();
+        food[ANIMALS] += self.herd;
         food
     }
 }
@@ -196,7 +220,8 @@ impl Reaped {
 /// stock at `harvest_labour` a unit, up to `take_rate` of the stock; and each field tile's days
 /// (`fields::sow`, capped at the room `fields::room` leaves `id`) taking their grain. Then gathering and
 /// field grain together come to at most `surplus_target × people` less the store, by one factor on every
-/// tile. Fields count only once `fields::open`.
+/// tile. Fields count only once `fields::open`. The herd (`herds`, its share of days) breeds and gives its
+/// increase (`herds::offtake`) inside the same factor; the budget leaves its animals out.
 #[allow(clippy::too_many_arguments)]
 pub fn reap(
     w: &World,
@@ -207,11 +232,14 @@ pub fn reap(
     tiles: &[usize],
     yearly: &[f64],
     fields: f64,
+    herds: f64,
     gathers: &[bool],
 ) -> Reaped {
-    let budget = (CLAN.surplus_target * people - total(store)).max(0.0);
+    let budget = (CLAN.surplus_target * people - (total(store) - store[ANIMALS])).max(0.0);
     let fields = if fields::open(w) { fields } else { 0.0 };
-    let mut reaped = reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget);
+    let herds = if herds::open(w) { herds } else { 0.0 };
+    let head = herds::held(people, store, herds);
+    let mut reaped = reap_within(w, id, people, routes, tiles, yearly, fields, herds, head, gathers, budget);
     // A clan gathers a source's good only up to what it holds of it (`SOURCE.hold`).
     for g in 0..N {
         reaped.dug[g] = reaped.dug[g].min((SOURCE.hold * people - store[g]).max(0.0));
@@ -230,12 +258,21 @@ fn reap_within(
     tiles: &[usize],
     yearly: &[f64],
     fields: f64,
+    herds: f64,
+    head: f64,
     gathers: &[bool],
     budget: f64,
 ) -> Reaped {
     // A starving clan leaves its sources: every day goes on food.
     let dig = !w.clans.get(&id).is_some_and(|c| c.starving);
-    let (work, field, fk, dug) = fields::jobs(w, people, routes, tiles, yearly, fields, gathers, dig);
+    let j = jobs(w, people, routes, tiles, yearly, fields, herds, gathers, dig);
+    let (work, field, fk, dug) = (j.gather, j.field, j.fk, j.dug);
+    // The herd breeds on what its herding days and its grass carry; a clan that keeps none and holds
+    // none has no herd to change.
+    let herd_tiles: Vec<usize> = j.hk.iter().map(|&k| tiles[k]).collect();
+    let carry = herds::carries(w, &herd_tiles, &j.herd);
+    let change = if j.hk.is_empty() && head <= 0.0 { 0.0 } else { herds::breed(head, carry) };
+    let mut herd = herds::offtake(head, change, carry);
     let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
     let mut total = 0.0;
     for (&t, &labour) in tiles.iter().zip(&work) {
@@ -258,8 +295,10 @@ fn reap_within(
         grain[k] = d * fields::yield_a_day(w, t);
     }
     total += grain.iter().sum::<f64>();
+    total += herd;
     if total > budget {
         let scale = budget / total;
+        herd *= scale;
         for t in &mut takes {
             *t = t.map(|x| x * scale);
         }
@@ -267,17 +306,18 @@ fn reap_within(
             *g *= scale;
         }
     }
-    Reaped { dug, takes, grain, days }
+    Reaped { dug, takes, grain, days, herd, change, carry }
 }
 
 /// Whether `territory` would harvest the clan's whole target this turn (`reap` scaled down to
 /// it, or nothing left to harvest for): a clan short of it wants more land.
 pub fn at_target(w: &World, clan: &Clan, territory: &[usize]) -> bool {
-    let budget = (CLAN.surplus_target * clan.people - total(&clan.store)).max(0.0);
+    let budget = (CLAN.surplus_target * clan.people - (total(&clan.store) - clan.store[ANIMALS])).max(0.0);
     let (_, yearly) = walks(w, clan.home, territory);
     let gathers = reckoned(w, clan.id, territory);
     let food =
-        reap(w, clan.id, clan.people, &clan.store, &clan.routes, territory, &yearly, clan.fields, &gathers).food();
+        reap(w, clan.id, clan.people, &clan.store, &clan.routes, territory, &yearly, clan.fields, clan.herds, &gathers)
+            .food();
     total(&food) >= budget - 1e-9
 }
 
@@ -299,18 +339,24 @@ pub(crate) fn worth(
     home: usize,
     territory: &[usize],
     fields: f64,
+    herds: f64,
 ) -> f64 {
     let (_, yearly) = walks(w, home, territory);
     let gathers = reckoned(w, id, territory);
-    let reaped = reap(w, id, people, store, routes, territory, &yearly, fields, &gathers);
+    let reaped = reap(w, id, people, store, routes, territory, &yearly, fields, herds, &gathers);
     let food = reaped.food();
     // What its sources would give, whatever it holds, reckoned in food (`SOURCE.worth`).
     let could = if w.config.goods {
-        reap_within(w, id, people, routes, territory, &yearly, 0.0, &gathers, 0.0).dug.iter().sum::<f64>()
+        reap_within(w, id, people, routes, territory, &yearly, 0.0, 0.0, 0.0, &gathers, 0.0).dug.iter().sum::<f64>()
     } else {
         0.0
     };
-    (nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) + SOURCE.worth * could) / people
+    // A herding share counts the herd it would keep: its steady yield less what the harvest takes of it,
+    // as a source's dig counts whether or not the clan keeps it. Weighed on this turn's increase a new
+    // herd yields too little to beat the days it takes. The breeding stock itself is not food.
+    let kept = if herds > 0.0 && herds::open(w) { (herds::steady(reaped.carry) - reaped.herd).max(0.0) } else { 0.0 };
+    let fed = |f: usize| if f == ANIMALS { food[f] } else { store[f] + food[f] };
+    (nutrition(&std::array::from_fn(fed), people) + SOURCE.worth * could + kept) / people
 }
 
 /// `worth` with nothing held back for the store's cap: what the labour on `territory` from `home`
@@ -326,32 +372,35 @@ pub(crate) fn could_reap(
     home: usize,
     territory: &[usize],
     fields: f64,
+    herds: f64,
 ) -> f64 {
     let (_, yearly) = walks(w, home, territory);
     let gathers = reckoned(w, id, territory);
     let fields = if fields::open(w) { fields } else { 0.0 };
-    let reaped = reap_within(w, id, people, routes, territory, &yearly, fields, &gathers, f64::INFINITY);
+    let herds = if herds::open(w) { herds } else { 0.0 };
+    let head = herds::held(people, store, herds);
+    let reaped = reap_within(w, id, people, routes, territory, &yearly, fields, herds, head, &gathers, f64::INFINITY);
     let food = reaped.food();
-    (nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) + SOURCE.worth * reaped.dug.iter().sum::<f64>())
-        / people
+    let fed = |f: usize| if f == ANIMALS { food[f] } else { store[f] + food[f] };
+    (nutrition(&std::array::from_fn(fed), people) + SOURCE.worth * reaped.dug.iter().sum::<f64>()) / people
 }
 
-/// How well `territory` would feed the clan this turn, its days split at `fields`. Walking counts
+/// How well `territory` would feed the clan this turn, its days split at `fields` and `herds`. Walking counts
 /// against food, so a tile is worth adding only if its food pays for the walk to it and the labour it
 /// takes from the others.
-pub fn value_at(w: &World, clan: &Clan, territory: &[usize], fields: f64) -> f64 {
-    worth(w, clan.id, clan.people, &clan.store, &clan.routes, clan.home, territory, fields)
+pub fn value_at(w: &World, clan: &Clan, territory: &[usize], fields: f64, herds: f64) -> f64 {
+    worth(w, clan.id, clan.people, &clan.store, &clan.routes, clan.home, territory, fields, herds)
 }
 
 /// How well `territory` would feed the clan this turn at its own split (`Clan.fields`).
 pub fn value(w: &World, clan: &Clan, territory: &[usize]) -> f64 {
-    value_at(w, clan, territory, clan.fields)
+    value_at(w, clan, territory, clan.fields, clan.herds)
 }
 
 /// The value of territory `[site]` for clan `id` with `people` people and `store`, with no route and no
 /// fields: a site it would claim.
 pub fn site_value(w: &World, id: u32, site: usize, people: f64, store: &Basket) -> f64 {
-    worth(w, id, people, store, &[], site, &[site], 0.0)
+    worth(w, id, people, store, &[], site, &[site], 0.0, 0.0)
 }
 
 /// The `harvest` step: each clan in a shuffled order reaps its territory (`reap`: it gathers the tiles it
@@ -378,7 +427,7 @@ pub fn harvest(w: &mut World) {
             Reaped::empty(walks.tiles.len())
         } else {
             let gathers: Vec<bool> = walks.tiles.iter().map(|&t| homes::gathers(w, id, t)).collect();
-            reap(w, id, c.people, &c.store, &c.routes, &walks.tiles, &yearly, c.fields, &gathers)
+            reap(w, id, c.people, &c.store, &c.routes, &walks.tiles, &yearly, c.fields, c.herds, &gathers)
         };
         reaps.push((id, walks, yearly, reaped));
     }
@@ -426,8 +475,13 @@ pub fn harvest(w: &mut World) {
         let c = w.clans.get_mut(&id).unwrap();
         c.walk = yearly.iter().sum();
         c.harvest = food;
-        c.basket = std::array::from_fn(|f| c.store[f] + food[f] + reaped.dug[f]);
+        // The herd's breeding stock stays in the store, out of the basket: neither trade nor the levy takes
+        // it. The basket gets the increase taken, and the budget's leavings stay in the herd.
+        let herd = c.store[ANIMALS];
+        let held = |f: usize| if f == ANIMALS { 0.0 } else { c.store[f] };
+        c.basket = std::array::from_fn(|f| held(f) + food[f] + reaped.dug[f]);
         c.store = [0.0; N];
+        c.store[ANIMALS] = (herd + reaped.change - reaped.herd).max(0.0);
         c.sown = sown;
     }
     w.sowers = w.clans.values().filter(|c| !c.sown.is_empty()).map(|c| c.id).collect();
@@ -446,16 +500,22 @@ pub fn eat(w: &mut World) {
     for c in w.clans.values_mut() {
         let was_starving = c.starving;
         let need = c.people;
+        let herd = c.store[ANIMALS];
         c.store = c.basket;
-        let got = c.eat_by_diet(need);
+        let mut got = c.eat_by_diet(need);
+        let herd = herds::lean(c, need, got, herd);
+        got += herd.0;
+        c.store[ANIMALS] += herd.1;
         c.spoil();
         c.fed_ratio = if need > 0.0 { got / need } else { 1.0 };
         c.fed = c.fed_ratio >= 0.999;
         c.starving = c.fed_ratio < CLAN.stable_at;
         if c.starving && !was_starving {
             // The food it has least of, which it is short of.
-            let short =
-                (0..N).filter(|&g| GOOD[g].eaten).min_by(|&a, &b| c.basket[a].total_cmp(&c.basket[b])).unwrap_or(0);
+            let short = (0..N)
+                .filter(|&g| GOOD[g].uses == Use::Food)
+                .min_by(|&a, &b| c.basket[a].total_cmp(&c.basket[b]))
+                .unwrap_or(0);
             starving.push((c.id, c.home, c.fed_ratio, short));
         }
         c.hungry = if c.starving { c.hungry + 1 } else { 0 };
@@ -614,7 +674,7 @@ pub fn adjust(w: &mut World) {
             c.home,
             &c.territory,
             !at_target(w, &c, &c.territory),
-            CLAN.territory_radius,
+            herds::radius(&c),
             CLAN.land_margin,
             |t| value(w, &c, t),
         );
@@ -628,11 +688,11 @@ pub fn adjust(w: &mut World) {
         let (home, territory) = if let Some(s) = chosen {
             (s.home, s.territory)
         } else if pinned {
-            (c.home, actors::trim(w, c.home, &changed, CLAN.territory_radius))
+            (c.home, actors::trim(w, c.home, &changed, herds::radius(&c)))
         } else if let Some(target) = toward {
-            actors::step_toward(w, c.home, target, &changed, CLAN.territory_radius)
+            actors::step_toward(w, c.home, target, &changed, herds::radius(&c))
         } else {
-            actors::recentre(w, c.home, &changed, CLAN.territory_radius)
+            actors::recentre(w, c.home, &changed, herds::radius(&c))
         };
         let dropped = c.territory.iter().filter(|t| !territory.contains(t)).count();
         if dropped > 0 {
@@ -649,5 +709,6 @@ pub fn adjust(w: &mut World) {
         m.home = home;
         m.territory = territory;
         fields::notch(w, id);
+        herds::notch(w, id);
     }
 }

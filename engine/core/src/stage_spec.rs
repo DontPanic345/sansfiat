@@ -174,6 +174,10 @@ pub struct StageSpec {
     /// The turn limit after the pick, which replaces the size's (`Config.limit`); `None` is the size's.
     #[serde(default)]
     pub limit: Option<u32>,
+    /// Whether clans herd (`Config.herds`); `None` leaves it on. A stage about fields turns it off, so a clan
+    /// that drops its fields does not take up herds instead.
+    #[serde(default)]
+    pub herds: Option<bool>,
     /// Scouts moved onto their tiles, after the armies.
     #[serde(default)]
     pub scouts: Vec<ScoutSpec>,
@@ -206,6 +210,9 @@ impl Stage {
             _ => return Err("a stage needs one of map or retro".to_string()),
         };
         stage.world.config.limit = spec.limit;
+        if let Some(herds) = spec.herds {
+            stage.world.config.herds = herds;
+        }
         if let Some(text) = &spec.marks {
             stage.marks(text)?;
         }

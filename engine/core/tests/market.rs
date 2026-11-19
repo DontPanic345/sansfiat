@@ -24,7 +24,7 @@ fn rng_matches_the_js_prototypes() {
 #[test]
 fn symmetric_traders_split_evenly() {
     let c = clear(
-        &[[4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+        &[[4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
         &[[1.0; N]; 8],
         &[1.0; N],
         &P,
@@ -40,7 +40,7 @@ fn symmetric_traders_split_evenly() {
 fn the_scarce_good_is_dearer() {
     // Σ sqrt utility: aggregate demand ∝ 1/p², so p_fish / p_grain = sqrt(9 / 1).
     let c = clear(
-        &[[9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+        &[[9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
         &[[1.0; N]; 8],
         &[1.0; N],
         &P,
@@ -51,10 +51,10 @@ fn the_scarce_good_is_dearer() {
 #[test]
 fn goods_are_conserved_and_nobody_loses() {
     let before = [
-        [5.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0],
-        [0.0, 6.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-        [1.0, 0.0, 7.0, 0.5, 0.0, 0.0, 0.0],
-        [2.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0],
+        [5.0, 1.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 6.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 7.0, 0.5, 0.0, 0.0, 0.0, 0.0],
+        [2.0, 2.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0],
     ];
     let c = clear(&before, &[[1.0; N]; 8], &[1.0; N], &P);
     let (a, b) = (total(&before), total(&c.after));
@@ -70,8 +70,8 @@ fn goods_are_conserved_and_nobody_loses() {
 
 #[test]
 fn one_trader_does_not_clear() {
-    let start = [2.0, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0];
-    let c = clear(&[[1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0]], &[[1.0; N]; 8], &start, &P);
+    let start = [2.0, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0];
+    let c = clear(&[[1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]], &[[1.0; N]; 8], &start, &P);
     assert!(!c.cleared);
     assert_eq!(c.prices, start);
 }

@@ -172,6 +172,7 @@ fn a_spec_round_trips_and_builds_the_builders_world() {
         clans: Vec::new(),
         signposts: Vec::new(),
         limit: None,
+        herds: None,
         scouts: Vec::new(),
         stores: Vec::new(),
     };

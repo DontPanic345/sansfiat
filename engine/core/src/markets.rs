@@ -115,9 +115,11 @@ pub fn worths(w: &World, clan: &Clan) -> Vec<(u32, f64, f64)> {
 
 /// `worths`, read from the festivals in reach of the clan's home (`festival_costs`).
 fn worths_from(w: &World, clan: &Clan, festivals: &[Festival]) -> Vec<(u32, f64, f64)> {
-    let b: Basket = std::array::from_fn(|f| clan.store[f] + clan.harvest[f]);
+    // The herd's breeding stock is not brought to a festival.
+    let b: Basket =
+        std::array::from_fn(|f| if f == ANIMALS { clan.harvest[f] } else { clan.store[f] + clan.harvest[f] });
     let walkers = walkers(clan);
-    let surplus = total(&clan.store) >= MARKET.surplus_at * clan.people;
+    let surplus = total(&clan.store) - clan.store[ANIMALS] >= MARKET.surplus_at * clan.people;
     // A civ clan is drawn to its capital's market, and to its civ's settlements'.
     let capital = clan.civ.and_then(|c| w.civs.get(&c)).map(|c| c.market);
     let settled =

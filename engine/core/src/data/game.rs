@@ -59,6 +59,10 @@ pub struct Config {
     /// tile has one, so neither good exists. Old saves load with it on.
     #[serde(default = "yes")]
     pub goods: bool,
+    /// Whether clans keep herds, once civs are founded (`herds.rs`): off is the control, in which no
+    /// clan herds. Old saves load with it on.
+    #[serde(default = "yes")]
+    pub herds: bool,
 }
 
 fn yes() -> bool {
@@ -81,6 +85,7 @@ impl Default for Config {
             towns: true,
             signposts: true,
             goods: true,
+            herds: true,
         }
     }
 }

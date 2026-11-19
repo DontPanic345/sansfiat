@@ -91,20 +91,21 @@ fn keepers(store: &Basket) -> f64 {
 /// food a unit, sparing that food `KEEPING.slows` of its spoiling, and the salt that kept food is used
 /// up. Returns the food lost.
 pub fn spoil(store: &mut Basket) -> f64 {
-    let food = total(store);
+    // A herd keeps itself (it spoils nothing), so salt has none of it to keep.
+    let food = total(store) - store[ANIMALS];
     let salt = keepers(store);
     let kept = food.min(salt * KEEPING.keeps);
     let spared = if food > 0.0 { KEEPING.slows * kept / food } else { 0.0 };
     let used = if salt > 0.0 { kept / KEEPING.keeps / salt } else { 0.0 };
     for g in 0..N {
         let rate = match GOOD[g].uses {
-            Use::Food => GOOD[g].spoil * (1.0 - spared),
+            Use::Food | Use::Herd => GOOD[g].spoil * (1.0 - spared),
             Use::Keeps => GOOD[g].spoil + (1.0 - GOOD[g].spoil) * used,
             Use::Arms => GOOD[g].spoil,
         };
         store[g] *= 1.0 - rate;
     }
-    food - total(store)
+    food - (total(store) - store[ANIMALS])
 }
 
 /// What each good is worth to an actor at a market, against a food's 1 (`market::demand`), from what
@@ -116,7 +117,7 @@ pub fn worths(b: &Basket, people: f64) -> Basket {
     let bare = (spare - keepers(b) * KEEPING.keeps).max(0.0);
     let loss = if people > 0.0 { bare * FOOD_SPOIL / people } else { 0.0 };
     std::array::from_fn(|g| match GOOD[g].uses {
-        Use::Food => 1.0,
+        Use::Food | Use::Herd => 1.0,
         Use::Keeps => (loss / KEEPING.want_at).min(1.0),
         Use::Arms => 0.0,
     })
@@ -140,7 +141,7 @@ pub fn keeps_back(b: &Basket, people: f64) -> Basket {
 /// full store for a turn, and `ARMS.hold` of obsidian. Infinite for a food: the cap counts food.
 pub fn civ_holds(cap: f64) -> Basket {
     std::array::from_fn(|g| match GOOD[g].uses {
-        Use::Food => f64::INFINITY,
+        Use::Food | Use::Herd => f64::INFINITY,
         Use::Keeps => cap / KEEPING.keeps,
         Use::Arms => ARMS.hold,
     })

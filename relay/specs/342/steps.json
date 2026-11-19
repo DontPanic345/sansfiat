@@ -1,0 +1,45 @@
+[
+  {
+    "id": "build-1",
+    "title": "The herd on the actor",
+    "part": "clay",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 8,
+    "why": "Open 2 (the rules, names and start numbers are settled, and the spec step's probe ran them: probe.md, p4; how the herd threads harvest, trade and eat is the builder's), New 1 (a third job in fields' split, and game's logistic rule on a store), Miss 3 (herds-off equal to main in every map's scores catches a broken food sum, but whether a herd starts and lives shows only on the retro maps), Reach 2 (harvest, eat, move and every basket sum run every turn). A clay at 8: Sonnet high, on the clay rung. About 22 files, 750 lines: data/goods.rs and data/map.rs (the new slot), data/herds.rs (~60 new), data/game.rs, jobs.rs (~130, moved from fields.rs and grown), herds.rs (~180 new), clans.rs (~40), dividing.rs, homes.rs, fields.rs, events.rs, world.rs, a few Use matches in actors.rs, market.rs, civs.rs and web/src/lib.rs, core/tests/herds.rs (~240, with a staged game that herds), cli/tests/save.rs pins, engine/CLAUDE.md, clay.md."
+  },
+  {
+    "id": "build-2",
+    "title": "The judge's herds group and the no-herds control",
+    "part": "kiln",
+    "model": "haiku",
+    "effort": "medium",
+    "points": 3,
+    "why": "Open 0 (every count, the tenth run and the text are named; spec-review moved the herding civ to its animal share, a tenth of its clans' food, and named Market.ware for animals' festival-turns), New 1 (after judge_fields.rs and sweep_fields.rs, line for line), Miss 1 (a short test it writes; every other score equal to build-1's), Reach 1 (the judge and the sweep, not the turn). A kiln with an exact done: Haiku medium; it waits on one 4-minute sweep. About 11 files, 550 lines: judge_herds.rs (~220 new), judge.rs (~10), sweep_herds.rs (~200 new), sweep_judge.rs (~25), sweep_text.rs, game_judge.rs, sounds.json, the feed's kind, check.mjs, core/tests/herds.rs (~40), judge.md."
+  },
+  {
+    "id": "build-3",
+    "title": "Herds on the page and in the text view",
+    "part": "kiln",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 2 (rows, keys, the layer and the script are named; how the marks read beside furrows is judged by eye from herds.png), New 1 (fields' rows, layer and script are the pattern), Miss 1 (herds.mjs, which it writes, fails on a missing row or layer), Reach 0 (the page and the view only). Haiku high. About 13 files, 400 lines new and ~150 moved: web/src/lib.rs (~40), panels-clan.js (moved out of panels.js, 592 lines, plus ~30), panels.js, panels-land.js, map/layers/herds.js (~50), map/layers/index.js (the layer list moved out of map/view.js, 605 lines), map/view.js, bar.js, feed, cli/src/view.rs (~15), www/play/herds.mjs (~100), all.mjs, check-stage.mjs, engine/CLAUDE.md."
+  },
+  {
+    "id": "build-4",
+    "title": "Herds that pay",
+    "part": "glaze",
+    "model": "opus",
+    "effort": "medium",
+    "points": 12,
+    "why": "Open 4 (nine HERD numbers, a weight and the offtake tuned together against six bounds), New 3 (the spec step's probe, probe.md, found two failures no number fixed: herders hold narrower land than gatherers in all nine settings, and the rule that grows real herds doubles starving; the rule between them has no pattern here), Miss 3 (only the sweep against the no-herds control catches a miss), Reach 2 (the rules run every turn). Spec-review's seven more sweeps (spec-review.md) found herds feed at most 4% of any civ's food in every setting, so p4's +0.033 is not herds feeding anyone, and that wide land comes with tend 12–24 while a days count of herders falls: the herding civ is now counted by its animal share, and the glaze has a rule to find, not numbers to turn. Re-scored after the probe: New 1 to 3, so 12 and Opus medium, the top, where the spec first had Sonnet high at 10. I expect eight to twelve 4-minute sweeps, a rule change for the offtake and one for wide land, and an ask if wide land won't come. About 5 files, 200 lines: data/herds.rs, herds.rs, jobs.rs, core/tests/herds.rs, glaze.md."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is Standing against a control on the retro maps, and herds are a store, a job and land the player meets every turn: Opus medium. It reruns the floor sweep on branch and main, herds off against main, the bench, herds.mjs and a played game, as spec.md says."
+  }
+]

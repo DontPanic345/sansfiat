@@ -67,7 +67,7 @@ fn gathered(w: &World, id: u32) -> Reaped {
     let c = &w.clans[&id];
     let (_, yearly) = walks(w, c.home, &c.territory);
     let gathers: Vec<bool> = c.territory.iter().map(|&t| homes::gathers(w, id, t)).collect();
-    reap(w, id, c.people, &c.store, &c.routes, &c.territory, &yearly, 0.0, &gathers)
+    reap(w, id, c.people, &c.store, &c.routes, &c.territory, &yearly, 0.0, 0.0, &gathers)
 }
 
 /// The days clan `id` would sow on `tile` this turn with its own split, before the shared step.
@@ -75,7 +75,7 @@ fn asked(w: &World, id: u32, tile: usize) -> f64 {
     let c = &w.clans[&id];
     let (_, yearly) = walks(w, c.home, &c.territory);
     let gathers = vec![true; c.territory.len()];
-    let reaped = reap(w, id, c.people, &c.store, &c.routes, &c.territory, &yearly, c.fields, &gathers);
+    let reaped = reap(w, id, c.people, &c.store, &c.routes, &c.territory, &yearly, c.fields, 0.0, &gathers);
     let k = c.territory.iter().position(|&t| t == tile).unwrap();
     reaped.days[k]
 }
@@ -382,7 +382,8 @@ fn farmer_by_festival(people: f64, carried: f64) -> (World, u32, usize, usize) {
     let north = index(RADIUS, Hex { q: 1, r: -1 }).unwrap();
     let id = clan(&mut w, home, &[home, west, north], people);
     for t in [home, west, north] {
-        w.tiles[t].stock = [500.0; engine::data::N];
+        // Every good but animals, which no tile holds.
+        w.tiles[t].stock = std::array::from_fn(|g| if g == engine::data::ANIMALS { 0.0 } else { 500.0 });
     }
     let c = w.clans.get_mut(&id).unwrap();
     c.fields = FIELD.farmer;

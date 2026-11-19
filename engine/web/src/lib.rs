@@ -173,7 +173,7 @@ impl Sim {
                 let mine = w.clans.values().filter(|k| k.civ == Some(c.id));
                 let (gathering, farming) = mine
                     .clone()
-                    .fold((0.0, 0.0), |(g, f), k| (g + k.people * (1.0 - k.fields), f + k.people * k.fields));
+                    .fold((0.0, 0.0), |(g, f), k| (g + k.people * (1.0 - k.fields - k.herds), f + k.people * k.fields));
                 let army: f64 = w.units.values().filter(|u| u.civ == c.id).map(|u| u.people).sum();
                 let row = serde_json::json!({
                     "id": c.id,

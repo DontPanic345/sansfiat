@@ -85,6 +85,7 @@ pub(crate) fn after_run(
         towns: true,
         signposts: true,
         goods: true,
+        herds: Config::default().herds,
     });
     let led = lever.and_then(|_| w.civs.keys().next().copied());
     w.act(Action::ChooseCiv { civ: led }).expect("a civ can be chosen at the pick");

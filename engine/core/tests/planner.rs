@@ -40,7 +40,7 @@ fn orders(seen: &[Decision]) -> Vec<&Order> {
 /// A store and a levy that feed anything the planner could want this turn.
 fn rich(w: &mut World, civ: u32) {
     let c = w.civs.get_mut(&civ).unwrap();
-    c.store = [0.0, CIV.store_cap, 0.0, 0.0, 0.0, 0.0, 0.0];
+    c.store = [0.0, CIV.store_cap, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     c.levied = 100.0;
 }
 
@@ -60,7 +60,7 @@ fn stand(w: &mut World, civ: u32, tile: usize, people: f64) -> u32 {
     let id = put_camp(w, civ, tile);
     let u = camp_mut(w, id);
     u.actor.people = people;
-    u.actor.store = [0.0, units::pack_cap(people), 0.0, 0.0, 0.0, 0.0, 0.0];
+    u.actor.store = [0.0, units::pack_cap(people), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let c = u.camp_mut().unwrap();
     c.stack = [people, 0.0];
     c.dest = None;
@@ -78,7 +78,7 @@ fn garrison(w: &mut World, civ: u32, people: f64) -> u32 {
     u.actor.people = people;
     u.actor.home = tile;
     u.actor.territory = vec![tile];
-    u.actor.store = [0.0, units::pack_cap(people), 0.0, 0.0, 0.0, 0.0, 0.0];
+    u.actor.store = [0.0, units::pack_cap(people), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     u.hungry = 0;
     u.banked = 0.0;
     let c = u.camp_mut().unwrap();
@@ -152,7 +152,7 @@ fn it_raises_what_its_levy_feeds_and_sends_a_warrior_home_when_the_store_cannot(
     assert_eq!(w.units[&army].people, 4.0);
     // A levy that doesn't: none.
     w.civs.get_mut(&red).unwrap().levied = 1.0;
-    w.civs.get_mut(&red).unwrap().store = [0.0, 30.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.civs.get_mut(&red).unwrap().store = [0.0, 30.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let seen = planned(&mut w, red);
     assert!(!orders(&seen).iter().any(|o| matches!(o, Order::Raise { kind: units::UnitKind::Camp, .. })), "{seen:?}");
     // A store that can't feed its mouths a turn: a warrior goes home.
@@ -188,8 +188,8 @@ fn an_army_marches_onto_a_rivals_land_it_outweighs_and_pillages_it() {
     assert_ne!(to, w.civs[&blue].capital);
     // Standing on it, with room in its pack: it pillages.
     let army = stand(&mut w, red, to, 4.0);
-    w.units.get_mut(&army).unwrap().actor.store = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-    w.tiles[to].stock = [0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.units.get_mut(&army).unwrap().actor.store = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.tiles[to].stock = [0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let seen = planned(&mut w, red);
     assert!(orders(&seen).iter().any(|o| matches!(o, Order::Pillage { unit } if *unit == army)), "{seen:?}");
 }

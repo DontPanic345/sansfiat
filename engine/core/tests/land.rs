@@ -9,7 +9,7 @@ use engine::{units, Config, World, FOODS, TERRAIN};
 
 #[test]
 fn goods_are_the_five_foods() {
-    assert_eq!(FOODS, ["game", "grain", "fruit", "fish", "shellfish"]);
+    assert_eq!(FOODS, ["game", "grain", "fruit", "fish", "shellfish", "animals"]);
     assert_eq!((GAME, GRAIN, FRUIT, FISH, SHELLFISH), (0, 1, 2, 3, 4));
 }
 
