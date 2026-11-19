@@ -6,12 +6,11 @@
 //!
 //! Nothing here acts before `open`: before the pick, and with `Config.fields` off, no clan farms.
 
-use crate::actors::{self, Route};
 use crate::clans::{self, Clan};
 use crate::data::*;
 use crate::events::{Event, EventKind};
+use crate::jobs::jobs;
 use crate::land::domestic;
-use crate::market::Basket;
 use crate::world::World;
 
 /// Whether the field job acts: the config has fields and civs are founded (past the pick).
@@ -83,53 +82,6 @@ pub fn sow(w: &World, id: u32, tiles: &[usize], work: &[f64]) -> Vec<f64> {
     days
 }
 
-/// The jobs of a clan's labour over `tiles` (its territory, with `yearly` walks): gathering at
-/// `1 − fields` over the tiles `gathers` marks, and the field job at `fields` over the tiles with
-/// ground, each tile paying its walk. A field tile is a tile with ground that yields: days are not sown
-/// on grain still wild. Returns each tile's gathering work (0 where `gathers` is false), the field job's
-/// work on each field tile, and the field tiles' indices into `tiles`. With no field tile, `fields`
-/// gives nothing and all labour gathers. A clan that gathers a tile with a source gives `SOURCE.share` of
-/// its days to the source job, taken from the other two by their shares; the last value is what it digs,
-/// by good. With `dig` off it has no source job.
-#[allow(clippy::too_many_arguments)]
-pub fn jobs(
-    w: &World,
-    people: f64,
-    routes: &[Route],
-    tiles: &[usize],
-    yearly: &[f64],
-    fields: f64,
-    gathers: &[bool],
-    dig: bool,
-) -> (Vec<f64>, Vec<f64>, Vec<usize>, Basket) {
-    let fk: Vec<usize> =
-        (0..tiles.len()).filter(|&k| ground(w, tiles[k]) > 0.0 && yield_a_day(w, tiles[k]) > 0.0).collect();
-    let share = if fk.is_empty() { 0.0 } else { fields };
-    let gk: Vec<usize> = (0..tiles.len()).filter(|&k| gathers[k]).collect();
-    let gy: Vec<f64> = gk.iter().map(|&k| yearly[k]).collect();
-    let fy: Vec<f64> = fk.iter().map(|&k| yearly[k]).collect();
-    // The source job: the tiles with a source the clan gathers, at `SOURCE.share` of its days.
-    let sk: Vec<usize> =
-        (0..tiles.len()).filter(|&k| dig && gathers[k] && w.tiles[tiles[k]].source.is_some()).collect();
-    let dig = if sk.is_empty() { 0.0 } else { SOURCE.share };
-    let sy: Vec<f64> = sk.iter().map(|&k| yearly[k]).collect();
-    let shares = [1.0 - share - dig * (1.0 - share), share - dig * share, dig];
-    let mut parts = actors::split(people, people * CLAN.work, routes, &shares, &[gy, fy, sy]);
-    let mut dug = [0.0; N];
-    for (&k, days) in sk.iter().zip(parts.pop().unwrap()) {
-        if let Some(g) = w.tiles[tiles[k]].source {
-            dug[g] += days * SOURCE.a_day;
-        }
-    }
-    let field = parts.pop().unwrap();
-    let gathered = parts.pop().unwrap();
-    let mut gather = vec![0.0; tiles.len()];
-    for (&k, g) in gk.iter().zip(gathered) {
-        gather[k] = g;
-    }
-    (gather, field, fk, dug)
-}
-
 /// Whether the clan with `fields` is a farmer: at least `FIELD.farmer` of its days on fields.
 pub fn farmer(c: &Clan) -> bool {
     c.fields >= FIELD.farmer - 1e-9
@@ -144,10 +96,9 @@ pub fn home_toward(w: &World, c: &Clan, territory: &[usize]) -> Option<usize> {
     }
     let (_, yearly) = clans::walks(w, c.home, territory);
     // The field job's labour does not depend on the gathering tiles: they are not counted here.
-    let (_, field, fk, _) =
-        jobs(w, c.people, &c.routes, territory, &yearly, c.fields, &vec![true; territory.len()], false);
-    let fields: Vec<usize> = fk.iter().map(|&k| territory[k]).collect();
-    let days = sow(w, c.id, &fields, &field);
+    let j = jobs(w, c.people, &c.routes, territory, &yearly, c.fields, 0.0, &vec![true; territory.len()], false);
+    let fields: Vec<usize> = j.fk.iter().map(|&k| territory[k]).collect();
+    let days = sow(w, c.id, &fields, &j.field);
     let mut best: Option<(f64, usize)> = None;
     for (&t, &d) in fields.iter().zip(&days) {
         if d <= 0.0 {
@@ -175,16 +126,20 @@ pub fn notch(w: &mut World, id: u32) {
         return;
     }
     let c = w.clans[&id].clone();
+    // Fields or herds, not both: a herder does not raise fields.
+    if c.herds > 0.0 && c.fields <= 0.0 {
+        return;
+    }
     let n = FIELD.notch;
     let next = if c.starving && c.fields > 0.0 {
         (c.fields - n).max(0.0)
     } else {
-        let now = clans::value_at(w, &c, &c.territory, c.fields);
+        let now = clans::value_at(w, &c, &c.territory, c.fields, c.herds);
         let bar = now + FIELD.margin;
         let up = (c.fields < 1.0 - 1e-9).then(|| (c.fields + n).min(1.0));
         let down = (c.fields > 1e-9).then(|| (c.fields - n).max(0.0));
-        let up = up.map(|s| (s, clans::value_at(w, &c, &c.territory, s))).filter(|&(_, v)| v > bar);
-        let down = down.map(|s| (s, clans::value_at(w, &c, &c.territory, s))).filter(|&(_, v)| v > bar);
+        let up = up.map(|s| (s, clans::value_at(w, &c, &c.territory, s, c.herds))).filter(|&(_, v)| v > bar);
+        let down = down.map(|s| (s, clans::value_at(w, &c, &c.territory, s, c.herds))).filter(|&(_, v)| v > bar);
         match (up, down) {
             (Some(u), Some(d)) => {
                 if u.1 >= d.1 {

@@ -10,6 +10,9 @@ pub enum Use {
     /// Raises the strength of the warriors raised from the store it lies in, and is used up at the
     /// raising (`ARMS`).
     Arms,
+    /// Eaten, and breeds in a clan's herd (`herds.rs`): food everywhere but where the herd's
+    /// breeding stock is told apart from it.
+    Herd,
 }
 
 /// A row of the goods table. Eating, spoiling, `market::total` and the market's worth read it. The
@@ -32,12 +35,13 @@ const fn food(name: &'static str) -> Good {
 
 /// Salt and obsidian are light for what they do, and keep: a clan's carriers bring them to a festival
 /// at a fifth of food's weight, and a store loses none of either but by using it.
-pub const GOOD: [Good; 7] = [
+pub const GOOD: [Good; 8] = [
     food("game"),
     food("grain"),
     food("fruit"),
     food("fish"),
     food("shellfish"),
+    Good { name: "animals", weight: 0.5, spoil: 0.0, eaten: true, uses: Use::Herd },
     Good { name: "salt", weight: 0.2, spoil: 0.0, eaten: false, uses: Use::Keeps },
     Good { name: "obsidian", weight: 0.2, spoil: 0.0, eaten: false, uses: Use::Arms },
 ];
@@ -53,7 +57,7 @@ pub const GOODS: [&str; N] = {
     out
 };
 /// How many goods are eaten: the first rows of `GOOD`, as the const check below holds.
-pub const FOOD_N: usize = 5;
+pub const FOOD_N: usize = 6;
 const _: () = {
     let mut g = 0;
     while g < N {
@@ -79,8 +83,9 @@ pub const GRAIN: usize = 1;
 pub const FRUIT: usize = 2;
 pub const FISH: usize = 3;
 pub const SHELLFISH: usize = 4;
-pub const SALT: usize = 5;
-pub const OBSIDIAN: usize = 6;
+pub const ANIMALS: usize = 5;
+pub const SALT: usize = 6;
+pub const OBSIDIAN: usize = 7;
 
 /// Where the goods that aren't eaten come from, and how a clan gathers them (`map.rs`, `clans::reap`).
 pub struct SourceRules {

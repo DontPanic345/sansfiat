@@ -70,8 +70,8 @@ pub fn divide_land(w: &mut World, id: u32) {
     }
     // No preference among ties but the lowest tile.
     let home = actors::middle(w, &give, usize::MAX);
-    let mine = actors::trim(w, c.home, &keep, CLAN.territory_radius);
-    let hers = actors::trim(w, home, &give, CLAN.territory_radius);
+    let mine = actors::trim(w, c.home, &keep, crate::herds::radius(&c));
+    let hers = actors::trim(w, home, &give, crate::herds::radius(&c));
     clans::free(w, id, &c.territory);
 
     let did = w.next_id;
@@ -87,6 +87,7 @@ pub fn divide_land(w: &mut World, id: u32) {
     d.gifts = c.gifts.clone();
     d.parent = Some(id);
     d.fields = c.fields;
+    d.herds = c.herds;
     let took = hers.len();
     d.territory = hers;
     let m = w.clans.get_mut(&id).unwrap();
@@ -120,6 +121,7 @@ pub fn split(w: &mut World, id: u32, posted_only: bool) -> bool {
     d.parent = Some(id);
     d.store = c.store.map(|v| v * share);
     d.fields = c.fields;
+    d.herds = c.herds;
     let posted = crate::settle::draw(w, c.civ, d.id, c.home, people, &d.store, SETTLE.fed).map(|(site, _)| site);
     let site = match posted {
         Some(site) => site,

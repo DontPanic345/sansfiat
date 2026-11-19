@@ -43,7 +43,7 @@ fn staged() -> (Stage, u32) {
 }
 
 fn stock(s: &mut Stage, civ: u32) {
-    s.world_mut().civs.get_mut(&civ).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    s.world_mut().civs.get_mut(&civ).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 }
 
 /// A clan of `civ` with `people` living on `home`, which it holds.
@@ -66,7 +66,7 @@ fn a_scout_past_its_pass_keeps_the_way_home() {
     s.world_mut().tiles[pass].trail = true;
     let scout = units::scout(s.world(), red).unwrap().id;
     s.world_mut().units.get_mut(&scout).unwrap().home = far;
-    s.world_mut().units.get_mut(&scout).unwrap().actor.store = [0.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    s.world_mut().units.get_mut(&scout).unwrap().actor.store = [0.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     for _ in 1..=40 {
         stock(&mut s, red);
         s.act(Action::EndTurn).unwrap();
@@ -85,8 +85,11 @@ fn a_pass_the_scout_bridged_is_walked_by_an_army_its_line_and_a_clan() {
     let (cap, far) = (tile(-6, 0), tile(3, 0));
     let (pass, post) = (tile(0, 0), tile(2, -3));
     let rich = &mut s.world_mut().tiles[post];
-    (rich.cap, rich.unworn, rich.stock) =
-        ([6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0], [6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0], [6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0]);
+    (rich.cap, rich.unworn, rich.stock) = (
+        [6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0, 0.0],
+        [6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0, 0.0],
+        [6.0, 6.0, 6.0, 6.0, 6.0, 0.0, 0.0, 0.0],
+    );
     s.world_mut().clans.clear();
     for t in &mut s.world_mut().tiles {
         t.claim = None;

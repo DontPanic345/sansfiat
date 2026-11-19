@@ -159,7 +159,7 @@ fn a_daughter_belongs_to_her_mothers_civ() {
         let round: Vec<usize> = std::iter::once(at(0, 0)).chain((0..6).map(|d| out(d, 1))).collect();
         let id = put(&mut w, &round, CLAN.split_at);
         let c = w.clans.get_mut(&id).unwrap();
-        c.basket = [10.0, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0];
+        c.basket = [10.0, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         c.civ = civ;
         eat(&mut w);
         assert_eq!(w.clans.len(), 2, "divided");
@@ -167,10 +167,10 @@ fn a_daughter_belongs_to_her_mothers_civ() {
 
         let mut w = flat();
         let rich = out(1, 3);
-        w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0];
+        w.tiles[rich].stock = [20.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         let id = put(&mut w, &[at(0, 0)], 9.0);
         let c = w.clans.get_mut(&id).unwrap();
-        c.basket = [3.6, 2.7, 0.0, 0.0, 0.0, 0.0, 0.0];
+        c.basket = [3.6, 2.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         c.civ = civ;
         eat(&mut w);
         assert_eq!(w.clans.len(), 2, "split");
@@ -191,11 +191,11 @@ fn the_store_spoils_and_is_capped() {
     let fed = put(&mut w, &[at_big(-4, 0)], 6.0);
     {
         let c = w.clans.get_mut(&fed).unwrap();
-        (c.civ, c.fed, c.store) = (Some(red), true, [4.0, 2.0, 0.0, 6.0, 0.0, 0.0, 0.0]);
+        (c.civ, c.fed, c.store) = (Some(red), true, [4.0, 2.0, 0.0, 6.0, 0.0, 0.0, 0.0, 0.0]);
     }
-    w.civs.get_mut(&red).unwrap().store = [0.0, 2.0 * CIV.store_cap, CIV.store_cap, 0.0, 0.0, 0.0, 0.0];
+    w.civs.get_mut(&red).unwrap().store = [0.0, 2.0 * CIV.store_cap, CIV.store_cap, 0.0, 0.0, 0.0, 0.0, 0.0];
     civs::upkeep(&mut w);
-    assert_eq!(w.clans[&fed].store, [4.0, 2.0, 0.0, 6.0, 0.0, 0.0, 0.0]);
+    assert_eq!(w.clans[&fed].store, [4.0, 2.0, 0.0, 6.0, 0.0, 0.0, 0.0, 0.0]);
 
     // Past the cap, every good scales down so the store holds the cap.
     let c = &w.civs[&red];
@@ -212,7 +212,7 @@ fn the_store_spoils_and_is_capped() {
 #[test]
 fn a_cut_store_says_how_much_was_lost() {
     let (mut w, ids) = founded();
-    w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 3.0 * CIV.store_cap, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 3.0 * CIV.store_cap, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     civs::upkeep(&mut w);
     let c = &w.civs[&ids[0]];
     assert!((c.store[GRAIN] - CIV.store_cap).abs() < 1e-9);

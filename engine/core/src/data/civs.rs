@@ -21,7 +21,7 @@ pub struct CivRules {
 }
 
 pub const CIV: CivRules = CivRules {
-    endowment: [0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    endowment: [0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     bridge_span: 1,
     levy: 0.2,
     store_cap: 60.0,

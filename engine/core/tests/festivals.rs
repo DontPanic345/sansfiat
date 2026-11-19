@@ -97,8 +97,11 @@ fn a_festival_one_clan_keeps_coming_to_stays_and_an_empty_one_fades() {
 fn a_clan_brings_at_most_carry_times_its_people_and_trade_conserves() {
     let mut w = flat();
     let mid = open(&mut w, at(0, 0));
-    let baskets =
-        [[0.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 6.0, 2.0, 0.0, 0.0], [3.0, 1.0, 4.0, 0.0, 0.0, 0.0, 0.0]];
+    let baskets = [
+        [0.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 6.0, 2.0, 0.0, 0.0, 0.0],
+        [3.0, 1.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    ];
     let mut ids = Vec::new();
     for (k, b) in baskets.iter().enumerate() {
         let id = put(&mut w, &[out(k, 1)], 4.0);
@@ -145,7 +148,7 @@ fn people_move_from_a_starving_clan_to_a_growing_one_up_to_its_room() {
     let mid = open(&mut w, at(0, 0));
     let (s, g) = (put(&mut w, &[out(0, 1)], 10.0), put(&mut w, &[out(2, 1)], 10.0));
     starve(w.clans.get_mut(&s).unwrap(), 0.0);
-    w.clans.get_mut(&g).unwrap().harvest = [2.2, 2.2, 2.2, 2.2, 2.2, 0.0, 0.0];
+    w.clans.get_mut(&g).unwrap().harvest = [2.2, 2.2, 2.2, 2.2, 2.2, 0.0, 0.0, 0.0];
     let room = surplus(&w.clans[&g].harvest, 10.0);
     assert!(room > 0.0 && room < 3.0, "{room}");
     come(&mut w, s, mid);

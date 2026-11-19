@@ -20,9 +20,9 @@ fn basket(food: f64, salt: f64, obsidian: f64) -> Basket {
 
 #[test]
 fn every_good_has_a_use_and_only_food_is_eaten() {
-    assert_eq!(GOODS, ["game", "grain", "fruit", "fish", "shellfish", "salt", "obsidian"]);
+    assert_eq!(GOODS, ["game", "grain", "fruit", "fish", "shellfish", "animals", "salt", "obsidian"]);
     for g in &GOOD {
-        assert_eq!(g.eaten, g.uses == Use::Food, "{}", g.name);
+        assert_eq!(g.eaten, matches!(g.uses, Use::Food | Use::Herd), "{}", g.name);
     }
     let mut b = basket(10.0, 3.0, 2.0);
     assert_eq!(total(&b), 10.0, "total is the food");

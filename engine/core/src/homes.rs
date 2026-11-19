@@ -103,7 +103,7 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
     }
     let value = |prices: &mut Prices, home: usize, territory: &[usize]| {
         let routes = prices.routes(w, c, home);
-        clans::could_reap(w, c.id, c.people, &c.store, &routes, home, territory, c.fields)
+        clans::could_reap(w, c.id, c.people, &c.store, &routes, home, territory, c.fields, c.herds)
     };
     // The territory from `home`: the changed territory with `home` in it, less the tiles another clan
     // holds other than the home, trimmed to the radius.
@@ -113,7 +113,7 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
         if let Err(k) = with.binary_search(&home) {
             with.insert(k, home);
         }
-        actors::trim(w, home, &with, CLAN.territory_radius)
+        actors::trim(w, home, &with, crate::herds::radius(c))
     };
     let stay = land(c.home);
     let now = value(prices, c.home, &stay);
@@ -128,10 +128,10 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
         }
     };
     if let Some(target) = fields::home_toward(w, c, changed) {
-        let (home, _) = actors::step_toward(w, c.home, target, changed, CLAN.territory_radius);
+        let (home, _) = actors::step_toward(w, c.home, target, changed, crate::herds::radius(c));
         weigh(prices, home, land(home), "moved its home toward its fields");
     } else if !farmer {
-        let (home, _) = actors::recentre(w, c.home, changed, CLAN.territory_radius);
+        let (home, _) = actors::recentre(w, c.home, changed, crate::herds::radius(c));
         weigh(prices, home, land(home), "moved its home to the middle of its land");
     }
     let festival = c.market.and_then(|m| w.markets.get(&m)).map(|m| m.tile);

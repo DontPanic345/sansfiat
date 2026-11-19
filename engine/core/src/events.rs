@@ -13,6 +13,7 @@ pub enum EventKind {
     ClanStarving,
     ClanMoved,
     ClanFarming,
+    ClanHerding,
     ClanMerged,
     MarketFormed,
     MarketFaded,
@@ -126,6 +127,7 @@ impl Event {
             EventKind::ClanMerged => format!("Clan {clan} merges into clan {}", self.other.unwrap_or(0)),
             EventKind::ClanMoved => format!("Clan {clan} moves on to {at}"),
             EventKind::ClanFarming => format!("Clan {clan} takes up fields at {at}"),
+            EventKind::ClanHerding => format!("Clan {clan} takes up herding at {at}"),
             EventKind::MarketFormed => format!("A market forms at {at}"),
             EventKind::MarketFaded => format!("Market {market} fades"),
             EventKind::TownFormed => {

@@ -31,28 +31,28 @@ pub const TERRAIN: [Terrain; 8] = [
         color: "#c9b77a",
         land: true,
         move_cost: Some(1.0 * DAY),
-        food: [1.0, 0.0, 0.0, 4.0, 3.0, 0.0, 0.0],
+        food: [1.0, 0.0, 0.0, 4.0, 3.0, 0.0, 0.0, 0.0],
     },
     Terrain {
         name: "plains",
         color: "#9cbf5a",
         land: true,
         move_cost: Some(1.0 * DAY),
-        food: [3.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        food: [3.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     },
     Terrain {
         name: "forest",
         color: "#3f7a3a",
         land: true,
         move_cost: Some(2.0 * DAY),
-        food: [3.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0],
+        food: [3.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     },
     Terrain {
         name: "hills",
         color: "#8a7a5c",
         land: true,
         move_cost: Some(2.0 * DAY),
-        food: [2.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+        food: [2.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     },
     Terrain { name: "mountain", color: "#6e6a73", land: false, move_cost: None, food: [0.0; N] },
     Terrain { name: "desert", color: "#e0cf94", land: true, move_cost: Some(2.0 * DAY), food: [0.0; N] },
@@ -61,7 +61,7 @@ pub const TERRAIN: [Terrain; 8] = [
         color: "#5b8c78",
         land: true,
         move_cost: Some(3.0 * DAY),
-        food: [2.0, 2.0, 0.0, 4.0, 3.0, 0.0, 0.0],
+        food: [2.0, 2.0, 0.0, 4.0, 3.0, 0.0, 0.0, 0.0],
     },
 ];
 
@@ -192,7 +192,7 @@ pub struct Features {
     pub river: [f64; N],
 }
 
-pub const FEATURES: Features = Features { river: [0.0, 1.0, 0.0, 5.0, 0.0, 0.0, 0.0] };
+pub const FEATURES: Features = Features { river: [0.0, 1.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0] };
 
 pub struct RiverRules {
     /// Extra days a step to enter a river tile off its course, unless a trail bridges it.
@@ -220,6 +220,7 @@ pub const FOOD: [Food; N] = [
     Food { regen: 0.2, breeds: false, restock: 0.0 },
     Food { regen: 0.3, breeds: false, restock: 0.0 },
     Food { regen: 0.2, breeds: false, restock: 0.0 },
+    Food { regen: 0.0, breeds: false, restock: 0.0 },
     Food { regen: 0.0, breeds: false, restock: 0.0 },
     Food { regen: 0.0, breeds: false, restock: 0.0 },
 ];

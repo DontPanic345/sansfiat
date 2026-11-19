@@ -78,7 +78,7 @@ fn the_civs_clan_stays_on_the_capital_through_adjusting_and_dividing() {
 }
 
 /// A harvest a bit over a clan of 4's need, so it grows by less than the most.
-const HARVEST: [f64; N] = [1.03, 1.03, 1.03, 1.03, 0.0, 0.0, 0.0];
+const HARVEST: [f64; N] = [1.03, 1.03, 1.03, 1.03, 0.0, 0.0, 0.0, 0.0];
 
 /// Gives clan `id` a harvest and a basket of it, its people unchanged.
 fn harvested(w: &mut World, id: u32, market: Option<u32>, civ: Option<u32>) {
@@ -360,8 +360,8 @@ fn foraging_strips_a_tile_so_a_clan_harvests_nothing_there_for_fallow_turns() {
     let (mut w, ids, _) = three();
     let red = ids[0];
     let t = at_big(-1, 4);
-    w.tiles[t].cap = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-    w.tiles[t].stock = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.tiles[t].cap = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.tiles[t].stock = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let id = put_camp(&mut w, red, t);
     {
         let c = camp_mut(&mut w, id);
@@ -374,7 +374,7 @@ fn foraging_strips_a_tile_so_a_clan_harvests_nothing_there_for_fallow_turns() {
     assert!((w.civs[&red].army.foraged - 3.0).abs() < 1e-9, "{}", w.civs[&red].army.foraged);
     assert_eq!(w.civs[&red].army.foraged_tiles, 1);
     // Only the food it took leaves: a third of the tile, which rests a third of the fallow turns.
-    assert_eq!((w.tiles[t].stock, w.tiles[t].fallow), ([0.0, 7.0, 0.0, 0.0, 0.0, 0.0, 0.0], 2));
+    assert_eq!((w.tiles[t].stock, w.tiles[t].fallow), ([0.0, 7.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 2));
     assert_eq!(units::camp(&w, red).unwrap().hungry, 0);
     assert_eq!(kinds(&w, EventKind::CampForaged), 1);
     // (It stops foraging, or it would strip what is left of the tile as soon as it rests no more.)
@@ -398,9 +398,9 @@ fn pillage_yields_more_than_forage() {
         let red = ids[0];
         let t = if pillage { at_big(4, 0) } else { at_big(0, 3) };
         assert_eq!(civs::tile_civ(&w, t), if pillage { Some(ids[1]) } else { None });
-        w.tiles[t].cap = [0.0, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        w.tiles[t].cap = [0.0, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         w.tiles[t].unworn = w.tiles[t].cap;
-        w.tiles[t].stock = [0.0, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        w.tiles[t].stock = [0.0, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         // With the fight on, the camp would take Blue's tile and it would be
         // nobody's to pillage; off, no land is taken and the tile stays Blue's.
         w.config.fight = false;
@@ -430,14 +430,14 @@ fn with_the_switches_off_it_neither_forages_nor_supplies() {
     let red = ids[0];
     no_scout(&mut w, red);
     let t = at_big(-3, 1);
-    w.tiles[t].stock = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.tiles[t].stock = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let id = put_camp(&mut w, red, t);
     camp_mut(&mut w, id).store = [0.0; N];
     w.act(led_order(&w, Order::Switches { unit: led_camp(&w), forage: false, supply: false })).unwrap();
     fill_stores(&mut w);
     let store = w.civs[&red].store;
     units::step(&mut w);
-    assert_eq!(w.tiles[t].stock, [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    assert_eq!(w.tiles[t].stock, [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
     assert_eq!(w.civs[&red].store, store);
     let camp = units::camp(&w, red).unwrap();
     assert_eq!((total(&camp.store), camp.hungry), (0.0, 1));
@@ -561,7 +561,7 @@ fn the_ai_raises_an_army_it_can_feed_and_leaves_the_players_alone() {
     assert!(units::camp(&w, ids[1]).is_none(), "no levy, no army");
     // A levy that covers its mouths and one more, and a store that holds the pack: one warrior, at the capital.
     let c = w.civs.get_mut(&ids[1]).unwrap();
-    c.store = [0.0, CIV.store_cap, 0.0, 0.0, 0.0, 0.0, 0.0];
+    c.store = [0.0, CIV.store_cap, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     c.levied = 50.0;
     units::ai(&mut w);
     assert!(units::camp(&w, ids[0]).is_none(), "not the player's civ");
@@ -772,7 +772,7 @@ fn guarding_costs_labour_only_when_deployed() {
         put_camp(&mut w, ids[0], at_big(-2, 0));
         let id = camp_id(&w, ids[0]);
         camp_mut(&mut w, id).store = [0.0; N];
-        w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        w.civs.get_mut(&ids[0]).unwrap().store = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         if deploy {
             w.act(led_order(&w, Order::Zone { unit: led_camp(&w), tiles: vec![at_big(-1, 0)] })).unwrap();
         }
@@ -880,7 +880,7 @@ fn a_deployed_camp_on_rival_land_still_pillages() {
     let red = ids[0];
     let t = at_big(4, 1);
     assert_eq!(civs::tile_civ(&w, t), Some(ids[1]));
-    w.tiles[t].stock = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.tiles[t].stock = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let id = put_camp(&mut w, red, t);
     camp_mut(&mut w, id).store = [0.0; N];
     w.act(led_order(&w, Order::Zone { unit: led_camp(&w), tiles: vec![at_big(3, 1)] })).unwrap();
@@ -894,7 +894,7 @@ fn a_camp_cut_by_an_army_eats_its_pack_then_forages() {
     let (mut w, red, blue) = corridor();
     let t = at_big(-1, 0);
     let id = put_camp(&mut w, red, t);
-    w.tiles[t].stock = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    w.tiles[t].stock = [0.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     put_camp(&mut w, blue, at_big(-3, 0));
     let full = total(&units::camp(&w, red).unwrap().store);
     assert!(full >= 3.0 * UNIT.food * 2.0);

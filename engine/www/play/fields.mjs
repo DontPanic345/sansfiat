@@ -59,6 +59,8 @@ const SPEC = {
   people: 12,
   lead: 0,
   food: [{ at: { mark: 'P' }, good: 1, amount: 30 }],
+  // Herds off: a clan that starves drops its fields, and with herds open it would take up herds instead.
+  herds: false,
   tame: [{ at: { mark: 'P' }, tame: 100 }, { at: { mark: 'X' }, tame: 100 }],
   clans: [{ home: { mark: 'P' }, tiles: [{ mark: 'X' }], people: 12, civ: 0 }],
 };

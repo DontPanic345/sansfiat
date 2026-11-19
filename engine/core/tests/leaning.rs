@@ -80,7 +80,7 @@ fn a_new_civ_gives_the_default_gift() {
 #[test]
 fn nothing_is_posted_or_given_below_keep() {
     let (mut w, civ, mid) = scene();
-    let a = visitor(&mut w, mid, at_big(-5, 2), 6.0, [4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    let a = visitor(&mut w, mid, at_big(-5, 2), 6.0, [4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
     w.civs.get_mut(&civ).unwrap().keep = Some(25.0);
     let store = w.civs[&civ].store;
     trade(&mut w);
@@ -93,8 +93,8 @@ fn nothing_is_posted_or_given_below_keep() {
 #[test]
 fn a_civ_posts_what_it_holds_beyond_keep_and_the_clearing_conserves_every_good() {
     let (mut w, civ, mid) = scene();
-    visitor(&mut w, mid, at_big(-5, 2), 6.0, [6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
-    visitor(&mut w, mid, at_big(-4, 1), 6.0, [0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 0.0]);
+    visitor(&mut w, mid, at_big(-5, 2), 6.0, [6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    visitor(&mut w, mid, at_big(-4, 1), 6.0, [0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
     let c = w.civs.get_mut(&civ).unwrap();
     c.keep = Some(5.0);
     c.gift = 0.0;
@@ -206,7 +206,7 @@ fn trade_leaning_comes_only_at_the_civs_market_on_a_turn_it_posted() {
         w.config = Config { gifts: false, ..w.config };
         let other = open(&mut w, at_big(0, 5));
         let at = if own_market { mid } else { other };
-        let a = visitor(&mut w, at, at_big(-5, 1), 6.0, [6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        let a = visitor(&mut w, at, at_big(-5, 1), 6.0, [6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         w.civs.get_mut(&civ).unwrap().keep = Some(keep);
         trade(&mut w);
         (w.clans[&a].leaning.get(&civ).copied().unwrap_or(0.0), w.civs[&civ].posted)
@@ -282,17 +282,17 @@ fn a_daughter_takes_her_mothers_leanings() {
         let round: Vec<usize> = std::iter::once(at(0, 0)).chain((0..6).map(|d| out(d, 1))).collect();
         let id = put(&mut w, &round, CLAN.split_at);
         let c = w.clans.get_mut(&id).unwrap();
-        c.basket = [10.0, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0];
+        c.basket = [10.0, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         c.leaning.insert(1, 0.4);
         eat(&mut w);
         assert_eq!(w.clans.len(), 2, "divided");
         assert!(w.clans.values().all(|c| c.leaning.get(&1) == Some(&0.4)));
 
         let mut w = flat();
-        w.tiles[out(1, 3)].stock = [20.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0];
+        w.tiles[out(1, 3)].stock = [20.0, 20.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         let id = put(&mut w, &[at(0, 0)], 9.0);
         let c = w.clans.get_mut(&id).unwrap();
-        c.basket = [3.6, 2.7, 0.0, 0.0, 0.0, 0.0, 0.0];
+        c.basket = [3.6, 2.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         c.leaning.insert(1, 0.4);
         eat(&mut w);
         assert_eq!(w.clans.len(), 2, "split");
@@ -410,7 +410,7 @@ fn a_claim_order_over_a_clans_home_makes_it_the_civs_at_once_and_it_pays_the_lev
     let red = ids[0];
     let (cap, mid) = (w.civs[&red].capital, w.civs[&red].market);
     let home = at_big(-3, 0);
-    let k = visitor(&mut w, mid, home, 6.0, [4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    let k = visitor(&mut w, mid, home, 6.0, [4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
     let before = stats::standing(&w)[&red];
     w.civs.get_mut(&red).unwrap().store = [0.0; N];
     civs::levy(&mut w, mid);
@@ -510,7 +510,7 @@ fn a_clan_on_nobodys_land_joins_by_its_leaning_and_the_feed_says_gift_or_trade()
 #[test]
 fn a_gift_adds_to_the_gift_part_of_a_leaning_and_trade_does_not() {
     let (mut w, civ, mid) = scene();
-    let a = visitor(&mut w, mid, at_big(-4, 2), 6.0, [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    let a = visitor(&mut w, mid, at_big(-4, 2), 6.0, [0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
     trade(&mut w);
     let c = &w.clans[&a];
     let (lean_to, gift) = (c.leaning.get(&civ).copied().unwrap_or(0.0), c.gifts.get(&civ).copied().unwrap_or(0.0));
