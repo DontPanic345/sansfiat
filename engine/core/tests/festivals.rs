@@ -1,11 +1,11 @@
 mod common;
 
 use common::*;
+use engine::actors::{Actor, Carrier, Route};
 use engine::clans::{surplus, Clan};
 use engine::data::*;
 use engine::markets::{fade, form, people, trade};
 use engine::EventKind;
-use engine::actors::{Actor, Carrier, Route};
 use engine::{Config, World};
 
 fn sum_people(w: &World) -> f64 {

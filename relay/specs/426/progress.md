@@ -2,10 +2,10 @@
 
 ## Plan
 
-1. `markets::load`: a clan brings its wares and its food a load (`CARRY.clan.load`, 2) at a time; the
+1. `markets::load`: a clan brings its wares and its surplus (food beyond a food a person) a load (`CARRY.clan.load`, 2) at a time; the
    first load rides with the walker who goes anyway, each further load goes while the food it trades
    for (`markets::gain` at the market's last prices, × `CLAN.harvest_labour`) is worth more than the
-   walk days of the walker it adds. Walk 0 (on the festival's tile) brings everything. `MARKET.carry` goes.
+   walk days of the walker it adds. Walk 0 (on the festival's tile) brings the whole surplus. `MARKET.carry` goes.
 2. `worths` prices each festival at the load it would bring there; `go` sets the route's cost to the
    walk × the load's walkers and keeps them on `Clan.walkers`; `trade` brings the load on the basket it
    has, at the walk of its route (cost ÷ walkers).
@@ -16,5 +16,7 @@
 
 ## Done
 
-- 1–4 built. Tests: `markets.rs` (the load rule, walkers, worths and routes), `festivals.rs` (trade at the
-  door and on a long route).
+- 1–5 built and swept (`sweep.md`). Variants weighed there: the whole basket, and a first load plus the
+  surplus; the cap gone with homes valued by their walk alone gave 7 towns at +200, so step 3 went in.
+- Tests: `markets.rs`, `festivals.rs`, `towns.rs`. `spec.md` holds the decisions; `steps.json` hands on
+  to the review.

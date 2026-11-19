@@ -67,3 +67,4 @@ the move cost of a tile, the labour of a person and the food of a load are read 
 
 - A trail on flat land costs one day's walk; bare plains cost a day and a third, forest and hills two and two thirds, marsh and a pass four. No reach changed with the unit. (#154)
 - A walk is paid by every person who walks it. A clan's festival walk takes one walker for each 2 food it carries there, and at least one, so a clan of twenty carrying its fill pays more than a clan of two. (#154)
+- A clan brings its surplus to its festival (the food beyond a food a person), a load of 2 at a time: the first load goes with the walker who goes anyway, and each further one while what it trades for at the market's last prices is worth more than its walker's days. A clan on its festival's tile brings its whole surplus; one with none brings no food. No fixed cap. (#426)

@@ -75,3 +75,4 @@ clans on one tile without the per-turn cost growing with them (`clans.md`, Scale
 - Clans farm from the pick: before founding no clan farms, and after it every clan may, unaligned ones included. (#155)
 - A clan with a fifth of its days or more on fields is a farmer, and its home steps a tile a turn toward its busiest field; the civ's own clan stays on the capital. (#155)
 - A tile reads as a town once three clans live on it and a festival stands there. The feed tells when one forms ("A town forms at (3, −2): 4 clans live by the festival"). (#156)
+- A home is weighed with what the clan's load would trade for at its festival from there, beside the walk: a clan moves only when that feeds it better, with no tie toward a festival. (#426)
