@@ -31,6 +31,7 @@ export function legendHtml(country) {
     [sw('background:transparent;border:2px solid #fff;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'market'],
     [sw('background:transparent;border:3px solid #ffc800;border-radius:50%;width:14px;height:14px;margin:0 2px'), 'centre'],
     [sw('background:hsl(120,70%,55%);border:2px solid #ff2a2a;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'clan (red ring: starving)'],
+    [sw('background:radial-gradient(#2a1a0a 0 30%,hsl(120,70%,55%) 31%);border:2px solid #000;border-radius:50%;width:12px;height:12px;margin:1px 3px'), 'settled clan (a square at its hearth)'],
     [sw('background:hsl(120,70%,55%);border:3px solid #d6a63b;border-radius:50%;width:10px;height:10px;margin:2px 3px;box-shadow:0 0 0 1px #000'), 'civ clan (ring in the civ colour)'],
     [sw('background:#d64545;border:2px solid #fff;outline:2px solid #000;width:10px;height:10px;margin:2px 4px;clip-path:polygon(0 25%,50% 0,100% 25%,100% 100%,0 100%)'), 'capital'],
     [sw('background:#d64545;border:2px solid #222;width:10px;height:10px;margin:2px 4px;clip-path:polygon(0 35%,50% 0,100% 35%,100% 100%,0 100%)'), 'settlement'],

@@ -67,6 +67,14 @@ const page = await open('');
 try {
   await stage(page, SPEC);
   const me = await page.eval('game.view().player');
+  // The clan the civ is founded on is settled at founding, whatever its ground: its hearth is drawn as a house.
+  const founded = await page.eval(`(() => { const v = game.view(); const c = v.civs[${me}]; return { id: c.clan, settled: v.clans[c.clan]?.settled === true, home: v.clans[c.clan]?.home }; })()`);
+  need(founded.settled, `the civ's own clan ${founded.id} is settled at founding`);
+  await page.select(founded.home, 'clan');
+  await page.eval(frames);
+  await page.shot(join(out, 'settled-hearth.png'), 1);
+  const ownPanel = await page.panel();
+  need(numberOf(ownPanel, 'Lives by')?.value === 'farming: settled', `its panel says it lives by farming (${numberOf(ownPanel, 'Lives by')?.value ?? 'none'})`);
 
   // Play until a clan of the led civ farms: its share is at rules().field.farmer (the line its doing line reads), it has a
   // field tile laid, and the feed has its clanFarming line.
@@ -83,7 +91,7 @@ try {
   }
   need(clans.length > 0, `a clan of the led civ farms within ${CAP} turns (${turns} played, clans ${clans.join(', ') || 'none'})`);
   if (clans.length === 0) process.exit(1);
-  console.log(`      the first farming clan came after ${turns} turn${turns === 1 ? '' : 's'}, with ${(await farmers()).toFixed(2)} farming people`);
+  console.log(`      the first farming clan came after ${turns} turn${turns === 1 ? '' : 's'}, with ${(await farmers()).toFixed(2)} people in settled clans`);
   const clan = clans[0];
 
   // The feed holds a clanFarming item, and a click on it selects the clan (and centres the map on its home).
@@ -111,6 +119,8 @@ try {
   need(fieldsRow && /tiles? · [\d.]+ days · [\d.]+ grain/.test(fieldsRow.value), `the clan's panel has a Fields row (${fieldsRow?.value ?? 'none'})`);
   need(ground > 0, `the clan's first field tile ${tile} has ground (${ground} days)`);
   need(/^Farms .+ of its days/.test(panel?.doing ?? ''), `the clan's doing line leads with how it farms (${panel?.doing})`);
+  const livesBy = numberOf(panel, 'Lives by');
+  need(livesBy?.value === (clanView.settled ? 'farming: settled' : 'gathering'), `the clan's panel says how it lives (${livesBy?.value ?? 'none'})`);
 
   // The field layer is on by default, and draws on the clan's field tile.
   need(await page.eval("game.map.on.fields === true && document.getElementById('v-fields').checked"), 'the fields layer is on, and its View box is checked');
@@ -137,13 +147,17 @@ try {
   if (m) {
     const [g, f, a] = m.slice(1).map(Number);
     const civ = await page.eval(`(() => { const v = game.view(); const c = v.civs[${me}];
-      return { people: c.people, army: c.living.army, farming: c.living.farming }; })()`);
-    // The farming people are read from the view: the led civ's farmers can be under half a person, which the row
-    // rounds to 0 (build-3's decision; the row's whole people are as the brief says).
-    need(civ.farming > 0, `the civ's farming people are above 0 (${civ.farming.toFixed(2)}, the row reads ${f})`);
+      const settled = Object.values(v.clans).filter((k) => k.civ === ${me} && k.settled).reduce((a, k) => a + k.people, 0);
+      return { people: c.people, army: c.living.army, farming: c.living.farming, settled }; })()`);
+    // Farming is a way of life: the people of the civ's settled clans.
+    need(Math.abs(civ.farming - civ.settled) < 1e-9, `the civ's farming people are its settled clans' (${civ.farming.toFixed(2)} against ${civ.settled.toFixed(2)}, the row reads ${f})`);
     // Each part rounds to a whole person, so the three add up to the civ's people and its army within 1.5.
     need(Math.abs(g + f + a - (civ.people + civ.army)) <= 1.5, `the Living parts (${g} + ${f} + ${a}) add up to its people and army (${(civ.people + civ.army).toFixed(2)})`);
   }
+  // The Settled row: the civ's settled clans of its clans, as the view counts them; the civ's own clan is settled at founding.
+  const settledRow = numberOf(civPanel, 'Settled');
+  const sv = await page.eval(`(() => { const v = game.view(); const c = v.civs[${me}]; return { settled: c.living.settled, clans: c.clans, own: v.clans[c.clan]?.settled === true }; })()`);
+  need(settledRow?.value === `${sv.settled} of ${sv.clans} clans`, `the civ's panel has a Settled row (${settledRow?.value ?? 'none'}, view ${sv.settled} of ${sv.clans})`);
   await page.shot(join(out, 'civ-panel.png'), 1);
 
   // The farmer, selected, with its fields drawn.

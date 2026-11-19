@@ -1,4 +1,6 @@
-use engine::data::{ARMS, CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SETTLING, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{
+    ARMS, CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SETTLING, SIZES, TENDING, TRAIL, UNIT,
+};
 use engine::map::Tile;
 use engine::over::{self, Why};
 use engine::script::Lead;
@@ -110,7 +112,7 @@ impl Sim {
     /// unworn]` for every tile with some food worn (each food's wear as a share, `0..=1`, and its cap before
     /// wear, in `goods()` order). `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
-    /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, claim (the civ's claimed
+    /// capital, clan (its own clan), founded, store (a basket, in `goods()` order), lost, people, clans, claim (the civ's claimed
     /// tiles, sorted, the capital among them), land (its held tiles: its whole claim),
     /// army (its `units::Counters`), keep (the food it keeps
     /// in force, `civs::keep`), keep_set
@@ -178,6 +180,7 @@ impl Sim {
                     "color": c.color,
                     "market": c.market,
                     "capital": c.capital,
+                    "clan": c.clan,
                     "founded": c.founded,
                     "store": c.store,
                     "lost": c.lost,

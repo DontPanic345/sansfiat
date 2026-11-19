@@ -144,13 +144,10 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     let people: f64 = clans.iter().map(|k| k.people).sum();
     let on_land = clans.iter().filter(|k| claim::tile_civ(w, k.home) == Some(me)).count();
     let levy = clans.iter().filter_map(|k| w.levied.get(&k.id)).fold(0.0, |a, p| a + p);
-    out += &format!(
-        "clans: {} with {people:.1} people, {on_land} with their home on your land (a home on your land makes a clan yours); they paid {levy:.1} food in levy last turn; the largest:\n",
-        clans.len()
-    );
     let l = engine::settling::living(w, me);
     out += &format!(
-        "living: gathering {:.1} people, farming {:.1} people in {} settled clan(s), in the army {:.1} (a clan settles after {} turns with {:.0}% or more of its days on fields, and goes back after {} under {:.0}%)\n",
+        "clans: {} with {people:.1} people, {on_land} with their home on your land (a home on your land makes a clan yours); they paid {levy:.1} food in levy last turn; living: gathering {:.1} people, farming {:.1} in {} settled clan(s), in the army {:.1} (a clan settles after {} turns with {:.0}% or more of its days on fields, and goes back after {} under {:.0}%); the largest:\n",
+        clans.len(),
         l.gathering,
         l.farming,
         l.settled,
