@@ -1,7 +1,7 @@
 //! The text view of the led civ: what a player of the page can see, in text, read at every decision
 //! by `play`. Every number is read off the world; nothing here changes it.
 
-use engine::data::{Fighter, CIV, FIGHT, LEANING, SETTLE, UNIT};
+use engine::data::{Fighter, CIV, FIGHT, LEANING, SETTLE, SETTLING, UNIT};
 use engine::data::{ARMS, GOOD, KEEPING, N};
 use engine::market::total;
 use engine::over::{self, Why};
@@ -144,17 +144,27 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     let people: f64 = clans.iter().map(|k| k.people).sum();
     let on_land = clans.iter().filter(|k| claim::tile_civ(w, k.home) == Some(me)).count();
     let levy = clans.iter().filter_map(|k| w.levied.get(&k.id)).fold(0.0, |a, p| a + p);
+    let l = engine::settling::living(w, me);
     out += &format!(
-        "clans: {} with {people:.1} people, {on_land} with their home on your land (a home on your land makes a clan yours); they paid {levy:.1} food in levy last turn; the largest:\n",
-        clans.len()
+        "clans: {} with {people:.1} people, {on_land} with their home on your land (a home on your land makes a clan yours); they paid {levy:.1} food in levy last turn; living: gathering {:.1} people, farming {:.1} in {} settled clan(s), in the army {:.1} (a clan settles after {} turns with {:.0}% or more of its days on fields, and goes back after {} under {:.0}%); the largest:\n",
+        clans.len(),
+        l.gathering,
+        l.farming,
+        l.settled,
+        l.army,
+        SETTLING.settle_after,
+        SETTLING.farms * 100.0,
+        SETTLING.leave_after,
+        SETTLING.gathers * 100.0
     );
     for k in clans.iter().take(CLANS_NAMED) {
         let home = if claim::tile_civ(w, k.home) == Some(me) { "on your land" } else { "off your land" };
         out += &format!(
-            "  clan {} at {}: {:.1} people, fed {:.2}{}, {home}, {}\n",
+            "  clan {} at {}: {:.1} people, {}, fed {:.2}{}, {home}, {}\n",
             k.id,
             tile(w, k.home),
             k.people,
+            if k.settled { "settled" } else { "gathering" },
             k.fed_ratio,
             fields_text(w, k),
             levy_text(w, k)

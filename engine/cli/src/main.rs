@@ -16,6 +16,7 @@ mod sweep_goods;
 mod sweep_judge;
 mod sweep_led;
 mod sweep_settle;
+mod sweep_settling;
 mod sweep_text;
 mod sweep_total;
 mod sweep_towns;

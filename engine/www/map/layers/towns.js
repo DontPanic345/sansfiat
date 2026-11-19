@@ -1,4 +1,5 @@
-// Towns: a town mark at the top of each festival tile that reads as a town (several clans live on it).
+// Towns: a town mark at the top of each festival tile that reads as a town (several clans live on it). It draws
+// after the capitals in `LAYERS`, so a capital's town shows above the house.
 import { icon } from './icon.js';
 import { ICON_WORLD } from '../../assets/placeholders.js';
 

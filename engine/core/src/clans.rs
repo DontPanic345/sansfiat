@@ -65,6 +65,12 @@ pub struct Clan {
     /// reads it next turn, to leave the other clans their share of the ground.
     #[serde(default)]
     pub sown: Vec<(usize, f64)>,
+    /// Whether it has settled (`settling.rs`): a reading no rule reads.
+    #[serde(default, skip_serializing_if = "crate::towns::is_false")]
+    pub settled: bool,
+    /// Turns in a row its field share has stood past the line that would change `settled`.
+    #[serde(default, skip_serializing_if = "crate::settling::is_zero")]
+    pub settle_run: u32,
 }
 
 impl Deref for Clan {
@@ -143,6 +149,8 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         parent: None,
         fields: 0.0,
         sown: Vec::new(),
+        settled: false,
+        settle_run: 0,
     }
 }
 

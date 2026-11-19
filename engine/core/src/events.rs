@@ -13,6 +13,8 @@ pub enum EventKind {
     ClanStarving,
     ClanMoved,
     ClanFarming,
+    ClanSettled,
+    ClanGathers,
     ClanMerged,
     MarketFormed,
     MarketFaded,
@@ -120,12 +122,20 @@ impl Event {
         let market = self.market.unwrap_or(0);
         match self.kind {
             EventKind::ClanDivided => {
-                format!("Clan {clan} divides; clan {} settles at {at}", self.other.unwrap_or(0))
+                format!("Clan {clan} divides; clan {} makes its home at {at}", self.other.unwrap_or(0))
             }
             EventKind::ClanStarving => format!("Clan {clan} is starving"),
             EventKind::ClanMerged => format!("Clan {clan} merges into clan {}", self.other.unwrap_or(0)),
             EventKind::ClanMoved => format!("Clan {clan} moves on to {at}"),
             EventKind::ClanFarming => format!("Clan {clan} takes up fields at {at}"),
+            EventKind::ClanSettled => format!(
+                "Clan {clan} settles at {at}: a fifth or more of its days on fields for {} turns",
+                self.amount.unwrap_or(0.0) as u32
+            ),
+            EventKind::ClanGathers => format!(
+                "Clan {clan} goes back to gathering at {at}: under a tenth of its days on fields for {} turns",
+                self.amount.unwrap_or(0.0) as u32
+            ),
             EventKind::MarketFormed => format!("A market forms at {at}"),
             EventKind::MarketFaded => format!("Market {market} fades"),
             EventKind::TownFormed => {

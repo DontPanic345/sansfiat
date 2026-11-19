@@ -158,6 +158,8 @@ pub struct Watch {
     towns: Towns,
     /// Signposts and settlements (`judge_settle`).
     settle: crate::judge_settle::Settle,
+    /// Settled clans and their changes (`judge_settling`).
+    settling: crate::judge_settling::Settling,
     /// Salt and obsidian (`judge_goods`).
     goods: crate::judge_goods::Goods,
 }
@@ -198,6 +200,7 @@ impl Watch {
             fields: Fields::pick(w),
             towns: Towns::pick(w),
             settle: crate::judge_settle::Settle::pick(w),
+            settling: crate::judge_settling::Settling::pick(w),
             goods: crate::judge_goods::Goods::pick(w),
         }
     }
@@ -274,6 +277,7 @@ impl Watch {
         self.fields.turn(w);
         self.towns.turn(w);
         self.settle.turn(w);
+        self.settling.turn(w);
         self.goods.turn(w);
 
         let now = self.turns();
@@ -437,6 +441,7 @@ impl Watch {
             fields: self.fields.scores(),
             towns: self.towns.scores(),
             settle: self.settle.scores(),
+            settling: self.settling.scores(),
             goods: self.goods.scores(),
             end: self.end_scores(w),
         }

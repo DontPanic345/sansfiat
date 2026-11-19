@@ -1,4 +1,6 @@
-use engine::data::{ARMS, CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SIZES, TENDING, TRAIL, UNIT};
+use engine::data::{
+    ARMS, CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SETTLING, SIZES, TENDING, TRAIL, UNIT,
+};
 use engine::map::Tile;
 use engine::over::{self, Why};
 use engine::script::Lead;
@@ -110,7 +112,7 @@ impl Sim {
     /// unworn]` for every tile with some food worn (each food's wear as a share, `0..=1`, and its cap before
     /// wear, in `goods()` order). `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
-    /// capital, founded, store (a basket, in `goods()` order), lost, people, clans, claim (the civ's claimed
+    /// capital, clan (its own clan), founded, store (a basket, in `goods()` order), lost, people, clans, claim (the civ's claimed
     /// tiles, sorted, the capital among them), land (its held tiles: its whole claim),
     /// army (its `units::Counters`), keep (the food it keeps
     /// in force, `civs::keep`), keep_set
@@ -118,9 +120,9 @@ impl Sim {
     /// (the most it gives a turn), gift_reach (the clans not its own at its capital market, which its gift
     /// reaches: `civs::gift_reach`), posted (food posted to its market last turn), given (food given
     /// last turn), joined (clans joined since founding), gifted (food given since founding), living
-    /// (`{gathering, farming, army}`: its people by what they do, gathering over their land (Σ people ×
-    /// (1 − fields) over its clans), working fields (Σ people × fields over its clans), or in its units
-    /// (the people of all its units: camps and scouts)); for the led civ also reach_line and capital_line
+    /// (`{gathering, farming, army, settled}`: its people by how they live, in its clans that gather, in
+    /// its settled clans, which farm, or in its units (camps and scouts), and its settled clans
+    /// (`settling::living`)); for the led civ also reach_line and capital_line
     /// (`outlook::reach_line`, `outlook::capital_line`)}}`. Each
     /// clan in `clans` carries `leaning` (civ id to leaning; empty for a clan with a civ), `routes`
     /// (its festival route: `[{to, path, cost}]`, the path from home, so its walk is home then the path),
@@ -171,16 +173,14 @@ impl Sim {
             .map(|c| {
                 let part = parts.get(&c.id).copied().unwrap_or_default();
                 let mine = w.clans.values().filter(|k| k.civ == Some(c.id));
-                let (gathering, farming) = mine
-                    .clone()
-                    .fold((0.0, 0.0), |(g, f), k| (g + k.people * (1.0 - k.fields), f + k.people * k.fields));
-                let army: f64 = w.units.values().filter(|u| u.civ == c.id).map(|u| u.people).sum();
+                let l = engine::settling::living(w, c.id);
                 let row = serde_json::json!({
                     "id": c.id,
                     "name": c.name,
                     "color": c.color,
                     "market": c.market,
                     "capital": c.capital,
+                    "clan": c.clan,
                     "founded": c.founded,
                     "store": c.store,
                     "lost": c.lost,
@@ -203,7 +203,7 @@ impl Sim {
                     "pressed": c.pressed,
                     "besieged": c.besieged,
                     "fallen": c.fallen,
-                    "living": { "gathering": gathering, "farming": farming, "army": army },
+                    "living": { "gathering": l.gathering, "farming": l.farming, "army": l.army, "settled": l.settled },
                 });
                 let mut row = row;
                 if w.player == Some(c.id) && !c.is_out() {
@@ -535,6 +535,7 @@ pub fn rules() -> String {
         "fighters": FIGHTERS.iter().map(|f| serde_json::json!({ "name": f.name, "attack": f.attack, "defence": f.defence })).collect::<Vec<_>>(),
         "fight": { "entrench": FIGHT.entrench, "entrench_cap": FIGHT.entrench_cap, "hungry": FIGHT.hungry, "surrender": FIGHT.surrender },
         "field": { "farmer": FIELD.farmer },
+        "settling": { "farms": SETTLING.farms, "gathers": SETTLING.gathers },
         "signposts": SETTLE.signposts,
         "foods": FOODS.len(),
         "arms": { "edge": ARMS.edge, "each": ARMS.each },

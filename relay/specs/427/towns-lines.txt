@@ -1,0 +1,10 @@
+towns (against the no-towns control, Config.towns off):
+  small  seed   2  towns at +200 0 (clans 0, farmers 0, fields 0), capital towns 0 of 3, formed 4, most homes 3; walk 0.000 vs farmers 0.140; traded 0.0502 town, 0.0591 outside, 0.0377 farmers outside; starving 0.0502 vs control 0.0057
+  small  seed   3  towns at +200 0 (clans 0, farmers 0, fields 0), capital towns 0 of 2, formed 0, most homes 3; walk 0.000 vs farmers 0.190; traded 0.0000 town, 0.0599 outside, 0.0527 farmers outside; starving 0.0255 vs control 0.0171
+  small  seed   6  towns at +200 0 (clans 0, farmers 0, fields 0), capital towns 0 of 2, formed 0, most homes 2; walk 0.000 vs farmers 0.162; traded 0.0000 town, 0.0690 outside, 0.0605 farmers outside; starving 0.0295 vs control 0.0298
+  small  seed   9  towns at +200 1 (clans 3, farmers 2, fields 1), capital towns 1 of 3, formed 1, most homes 3; walk 0.000 vs farmers 0.150; traded 0.0377 town, 0.0538 outside, 0.0347 farmers outside; starving 0.0150 vs control 0.0198
+  medium seed   8  towns at +200 2 (clans 10, farmers 6, fields 2), capital towns 1 of 3, formed 2, most homes 7; walk 0.000 vs farmers 0.223; traded 0.0373 town, 0.0753 outside, 0.0382 farmers outside; starving 0.0205 vs control 0.0170
+  medium seed   9  towns at +200 4 (clans 21, farmers 18, fields 4), capital towns 2 of 3, formed 6, most homes 9; walk 0.004 vs farmers 0.214; traded 0.0339 town, 0.1117 outside, 0.0444 farmers outside; starving 0.0262 vs control 0.0372
+  large  seed   8  towns at +200 3 (clans 25, farmers 18, fields 3), capital towns 1 of 2, formed 10, most homes 12; walk 0.003 vs farmers 0.174; traded 0.0502 town, 0.0832 outside, 0.0332 farmers outside; starving 0.0187 vs control 0.0193
+  towns form: 10 towns at +200 over the seven, on 4 of 7 maps
+  farmers meet the festival: town clans at +200 59, of them farmers 44, towns working fields 10 of 10

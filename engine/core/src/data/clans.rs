@@ -38,6 +38,31 @@ pub const FIELD: FieldRules = FieldRules {
            maps.",
 };
 
+/// Settling (`settling.rs`): a way of life a clan takes up and leaves, read off its field share. It is a
+/// reading: no rule reads it.
+pub struct SettlingRules {
+    /// The field share from which a turn counts toward settling.
+    pub farms: f64,
+    /// Turns in a row at `farms` or more after which a clan settles.
+    pub settle_after: u32,
+    /// The field share under which a turn counts toward going back to gathering.
+    pub gathers: f64,
+    /// Turns in a row under `gathers` after which a settled clan goes back to gathering.
+    pub leave_after: u32,
+    /// Why these numbers.
+    pub note: &'static str,
+}
+
+pub const SETTLING: SettlingRules = SettlingRules {
+    farms: 0.2,
+    settle_after: 10,
+    gathers: 0.1,
+    leave_after: 10,
+    note: "A clan settles once it has been a farmer (`FIELD.farmer`, a fifth of its days) for some turns in a row, \
+           and goes back once under a tenth for some turns; between the two it stays as it is. The turns are \
+           tuned on the retro maps so that a clan's state changes rarely (relay/specs/427/sweep.md).",
+};
+
 /// Towns: a tile with a festival and this many homes reads as a town (`towns.rs`). It is the reading, not
 /// a rule: nothing acts on it. Build-4 adds its rule's numbers here.
 pub struct TownRules {

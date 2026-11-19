@@ -433,8 +433,9 @@ function civShape(ctx, c) {
     {
       label: 'Living',
       value: `gathering ${Math.round(c.living.gathering)} · farming ${Math.round(c.living.farming)} · in the army ${Math.round(c.living.army)}`,
-      tip: 'Its people by what they do: gathering over their land, working fields, or in its units',
+      tip: 'Its people by how they live: in clans that gather, in settled clans that farm, or in its units. A clan settles once its fields have taken a share of its days for a while',
     },
+    { label: 'Settled', value: `${c.living.settled} of ${c.clans} clans`, tip: 'Its clans that have settled to farm; each still gathers some of its days' },
     { label: 'Clans', value: c.clans, tip: 'Clans it holds' },
     {
       label: 'Store',
@@ -533,6 +534,13 @@ function clanShape(ctx, k) {
     { label: 'People', value: f2(k.people), tip: 'The people in the clan' },
     { label: 'Fed', value: `${Math.round(100 * k.fed_ratio)}%`, tip: 'The share of its food need the clan met last turn' },
     { label: 'Territory', value: `${k.territory.length} tiles`, tip: 'Tiles of the clan’s territory' },
+    {
+      label: 'Lives by',
+      value: k.settled ? 'farming: settled' : 'gathering',
+      tip: k.settled
+        ? `Settled: it goes back to gathering once under ${Math.round(100 * rules.settling.gathers)}% of its days go to fields for a while`
+        : `Gathering: it settles once ${Math.round(100 * rules.settling.farms)}% or more of its days go to fields for a while`,
+    },
   ];
   if (k.fields > 0) {
     const days = sum(k.plots.map((p) => p[1]));
