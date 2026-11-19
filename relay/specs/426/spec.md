@@ -19,14 +19,20 @@ Built whole in one session; the review is the only step after it.
 - `homes::step` weighs a home with the gain its load would trade for from there (`markets::load_to`,
   ÷ people, beside `clans::could_reap`). "Feeds it better" counts the market at the door; no tie rule.
 - The judge counts `capital_towns_200`.
+- `market::clear` bounds every price within `PRICE_SPAN` (10^12) of its goods' geometric mean: markets
+  where clans brought salt and next to no food drove prices to NaN, which broke the save's replay.
 - `SAVE_VERSION` 27 and the digest pins.
 
 ## Proof
 
-`sweep.md`: towns at +200 go from 10 to 17, capital towns from 5 to 7, and a town clan trades
-0.144 food a person a turn against 0.048 for a farmer outside a town (main 0.043 against 0.038). Markets
-at +200 and clans at them both rise. Health is at main's floor. Starving rises a little (2.6% of
-clan-turns against 2.2%).
+`sweep.md`: a town clan trades 0.161 food a person a turn against 0.049 for a farmer outside a town
+(main 0.043 against 0.038), and more markets hold at +200 with more clans at them. But towns at +200
+are within main's floor (11 against 10) and capital towns fewer (3 against 5): the market at the door
+pays, and does not yet draw farmers. Health is at main's floor. Starving rises (3.3% of clan-turns
+against 2.2%), most among gatherers, which no longer bring food they need for variety.
+
+The "first load + surplus" variant in `sweep.md` draws farmers (15 towns, 5 capital towns) and starves
+less than main, but runs medium 9's pre-game to the backstop: it is the owner's call, raised as an idea.
 
 Tests: `core/tests/markets.rs` (the load rule load by load, walkers, worths and routes),
 `core/tests/festivals.rs` (trade at the door and on a long walk), `core/tests/towns.rs` (a farmer
@@ -44,9 +50,14 @@ nothing).
   days a food, the same pricing `worths` used for the whole trip.
 - The home step counts the load's trade gain. Without it, towns at +200 fell to 7: an outside clan
   now pays one walker, so the walk alone pulled less to the door.
+- A clan with no surplus brings no food, only its salt and obsidian. Letting it bring one load anyway
+  (the variant) breaks the health line on medium 9.
+- Prices in a clearing are bounded within 10^12 of their mean.
 
 ## What the review should check
 
 - Read `markets::load` against the piece's Decided lines.
-- Read the starving cost in `sweep.md` against the towns it buys.
+- Read the starving cost in `sweep.md` against what it buys, and the variant the owner is asked about.
+- `tests/cases.rs` and `tests/scout_errand.rs` changed with the new picks (`notes.md`): one errand named
+  as unsettled, a trapped scout treated as the war's, and Lead's target chosen among reachable tiles.
 - Play: none (the piece's `Play:` line).

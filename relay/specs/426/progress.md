@@ -16,7 +16,9 @@
 
 ## Done
 
-- 1–5 built and swept (`sweep.md`). Variants weighed there: the whole basket, and a first load plus the
-  surplus; the cap gone with homes valued by their walk alone gave 7 towns at +200, so step 3 went in.
+- 1–5 built and swept (`sweep.md`), with prices bounded in the clearing (NaN prices broke replay).
+  Variants weighed there: the whole basket, and a first load plus the surplus (both end medium 9's
+  pre-game by the backstop); the cap gone with homes valued by their walk alone gave 7 towns at +200,
+  so step 3 went in. check.sh passes.
 - Tests: `markets.rs`, `festivals.rs`, `towns.rs`. `spec.md` holds the decisions; `steps.json` hands on
   to the review.
