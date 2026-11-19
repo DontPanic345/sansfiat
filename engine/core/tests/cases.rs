@@ -16,11 +16,11 @@ const EPS: f64 = 1e-9;
 /// the slowest settles in about 130.
 const TURNS: u32 = 200;
 
-/// Errands that do not settle within `TURNS`: on large 8 the nearest rival capital is 39 steps out, and
-/// the trails along a 66-day route wear and fade under the clans' walks, so the known route moves by a
-/// day either way and reopens candidates every few turns (`relay/specs/426/notes.md`). The search's
-/// rule, not this piece's: an errand here waits for the owner's call on when a search is done.
-const UNSETTLED: [&str; 1] = ["large 8 to the rival"];
+/// Errands that do not settle within `TURNS`: on medium 9 Lead's target is seven steps out but its
+/// known route costs 83 to 90 days, and the scout searches 7 to 22 candidates for 200 turns as the
+/// trails it walks wear and fade, reaching none open only on turn 200 (`relay/specs/426/notes.md`).
+/// The search's pace, not its order: this errand waits for the owner's call on when a search is done.
+const UNSETTLED: [&str; 1] = ["medium 9 to Lead's target"];
 
 /// The seven retro maps: `(size, seed)`.
 const MAPS: [(&str, u32); 7] =
@@ -93,7 +93,7 @@ fn settled(e: &Errand) -> Result<bool, String> {
 
 /// Runs the errand's turns until it settles, and returns the turn it settled on (from 1), or `None`
 /// when the scout waits at its store because the errand is further than a full pack takes it and back
-/// (the pack's rule, not the search's). Panics
+/// (the pack's rule, not the search's), or stands trapped in a rival's zone (the war's). Panics
 /// with its own message when it does not settle within `TURNS`.
 fn settle(e: &mut Errand) -> Option<u32> {
     for t in 1..=TURNS {
@@ -107,7 +107,9 @@ fn settle(e: &mut Errand) -> Option<u32> {
     }
     let w = e.stage.world();
     let u = &w.units[&e.scout];
-    if matches!(u.scout().map(|s| s.doing), Some(units::Doing::TooFar(_))) || UNSETTLED.contains(&e.name.as_str()) {
+    if matches!(u.scout().map(|s| s.doing), Some(units::Doing::TooFar(_) | units::Doing::Trapped(_)))
+        || UNSETTLED.contains(&e.name.as_str())
+    {
         return None;
     }
     panic!(

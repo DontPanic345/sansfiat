@@ -10,7 +10,12 @@
   one walker's walk.
 - `tests/walk.rs` (the #154 report) now bins clans by what their walkers can carry, not by what they
   brought.
-- `tests/cases.rs` names "large 8 to the rival" in `UNSETTLED`. With this piece the pre-game on large 8
-  picks capitals 39 steps apart (main: 15), and the scout searches the 66-day route for 200 turns
-  without settling: the known cost moves between 66 and 68.3 days as trails wear and fade, and 1 to 13
-  candidates reopen every few turns. Main's errand there builds its route on turn 2.
+- `tests/cases.rs` names "medium 9 to Lead's target" in `UNSETTLED`: with this piece's picks the target
+  is 7 steps out but 83 to 90 days by the known route, and the scout searches 7 to 22 candidates for
+  200 turns, reaching none open on turn 200. A scout trapped in a rival's zone now counts as not the
+  search's to settle, as a scout too far from its store does (medium 9 to the rival). The piece moves
+  every pick, so these cases met new errands; none of the search's rules changed.
+- `market::clear` bounds each price within `PRICE_SPAN` of the goods' geometric mean. Without it a
+  market where clans bring salt and next to no food (clans with no surplus still bring their salt)
+  drove salt's price to 1e-126 and the food prices to 1e31 within 80 turns, then to NaN, and a NaN
+  price broke the save's replay (a NaN never equals itself). Main never needed it.
