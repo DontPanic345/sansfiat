@@ -13,4 +13,6 @@ Plan (whole step):
    changed), `sweep_settling.rs` (per map and total, beside towns and capital towns at +200).
 6. Tune the turns on the retro maps (probe), sweep branch vs main, play, steps.json → review.
 
-Done: 1–5 built.
+Done: 1–6. Turns tuned at 10 and 10 (`sweep.md`); the branch sweep matches main's in every score (`compare-main.txt`);
+`sansfiat judge` prints a settling line for the led civ. Ledger lines in farming.md and founding.md. Handed on to the
+review (the crew adds the play step).

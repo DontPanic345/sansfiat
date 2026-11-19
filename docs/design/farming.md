@@ -75,3 +75,6 @@ clans on one tile without the per-turn cost growing with them (`clans.md`, Scale
 - Clans farm from the pick: before founding no clan farms, and after it every clan may, unaligned ones included. (#155)
 - A clan with a fifth of its days or more on fields is a farmer, and its home steps a tile a turn toward its busiest field; the civ's own clan stays on the capital. (#155)
 - A tile reads as a town once three clans live on it and a festival stands there. The feed tells when one forms ("A town forms at (3, −2): 4 clans live by the festival"). (#156)
+- A clan settles after 10 turns in a row with a fifth or more of its days on fields, and a settled clan goes back to gathering after 10 turns in a row under a tenth; between the two it stays as it was, and moving its home doesn't change it. A daughter starts as her mother. Settling is a reading: no rule reads it. The feed tells each change. (#427)
+- The civ panel's Living row splits its people by way of life: in clans that gather, in settled clans (farming), and in its units. The page marks a settled clan's hearth with a dark square. (#427)
+- A capital's market is a festival for the town rule, and the page marks a capital's town as any other. (#427)
