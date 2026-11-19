@@ -1,5 +1,5 @@
 // Clans: a circle at home, its area by people, in its civ's colour, or pale for a clan of no civ; a red
-// ring when starving. Clans sharing a home are drawn as small hearths in a ring round the home's centre,
+// ring when starving. A settled clan's hearth is a house (a square under a roof) of the same size, not a circle. Clans sharing a home are drawn as small hearths in a ring round the home's centre,
 // capped below a lone clan's size, so each stays visible.
 
 export const name = 'clans';
@@ -40,7 +40,8 @@ export function draw(ctx, model, view) {
 function drawClan(ctx, model, view, c, x, y, r, px) {
   const civId = model.clanCiv.get(c.id);
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, 2 * Math.PI);
+  if (c.settled) house(ctx, x, y, r);
+  else ctx.arc(x, y, r, 0, 2 * Math.PI);
   ctx.fillStyle = civId != null ? model.v.civs[civId].color : UNALIGNED;
   ctx.fill();
   ctx.lineWidth = Math.max(px, 0.04);
@@ -53,4 +54,15 @@ function drawClan(ctx, model, view, c, x, y, r, px) {
     ctx.strokeStyle = '#ff2a2a';
     ctx.stroke();
   }
+}
+
+/** A house of radius `r` round (x, y): walls a square of side 1.5r under a roof whose peak is r above the centre. */
+export function house(ctx, x, y, r) {
+  const h = 0.75 * r;
+  ctx.moveTo(x - h, y + h);
+  ctx.lineTo(x + h, y + h);
+  ctx.lineTo(x + h, y - 0.2 * r);
+  ctx.lineTo(x, y - 1.1 * r);
+  ctx.lineTo(x - h, y - 0.2 * r);
+  ctx.closePath();
 }

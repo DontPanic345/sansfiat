@@ -337,6 +337,7 @@ fn total(maps: &[MapJudged], panics: usize) -> Total {
         fields_vs_control: total_fields(maps),
         towns_vs_control: total_towns(maps),
         settle_vs_control: crate::sweep_settle::total_settle(maps),
+        settling: crate::sweep_settling::total_settling(maps),
         goods_vs_control: crate::sweep_goods::total_goods(maps),
         led: total_led(maps),
     }

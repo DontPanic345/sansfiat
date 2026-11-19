@@ -1,8 +1,9 @@
 //! Towns in the sweep: each map's run read against its no-towns control (`Config.towns` off), and the
 //! seven maps' totals with the numbers of every bound of `spec.md`'s towns table, each beside its
-//! control's. The control's towns are the same map with no home shared, so its towns are none; the
-//! run's are read as they stand. Every map reads no towns today (no home is shared), so the bounds
-//! that need one show zero.
+//! control's. The run's towns are the judge's towns group as the run carries them (`judge_towns`: the
+//! festivals that read as towns at +200, the capitals among them, and the clans' trade). The control
+//! has `Config.towns` off, so no home is shared and it has no towns: its numbers are its clans' trade
+//! and starving alone.
 
 use engine::judge::{per_100, Scores};
 use engine::judge_towns::{TownCiv, TownGroup, TownMoves};
@@ -16,6 +17,8 @@ use crate::sweep_judge::{MapJudged, Report};
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct MapTowns {
     pub(crate) run: TownCiv,
+    /// The civs alive at +200: the capitals a capital town is read against.
+    pub(crate) capitals_200: u32,
     pub(crate) moves: TownMoves,
     pub(crate) control_all: TownGroup,
     pub(crate) formed: u32,
@@ -39,6 +42,10 @@ pub(crate) struct Bound {
 pub(crate) struct TotalTowns {
     pub(crate) maps_with_town: u32,
     pub(crate) run: TownCiv,
+    /// The capitals alive at +200 over the maps, and the small maps' capital towns and capitals.
+    pub(crate) capitals_200: u32,
+    pub(crate) small_capital_towns_200: u32,
+    pub(crate) small_capitals_200: u32,
     pub(crate) moves: TownMoves,
     pub(crate) control_all: TownGroup,
     pub(crate) formed: u32,
@@ -65,6 +72,7 @@ pub(crate) fn map_towns(run: &Scores, control: &Scores) -> MapTowns {
     let top = |s: &Scores| map_fields(s, s).top_farmer_at_pack;
     MapTowns {
         run: run.towns.total.clone(),
+        capitals_200: run.towns.capitals_200,
         moves: run.towns.moves.clone(),
         control_all: control.towns.total.all.clone(),
         formed: run.towns.formed,
@@ -83,6 +91,11 @@ pub(crate) fn total_towns(maps: &[MapJudged]) -> TotalTowns {
         let mt = &m.towns_vs_control;
         t.maps_with_town += (mt.run.towns_200 > 0) as u32;
         t.run.add(&mt.run);
+        t.capitals_200 += mt.capitals_200;
+        if m.size == "small" {
+            t.small_capital_towns_200 += mt.run.capital_towns_200;
+            t.small_capitals_200 += mt.capitals_200;
+        }
         t.moves.settled_turns += mt.moves.settled_turns;
         t.moves.settled_town_steps += mt.moves.settled_town_steps;
         t.moves.settled_other_moves += mt.moves.settled_other_moves;
@@ -120,7 +133,7 @@ pub(crate) fn total_towns(maps: &[MapJudged]) -> TotalTowns {
 /// report's `total.towns_vs_control` block, 0 without a floor.
 pub(crate) fn bounds(t: &TotalTowns, floor: &dyn Fn(&str) -> f64) -> Vec<Bound> {
     let run = &t.run;
-    let (town, out, all) = (&run.town, &run.farmers_outside, &run.all);
+    let (town, out, all, outside) = (&run.town, &run.farmers_outside, &run.all, &run.outside);
     let mut b = Vec::new();
     let mut add = |name: &str, detail: String| b.push(Bound { name: name.to_string(), detail });
 
@@ -137,7 +150,20 @@ pub(crate) fn bounds(t: &TotalTowns, floor: &dyn Fn(&str) -> f64) -> Vec<Bound> 
         format!("walk per turn {:.3} vs farmers outside {:.3}", town.walk_per_turn, out.walk_per_turn),
     );
     let (trade_t, trade_o) = (town.traded_per_turn, out.traded_per_turn);
-    add("town clans trade more", format!("traded per person a turn {trade_t:.4} vs farmers outside {trade_o:.4}"));
+    add(
+        "town clans trade more",
+        format!(
+            "traded per person a turn {trade_t:.4} in a town, {:.4} outside a town, {trade_o:.4} farmers outside",
+            outside.traded_per_turn
+        ),
+    );
+    add(
+        "capitals become towns",
+        format!(
+            "{} of {} capitals at +200, {} of {} on the small maps",
+            run.capital_towns_200, t.capitals_200, t.small_capital_towns_200, t.small_capitals_200
+        ),
+    );
     let fl = floor("run.all.traded_per_turn");
     add(
         "traded over all clans",
@@ -185,18 +211,21 @@ pub(crate) fn print_towns(r: &Report) {
     for m in &r.maps {
         let t = &m.towns_vs_control;
         println!(
-            "  {:<6} seed {:>3}  towns at +200 {} (clans {}, farmers {}, fields {}), formed {}, most homes {}; walk {:.3} vs farmers {:.3}; traded {:.4} vs {:.4}; starving {:.4} vs control {:.4}",
+            "  {:<6} seed {:>3}  towns at +200 {} (clans {}, farmers {}, fields {}), capital towns {} of {}, formed {}, most homes {}; walk {:.3} vs farmers {:.3}; traded {:.4} town, {:.4} outside, {:.4} farmers outside; starving {:.4} vs control {:.4}",
             m.size,
             m.seed,
             t.run.towns_200,
             t.run.town_clans_200,
             t.run.town_farmers_200,
             t.run.towns_fields_200,
+            t.run.capital_towns_200,
+            t.capitals_200,
             t.formed,
             t.most_homes_200,
             t.run.town.walk_per_turn,
             t.run.farmers_outside.walk_per_turn,
             t.run.town.traded_per_turn,
+            t.run.outside.traded_per_turn,
             t.run.farmers_outside.traded_per_turn,
             t.run.all.starving_share(),
             t.control_all.starving_share(),
