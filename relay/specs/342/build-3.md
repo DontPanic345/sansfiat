@@ -22,7 +22,8 @@ Fields did each of these for its job (#155 build-3): follow it, piece by piece.
 3. **The civ panel's Living row**: "gathering 70 · farming 14 · herding 12 · in the army 6", with
    the tip saying herding.
 4. **The tile tooltip**: "grazing 6 animals" on a tile with `graze` above 0, beside its fields.
-5. **A herds layer** (`www/map/layers/herds.js`, after `fields.js`): on each tile a herder grazes, a
+5. **A herds layer** (`www/map/layers/herds.js`, after `fields.js`; `www/map/view.js` is 605 lines,
+   so first move its layer imports and `LAYERS` into a new `www/map/layers/index.js` and import that): on each tile a herder grazes, a
    few small pale marks in the tile's upper half (fields' furrows sit in the lower half), more marks
    with more animals carried. On by default, under View → Herds (`bar.js`'s `LAYER_OF`, the atlas
    entry if layers are listed there).
@@ -31,8 +32,8 @@ Fields did each of these for its job (#155 build-3): follow it, piece by piece.
 7. **The text view** (`cli/src/view.rs`): a clan's line gains `, herd 24 animals on 9 tiles` for a
    clan with herds, as `fields_text` does for fields.
 8. **`www/play/herds.mjs`** (listed in `all.mjs`), after `fields.mjs`: a staged plains map with no
-   river ground, the led civ's clan; play until it herds (cap the turns at what the clay's stage test
-   names, plus margin); then the feed has a `clanHerding` item and a click selects its clan, the
+   river ground, the led civ's clan; play until it herds (cap the turns at the turn the clay's staged
+   game in `core/tests/herds.rs` names, plus margin); then the feed has a `clanHerding` item and a click selects its clan, the
    clan panel has a Herd row with animals above 0, the civ's Living row has herding above 0 and its
    parts add to its people and army, the herds layer draws on a grazed tile, and View → Herds turns
    it off. It writes `herds.png` (the herder selected) and `herds-civ.png`. `check-stage.mjs` and

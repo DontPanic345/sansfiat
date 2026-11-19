@@ -97,11 +97,13 @@ The spec step sketched the clay on main and ran nine settings on the retro maps 
 `probe.diff`). Two rules came out of it, now settled above: the herd's start doesn't wait on game,
 and the notch reckons the herd's steady yield. At those rules and the start numbers (p4) 9 civs
 herd and 8 gain, +0.033 against herds off, with starving at 1.15 times. That is the clay's shape,
-held. What's left is what the glaze is for: the herds are a trickle (341 animals over seven maps),
-no setting gives herders wide land, and the rule that grows real herds doubles starving.
+held. What's left is what the glaze is for: the herds are a trickle (341 animals over seven maps,
+at most 2% of any civ's food, `spec-review.md`), so p4's 9 civs give days to herds that don't feed
+them; wide land comes only with a high `tend` (`spec-review.md`); and the rule that grows real herds
+doubles starving.
 
 - **build-1 (clay):** the good, `HERD`, `Config.herds`, `jobs.rs`, `herds.rs`, the herd through
-  the turn, the notch, the radius, `ClanHerding`, tests and a stage test, with the start numbers.
+  the turn, the notch, the radius, `ClanHerding`, tests and a staged game that herds, with the start numbers.
 - **build-2 (kiln):** the judge's herds group, the no-herds control, the feed's kind and sound.
 - **build-3 (kiln):** the page and the text view.
 - **build-4 (glaze):** the numbers, tuned on the retro maps against the no-herds control until the
@@ -114,8 +116,12 @@ pick, so the control differs from the run only from the pick; the floor's nulls 
 no-herds control. Read with `sweep --judge --json --floor`: one civ's gain swings by up to half a
 point on main (`main.md`), so a move counts past the floor.
 
-A civ **herds** when its clans put at least a tenth of their people's days to herding at +200
-(herding share: Σ people × herds ÷ Σ people). A **herder** is a clan with share ≥ `HERD.herder`.
+A civ **herds** when animals are at least a tenth of the food its clans harvest at +200 (its
+**animal share**: Σ `harvest[ANIMALS]` ÷ Σ the harvest's food, over its clans). This counts what the
+herds feed, not the days given them: a high `tend` widens land and needs few days, so a days measure
+falls as the land widens (`spec-review.md`), and on p4 nine civs gave a tenth of their days to herds
+that fed them 1–2% (no civ above 4% in any setting run). The herding share (Σ people × herds ÷
+Σ people) is reported beside it. A **herder** is a clan with share ≥ `HERD.herder` (the rule's).
 A civ's **grass share** is the share of its clans' territory tiles at the pick with `graze` of
 plains or hills and no field ground: the land herds are for.
 
@@ -124,7 +130,8 @@ plains or hills and no field ground: the land herds are for.
 | Standing | **Herding civs gain**: per civ, Standing at +200 less the no-herds control's. | No-herds control, per civ | Herding civs gain at least +0.01 on average past the floor, three quarters of them gain, and their mean beats the others' by at least 0.01. At least 4 civs herd. |
 | Standing | **Civs on grass**: the third of civs with the highest grass share, their mean gain. Reported beside the herding civs': the goal's words, read on the land. | No-herds control | Reported |
 | Standing | **Fields still pay**: farming civs' gain against no-fields. | Main's +0.049 (`main.md`) | Not below +0.03 |
-| Motion | **Wide, thin land**: territory tiles a person, herders against gatherers (share 0 of both jobs) and farmers, at +200 over the seven maps. | Gatherers and farmers in the same runs | Herders at least 1.5 times gatherers' |
+| Motion | **Wide, thin land**: territory tiles a person, herders against gatherers (share 0 of both jobs) and farmers, at +200 over the seven maps. | Gatherers and farmers in the same runs | Herders at least 1.5 times gatherers', over at least 40 herder clans |
+| Motion | **Herds feed**: the herding civs' animal share, and the herders' (their clans' `harvest[ANIMALS]` over their food). | No-herds control (0) | Reported; a herding civ is a tenth by definition |
 | Motion | **Animals change hands**: festival-turns where animals traded, pick to +200, and the maps with any. | No-herds control (0) | On at least 4 of 7 maps |
 | Motion | Clans, people and land changed hands. | No-herds control | No fewer, less the floor |
 | Health | **Nobody starves who shouldn't**: starving clan-turns over clan-turns against the control's, read less its floor; herders' rate beside gatherers'. | No-herds control | At most 1.25 overall, no map over 1.6 |
@@ -133,7 +140,7 @@ plains or hills and no field ground: the land herds are for.
 | Doubt | Lead changes and the spread. | No-herds control | Reported |
 
 The judge reports at +100 and +200: herders, herd animals, herding people, herded tiles, the herding
-share per civ, the store turns at a pack (as fields), animals' festival-turns, tiles a person by kind.
+share and the animal share per civ, the store turns at a pack (as fields), animals' festival-turns, tiles a person by kind.
 
 ## What I settled
 
@@ -164,13 +171,16 @@ All in build-4, the glaze: every `HERD` number, animals' weight and the offtake,
 until every bound above holds, read from `sweep --judge --json --floor` against the no-herds
 control. What is open, from the probe (`probe.md`):
 
-- **Wide land**, which no setting met: herders hold 0.36 to 0.64 tiles a person against gatherers'
-  0.70 to 0.94. A herding share of a tenth gives few days, so `K` is bound by the days and more
-  grass adds nothing. The days against the grass (`tend`, `graze`) are the first look; the radius
-  and the walk don't bind yet.
-- **Herds that grow** without starving: eating every increase keeps herds at their start; eating
-  only past `K ÷ 2` grows them and doubles starving; a fed-only notch kills herding.
-- **The Standing bound past the floor**: p4's +0.033 over 9 civs is one draw.
+- **Herds that feed.** In every setting run (`probe.md`, `spec-review.md`) animals are at most 4% of
+  any civ's food, 1–2% at p4: no civ herds by the measure above yet. A herd yields at most
+  `breed × K ÷ 4`, so feeding a person takes about 13 animals a person at breed 0.3, and a herd that
+  gives up its whole increase stays near its start. Eating only past `K ÷ 2` grows herds and
+  doubles starving. The rule between is the glaze's to find, and it will change the clay's offtake
+  or reckoning: recorded.
+- **Wide land**, which comes with `tend`: herders' tiles a person 0.66 of gatherers' at tend 3,
+  1.24 at 12, 1.79 at 24 (`spec-review.md`). Then a herder needs few days, so herder clans fall;
+  `HERD.herder` moves with `tend`.
+- **The Standing bound past the floor**, on the civs herds feed.
 - Whether herds pay so well that every plains gatherer herds (the game lever above).
 
 If no setting meets the Standing bound, the glaze reports the nearest and sends an `ask`; if only
@@ -185,7 +195,7 @@ wide land fails, it reports that with the nearest setting and the Standing it gi
   wide land, animals traded, starving.
 - With herds off (`Config::default()`'s `herds` false, locally): `sweep --judge --json` equals
   main's in every map's scores.
-- `cargo test --release -p engine --test herds -- --nocapture` and the herd's stage test.
+- `cargo test --release -p engine --test herds -- --nocapture` (its staged game herds by the turn it names).
 - `sansfiat bench --size large 8 --after 50` on the branch and on main, five each, one session.
 - `node www/play/herds.mjs`, with a look at its screenshots.
 - A played game (`sansfiat play --game g.json`, the retro map whose civ herds most in the glaze's
@@ -219,6 +229,9 @@ No new button or order: nobody orders a clan to herd.
     they are eaten and traded only; carrying is #343.
 13. **"Civs on grass" is read two ways**: civs that herd (the bound, as fields' "farming civs"), and the
     third of civs with the most grass at the pick (reported).
+14. **A civ herds when herds feed it**: animals a tenth of its clans' food at +200, not a tenth of its
+    days (spec-review, `spec-review.md`): a days count moves with `tend` and counted civs whose herds
+    fed them 1–2%.
 
 ## Ideas taken
 

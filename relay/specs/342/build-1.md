@@ -69,10 +69,12 @@ reckoning the steady yield, the clan taking all of the increase.
   a herder's territory reaches radius 3 and a gatherer's stays at 2; the breeding stock is never in
   the basket (so neither `trade` nor the levy takes it); a short clan eats at most `HERD.lean` of its
   herd; a daughter takes half the herd; with `herds` off nothing herds.
-- A stage test in `core/stage/` (listed in `stage_test.rs`'s `LIST`), after `fields`'s pattern:
-  a plains map with no river, one civ's clan, played past the pick: by a named turn its herding
-  share is above 0, it holds animals and it ate animals. (Its territory past radius 2 is a unit
-  test, not the stage's: on the retro maps herders don't yet widen, which is the glaze's.)
+- A staged game in `core/tests/herds.rs`, as `core/tests/fields.rs` stages its worlds (`Stage::flat`,
+  `s.civs(..)`): a plains map with no river, one civ's clan, played past the pick: by a named turn its
+  herding share is above 0, it holds animals and it ate animals. Name the turn in the test: build-3's
+  `herds.mjs` caps its play at it. (No `core/stage/*.json`: the stage tests' facts are the scout's,
+  and fields has none either. Its territory past radius 2 is a unit test, not this one's: on the
+  retro maps herders don't yet widen, which is the glaze's.)
 
 ## Done
 
@@ -85,8 +87,10 @@ reckoning the steady yield, the clan taking all of the increase.
 - **Herds on, one sweep** (`sweep --judge --json`, herds on): write `relay/specs/342/clay.md` with,
   per map, the herders and animals at +200, and per civ its herding share and its Standing beside
   main's (`relay/specs/342/main.md`). Read them however you can (a temporary print, not committed: the judge's group is build-2's). This is for the glaze, not a bound: the start numbers need only
-  run. Expect about p4 (`probe.md`): some 9 civs herd, about 200 herder clans and 350 animals at
-  +200, starving near 1.15 times. Far below that, find why before you finish.
+  run. Expect about p4 (`probe.md`): some 9 civs give a tenth of their days to herds, about 200
+  herder clans and 350 animals at +200, starving near 1.15 times, and animals 1–2% of a civ's food
+  (`spec-review.md`). Put each civ's animal share (Σ `harvest[ANIMALS]` ÷ the harvest's food) in
+  `clay.md` too. Far below that, find why before you finish.
 - `engine/CLAUDE.md`'s layout names `jobs.rs` and `herds.rs` in the `core/src/` row (stays under 8 KB).
 
 Where the spec doesn't hold in the code, make the smallest change that works and record it as a

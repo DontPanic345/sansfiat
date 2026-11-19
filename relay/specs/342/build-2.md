@@ -14,19 +14,22 @@ Follow the fields group exactly: `core/src/judge_fields.rs` (a `Watch` part that
 1. **`core/src/judge_herds.rs`**, a `herds` group in `Scores` (`Herds::pick`, `turn`, `scores`, wired
    in `judge.rs` beside `fields`). Per civ and in total, at +100 and +200: herders (`herds::herder`),
    animals held by clans (Σ `store[ANIMALS]`), people and herding people (Σ people × herds), the
-   herding share, herded tiles (territory tiles with `graze > 0` of herders). Per civ: its **grass
+   herding share, the animals eaten and the food harvested (Σ `harvest[ANIMALS]` and Σ the
+   harvest's food, `FOOD_N` slots, at +200) and their ratio, the **animal share**, herded tiles
+   (territory tiles with `graze > 0` of herders); the same animal share for herders alone. Per civ: its **grass
    share** at the pick (its clans' territory tiles with `HERD.graze[terrain] ≥ HERD.graze[HILLS]`
    and `fields::ground` 0, over all its clans' territory tiles), and its store turns at a pack (as
    fields). **Tiles a person** at +200 for herders, gatherers (herds 0 and fields 0) and farmers
    (`fields::farmer`): Σ territory tiles ÷ Σ people. Clan-turns and starving clan-turns for herders
    and gatherers. **Animals' festival-turns**: festivals where animals changed hands each turn, pick
-   to +200 (`Market.wares`/`ware` show how #355 counted salt; extend that to animals, or read the
-   clear's swaps, whichever the market already records).
+   to +200 (`Market.ware` holds last turn's volume of every good, `markets.rs` 310: count festivals with
+   `ware[ANIMALS] > 0` with two or more clans, as `judge_goods.rs` counts salt).
 2. **The no-herds control**: `Config { herds: false, ..base }` as one more run a map in
    `sweep_judge.rs`, `no_herds: Scores` and `herds_vs_control: MapHerds` on `MapJudged`, totals on
    `Report`. The floor's nulls run it too (they run the same run list).
-3. **`cli/src/sweep_herds.rs`**: per civ `{id, share, herds, grass, gain, store_turns_at_pack}` with
-   `herds` = share ≥ 0.1; per map and in total: herding civs, their mean gain and how many gain,
+3. **`cli/src/sweep_herds.rs`**: per civ `{id, share, animal_share, herds, grass, gain,
+   store_turns_at_pack}` with `herds` = animal share ≥ 0.1 (a tenth of its food from its herds, the
+   spec's measure, not the days share); per map and in total: herding civs, their mean gain and how many gain,
    the others' mean gain, `herding_over_others`; the grass third's mean gain (the third of civs,
    rounded up, with the highest grass share, over all 21); tiles a person for herders, gatherers and
    farmers and herders over gatherers; maps with any animals' festival-turn; starving share against
