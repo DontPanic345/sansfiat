@@ -171,6 +171,7 @@ pub const TURN: &[Step] = &[
     Step { name: "units", run: units::step },
     Step { name: "claim", run: claim::step },
     Step { name: "hold", run: land::tend },
+    Step { name: "settling", run: crate::settling::step },
     Step { name: "markets", run: markets::form_and_fade },
     Step { name: "end", run: pregame::check_end },
     Step { name: "over", run: over::step },

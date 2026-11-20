@@ -38,14 +38,14 @@ fn the_save_version_pins_the_rules() {
     assert_eq!(SAVE_VERSION, VERSION, "bump SAVE_VERSION and these digests together");
     // Seeds 1-3 watched to turns 290, 279, 308, and seed 2 led by the scripted game of `digest --lead`
     // to turn 300, past its pick at 287: the turns are fixed, whatever the picks.
-    assert_eq!(digest("1", "290", false), "f424cf5bc4e04381");
-    assert_eq!(digest("2", "279", false), "e2c6b68983e3b4f6");
-    assert_eq!(digest("3", "308", false), "8bf24576d9dde50a");
-    assert_eq!(digest("2", "300", true), "2d7fa9e9d28a21de");
+    assert_eq!(digest("1", "290", false), "8714e14d6ffe46bd");
+    assert_eq!(digest("2", "279", false), "2bdd0ae3534e4722");
+    assert_eq!(digest("3", "308", false), "bf70e3c5b37b9b42");
+    assert_eq!(digest("2", "300", true), "7584f7938243965d");
 }
 
 #[test]
 fn the_led_game_state_digest_is_its_baseline() {
     // The led game's world without its log: the rules' fingerprint, which the log's shape does not move.
-    assert_eq!(digest_with("2", "300", true, true), "464ac664e916eb84");
+    assert_eq!(digest_with("2", "300", true, true), "df065ba4c5a9ac3c");
 }

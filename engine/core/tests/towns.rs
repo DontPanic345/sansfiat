@@ -483,3 +483,45 @@ fn the_civs_own_clan_stays_and_towns_off_never_lands_on_a_held_tile() {
         assert_eq!(w.clans[&own].home, centre, "the civ's own clan stays on the capital");
     }
 }
+
+#[test]
+fn a_civs_capital_reads_as_a_town_when_three_clans_live_on_it() {
+    let (mut w, centre) = staged();
+    let (m, capital) = {
+        let civ = w.civs.values().next().unwrap();
+        (civ.market, civ.capital)
+    };
+    assert_eq!(capital, centre);
+    assert!(w.markets.contains_key(&m), "the capital's market is a festival in World.markets");
+    clan(&mut w, centre, &[centre], 4.0);
+    clan(&mut w, centre, &[centre], 4.0);
+    assert!(towns(&w).is_empty(), "two clans on the capital are neighbours, not a town");
+    clan(&mut w, centre, &[centre], 4.0);
+    let found = towns(&w);
+    assert_eq!((found.len(), found[0].tile, found[0].market, found[0].clans.len()), (1, centre, m, 3));
+    form_and_fade(&mut w);
+    let formed: Vec<String> = w.events.iter().filter(|e| e.kind == EventKind::TownFormed).map(|e| e.text(&w)).collect();
+    assert_eq!(formed, vec!["A town forms at (0, 0): 3 clans live by the festival".to_string()]);
+}
+
+#[test]
+fn the_judge_counts_a_capital_town_under_its_civ_and_the_clans_outside_a_town() {
+    let (mut w, centre) = staged();
+    let civ = w.civs.values().next().unwrap().id;
+    for _ in 0..3 {
+        clan(&mut w, centre, &[centre], 4.0);
+    }
+    let far = index(RADIUS, Hex { q: -3, r: 0 }).unwrap();
+    clan(&mut w, far, &[far], 4.0);
+    let mut watch = Watch::new(&w);
+    for _ in 0..200 {
+        watch.turn(&w);
+    }
+    let s = watch.scores(&w, &[]).towns;
+    assert_eq!((s.total.capital_towns_100, s.total.capital_towns_200), (1, 1), "the capital reads as a town");
+    assert_eq!(s.civs[&civ].capital_towns_200, 1, "counted under its civ");
+    assert_eq!(s.capitals_200, 1, "one civ alive at +200");
+    // Clan-turns after +100: three clans in the town, one clan outside it (no fields, so no farmer).
+    assert_eq!((s.total.town.clan_turns, s.total.outside.clan_turns), (300, 100));
+    assert_eq!((s.total.farmers_outside.clan_turns, s.total.all.clan_turns), (0, 400));
+}

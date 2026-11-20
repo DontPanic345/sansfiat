@@ -197,6 +197,7 @@ pub(crate) fn print_text(r: &Report) {
     );
     print_fields(r);
     print_towns(r);
+    crate::sweep_settling::print_settling(r);
     crate::sweep_settle::print_settle(r);
     crate::sweep_goods::print_goods(r);
     let floor = r.floor.as_ref().and_then(|f| f.get("total.led.over_idle").copied());

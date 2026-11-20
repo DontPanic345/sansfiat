@@ -348,6 +348,10 @@ pub fn found(w: &mut World) {
         let Some(clan) = joined(true).or_else(|| joined(false)) else { continue };
         w.civs.get_mut(&id).unwrap().clan = clan;
     }
+    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    for id in ids {
+        crate::settling::found(w, id);
+    }
     // Civ clans are drawn to their capitals now, so routes are laid again; then the clans at least
     // as close to a capital switch to it.
     crate::markets::go(w);

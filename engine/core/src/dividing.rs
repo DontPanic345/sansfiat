@@ -87,6 +87,7 @@ pub fn divide_land(w: &mut World, id: u32) {
     d.gifts = c.gifts.clone();
     d.parent = Some(id);
     d.fields = c.fields;
+    d.settled = c.settled;
     let took = hers.len();
     d.territory = hers;
     let m = w.clans.get_mut(&id).unwrap();
