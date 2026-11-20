@@ -547,12 +547,20 @@ pub(crate) fn free(w: &mut World, id: u32, tiles: &[usize]) {
 
 /// The most a fed clan grows a turn, a share of its people: less for a gathering clan than a settled one.
 pub fn growth(settled: bool) -> f64 {
-    if settled { CLAN.growth.1 } else { CLAN.growth.0 }
+    if settled {
+        CLAN.growth.1
+    } else {
+        CLAN.growth.0
+    }
 }
 
 /// The days a child costs a clan in its next harvest (`CLAN.child_days`): more for a gathering clan.
 pub fn child_days(settled: bool) -> f64 {
-    if settled { CLAN.child_days.1 } else { CLAN.child_days.0 }
+    if settled {
+        CLAN.child_days.1
+    } else {
+        CLAN.child_days.0
+    }
 }
 
 /// The share of its people a clan loses to crowding this turn, with `people` living on its home tile.

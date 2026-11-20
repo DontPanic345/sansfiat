@@ -38,4 +38,5 @@ way of life, a child's days, and crowding.
 5. Crowding (`clans::crowding`, `Clan.crowded`), a clan note; the judge's `settling` group counts births
    a person a turn (settled, gathering) and crowding deaths. Done; main's sweep has the same counts
    patched in (judge-only, digest unchanged). `goal.py` makes the Goal's table.
-6. Tune growth and crowding on the sweep; SAVE_VERSION and pins; check.sh; sweep.md; hand on.
+6. Tuned on the sweep (gathering 15%, settled 25%, crowding 0.02; `sweep.md`); SAVE_VERSION 28 and
+   pins; check.sh; hand on to the review. Done.

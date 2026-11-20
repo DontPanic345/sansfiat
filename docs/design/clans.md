@@ -134,5 +134,5 @@ placing them?
 - A clan whose home is on nobody's land leans by gifts and trade and joins the civ it leans to most. A civ's clan off its land stays until it leans to a rival. (#102, #352)
 - A clan's home is where it lives, not land it holds: many clans may live on one tile. A clan gathers only the tiles it claims, and never claims a tile another clan holds. (#156)
 - A daughter, or a clan moving on, may go to its civ's signpost instead of its own best site, by chance weighted by the walk and the tile's worth; a clan that can't get there doesn't try, and the first of the civ's clans to live on a signpost founds a settlement there. Nobody is sent: the signpost is a draw, not an order. (#353)
-- A clan grows by its way of life, not its turns at home: a gathering clan at most 15% a turn, a settled one 20%. (#426)
-- Crowding kills: each turn a clan loses a share of its people that rises with the square of the people on its home tile past one clan's size (8): 1.25% a turn at 24 people, 5% at 40. A lone clan loses none. A death from crowding is not starving, and the judge counts it on its own. (#426)
+- A clan grows by its way of life, not its turns at home: a gathering clan at most 15% a turn, a settled one 25%. (#426)
+- Crowding kills: each turn a clan loses a share of its people that rises with the square of the people on its home tile past one clan's size (8): 0.5% a turn at 24 people, 2% at 40. A lone clan loses none. A death from crowding is not starving, and the judge counts it on its own. (#426)

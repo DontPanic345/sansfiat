@@ -68,7 +68,11 @@ impl SettledCiv {
     /// People lost to crowding a person a turn.
     pub fn crowded_share(&self) -> f64 {
         let p = self.settled_person_turns + self.gathering_person_turns;
-        if p > 0.0 { self.crowded / p } else { 0.0 }
+        if p > 0.0 {
+            self.crowded / p
+        } else {
+            0.0
+        }
     }
 
     /// Changes either way per 100 clan-turns.

@@ -257,8 +257,13 @@ fn past_reach_is_false_at_the_capital_and_true_eight_steps_out() {
 fn a_scout_move_replays_to_the_same_world() {
     let mut w = lead().into_world();
     let cap = capital(&w);
-    let target = open_ray(&w, cap, 4)[3];
     let id = led_scout(&w);
+    // The first open ray whose fourth tile has a route.
+    let target = open_rays(&w, cap, 4)
+        .into_iter()
+        .map(|r| r[3])
+        .find(|&t| w.clone().act(led_order(&w, Order::Move { unit: id, to: t })).is_ok())
+        .expect("a tile four steps out with a route");
     w.act(led_order(&w, Order::Move { unit: id, to: target })).unwrap();
     w.run(10);
     if !w.units.contains_key(&id) {

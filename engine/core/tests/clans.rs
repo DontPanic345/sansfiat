@@ -1,7 +1,9 @@
 mod common;
 
 use common::{at, check_territories, flat, out, put, steps, total};
-use engine::clans::{adjust, child_days, crowding, eat, growth, harvest, nutrition, reap, site_value, surplus, value, walks};
+use engine::clans::{
+    adjust, child_days, crowding, eat, growth, harvest, nutrition, reap, site_value, surplus, value, walks,
+};
 use engine::data::*;
 use engine::land::neighbours;
 use engine::map::{landmasses, Country};
@@ -414,8 +416,7 @@ fn a_childs_days_come_out_of_the_next_harvest_as_a_routes_do() {
     let c = &w.clans[&id];
     let (_, yearly) = walks(&w, c.home, &c.territory);
     let all = |nursing: f64| -> f64 {
-        let (work, _, _, _) =
-            engine::fields::jobs(&w, P, &[], &c.territory, &yearly, 0.0, &[true; 3], false, nursing);
+        let (work, _, _, _) = engine::fields::jobs(&w, P, &[], &c.territory, &yearly, 0.0, &[true; 3], false, nursing);
         work.iter().sum()
     };
     let days = 2.0 * DAY;
