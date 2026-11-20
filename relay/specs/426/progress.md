@@ -22,3 +22,20 @@
   so step 3 went in. check.sh passes.
 - Tests: `markets.rs`, `festivals.rs`, `towns.rs`. `spec.md` holds the decisions; `steps.json` hands on
   to the review.
+
+## Second whole step (after the owner's call on the review)
+
+The owner took the agreed rule and widened the piece: the first load whatever a clan has, growth by
+way of life, a child's days, and crowding.
+
+1. Merge main (#427's `Clan.settled`). Done.
+2. `markets::load`: the first load whatever the clan has; further loads from the surplus; at the door
+   the whole surplus or the first load if more. Done (`tests/markets.rs`).
+3. `clans::growth(settled)`: gathering, settled; the ramp on `since` goes (`CLAN.settle_turns` gone).
+   Done.
+4. A child's days (`CLAN.child_days`, `Clan.nursing`) come off the next harvest's labour in
+   `fields::jobs`. Done (`tests/clans.rs`).
+5. Crowding (`clans::crowding`, `Clan.crowded`), a clan note; the judge's `settling` group counts births
+   a person a turn (settled, gathering) and crowding deaths. Done; main's sweep has the same counts
+   patched in (judge-only, digest unchanged). `goal.py` makes the Goal's table.
+6. Tune growth and crowding on the sweep; SAVE_VERSION and pins; check.sh; sweep.md; hand on.

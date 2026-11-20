@@ -253,7 +253,7 @@ pub const CLAN: ClanRules = ClanRules {
     grow_full: 0.05,
     child_days: (4.0 * DAY, 1.5 * DAY),
     // A tile of 24 people loses 1.25% a turn; a town of 40 people, 5%.
-    crowd_rate: 0.05,
+    crowd_rate: 0.02,
     crowd_at: 32.0,
     crowd_most: 0.5,
     stable_at: 0.8,
