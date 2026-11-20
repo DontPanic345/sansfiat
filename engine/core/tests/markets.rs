@@ -244,8 +244,14 @@ fn a_clan_brings_each_load_whose_trade_beats_its_walkers_days_and_stops_at_the_f
     }
     assert!(load(m, &b, 20.0, 0.05 * DAY).share > load(m, &b, 20.0, 6.0 * DAY).share, "the door brings more");
     assert_eq!(load(m, &b, 20.0, 6.0 * DAY).share * 40.0, unit, "a long walk brings one load");
-    // Only the food beyond a food a person goes: a clan with none brings none.
-    assert_eq!(load(m, &[0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0], 20.0, 0.0).share, 0.0);
+    // A clan with no surplus brings its first load, whatever it has, and no more: on its festival's tile too.
+    let none = [0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    for walk in [0.0, 0.05 * DAY, 6.0 * DAY] {
+        let l = load(m, &none, 20.0, walk);
+        assert_eq!((l.share * 20.0, l.walkers), (unit, 1.0), "the walker who goes anyway carries a load");
+    }
+    // One with less than a load brings all it has.
+    assert_eq!(load(m, &[0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0], 20.0, DAY).share, 1.0);
 }
 
 #[test]

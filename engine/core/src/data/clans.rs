@@ -189,12 +189,21 @@ pub struct ClanRules {
     pub diet_share: f64,
     /// …and at this beyond it.
     pub excess_value: f64,
-    /// The most a fed clan grows a turn: just moved → settled.
+    /// The most a fed clan grows a turn, a share of its people: gathering, settled (`Clan.settled`).
     pub growth: (f64, f64),
     /// It grows that much when this turn's harvest beyond need is this × need, less in proportion.
     pub grow_full: f64,
-    /// Turns to reach the settled growth rate.
-    pub settle_turns: u32,
+    /// Days a child born this turn costs its clan, out of its next harvest's labour as a route's days
+    /// are: gathering, settled. A gathering clan carries its children on its walks.
+    pub child_days: (f64, f64),
+    /// Crowding: each turn a clan loses `crowd_rate × ((p − split_at) / crowd_at)²` of its people, `p` the
+    /// people living on its home tile, fed or not, at most `crowd_most`. A lone clan divides before it
+    /// passes `split_at`, so it loses none.
+    pub crowd_rate: f64,
+    /// People on one tile (as above).
+    pub crowd_at: f64,
+    /// A share of its people (as above).
+    pub crowd_most: f64,
     /// Fed below this share, a clan starves.
     pub stable_at: f64,
     /// How fast a starving clan shrinks.
@@ -239,9 +248,14 @@ pub const CLAN: ClanRules = ClanRules {
     surplus_target: 2.0,
     diet_share: 0.4,
     excess_value: 0.3,
-    growth: (0.05, 0.15),
+    // A gathering clan spaces its children: what it carries on its walks limits it.
+    growth: (0.15, 0.2),
     grow_full: 0.05,
-    settle_turns: 30,
+    child_days: (4.0 * DAY, 1.5 * DAY),
+    // A tile of 24 people loses 1.25% a turn; a town of 40 people, 5%.
+    crowd_rate: 0.05,
+    crowd_at: 32.0,
+    crowd_most: 0.5,
     stable_at: 0.8,
     starve: 0.5,
     split_at: 8.0,
