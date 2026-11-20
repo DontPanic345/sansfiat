@@ -17,7 +17,7 @@ pub enum Use {
 pub struct Good {
     pub name: &'static str,
     /// What a unit of it weighs against a unit of food: a carrier's load (`Actor::carry`) and a clan's
-    /// festival basket (`MARKET.carry`) are counted in weight.
+    /// festival loads (`markets::load`) are counted in weight.
     pub weight: f64,
     /// The share of it a store loses a turn.
     pub spoil: f64,
@@ -71,6 +71,10 @@ pub const FOODS: [&str; FOOD_N] = {
     }
     out
 };
+/// The widest a market's price may stand from the geometric mean of its goods' prices, either way
+/// (`market::clear`). A market where clans bring salt and next to no food drives salt's price down a
+/// little each turn, and unbounded it reaches nothing in about 80 turns (seed 3, a market on tile 746).
+pub const PRICE_SPAN: f64 = 1e12;
 /// The rate a food spoils at a turn (`actors::worths` reads it): every food keeps alike, `GOOD[GAME]`'s.
 pub const FOOD_SPOIL: f64 = GOOD[GAME].spoil;
 

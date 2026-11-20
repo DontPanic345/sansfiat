@@ -2,12 +2,17 @@
 //! `SETTLING.farms` or more for `SETTLING.settle_after` turns in a row, and a settled clan goes back to
 //! gathering once its share has stood under `SETTLING.gathers` for `SETTLING.leave_after` turns in a row;
 //! between the two it stays as it was. A clan that moves its home stays as it was. The clan a civ is
-//! founded on is settled at founding (`found`). Settling is a reading: it changes only `Clan.settled` and
-//! `Clan.settle_run`, which no rule reads, and the feed tells each change (`ClanSettled`, `ClanGathers`).
+//! founded on is settled at founding (`found`). Growth reads `Clan.settled` (`clans::growth`,
+//! `clans::child_days`), and the feed tells each change (`ClanSettled`, `ClanGathers`).
 
 use crate::data::SETTLING;
 use crate::events::{Event, EventKind};
 use crate::world::World;
+
+/// Serde's skip for `Clan.nursing` while it is 0.
+pub fn is_none(x: &f64) -> bool {
+    *x == 0.0
+}
 
 /// Serde's skip for `Clan.settle_run` while it is 0.
 pub fn is_zero(n: &u32) -> bool {
