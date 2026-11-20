@@ -58,3 +58,10 @@ Play: none, so no led player was measured against an idle one.
 and plays 100 turns with no panic. Clans that joined civs: 218 on the branch against 262 on main, and
 civs that kept their camps 9 of 12 against 7 of 12. Fewer joins match the lower aligned share on the
 retro maps.
+
+## Second review (#437)
+
+Nothing changed since #436's review: main is still 0fd7835, the engine is as swept at 1bb905e, and CI is
+green on bce4dc0. A cold re-read of `clans::eat`, `growth`, `child_days` and `crowding` agrees with
+the Decided lines. One nit, left: `eat` writes a crowding note only past a 0.5% share, a literal in
+`clans.rs` that belongs in `data/clans.rs`. The verdict stands: worse, merge left to the owner.
