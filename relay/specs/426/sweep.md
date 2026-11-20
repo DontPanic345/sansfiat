@@ -54,7 +54,10 @@ What does not come: capital towns at +200 are 3 against 5 (floor 0), and the ali
 falls from 0.52 to 0.46 (floor 0.008). Clans crowd a capital as they crowd any town, and the civ's own
 clan stays there. Fewer AI orders (62.5 against 85.7 per 100 turns) and fewer claims taken (54 against
 220) follow from a pre-game that ends sooner and a sparser world at the pick (people at +200 10694
-against 11416).
+against 11416). The civs' stores are a quarter lower (mean 31.4 against 41.7, floor 3.5; levy 8.7
+against 10.5 a turn), so the AI raises fewer armies (5.9 raises per 100 turns against 10.3); on seed 9
+the led civ's store cannot fill a scout's pack at the page script's turn, so `www/play/game.mjs` now
+plays seed 2.
 
 One sweep is one sample. Every pre-game ends on another turn here, so each map is another world; the
 aligned share on one map moves from 0.99 to 0.60 (small 2) or 0.48 to 0.96 (small 3). Read the totals
