@@ -66,15 +66,19 @@ tunes it.
   the hex's centre (spacing `gap`: 0.42 for trees, 0.36 for reeds; rows `gap·√3/2` apart, every other
   row offset by `gap/2`), kept where every edge is at least `inset` (0.1) away. Each slot is moved by
   up to `jitter` (0.07) in x and y. Its variant is also drawn from a hash of the tile index and the
-  slot index alone, so a map always looks the same.
-- **Trees** (forest tiles). For each slot, take its nearest edge `d` and its depth `s` from that edge.
-  An edge is *open* when the neighbour across it is not forest or is off the map.
-  - If edge `d` is open and `s < band` (0.32), the slot is sparse. It holds a tree only when its hash is
-    under `sparse` (0.4), and then a `tree.small`.
+  slot index alone, so a map always looks the same. Every test below (depth, river, clearing, order)
+  reads the moved point, which is also where the piece stands, so a check recounts it from the piece.
+  At the starting numbers a tree tile has 13 slots and a reed tile 19 (`proto/lattice.mjs`).
+- **Trees** (forest tiles). An edge is *open* when the neighbour across it is not forest or is off the
+  map. For each slot, take its depth `s` from the nearest *open* edge (none: the slot is deep).
+  - If `s < band` (0.32), the slot is sparse. It holds a tree only when its hash is under `sparse`
+    (0.4), and then a `tree.small`.
   - Otherwise the slot holds a `tree.big`.
 
   So an interior tile is all big trees. An edge tile thins toward its open sides. A lone tile is a
-  clump of big trees in its middle with a few saplings round it.
+  clump of big trees in its middle with a few saplings round it: at the starting numbers 7 big slots
+  and 6 sparse ones. A tile with one open side has only 2 of its 13 slots in the band, so at 0.32 the
+  margin thins little; how deep it should thin is the canvas's `band`.
 - **Reeds** (marsh tiles). Every slot holds a `reed.<v>`.
 - **Clear ground.** A slot holds nothing when either of these holds:
   - It lies within `river` (0.22) of the tile's river course: the segment from its centre toward its
@@ -155,6 +159,8 @@ to 441's shape, for the same reason, with the easel cut by area as 441's was: th
   the edge into the tile above, as peaks do.
 - **A wood thins by distance to an open edge.** Slots near a non-forest edge are sparse and small, so
   interior, edge and lone tiles all come from one rule, and a forest of any shape gets a ragged margin.
+  The depth is from the nearest *open* edge, not the nearest edge, so a slot in a corner near open
+  land thins whatever lattice the canvas picks (spec-review).
   The alternative was a cell per neighbour mask (64 of them).
 - **Single trees in slots, sorted by depth**, not one composed clump per tile. A forest reads as one
   wood across hexes, not as hex-shaped clumps. Trees overlap correctly across tiles, and a river or a

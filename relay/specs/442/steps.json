@@ -5,8 +5,8 @@
     "part": "easel",
     "model": "haiku",
     "effort": "high",
-    "points": 4,
-    "why": "Open 1 (keys, sizes, anchors and the scaleY assert are exact; the cuts need only read as a tree and as reeds, from source coordinates the spec measured), New 1 (sprite regions with keep polygons are the peaks' pattern; scaleY and a tuft key adapt cut.mjs's sprite path and KEYS), Miss 1 (--check's recut and the new assert; play/art.mjs), Reach 1 (the atlas every map draw reads; new keys after the fringe rows move nothing). An easel with an exact done at 4: Haiku high, as 439 to 441's easels ran. About 6 files, 200 lines plus the PNG: cut.mjs, sources.js, placeholders.js, draw-atlas.mjs, atlas.png/json, engine/CLAUDE.md, atlas.md and cells.png."
+    "points": 5,
+    "why": "Open 2 (keys, sizes, anchors and the scaleY assert are exact; the cuts are read by eye, though they need only read as a tree and as reeds, from source coordinates the spec measured), New 1 (sprite regions with keep polygons are the peaks' pattern; scaleY and a tuft key adapt cut.mjs's sprite path and KEYS), Miss 1 (--check's recut and the new assert; play/art.mjs), Reach 1 (the atlas every map draw reads; new keys after the fringe rows move nothing). Spec-review re-scored Open to the scale's 2 (5 points, same model). An easel at 5: Haiku high, as 439 to 441's easels ran. About 6 files, 200 lines plus the PNG: cut.mjs, sources.js, placeholders.js, draw-atlas.mjs, atlas.png/json, engine/CLAUDE.md, atlas.md and cells.png."
   },
   {
     "id": "build-2",
@@ -14,8 +14,8 @@
     "part": "easel",
     "model": "haiku",
     "effort": "high",
-    "points": 5,
-    "why": "Open 1 (the slot lattice, sparse band, river course, clearing, order, culling, stale hook, marsh shore and the 15 views' tiles are the spec's word for word; WOODS starts at numbers that run), New 1 (woods.js and layers/woods.js follow edges.js and layers/edges.js; the turns loop is proto/fields.mjs; the input split moves code unchanged), Miss 1 (check-map.mjs recounts every slot and the river and clearing on a synthetic tile; play/woods.mjs checks a staged wood, marsh and culling), Reach 2 (one line in setModel runs every turn, and the input split moves every pointer handler). Haiku high at 5. About 12 files, 650 lines: map/woods.js, map/layers/woods.js, map/input.js (moved), map/view.js, map/edges.js, shots.mjs, check-map.mjs, play/woods.mjs, play/edges.mjs, engine/CLAUDE.md, easel.md. Kept apart from build-1 by area (atlas, then map) as 441 did: merged it would be about 18 files in one Haiku session. It waits on 15 views shot once."
+    "points": 4,
+    "why": "Open 0 (the slot lattice, sparse band, river course, clearing, order, culling, stale hook, marsh shore and the 15 views' tiles are the spec's word for word; WOODS starts at numbers that run), New 1 (woods.js and layers/woods.js follow edges.js and layers/edges.js; the turns loop is proto/fields.mjs; the input split moves code unchanged), Miss 1 (check-map.mjs recounts every slot and the river and clearing on a synthetic tile; play/woods.mjs checks a staged wood, marsh and culling), Reach 2 (one line in setModel runs every turn, and the input split moves every pointer handler). Haiku high at 4 (spec-review re-scored Open to the scale's 0; the sparse depth now runs from the nearest open edge, every test reads the jittered point, and stale() keeps its key so a far turn doesn't redraw). About 12 files, 650 lines: map/woods.js, map/layers/woods.js, map/input.js (moved), map/view.js, map/edges.js, shots.mjs, check-map.mjs, play/woods.mjs, play/edges.mjs, engine/CLAUDE.md, easel.md. Kept apart from build-1 by area (atlas, then map) as 441 did: merged it would be about 18 files in one Haiku session. It waits on 15 views shot once."
   },
   {
     "id": "build-3",

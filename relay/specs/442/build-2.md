@@ -27,10 +27,11 @@ scaled to the terrain, culled by their drawn rectangle.
 - `slotsOf(gap)` returns the lattice points of the spec, which are the same for every tile.
 - `woodPieces({ terrain, river, flow, nb, px, py, forest, marsh, fields })` returns
   `{ key, x, y, tile, slot, kind }`, with `kind` either `'tree'` or `'reed'`. `fields` is a `Set` of
-  tile indices with a plot. The pieces follow the spec's rules: the nearest edge and its depth, open
-  edges, the sparse band, the river course, the clearing, and the order (y, x, tile, slot). The hash
+  tile indices with a plot. The pieces follow the spec's rules: the depth from the nearest open edge,
+  the sparse band, the river course, the clearing, and the order (y, x, tile, slot). The hash
   is a pure integer function of `(tile, slot, salt)`, so the jitter in x, the jitter in y, the sparse
-  draw and the variant are four independent draws. `Math.random` is never used.
+  draw and the variant are four independent draws. `Math.random` is never used. Every test reads
+  the moved (jittered) point, which is the piece's `x, y`.
 - `riverSegments(i, …)` returns the tile's river course: the segment from its centre toward its flow
   tile (`river[i] > 0` and `flow[i] >= 0`), and from each neighbour `j` with `flow[j] === i` and
   `river[j] > 0` to its centre, clipped at the hex edge. Export it, so the checks use the same course.
@@ -42,8 +43,11 @@ scaled to the terrain, culled by their drawn rectangle.
   anchor on the slot, and culls by the drawn rectangle unless `view.noCull`, as `layers/edges.js`
   does. It counts what it draws in `view.stats.woods`.
 - The fields are the plots of `model.v.clans` that lie on a forest or marsh tile. The pieces are
-  cached per map (`view.nb`) and per fields key (the sorted tile list, joined).
-- `export function stale(model, view)` is true when that fields key differs from the one last drawn.
+  cached per map (`view.nb`) and per fields key (the sorted tile list, joined). The static layers
+  first draw with `model` null (`setLayout` clears it, then `resize()` draws): that is no fields.
+- `export function stale(model, view)` works out the fields key, keeps it on the view, and is true when
+  it differs from the key it kept before. The layer draws from the kept key. Keep the key there, not
+  only when the layer draws, so a turn below `WOODS.from` doesn't mark the static layer dirty every turn.
   In `MapView.setModel`, add one line:
   `if (LAYERS.some((l) => l.static && l.stale?.(model, this))) this.dirty = true;`.
   Put the word `woods` beside `noCull` in its comment, as 441 did for `edges`.

@@ -50,7 +50,10 @@ pixel comes from a named rectangle of `terrain.png`, recoloured at most. Judge t
 - **The marsh** (`small2-delta-close`, `-play` and `large8-delta-play`): reeds standing in wet ground,
   water you can see at play zoom (make the marsh's pools larger: `441/notes.md`), and reeds rather
   than a bank along the sea. Tune the reed recipe, `gap` for reeds, and the marsh ground. It must
-  read apart from forest and from coast at a glance.
+  read apart from forest and from coast at a glance. With the bank gone, the marsh ground meets the
+  water along the hex's straight edge, and the reeds stand `inset` back from it. If that reads as a
+  hex-shaped block, let reeds stand past the inset on water edges or give the marsh a ragged rim on
+  the water: that is a piece rule, so change the checks and record it.
 - **The ground under the trees.** Decide whether forest ground stays the dark floor or lightens toward
   the source's grass under its trees, and say why.
 - **Over it.** Peaks stand over trees. Rivers, floodplains, borders, fields, clans, units, icons and
