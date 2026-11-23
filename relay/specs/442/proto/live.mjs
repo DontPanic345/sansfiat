@@ -1,0 +1,21 @@
+const root = process.argv[2];
+const { open } = await import(root + '/www/play.mjs');
+const { grid, marks, stage } = await import(root + '/www/play-stage.mjs');
+const R = 8;
+const F = new Set(['-3,0', '-2,0', '-3,1', '-4,1', '-4,0', '-3,-1', '-2,-1']);
+const M = new Set(['0,-7', '1,-7', '2,-7']);
+const dist = (q, r) => Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
+const SPEC = { map: grid(R, (q, r) => (dist(q, r) === R ? '~' : F.has(`${q},${r}`) ? 'f' : M.has(`${q},${r}`) ? '%' : '.')), marks: marks(R, { A: [-3, 0], B: [6, 0] }), civs: [{ mark: 'A' }, { mark: 'B' }], people: 12, lead: 0 };
+const page = await open('');
+await stage(page, SPEC);
+const info = () => page.eval(`(() => { const m = game.map; const sel = document.querySelector('#panel, .panel, aside'); return { k: +m.k.toFixed(2), cx: +m.cx.toFixed(2), H: Math.round(2.06*m.k), woods: m.stats.woods ?? '-', selected: m.selected, selUnit: m.selectedUnit, ds: document.body.dataset.selected, anim: !!m.anim }; })()`);
+const idx = await page.eval(`(() => { const m = game.map; const out = {}; for (let i = 0; i < m.px.length; i++) { const q = Math.round((m.px[i] * Math.sqrt(3) / 3 - m.py[i] / 3)), r = Math.round(m.py[i] * 2 / 3); out[q + ',' + r] = i; } return out; })()`);
+const log = async (what) => { await page.until('!game.map.anim', 5000); console.log(what.padEnd(34), JSON.stringify(await info())); };
+await page.click(idx['-3,0']); await log('click unit/tile in wood (-3,0)');
+await page.click(idx['-2,-1']); await log('click forest tile (-2,-1)');
+await page.click(idx['1,-7']); await log('click marsh tile (1,-7)');
+for (const k of [20, 14, 12, 11, 8, 12, 18]) { await page.eval(`(() => { game.map.anim = null; game.map.k = ${k}; game.map.viewChanged(); game.map.drawNow(); })()`); await log(`zoom k ${k}`); }
+await page.eval('(() => { game.map.anim = null; game.map.k = 12; game.map.cx -= 3; game.map.viewChanged(); game.map.drawNow(); })()'); await log('pan at k 12');
+await page.click(idx['-3,0']); await log('select again at k 12');
+const errs = page.errors(); console.log('errors', JSON.stringify(errs));
+await page.close();

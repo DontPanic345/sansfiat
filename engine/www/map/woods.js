@@ -3,7 +3,8 @@
 // read them. Directions are `EDGE_DIR`'s: 0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE.
 //
 // The rules, in world units (a hex has circumradius 1, apothem √3/2):
-// - A tile's slots are a triangular lattice through its centre, kept where every edge is at least `inset` away.
+// - A tile's slots are a triangular lattice through its centre, kept where every edge is at least `inset` away (a reed's
+//   inset is negative: reeds stand a little past the edge).
 //   Each slot moves by up to `jitter` in x and in y; the piece stands on the moved point.
 // - An edge is open when the neighbour across it is not forest (or is off the map). A forest slot's depth is its
 //   distance to the nearest open edge. A slot nearer than `band` is sparse: it holds a small tree when its draw is
@@ -15,15 +16,16 @@
 /** The woods' numbers, each in world units unless it says otherwise. The one table build-3 tunes. */
 export const WOODS = {
   /** The lattice's spacing: a tree tile's (`tree`) and a reed tile's (`reed`). */
-  gap: { tree: 0.42, reed: 0.36 },
-  /** How far a slot keeps from every edge of its hex: the lattice's margin. */
-  inset: 0.1,
+  gap: { tree: 0.56, reed: 0.6 },
+  /** How far a slot keeps from every edge of its hex: the lattice's margin. Reeds are negative: they stand past the hex's
+   *  edge, so a marsh's rim on the water and on land is ragged, not a straight hex edge. */
+  inset: { tree: 0.06, reed: -0.05 },
   /** How far a slot may move, in x and in y: the pieces don't stand in rows. */
-  jitter: 0.07,
+  jitter: 0.14,
   /** A forest slot nearer than this to an open edge is in the band: sparse, and small trees only. */
-  band: 0.32,
+  band: 0.34,
   /** The share of a sparse slot's draws that hold a small tree. */
-  sparse: 0.4,
+  sparse: 0.6,
   /** A slot nearer than this to a river's course is clear, so the river reads across the wood. */
   river: 0.22,
   /** The field clearing, relative to the tile's centre: |x| < `x`, and `top` < y < `bottom` (where fields draw). */
@@ -55,9 +57,9 @@ export function slotDraw(tile, slot, salt) {
 const inside = (x, y, margin) => NORMALS.every(([nx, ny]) => APOTHEM - (x * nx + y * ny) >= margin);
 
 /** The lattice points of a triangular lattice through a hex's centre, spaced `gap` (rows `gap·√3/2` apart, every other
- *  row offset by `gap/2`), kept where every edge is at least `WOODS.inset` away. Sorted by y, then x: a slot's index is
+ *  row offset by `gap/2`), kept where every edge is at least `inset` away (`WOODS.inset`'s tree or reed). Sorted by y, then x: a slot's index is
  *  its place in this list, the same for every tile. */
-export function slotsOf(gap) {
+export function slotsOf(gap, inset) {
   const out = [];
   const rows = Math.ceil(1 / (gap * ROW)) + 1;
   const cols = Math.ceil(1 / gap) + 2;
@@ -65,7 +67,7 @@ export function slotsOf(gap) {
     for (let c = -cols; c <= cols; c++) {
       const x = (c + ((r & 1) ? 0.5 : 0)) * gap;
       const y = r * gap * ROW;
-      if (inside(x, y, WOODS.inset)) out.push({ x, y });
+      if (inside(x, y, inset)) out.push({ x, y });
     }
   }
   return out.sort((a, b) => a.y - b.y || a.x - b.x);
@@ -103,7 +105,7 @@ export function riverSegments(i, { river, flow, nb, px, py }) {
  * a plot this turn.
  */
 export function woodPieces({ terrain, river, flow, nb, px, py, forest, marsh, fields }) {
-  const TREE = slotsOf(WOODS.gap.tree), REED = slotsOf(WOODS.gap.reed);
+  const TREE = slotsOf(WOODS.gap.tree, WOODS.inset.tree), REED = slotsOf(WOODS.gap.reed, WOODS.inset.reed);
   const { jitter, band, sparse, river: riverR, clearing } = WOODS;
   const pieces = [];
   for (let i = 0; i < terrain.length; i++) {

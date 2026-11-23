@@ -194,7 +194,7 @@ const { WOODS, SALT, slotDraw, slotsOf, riverSegments, woodPieces } = await impo
 const FOREST = TERRAIN.findIndex((t) => t.name === 'forest');
 const MARSH = TERRAIN.findIndex((t) => t.name === 'marsh');
 assert.ok(FOREST >= 0 && MARSH >= 0, 'the terrain has forest and marsh');
-const TREE_SLOTS = slotsOf(WOODS.gap.tree), REED_SLOTS = slotsOf(WOODS.gap.reed);
+const TREE_SLOTS = slotsOf(WOODS.gap.tree, WOODS.inset.tree), REED_SLOTS = slotsOf(WOODS.gap.reed, WOODS.inset.reed);
 const segDist = (x, y, [x0, y0, x1, y1]) => {
   const dx = x1 - x0, dy = y1 - y0;
   const t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy)));

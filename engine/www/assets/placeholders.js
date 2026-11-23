@@ -32,9 +32,9 @@ export const SHORE = { edge: { w: 112, h: 112, ax: 56, ay: 56 }, corner: { w: 48
 export const FRINGE = ['desert', 'marsh', 'forest', 'hills', 'mountain', 'coast'];
 /** The wood and marsh pieces: a cell's size, and its ground point (the anchor), in cell px. Build-2 draws them at a slot. */
 export const TREE = {
-  big: { w: 64, h: 80, ax: 32, ay: 76 },
-  small: { w: 40, h: 52, ax: 20, ay: 49 },
-  reed: { w: 32, h: 40, ax: 16, ay: 37 },
+  big: { w: 80, h: 100, ax: 40, ay: 95 },
+  small: { w: 48, h: 64, ax: 24, ay: 60 },
+  reed: { w: 48, h: 60, ax: 24, ay: 56 },
 };
 /** How many world units (a hex has circumradius 1) a 64 px icon cell spans. */
 export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth': 1.6, 'icon.pass': 1, 'icon.town': 1.1 };

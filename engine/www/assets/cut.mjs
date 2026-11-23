@@ -297,13 +297,15 @@ function meanOf(source, [x, y, w, h]) {
 /**
  * The ramp op: each pixel's luminance, normalised over the cell's opaque pixels, picks a colour on the line from
  * `dark` to `light` (the means of two source rectangles), blended with the pixel's own colour by `mix`. `lum: [lo, hi]`
- * replaces the cell's own luminance range.
+ * replaces the cell's own luminance range. `keepWater` leaves a bluish pixel (a pool patched into the ground) as it is.
  */
-function ramp(data, source, { dark, light, mix, lum: fixed }) {
+function ramp(data, source, { dark, light, mix, lum: fixed, keepWater }) {
+  // `keepWater` leaves a pixel that is bluer than it is red or green as it is: a pool in the ground keeps its blue.
+  const water = (o) => keepWater && data[o + 2] > data[o] + 16 && data[o + 2] >= data[o + 1];
   const [dr, dg, db] = meanOf(source, dark), [lr, lg, lb] = meanOf(source, light);
   let lo = Infinity, hi = -Infinity;
   for (let o = 0; o < data.length; o += 4) {
-    if (data[o + 3] < OPAQUE) continue;
+    if (data[o + 3] < OPAQUE || water(o)) continue;
     const l = lum(data[o], data[o + 1], data[o + 2]);
     lo = Math.min(lo, l);
     hi = Math.max(hi, l);
@@ -311,7 +313,7 @@ function ramp(data, source, { dark, light, mix, lum: fixed }) {
   if (fixed) [lo, hi] = fixed; // a fixed luminance range keeps a flat variant from stretching to the whole ramp
   const span = hi > lo ? hi - lo : 1;
   for (let o = 0; o < data.length; o += 4) {
-    if (!data[o + 3]) continue;
+    if (!data[o + 3] || water(o)) continue;
     const t = Math.min(1, Math.max(0, (lum(data[o], data[o + 1], data[o + 2]) - lo) / span));
     const target = [dr + t * (lr - dr), dg + t * (lg - dg), db + t * (lb - db)];
     for (let c = 0; c < 3; c++) data[o + c] = Math.round(data[o + c] * (1 - mix) + target[c] * mix);
