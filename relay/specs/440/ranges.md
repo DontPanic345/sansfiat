@@ -56,3 +56,20 @@ point (1.3 circumradii), so it rises about a quarter hex into the tile to its no
 
 The source's range is one opaque sprite (alpha ≥ 250 inside, 0 around it; the dark glow is colour under
 alpha 0), so every piece is a rectangle, a polygon and the key: the peaks overlap each other in the art.
+
+## The edge views' cameras (spec-review)
+
+Measured on main (0fd7835) with `/tmp` probes like `proto/nearest.mjs`, small 9 on the laptop window
+(map canvas 1280×759, dpr 1; small's radius 16, so `clampView` holds |cx| ≤ 28.88, |cy| ≤ 25.3):
+
+| View | k | Camera asked | Camera given |
+|---|---|---|---|
+| bend 474 1.0 below the bottom edge | 18 | (4.33, −20.58) | the same |
+| bend 474 0.8 past the right edge | 18 | (−32.03, 1.5) | (−28.88, 1.5): clamped, the tile on screen |
+| bend 474 0.8 past the right edge | 35 | (−14.76, 1.5) | the same |
+
+At k 18 the right edge can't fall west of x 6.68, and small 9's mountains span x −21.65 to 6.93, so no
+mountain on it can sit 0.8 past the right edge at that zoom: the right-edge view is at k 35.
+
+The phone (390×786 map canvas, dpr 1) at the fork, 469: k 6 draws cells (`stats.atlas` true), k 5 the
+flat fill, as the spec's two zoom views want. `proto/peak.mjs` rerun gives `peak.png` byte for byte.

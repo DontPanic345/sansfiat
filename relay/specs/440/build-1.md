@@ -86,19 +86,22 @@ variants as the spec gives them. Sorted by `y`, then ridges before peaks, then `
 
 ## 5. The layer: `www/map/layers/ridges.js`
 
-A static layer, `name = 'ridges'`, inserted in `LAYERS` right after `terrain` (the only change to
-`view.js` besides an optional `noCull = false` field). It:
+A static layer, `name = 'ridges'`, inserted in `LAYERS` right after `terrain`. `view.js` is 605 lines:
+its only changes are the import, the `LAYERS` entry and a `noCull = false` field; everything else lives
+in `map/layers/ridges.js` (and the pure rules in `map/ridges.js`). It:
 
 - Draws nothing where the terrain is a flat fill (`terrain.js` exports how it decides: share the
   height `H` and the flat test from there, don't copy them).
-- Builds the pieces once per map (keep them on the view, rebuilt when the map changes) and draws each
+- Builds the pieces once per map, cached in the layer module in a `WeakMap` keyed by `view.nb` (which
+  `setLayout` makes new for each map), and draws each
   in order with `drawImage` of `atlas.scaled(key, round(cell.h × H / 148))`, whole device pixels like
   the terrain, its anchor (scaled) on the piece's point.
 - Skips a piece whose drawn rectangle misses the canvas, unless `view.noCull`.
 - Sets `view.stats.ridges` (pieces drawn) and nothing else in `stats`.
 
-In `terrain.js`, the flat fill for `mountain` takes `mountain.peak.0`'s `flat`; every other kind keeps
-what it has.
+In `terrain.js`, the flat fill for `mountain` takes `mountain.peak.0`'s `flat`, falling back as now
+(`terrain.mountain.0`'s `flat`, then `TERRAIN_COLOR`), so a placeholder peak, which has no `flat`, fills
+as main does; every other kind keeps what it has.
 
 ## 6. The views in `www/shots.mjs`
 
@@ -108,7 +111,10 @@ its camera: `on: 'plains'` (the present rule, the default), or a mountain class 
 by }`, which moves the camera so the tile's centre sits `by` world units past that canvas edge. The
 chooser runs in the page from `game.map` alone (copy `proto/nearest.mjs`'s rule; don't import
 `ridges.js`, so `shots.mjs` still copies alone onto main). `views.json` records the tile; the tiles must
-be `ranges.md`'s (469, 377, 777, 1937, 1953, 474).
+be `ranges.md`'s (469, 377, 777, 1937, 1953, 474). `edge` uses the canvas's CSS size (`m.w / 2 / k`,
+`m.h / 2 / k`). `small9-edge-right` is at k 35: at k 18 the pan clamp can't put any small-9 mountain past
+the right edge (spec, "Settled here"). Every view, plains ones too, throws when the camera after
+`viewChanged()` isn't the `cx`, `cy` and `k` it asked for (`clampView` moved it), as it now does for `k`.
 
 `--cull DIR` shoots each mountain view twice in one page, the second after `game.map.noCull = true;
 game.map.dirty = true` (or whatever makes the static layer redraw), and exits 1 unless the PNGs are
@@ -122,7 +128,8 @@ byte-identical, printing each view's `stats.ridges` for both.
 - `www/play/ridges.mjs`, run by `play/all.mjs`: a staged map (`play-stage.mjs`) with a lone mountain,
   a straight run of three ending in caps, a bend and a fork, on plains in sea. It checks the pieces'
   keys and kinds against the spec's rules, the draw order, and, with the camera put so a peak's tile
-  sits 1.0 world unit below the canvas, that `stats.ridges` counts it and a culled and an unculled draw
+  sits 1.0 world unit below the canvas (asserting the camera wasn't clamped: pick the zoom and the
+  tile so it isn't), that `stats.ridges` counts it and a culled and an unculled draw
   give identical canvas PNGs. Seconds.
 - `play/art.mjs` still passes (every cell inside the sheet and not blank).
 

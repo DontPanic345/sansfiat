@@ -5,7 +5,7 @@
 
 - **Health: nothing but the art moved.** `git diff main --stat -- engine/core engine/cli engine/web`
   is empty, so every digest, `SAVE_VERSION` (27) and every save stay main's without a sweep.
-  Selection, pan and zoom are `map/view.js`, which gains one entry in `LAYERS` and nothing else.
+  Selection, pan and zoom are `map/view.js`, which gains the layer's import, its entry in `LAYERS` and a `noCull = false` field, and nothing else.
 - **A mountain range reads as one range.** On identical views of the retro maps (same seed, camera,
   zoom and window, shot by `www/shots.mjs`), main's mountains are grey hexes; the branch's are peaks
   standing on their tiles, joined to their mountain neighbours by ridges, so a chain reads as a chain:
@@ -75,6 +75,13 @@ them; how the range looks, which is the piece, is judged by eye. No `Shape:` lin
 
 ## Settled here, by running
 
+- **The edge views' cameras** (spec-review, `ranges.md`): `small9-edge-bottom` at k 18 puts its camera
+  unclamped (cy −20.58 inside ±25.3). `small9-edge-right` can't be at k 18: the laptop canvas is 71
+  world units wide there and the small map 58, so the pan clamp holds cx ≥ −28.9 and the right edge at
+  x ≥ 6.7, and small 9's easternmost mountain is at x 6.93. At k 35 its camera (cx −14.76) is
+  unclamped, which also proves the edge at the second zoom. `shots.mjs` throws when the camera it gets
+  isn't the one it asked for, so a clamp can't pass silently.
+
 - **The mountains on the retro maps** (`ranges.md`): 42–295 a map; forks on five of seven, a 4+ blob on
   five, gentle bends on all, sharp bends on five; no mountain on any rim; passes are hills. Tile index
   order is not row order.
@@ -143,7 +150,7 @@ camera on the tile named (chosen as `ranges.md` chose it: the mountain tile of t
 | `large8-bend-play` | large 8 | laptop | 18 | the bend (1937) |
 | `large8-fork-play` | large 8 | laptop | 18 | the fork (1953) |
 | `small9-edge-bottom` | small 9 | laptop | 18 | the bend (474) 1.0 world unit below the canvas's bottom edge |
-| `small9-edge-right` | small 9 | laptop | 18 | the bend (474) 0.8 world units beyond the right edge |
+| `small9-edge-right` | small 9 | laptop | 35 | the bend (474) 0.8 world units beyond the right edge |
 | `small9-fork-edge` | small 9 | phone | 6 | the fork: the last zoom that draws cells |
 | `small9-fork-flat` | small 9 | phone | 5 | the fork: the flat fill |
 
@@ -163,8 +170,8 @@ camera on the tile named (chosen as `ranges.md` chose it: the mountain tile of t
 - A main worktree with the branch's `shots.mjs`: shoot every view on both, `--diff`: the cameras
   match. Run `--cull` on the branch. Read the pairs: on the branch the fork, the bends and the blob
   read as ranges, caps end them, southern peaks overlap northern ones, and rivers, passes, borders,
-  fields, icons, clans and units sit where main has them. In `small9-edge-bottom` the peak reaches up
-  onto the canvas. `small9-fork-edge` and `small9-fork-flat` show the range grey at both zooms.
+  fields, icons, clans and units sit where main has them. In `small9-edge-bottom` (k 18) the peak reaches up
+  onto the canvas, and in `small9-edge-right` (k 35) its flank reaches in. `small9-fork-edge` and `small9-fork-flat` show the range grey at both zooms.
 - `stats.terrainMs` beside main's on the play views: the branch's static draw stays within a few ms.
 - On the branch page, select a mountain tile, the tile north of a peak and a unit, pan and zoom: they
   behave as on main.
