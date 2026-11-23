@@ -7,9 +7,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cut, anchorOf } from './cut.mjs';
+import { cut, anchorOf, derive, fold } from './cut.mjs';
 import { decode, encode, readPng } from './png.mjs';
-import { layout } from './placeholders.js';
+import { fringeBox, fringeMask, layout, TERRAIN_CELL } from './placeholders.js';
 import { CELLS, FILES, REGIONS } from './sources.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -22,12 +22,23 @@ const sourceOf = (file) => {
   return sources.get(file);
 };
 
-/** The cut of CELLS entry `name` in a cell of `size` `{ w, h }`: `{ data, ax, ay, flat }`. */
+/** The region a CELLS entry is cut from; a derived cell's is its `from` cell's. */
+const srcOf = (name) => (CELLS[name].from ? CELLS[CELLS[name].from].region : CELLS[name].region);
+
+/** The cut of CELLS entry `name` in a cell of `size` `{ w, h }`: `{ data, ax, ay, flat }`. A derived cell is
+ *  its `from` cell's cut at the terrain size, masked to its fringe. */
 const recut = (name, size) => {
   const spec = CELLS[name];
+  if (spec.from) {
+    const fromSize = { w: TERRAIN_CELL.w, h: TERRAIN_CELL.h };
+    const from = CELLS[spec.from], region = REGIONS[from.region];
+    return derive(cut(sourceOf(region.file), region, from, fromSize), fromSize, spec.fringe, size);
+  }
   const region = REGIONS[spec.region];
   return cut(sourceOf(region.file), region, spec, size);
 };
+
+const opName = (op) => (typeof op === 'string' ? op : op.op);
 
 const cellsOf = (sheet, cuts) => {
   const cells = {};
@@ -37,17 +48,62 @@ const cellsOf = (sheet, cuts) => {
       cells[name] = { x: c.x, y: c.y, w: c.w, h: c.h, ax, ay, note: c.note };
       continue;
     }
-    const spec = CELLS[name], region = REGIONS[spec.region];
-    const ops = spec.ops.length ? ` (${spec.ops.join(', ')})` : '';
+    const spec = CELLS[name];
+    const src = srcOf(name), region = REGIONS[src];
+    const ops = spec.ops?.length ? ` (${spec.ops.map(opName).join(', ')})` : '';
+    const how = spec.from ? `Derived from ${spec.from}, masked to fringe edge ${spec.fringe.dir}, variant ${spec.fringe.variant}` : `Cut from ${spec.region}${ops}${spec.rotate ? `, turned ${spec.rotate}°` : ''}`;
     cells[name] = {
       x: c.x, y: c.y, w: c.w, h: c.h, ax, ay,
-      note: `${c.note}. Cut from ${spec.region}${ops}: ${region.note}`,
-      src: spec.region,
+      note: `${c.note}. ${how}: ${region.note}`,
+      src,
       flat: cuts.get(name).flat,
     };
   }
   return cells;
 };
+
+/** The cut ops' own checks, which need no atlas: a turn of 0 is no turn, a fill's copies mirror across a seam, and
+ *  every fringe pixel sits in its cell's rectangle. Returns the failures. */
+function asserts() {
+  const bad = [];
+  const sheet = layout();
+  // A sprite region cut with rotate 0 is the same cut as without.
+  for (const [name, cell] of [['shore.edge.0.0', CELLS['shore.edge.0.0']], ['mountain.peak.0', CELLS['mountain.peak.0']]]) {
+    const region = REGIONS[cell.region];
+    const size = sheet.cells[name];
+    const plain = cut(sourceOf(region.file), region, { ...cell, rotate: undefined }, size);
+    const turned = cut(sourceOf(region.file), { ...region, rotate: 0 }, { ...cell, rotate: undefined }, size);
+    if (Buffer.compare(Buffer.from(plain.data), Buffer.from(turned.data)) !== 0) bad.push(`assert: ${name} cut with rotate 0 differs from the cut without`);
+  }
+  // A fill's copies seam: the source column read by a sample just left of a copy boundary is the one read just right of it, mirrored.
+  const fillSource = { width: 200, height: 100, data: new Uint8Array(200 * 100 * 4) };
+  for (let i = 0; i < fillSource.width * fillSource.height; i++) {
+    fillSource.data[i * 4] = (i % fillSource.width) % 256;
+    fillSource.data[i * 4 + 3] = 255;
+  }
+  const seam = { file: 'terrain', fill: { rect: [0, 0, 40, 60], scale: 1, offset: [0, 0] }, note: 'the seam test' };
+  const row = cut(fillSource, seam, { ops: [] }, { w: 128, h: 148 });
+  const red = (x) => row.data[(74 * 128 + x) * 4];
+  for (let j = 0; j < 4; j++) {
+    if (red(40 - 1 - j) !== red(40 + j)) bad.push(`assert: a fill's copies do not mirror across the seam at x 40 (${red(39 - j)} and ${red(40 + j)})`);
+    if (fold(40 - 1 - j, 40) !== fold(40 + j, 40)) bad.push(`assert: fold does not mirror across a copy boundary`);
+  }
+  // Every derived cell's rectangle holds every pixel of its mask above 0.
+  for (const [name, spec] of Object.entries(CELLS)) {
+    if (!spec.from) continue;
+    const box = fringeBox(spec.fringe.dir), size = sheet.cells[name];
+    if (box.w !== size.w || box.h !== size.h) bad.push(`assert: ${name} is ${size.w}×${size.h}, its fringe is ${box.w}×${box.h}`);
+    let out = 0;
+    for (let y = 0; y < TERRAIN_CELL.h; y++) {
+      for (let x = 0; x < TERRAIN_CELL.w; x++) {
+        if (fringeMask(spec.fringe.dir, spec.fringe.variant, x + 0.5, y + 0.5) <= 0) continue;
+        if (x < box.x || y < box.y || x >= box.x + box.w || y >= box.y + box.h) out++;
+      }
+    }
+    if (out) bad.push(`assert: ${name}: ${out} mask pixels above 0 lie outside its rectangle`);
+  }
+  return bad;
+}
 
 /** Checks `dir`'s atlas.png and atlas.json against layout() and the sources; prints each failure. */
 function check(dir) {
@@ -75,7 +131,7 @@ function check(dir) {
     }
     nCut++;
     const cut = recut(name, c);
-    if (j.src !== CELLS[name].region) bad.push(`${name}: src is ${j.src}, expected ${CELLS[name].region}`);
+    if (j.src !== srcOf(name)) bad.push(`${name}: src is ${j.src}, expected ${srcOf(name)}`);
     if (j.flat !== cut.flat) bad.push(`${name}: flat is ${j.flat}, the cut gives ${cut.flat}`);
     if (c.x + c.w > image.width || c.y + c.h > image.height) {
       bad.push(`${name}: its rectangle lies outside atlas.png`);
@@ -94,6 +150,7 @@ function check(dir) {
     }
     if (differ) bad.push(`${name}: ${differ} pixels differ from the cut; first at (${first.x}, ${first.y}) in the cell: atlas.png ${first.got}, cut ${first.want}`);
   }
+  bad.push(...asserts());
   if (bad.length) {
     for (const line of bad) console.error(`atlas: ${line}`);
     process.exit(1);

@@ -3,6 +3,7 @@
 // toggle changes; the others, which a turn changes, are drawn over it, in `LAYERS`' order. World units: a
 // hex has circumradius 1, so tile (q, r) is centred at (sqrt3 (q + r/2), 1.5 r).
 import * as terrain from './layers/terrain.js';
+import * as edges from './layers/edges.js';
 import * as ridges from './layers/ridges.js';
 import * as fertility from './layers/fertility.js';
 import * as floodplains from './layers/floodplains.js';
@@ -35,7 +36,7 @@ import * as overlay from './layers/overlay.js';
 import { CORNER, EDGE_DIR } from './geom.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, ridges, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
+export const LAYERS = [terrain, edges, ridges, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */
@@ -74,7 +75,7 @@ export class MapView {
     this.work = []; // [tile, labour, need]: trails under way
     this.focusMarket = null; // the selected festival's id: its walkers' routes are drawn bright
     this.cx = 0; this.cy = 0; this.k = 8;
-    this.noCull = false; // the ridge layer draws every piece, not only those on the canvas (shots.mjs --cull checks it)
+    this.noCull = false; // the edge and ridge layers draw every piece, not only those on the canvas (shots.mjs --cull checks it)
     this.w = 1; this.h = 1; this.dpr = 1;
     this.n = 0;
     this.selected = -1;

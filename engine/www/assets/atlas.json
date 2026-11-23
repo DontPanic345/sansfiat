@@ -1,7 +1,7 @@
 {
  "image": "atlas.png",
  "width": 1024,
- "height": 1300,
+ "height": 2064,
  "cells": {
   "terrain.sea.0": {
    "x": 0,
@@ -10,7 +10,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "sea, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "sea, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from sea.0: the sea: a clean block of water, repeated and mirrored, filled into the hex",
+   "src": "sea.0",
+   "flat": "#013d66"
   },
   "terrain.sea.1": {
    "x": 128,
@@ -19,7 +21,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "sea, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "sea, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from sea.1: the sea: a clean block of water, repeated and mirrored, filled into the hex",
+   "src": "sea.1",
+   "flat": "#03406a"
   },
   "terrain.sea.2": {
    "x": 256,
@@ -28,7 +32,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "sea, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "sea, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from sea.2: the sea: a clean block of water, repeated and mirrored, filled into the hex",
+   "src": "sea.2",
+   "flat": "#013e68"
   },
   "terrain.lake.0": {
    "x": 384,
@@ -37,7 +43,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "lake, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "lake, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from sea.0 (ramp): the sea: a clean block of water, repeated and mirrored, filled into the hex",
+   "src": "sea.0",
+   "flat": "#206793"
   },
   "terrain.lake.1": {
    "x": 512,
@@ -46,7 +54,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "lake, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "lake, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from sea.1 (ramp): the sea: a clean block of water, repeated and mirrored, filled into the hex",
+   "src": "sea.1",
+   "flat": "#226995"
   },
   "terrain.lake.2": {
    "x": 640,
@@ -55,7 +65,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "lake, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "lake, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from sea.2 (ramp): the sea: a clean block of water, repeated and mirrored, filled into the hex",
+   "src": "sea.2",
+   "flat": "#206894"
   },
   "terrain.coast.0": {
    "x": 768,
@@ -64,7 +76,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "coast, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "coast, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (ramp): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#978550"
   },
   "terrain.coast.1": {
    "x": 896,
@@ -73,7 +87,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "coast, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "coast, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass (ramp): bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#978550"
   },
   "terrain.coast.2": {
    "x": 0,
@@ -82,7 +98,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "coast, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "coast, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (ramp, mirror): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#978550"
   },
   "terrain.plains.0": {
    "x": 128,
@@ -124,7 +142,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "forest, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "forest, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (ramp): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#2d4735"
   },
   "terrain.forest.1": {
    "x": 640,
@@ -133,7 +153,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "forest, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "forest, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass (ramp): bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#2d4735"
   },
   "terrain.forest.2": {
    "x": 768,
@@ -142,7 +164,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "forest, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "forest, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (ramp, mirror): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#2d4735"
   },
   "terrain.hills.0": {
    "x": 896,
@@ -151,7 +175,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "hills, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "hills, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from hills.a: bottom-left row, first hex: a hill with grass round it",
+   "src": "hills.a",
+   "flat": "#b39f47"
   },
   "terrain.hills.1": {
    "x": 0,
@@ -160,7 +186,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "hills, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "hills, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from hills.b: bottom-left row, second hex: a hill, with the first hill's tail patched out",
+   "src": "hills.b",
+   "flat": "#b39f47"
   },
   "terrain.hills.2": {
    "x": 128,
@@ -169,7 +197,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "hills, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "hills, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from hills.a (mirror): bottom-left row, first hex: a hill with grass round it",
+   "src": "hills.a",
+   "flat": "#b39f47"
   },
   "terrain.mountain.0": {
    "x": 256,
@@ -211,7 +241,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "desert, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "desert, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (ramp): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#c59c65"
   },
   "terrain.desert.1": {
    "x": 768,
@@ -220,7 +252,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "desert, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "desert, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass (ramp): bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#c59c65"
   },
   "terrain.desert.2": {
    "x": 896,
@@ -229,7 +263,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "desert, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "desert, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (ramp, mirror): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#c59c65"
   },
   "terrain.marsh.0": {
    "x": 0,
@@ -238,7 +274,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "marsh, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "marsh, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp): bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#57672e"
   },
   "terrain.marsh.1": {
    "x": 128,
@@ -247,7 +285,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "marsh, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "marsh, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp): bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#57672e"
   },
   "terrain.marsh.2": {
    "x": 256,
@@ -256,7 +296,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "marsh, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "marsh, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp, mirror): bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#57672e"
   },
   "overlay.floodplain": {
    "x": 0,
@@ -274,7 +316,7 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "desert stipple, translucent, drawn over a desert tile: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "desert stipple, translucent (no longer drawn: the desert ground is sand): pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "overlay.fields": {
    "x": 256,
@@ -504,6 +546,1062 @@
    "note": "the ridge across a shared edge in direction sw, variant 1: its midpoint at the anchor, transparent outside. Cut from low.mid.s (mirror): the low peak, small: the diagonal ridges",
    "src": "low.mid.s",
    "flat": "#76706b"
+  },
+  "shore.edge.0.0": {
+   "x": 0,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 0 (EDGE_DIR order), variant 0, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.left, turned -90°: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#a6904f"
+  },
+  "shore.edge.0.1": {
+   "x": 112,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 0 (EDGE_DIR order), variant 1, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.right, turned -90°: the shore bank, the level run's right part, turned to each edge",
+   "src": "bank.right",
+   "flat": "#a58459"
+  },
+  "shore.edge.1.0": {
+   "x": 224,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 1 (EDGE_DIR order), variant 0, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.left, turned -30°: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#a7904e"
+  },
+  "shore.edge.1.1": {
+   "x": 336,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 1 (EDGE_DIR order), variant 1, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.right, turned -30°: the shore bank, the level run's right part, turned to each edge",
+   "src": "bank.right",
+   "flat": "#a68559"
+  },
+  "shore.edge.2.0": {
+   "x": 448,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 2 (EDGE_DIR order), variant 0, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.left, turned 30°: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#a7904e"
+  },
+  "shore.edge.2.1": {
+   "x": 560,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 2 (EDGE_DIR order), variant 1, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.right, turned 30°: the shore bank, the level run's right part, turned to each edge",
+   "src": "bank.right",
+   "flat": "#a68559"
+  },
+  "shore.edge.3.0": {
+   "x": 672,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 3 (EDGE_DIR order), variant 0, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.left, turned 90°: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#a6904f"
+  },
+  "shore.edge.3.1": {
+   "x": 784,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 3 (EDGE_DIR order), variant 1, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.right, turned 90°: the shore bank, the level run's right part, turned to each edge",
+   "src": "bank.right",
+   "flat": "#a58459"
+  },
+  "shore.edge.4.0": {
+   "x": 896,
+   "y": 1300,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 4 (EDGE_DIR order), variant 0, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.left, turned 150°: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#a7904e"
+  },
+  "shore.edge.4.1": {
+   "x": 0,
+   "y": 1412,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 4 (EDGE_DIR order), variant 1, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.right, turned 150°: the shore bank, the level run's right part, turned to each edge",
+   "src": "bank.right",
+   "flat": "#a68559"
+  },
+  "shore.edge.5.0": {
+   "x": 112,
+   "y": 1412,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 5 (EDGE_DIR order), variant 0, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.left, turned 210°: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#a7904e"
+  },
+  "shore.edge.5.1": {
+   "x": 224,
+   "y": 1412,
+   "w": 112,
+   "h": 112,
+   "ax": 56,
+   "ay": 56,
+   "note": "the bank across hex edge 5 (EDGE_DIR order), variant 1, on the land side: its midpoint at the anchor, transparent outside. Cut from bank.right, turned 210°: the shore bank, the level run's right part, turned to each edge",
+   "src": "bank.right",
+   "flat": "#a68559"
+  },
+  "shore.in.0": {
+   "x": 0,
+   "y": 1524,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 0, where water pokes into land: the bank fanned round the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#8b8c34"
+  },
+  "shore.in.1": {
+   "x": 48,
+   "y": 1524,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 1, where water pokes into land: the bank fanned round the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#8b8c34"
+  },
+  "shore.in.2": {
+   "x": 96,
+   "y": 1524,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 2, where water pokes into land: the bank fanned round the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#8a8c33"
+  },
+  "shore.in.3": {
+   "x": 144,
+   "y": 1524,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 3, where water pokes into land: the bank fanned round the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#8b8c34"
+  },
+  "shore.in.4": {
+   "x": 192,
+   "y": 1524,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 4, where water pokes into land: the bank fanned round the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#8b8c34"
+  },
+  "shore.in.5": {
+   "x": 240,
+   "y": 1524,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 5, where water pokes into land: the bank fanned round the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#8a8c33"
+  },
+  "shore.out.0": {
+   "x": 0,
+   "y": 1572,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 0, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#b29657"
+  },
+  "shore.out.1": {
+   "x": 48,
+   "y": 1572,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 1, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#b19456"
+  },
+  "shore.out.2": {
+   "x": 96,
+   "y": 1572,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 2, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#b39458"
+  },
+  "shore.out.3": {
+   "x": 144,
+   "y": 1572,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 3, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#b29657"
+  },
+  "shore.out.4": {
+   "x": 192,
+   "y": 1572,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 4, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#b19456"
+  },
+  "shore.out.5": {
+   "x": 240,
+   "y": 1572,
+   "w": 48,
+   "h": 48,
+   "ax": 24,
+   "ay": 24,
+   "note": "the bank at hex vertex 5, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside. Cut from bank.left: the shore bank, the level run's left part, turned to each edge",
+   "src": "bank.left",
+   "flat": "#b39458"
+  },
+  "fringe.desert.0.0": {
+   "x": 0,
+   "y": 1620,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "desert along hex edge 0, variant 0: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.0, masked to fringe edge 0, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#a78d58"
+  },
+  "fringe.desert.0.1": {
+   "x": 26,
+   "y": 1620,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "desert along hex edge 0, variant 1: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.1, masked to fringe edge 0, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#a98e59"
+  },
+  "fringe.desert.1.0": {
+   "x": 52,
+   "y": 1620,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "desert along hex edge 1, variant 0: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.0, masked to fringe edge 1, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#a78d58"
+  },
+  "fringe.desert.1.1": {
+   "x": 129,
+   "y": 1620,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "desert along hex edge 1, variant 1: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.1, masked to fringe edge 1, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#a88e58"
+  },
+  "fringe.desert.2.0": {
+   "x": 206,
+   "y": 1620,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "desert along hex edge 2, variant 0: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.0, masked to fringe edge 2, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#a78d58"
+  },
+  "fringe.desert.2.1": {
+   "x": 283,
+   "y": 1620,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "desert along hex edge 2, variant 1: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.1, masked to fringe edge 2, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#a98e59"
+  },
+  "fringe.desert.3.0": {
+   "x": 360,
+   "y": 1620,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "desert along hex edge 3, variant 0: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.0, masked to fringe edge 3, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#a98e58"
+  },
+  "fringe.desert.3.1": {
+   "x": 386,
+   "y": 1620,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "desert along hex edge 3, variant 1: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.1, masked to fringe edge 3, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#ab8f59"
+  },
+  "fringe.desert.4.0": {
+   "x": 412,
+   "y": 1620,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "desert along hex edge 4, variant 0: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.0, masked to fringe edge 4, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#a98e59"
+  },
+  "fringe.desert.4.1": {
+   "x": 489,
+   "y": 1620,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "desert along hex edge 4, variant 1: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.1, masked to fringe edge 4, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#ab8f59"
+  },
+  "fringe.desert.5.0": {
+   "x": 566,
+   "y": 1620,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "desert along hex edge 5, variant 0: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.0, masked to fringe edge 5, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#a78d58"
+  },
+  "fringe.desert.5.1": {
+   "x": 643,
+   "y": 1620,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "desert along hex edge 5, variant 1: a ragged strip inside the tile, cut from its desert cell, the hex centre at the anchor, transparent outside. Derived from terrain.desert.1, masked to fringe edge 5, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#aa8f59"
+  },
+  "fringe.marsh.0.0": {
+   "x": 0,
+   "y": 1694,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "marsh along hex edge 0, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 0, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#54662e"
+  },
+  "fringe.marsh.0.1": {
+   "x": 26,
+   "y": 1694,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "marsh along hex edge 0, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 0, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#51632f"
+  },
+  "fringe.marsh.1.0": {
+   "x": 52,
+   "y": 1694,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "marsh along hex edge 1, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 1, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#566630"
+  },
+  "fringe.marsh.1.1": {
+   "x": 129,
+   "y": 1694,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "marsh along hex edge 1, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 1, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#55652d"
+  },
+  "fringe.marsh.2.0": {
+   "x": 206,
+   "y": 1694,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "marsh along hex edge 2, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 2, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#57672b"
+  },
+  "fringe.marsh.2.1": {
+   "x": 283,
+   "y": 1694,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "marsh along hex edge 2, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 2, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#57672c"
+  },
+  "fringe.marsh.3.0": {
+   "x": 360,
+   "y": 1694,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "marsh along hex edge 3, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 3, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#5a6a2b"
+  },
+  "fringe.marsh.3.1": {
+   "x": 386,
+   "y": 1694,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "marsh along hex edge 3, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 3, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#5a6a2b"
+  },
+  "fringe.marsh.4.0": {
+   "x": 412,
+   "y": 1694,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "marsh along hex edge 4, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 4, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#5c6b2b"
+  },
+  "fringe.marsh.4.1": {
+   "x": 489,
+   "y": 1694,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "marsh along hex edge 4, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 4, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#5a6a2b"
+  },
+  "fringe.marsh.5.0": {
+   "x": 566,
+   "y": 1694,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "marsh along hex edge 5, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 5, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#57682b"
+  },
+  "fringe.marsh.5.1": {
+   "x": 643,
+   "y": 1694,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "marsh along hex edge 5, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 5, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "src": "marsh.grass",
+   "flat": "#58682b"
+  },
+  "fringe.forest.0.0": {
+   "x": 0,
+   "y": 1768,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "forest along hex edge 0, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 0, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#3b5330"
+  },
+  "fringe.forest.0.1": {
+   "x": 26,
+   "y": 1768,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "forest along hex edge 0, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 0, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#3c5430"
+  },
+  "fringe.forest.1.0": {
+   "x": 52,
+   "y": 1768,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "forest along hex edge 1, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 1, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#3b5330"
+  },
+  "fringe.forest.1.1": {
+   "x": 129,
+   "y": 1768,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "forest along hex edge 1, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 1, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#3c5330"
+  },
+  "fringe.forest.2.0": {
+   "x": 206,
+   "y": 1768,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "forest along hex edge 2, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 2, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#3b5330"
+  },
+  "fringe.forest.2.1": {
+   "x": 283,
+   "y": 1768,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "forest along hex edge 2, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 2, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#3c5430"
+  },
+  "fringe.forest.3.0": {
+   "x": 360,
+   "y": 1768,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "forest along hex edge 3, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 3, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#3c5430"
+  },
+  "fringe.forest.3.1": {
+   "x": 386,
+   "y": 1768,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "forest along hex edge 3, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 3, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#3e552f"
+  },
+  "fringe.forest.4.0": {
+   "x": 412,
+   "y": 1768,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "forest along hex edge 4, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 4, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#3d5430"
+  },
+  "fringe.forest.4.1": {
+   "x": 489,
+   "y": 1768,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "forest along hex edge 4, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 4, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#3e552f"
+  },
+  "fringe.forest.5.0": {
+   "x": 566,
+   "y": 1768,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "forest along hex edge 5, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 5, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#3b5330"
+  },
+  "fringe.forest.5.1": {
+   "x": 643,
+   "y": 1768,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "forest along hex edge 5, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 5, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#3d542f"
+  },
+  "fringe.hills.0.0": {
+   "x": 0,
+   "y": 1842,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "hills along hex edge 0, variant 0: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.0, masked to fringe edge 0, variant 0: bottom-left row, first hex: a hill with grass round it",
+   "src": "hills.a",
+   "flat": "#666b2e"
+  },
+  "fringe.hills.0.1": {
+   "x": 26,
+   "y": 1842,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "hills along hex edge 0, variant 1: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.1, masked to fringe edge 0, variant 1: bottom-left row, second hex: a hill, with the first hill's tail patched out",
+   "src": "hills.b",
+   "flat": "#727632"
+  },
+  "fringe.hills.1.0": {
+   "x": 52,
+   "y": 1842,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "hills along hex edge 1, variant 0: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.0, masked to fringe edge 1, variant 0: bottom-left row, first hex: a hill with grass round it",
+   "src": "hills.a",
+   "flat": "#79872f"
+  },
+  "fringe.hills.1.1": {
+   "x": 129,
+   "y": 1842,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "hills along hex edge 1, variant 1: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.1, masked to fringe edge 1, variant 1: bottom-left row, second hex: a hill, with the first hill's tail patched out",
+   "src": "hills.b",
+   "flat": "#7c882e"
+  },
+  "fringe.hills.2.0": {
+   "x": 206,
+   "y": 1842,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "hills along hex edge 2, variant 0: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.0, masked to fringe edge 2, variant 0: bottom-left row, first hex: a hill with grass round it",
+   "src": "hills.a",
+   "flat": "#79872f"
+  },
+  "fringe.hills.2.1": {
+   "x": 283,
+   "y": 1842,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "hills along hex edge 2, variant 1: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.1, masked to fringe edge 2, variant 1: bottom-left row, second hex: a hill, with the first hill's tail patched out",
+   "src": "hills.b",
+   "flat": "#7f892e"
+  },
+  "fringe.hills.3.0": {
+   "x": 360,
+   "y": 1842,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "hills along hex edge 3, variant 0: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.0, masked to fringe edge 3, variant 0: bottom-left row, first hex: a hill with grass round it",
+   "src": "hills.a",
+   "flat": "#7b872e"
+  },
+  "fringe.hills.3.1": {
+   "x": 386,
+   "y": 1842,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "hills along hex edge 3, variant 1: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.1, masked to fringe edge 3, variant 1: bottom-left row, second hex: a hill, with the first hill's tail patched out",
+   "src": "hills.b",
+   "flat": "#7b852d"
+  },
+  "fringe.hills.4.0": {
+   "x": 412,
+   "y": 1842,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "hills along hex edge 4, variant 0: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.0, masked to fringe edge 4, variant 0: bottom-left row, first hex: a hill with grass round it",
+   "src": "hills.a",
+   "flat": "#7c882d"
+  },
+  "fringe.hills.4.1": {
+   "x": 489,
+   "y": 1842,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "hills along hex edge 4, variant 1: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.1, masked to fringe edge 4, variant 1: bottom-left row, second hex: a hill, with the first hill's tail patched out",
+   "src": "hills.b",
+   "flat": "#838c2d"
+  },
+  "fringe.hills.5.0": {
+   "x": 566,
+   "y": 1842,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "hills along hex edge 5, variant 0: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.0, masked to fringe edge 5, variant 0: bottom-left row, first hex: a hill with grass round it",
+   "src": "hills.a",
+   "flat": "#858e2b"
+  },
+  "fringe.hills.5.1": {
+   "x": 643,
+   "y": 1842,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "hills along hex edge 5, variant 1: a ragged strip inside the tile, cut from its hills cell, the hex centre at the anchor, transparent outside. Derived from terrain.hills.1, masked to fringe edge 5, variant 1: bottom-left row, second hex: a hill, with the first hill's tail patched out",
+   "src": "hills.b",
+   "flat": "#7f8a2d"
+  },
+  "fringe.mountain.0.0": {
+   "x": 0,
+   "y": 1916,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "mountain along hex edge 0, variant 0: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.0, masked to fringe edge 0, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#79862c"
+  },
+  "fringe.mountain.0.1": {
+   "x": 26,
+   "y": 1916,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "mountain along hex edge 0, variant 1: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.1, masked to fringe edge 0, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#78852e"
+  },
+  "fringe.mountain.1.0": {
+   "x": 52,
+   "y": 1916,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "mountain along hex edge 1, variant 0: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.0, masked to fringe edge 1, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#78852e"
+  },
+  "fringe.mountain.1.1": {
+   "x": 129,
+   "y": 1916,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "mountain along hex edge 1, variant 1: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.1, masked to fringe edge 1, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#748130"
+  },
+  "fringe.mountain.2.0": {
+   "x": 206,
+   "y": 1916,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "mountain along hex edge 2, variant 0: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.0, masked to fringe edge 2, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#78852d"
+  },
+  "fringe.mountain.2.1": {
+   "x": 283,
+   "y": 1916,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "mountain along hex edge 2, variant 1: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.1, masked to fringe edge 2, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#78852d"
+  },
+  "fringe.mountain.3.0": {
+   "x": 360,
+   "y": 1916,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "mountain along hex edge 3, variant 0: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.0, masked to fringe edge 3, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7e892d"
+  },
+  "fringe.mountain.3.1": {
+   "x": 386,
+   "y": 1916,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "mountain along hex edge 3, variant 1: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.1, masked to fringe edge 3, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#7d8a2e"
+  },
+  "fringe.mountain.4.0": {
+   "x": 412,
+   "y": 1916,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "mountain along hex edge 4, variant 0: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.0, masked to fringe edge 4, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#818c2c"
+  },
+  "fringe.mountain.4.1": {
+   "x": 489,
+   "y": 1916,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "mountain along hex edge 4, variant 1: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.1, masked to fringe edge 4, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#7e8a2d"
+  },
+  "fringe.mountain.5.0": {
+   "x": 566,
+   "y": 1916,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "mountain along hex edge 5, variant 0: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.0, masked to fringe edge 5, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#79862d"
+  },
+  "fringe.mountain.5.1": {
+   "x": 643,
+   "y": 1916,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "mountain along hex edge 5, variant 1: a ragged strip inside the tile, cut from its mountain cell, the hex centre at the anchor, transparent outside. Derived from terrain.mountain.1, masked to fringe edge 5, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#7a872c"
+  },
+  "fringe.coast.0.0": {
+   "x": 0,
+   "y": 1990,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "coast along hex edge 0, variant 0: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.0, masked to fringe edge 0, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7e7a36"
+  },
+  "fringe.coast.0.1": {
+   "x": 26,
+   "y": 1990,
+   "w": 26,
+   "h": 74,
+   "ax": -38,
+   "ay": 37,
+   "note": "coast along hex edge 0, variant 1: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.1, masked to fringe edge 0, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#817c38"
+  },
+  "fringe.coast.1.0": {
+   "x": 52,
+   "y": 1990,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "coast along hex edge 1, variant 0: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.0, masked to fringe edge 1, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7d7a36"
+  },
+  "fringe.coast.1.1": {
+   "x": 129,
+   "y": 1990,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": -15,
+   "note": "coast along hex edge 1, variant 1: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.1, masked to fringe edge 1, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#7f7a38"
+  },
+  "fringe.coast.2.0": {
+   "x": 206,
+   "y": 1990,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "coast along hex edge 2, variant 0: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.0, masked to fringe edge 2, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7d7935"
+  },
+  "fringe.coast.2.1": {
+   "x": 283,
+   "y": 1990,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": -15,
+   "note": "coast along hex edge 2, variant 1: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.1, masked to fringe edge 2, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#817c38"
+  },
+  "fringe.coast.3.0": {
+   "x": 360,
+   "y": 1990,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "coast along hex edge 3, variant 0: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.0, masked to fringe edge 3, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#817c37"
+  },
+  "fringe.coast.3.1": {
+   "x": 386,
+   "y": 1990,
+   "w": 26,
+   "h": 74,
+   "ax": 64,
+   "ay": 37,
+   "note": "coast along hex edge 3, variant 1: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.1, masked to fringe edge 3, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#857e3a"
+  },
+  "fringe.coast.4.0": {
+   "x": 412,
+   "y": 1990,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "coast along hex edge 4, variant 0: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.0, masked to fringe edge 4, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#837d38"
+  },
+  "fringe.coast.4.1": {
+   "x": 489,
+   "y": 1990,
+   "w": 77,
+   "h": 59,
+   "ax": 64,
+   "ay": 74,
+   "note": "coast along hex edge 4, variant 1: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.1, masked to fringe edge 4, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#867e3a"
+  },
+  "fringe.coast.5.0": {
+   "x": 566,
+   "y": 1990,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "coast along hex edge 5, variant 0: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.0, masked to fringe edge 5, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7e7a36"
+  },
+  "fringe.coast.5.1": {
+   "x": 643,
+   "y": 1990,
+   "w": 77,
+   "h": 59,
+   "ax": 13,
+   "ay": 74,
+   "note": "coast along hex edge 5, variant 1: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.1, masked to fringe edge 5, variant 1: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#837d39"
   }
  }
 }

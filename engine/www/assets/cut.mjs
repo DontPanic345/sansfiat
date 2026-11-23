@@ -1,10 +1,12 @@
 // Cuts an atlas cell from a source region: pure (no I/O), deterministic, every result rounded the same
 // way on any machine. See `sources.js` for the regions and cells, and `draw-atlas.mjs` for the build.
 //
-// Two kinds of region. A hex region is a hex in the source, cut at the cell's hex size. A sprite region
+// Three kinds of region. A hex region is a hex in the source, cut at the cell's hex size. A fill region
+// (`fill`) is a hex whose samples read a source rectangle repeated, every other copy mirrored. A sprite region
 // (`rect`) is a rectangle of the source with a keep-polygon, cut at a scale into the cell with its ground
-// point on the cell's anchor, and a key that clears what is not the sprite (grass, the tufts).
-import { HEX_R } from './placeholders.js';
+// point on the cell's anchor (turned by `rotate`), and a key that clears what is not the sprite. Ops then
+// recolour (`ramp`) or flip (`mirror`) the cut; a derived cell (`derive`) masks another cell's cut to a fringe.
+import { HEX_R, TERRAIN_CELL, fringeBox, fringeMask } from './placeholders.js';
 
 const SS = 4; // samples per pixel, each way: a pixel's alpha is its hex's coverage in 16ths
 // A cell's opaque pixels for `flat`: a hex's full cover is 255, a sprite source's interior 250 and up.
@@ -24,6 +26,19 @@ export const KEYS = {
       return (g > r + this.grassRed && g > b + this.grassBlue) || b < this.tuftBlue * g;
     },
   },
+  bank: {
+    minAlpha: 200, // a sample this transparent in the source is not bank
+    note: 'the shore bank: its tan blocks and their pale rim, not the grass above or the water below',
+    clears(r, g, b, a) {
+      return a <= this.minAlpha || !(r > 0.9 * g && r > b + 30);
+    },
+  },
+};
+
+/** Maps a source coordinate in a fill: copies of `n` px, every other mirrored, so neighbouring copies seam. */
+export const fold = (t, n) => {
+  const m = ((t % (2 * n)) + 2 * n) % (2 * n);
+  return m < n ? m : 2 * n - 1 - m;
 };
 
 /** The cell's anchor before its ops, in cell px: the cell spec's, else the layout cell's, else the centre. */
@@ -40,8 +55,12 @@ export function anchorOf(cell, size) {
   return [ax, ay];
 }
 
-/** A region's source rectangle: its sprite rect, or its hex's bounding box. */
+/** A region's source rectangle: its fill or sprite rect, or its hex's bounding box. */
 const rectOf = (region) => {
+  if (region.fill) {
+    const [x, y, w, h] = region.fill.rect;
+    return [x, y, x + w, y + h];
+  }
   if (region.rect) {
     const [x, y, w, h] = region.rect;
     return [x, y, x + w, y + h];
@@ -92,23 +111,23 @@ function patched(source, region) {
   return box;
 }
 
-/** A hex region's cell: each sample inside the cell's hex maps onto the region's hex, shrunk by the inset. */
-function hexData(box, region, { w, h }) {
+/**
+ * Each sample inside the cell's hex, and its source pixel: `at(x, y)` gives the source (sx, sy) for the cell
+ * sample at (x, y) in cell px; the colour is the mean of those samples and the alpha their hex coverage.
+ */
+function hexCover(box, { w, h }, at) {
   const R = HEX_R, A = (R * Math.sqrt(3)) / 2; // the cell hex's half-width and circumradius, in cell px
-  // The inset drops the drawn outline; the right edge may take more (`insetRight`), which moves the centre.
-  const left = region.inset, right = region.insetRight ?? region.inset;
-  const cx = region.hex.cx + (left - right) / 2, cy = region.hex.cy;
-  const rx = region.hex.rx - (left + right) / 2, ry = region.hex.ry - region.inset;
   const data = new Uint8Array(w * h * 4);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let r = 0, g = 0, b = 0, n = 0;
       for (let j = 0; j < SS; j++) {
         for (let i = 0; i < SS; i++) {
-          const dx = x + (i + 0.5) / SS - w / 2, dy = y + (j + 0.5) / SS - h / 2;
+          const px = x + (i + 0.5) / SS, py = y + (j + 0.5) / SS;
+          const dx = px - w / 2, dy = py - h / 2;
           const u = dx / A, v = dy / R;
           if (Math.abs(u) > 1 || Math.abs(v) + Math.abs(u) / 2 > 1) continue; // outside the pointy-top hex
-          const sx = Math.floor(cx + u * rx), sy = Math.floor(cy + v * ry);
+          const [sx, sy] = at(px, py, u, v);
           const bx = sx - box.x0, by = sy - box.y0;
           if (bx < 0 || by < 0 || bx >= box.w || by >= box.h) throw new Error(`sample (${sx}, ${sy}) lies outside the region`);
           const s = (by * box.w + bx) * 3;
@@ -130,8 +149,30 @@ function hexData(box, region, { w, h }) {
   return data;
 }
 
+/** A hex region's cell: each sample inside the cell's hex maps onto the region's hex, shrunk by the inset. */
+function hexData(box, region, size) {
+  // The inset drops the drawn outline; the right edge may take more (`insetRight`), which moves the centre.
+  const left = region.inset, right = region.insetRight ?? region.inset;
+  const cx = region.hex.cx + (left - right) / 2, cy = region.hex.cy;
+  const rx = region.hex.rx - (left + right) / 2, ry = region.hex.ry - region.inset;
+  return hexCover(box, size, (px, py, u, v) => [Math.floor(cx + u * rx), Math.floor(cy + v * ry)]);
+}
+
 /**
- * A sprite region's cell: a cell sample maps to source `ground + (cell − anchor) / scale`, and counts when it
+ * A fill region's cell: a sample at cell px (x, y) reads the fill's rectangle at `(x / scale + offset)`, each
+ * axis folded so the copies seam. The hex's coverage is the alpha, as for a hex.
+ */
+function fillData(box, region, size) {
+  const [fx, fy, fw, fh] = region.fill.rect;
+  const { scale, offset: [ox, oy] } = region.fill;
+  return hexCover(box, size, (px, py) => [
+    fx + fold(Math.floor(px / scale + ox), fw),
+    fy + fold(Math.floor(py / scale + oy), fh),
+  ]);
+}
+
+/**
+ * A sprite region's cell: a cell sample maps to source `ground + Rot(−deg) (cell − anchor) / scale`, and counts when it
  * is inside the rectangle and the keep-polygon and the key doesn't clear it. Colour is the mean of the kept
  * samples weighted by their source alpha; alpha is those alphas summed over all the samples.
  */
@@ -142,6 +183,39 @@ function spriteData(source, box, region, cell, size) {
   const [ax, ay] = baseAnchor(cell, size);
   const [gx, gy] = region.ground, scale = region.scale;
   const [rx0, ry0, rx1, ry1] = rectOf(region);
+  // The cell turns about its anchor by `rotate` degrees (the cell's, else the region's): Rot(−deg) on the cell offset.
+  // `shape` bends the strip: an edge piece stops `half` px either side of its anchor along the edge; a corner
+  // piece (`in`: water pokes into land, `out`: land pokes into water) fans or mitres the strip round the vertex.
+  const shape = cell.shape ?? null;
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const straight = (dx, dy, deg) => {
+    const cs = Math.cos(rad(deg)), sn = Math.sin(rad(deg));
+    return [Math.floor(gx + (cs * dx + sn * dy) / scale), Math.floor(gy + (-sn * dx + cs * dy) / scale)];
+  };
+  const wrap = (a) => ((((a + 180) % 360) + 360) % 360) - 180;
+  const locate = (dx, dy) => {
+    const deg = cell.rotate ?? region.rotate ?? 0;
+    if (!shape) return straight(dx, dy, deg);
+    if (shape.type === 'edge') {
+      const along = -dx * Math.sin(rad(deg + 90)) + dy * Math.cos(rad(deg + 90));
+      return Math.abs(along) > shape.half ? null : straight(dx, dy, deg);
+    }
+    const r = Math.hypot(dx, dy), phi = (Math.atan2(dy, dx) * 180) / Math.PI;
+    const psi = 60 * shape.c - 30; // the screen angle of corner c from its tile's centre
+    if (shape.type === 'in') {
+      // Water's corner: the bank fans round the vertex between the two edges' outward normals (psi ± 30).
+      const delta = wrap(phi - psi);
+      if (Math.abs(delta) > shape.span) return null;
+      return [Math.floor(gx + (r * rad(delta)) / scale), Math.floor(gy - r / scale)];
+    }
+    // Land's corner: the two edges' strips meet on the bisector (psi + 180), each serving the half nearer its edge.
+    if (Math.abs(wrap(phi - (psi + 180))) > 60 + shape.reach) return null;
+    const a1 = psi + 120, a2 = psi - 120;
+    const first = Math.abs(wrap(phi - a1)) <= Math.abs(wrap(phi - a2));
+    const a = first ? a1 : a2, d = first ? shape.c : (shape.c + 5) % 6;
+    const mx = (HEX_R / 2) * Math.cos(rad(a)), my = (HEX_R / 2) * Math.sin(rad(a));
+    return straight(dx - mx, dy - my, 60 * d - 90);
+  };
   const inside = (x, y, p) => {
     let c = false;
     for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
@@ -156,15 +230,16 @@ function spriteData(source, box, region, cell, size) {
       let r = 0, g = 0, b = 0, a = 0;
       for (let j = 0; j < SS; j++) {
         for (let i = 0; i < SS; i++) {
-          const sx = Math.floor(gx + (x + (i + 0.5) / SS - ax) / scale);
-          const sy = Math.floor(gy + (y + (j + 0.5) / SS - ay) / scale);
+          const at = locate(x + (i + 0.5) / SS - ax, y + (j + 0.5) / SS - ay);
+          if (!at) continue;
+          const [sx, sy] = at;
           if (sx < rx0 || sx >= rx1 || sy < ry0 || sy >= ry1) continue;
           if (!inside(sx + 0.5, sy + 0.5, region.keep)) continue;
           const bx = sx - box.x0, by = sy - box.y0;
           const s = (by * box.w + bx) * 3;
           const R = box.rgb[s], G = box.rgb[s + 1], B = box.rgb[s + 2];
-          if (key.clears(R, G, B)) continue;
           const A = source.data[(sy * source.width + sx) * 4 + 3];
+          if (key.clears(R, G, B, A)) continue;
           r += R * A;
           g += G * A;
           b += B * A;
@@ -183,22 +258,112 @@ function spriteData(source, box, region, cell, size) {
   return data;
 }
 
+const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b; // Rec. 601
+
+/** The mean colour of a source rectangle `[x, y, w, h]`, as `[r, g, b]`. */
+function meanOf(source, [x, y, w, h]) {
+  let r = 0, g = 0, b = 0;
+  for (let yy = 0; yy < h; yy++) {
+    for (let xx = 0; xx < w; xx++) {
+      const s = ((y + yy) * source.width + x + xx) * 4;
+      r += source.data[s];
+      g += source.data[s + 1];
+      b += source.data[s + 2];
+    }
+  }
+  return [r / (w * h), g / (w * h), b / (w * h)];
+}
+
 /**
- * Cuts `cell` (an atlas cell spec: `{ ops, anchor }`) of size `size` `{ w, h, ax?, ay? }` from `region` in
- * `source` (`{ width, height, data }`, RGBA8). Returns `{ data, ax, ay, flat }`: `data` RGBA8 for the cell, the
- * anchor in cell px, and `flat`, the mean colour of its opaque pixels as `#rrggbb`.
+ * The ramp op: each pixel's luminance, normalised over the cell's opaque pixels, picks a colour on the line from
+ * `dark` to `light` (the means of two source rectangles), blended with the pixel's own colour by `mix`. `lum: [lo, hi]`
+ * replaces the cell's own luminance range.
+ */
+function ramp(data, source, { dark, light, mix, lum: fixed }) {
+  const [dr, dg, db] = meanOf(source, dark), [lr, lg, lb] = meanOf(source, light);
+  let lo = Infinity, hi = -Infinity;
+  for (let o = 0; o < data.length; o += 4) {
+    if (data[o + 3] < OPAQUE) continue;
+    const l = lum(data[o], data[o + 1], data[o + 2]);
+    lo = Math.min(lo, l);
+    hi = Math.max(hi, l);
+  }
+  if (fixed) [lo, hi] = fixed; // a fixed luminance range keeps a flat variant from stretching to the whole ramp
+  const span = hi > lo ? hi - lo : 1;
+  for (let o = 0; o < data.length; o += 4) {
+    if (!data[o + 3]) continue;
+    const t = Math.min(1, Math.max(0, (lum(data[o], data[o + 1], data[o + 2]) - lo) / span));
+    const target = [dr + t * (lr - dr), dg + t * (lg - dg), db + t * (lb - db)];
+    for (let c = 0; c < 3; c++) data[o + c] = Math.round(data[o + c] * (1 - mix) + target[c] * mix);
+  }
+}
+
+/** The hex of a mean colour, `#rrggbb`. */
+const hexOf = (rgb) => `#${rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+
+/** A cell's `flat` from its opaque pixels' mean, or from the cell's `flat` rectangle of the source. */
+function flatOf(data, source, cell) {
+  if (cell.flat) return hexOf(meanOf(source, cell.flat));
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let o = 0; o < data.length; o += 4) {
+    if (data[o + 3] < OPAQUE) continue;
+    r += data[o];
+    g += data[o + 1];
+    b += data[o + 2];
+    n++;
+  }
+  return n ? hexOf([r / n, g / n, b / n]) : null;
+}
+
+/**
+ * Cuts `cell` (an atlas cell spec: `{ ops, anchor, rotate?, flat? }`) of size `size` `{ w, h, ax?, ay? }` from
+ * `region` in `source` (`{ width, height, data }`, RGBA8). Returns `{ data, ax, ay, flat }`: `data` RGBA8 for the
+ * cell, the anchor in cell px, and `flat`, the mean colour of its opaque pixels as `#rrggbb` (or of its `flat`
+ * rectangle of the source, when it names one).
  */
 export function cut(source, region, cell, size) {
   const { w, h } = size;
   const box = patched(source, region);
-  const data = region.rect ? spriteData(source, box, region, cell, size) : hexData(box, region, size);
+  const data = region.rect ? spriteData(source, box, region, cell, size) : region.fill ? fillData(box, region, size) : hexData(box, region, size);
   for (const op of cell.ops ?? []) {
-    if (op !== 'mirror') throw new Error(`unknown op ${op}`);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w / 2; x++) {
-        const a = (y * w + x) * 4, b = (y * w + (w - 1 - x)) * 4;
-        for (let c = 0; c < 4; c++) [data[a + c], data[b + c]] = [data[b + c], data[a + c]];
+    if (op === 'mirror') {
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w / 2; x++) {
+          const a = (y * w + x) * 4, b = (y * w + (w - 1 - x)) * 4;
+          for (let c = 0; c < 4; c++) [data[a + c], data[b + c]] = [data[b + c], data[a + c]];
+        }
       }
+    } else if (op?.op === 'ramp') {
+      ramp(data, source, op);
+    } else {
+      throw new Error(`unknown op ${op?.op ?? op}`);
+    }
+  }
+  const flat = flatOf(data, source, cell);
+  if (!flat) throw new Error('the cut has no opaque pixel');
+  const [ax, ay] = anchorOf(cell, size);
+  return { data, ax, ay, flat };
+}
+
+/**
+ * A derived cell: the cut of another cell (`base`, cut at its own size `fromSize`) with edge `fr.dir`'s fringe
+ * mask multiplied into its alpha, cropped to the fringe's rectangle, which `size` must be. Its `flat` is null
+ * when nothing is opaque, as a fringe never is a flat fill.
+ */
+export function derive(base, fromSize, fr, size) {
+  const box = fringeBox(fr.dir);
+  if (size.w !== box.w || size.h !== box.h) throw new Error(`fringe ${fr.dir} is ${box.w}×${box.h}, not ${size.w}×${size.h}`);
+  const data = new Uint8Array(box.w * box.h * 4);
+  for (let y = 0; y < box.h; y++) {
+    for (let x = 0; x < box.w; x++) {
+      const sx = box.x + x, sy = box.y + y;
+      const m = fringeMask(fr.dir, fr.variant, sx + 0.5, sy + 0.5);
+      if (!m) continue;
+      const s = (sy * fromSize.w + sx) * 4, o = (y * box.w + x) * 4;
+      data[o] = base.data[s];
+      data[o + 1] = base.data[s + 1];
+      data[o + 2] = base.data[s + 2];
+      data[o + 3] = Math.round(base.data[s + 3] * m);
     }
   }
   let r = 0, g = 0, b = 0, n = 0;
@@ -209,8 +374,5 @@ export function cut(source, region, cell, size) {
     b += data[o + 2];
     n++;
   }
-  if (!n) throw new Error('the cut has no opaque pixel');
-  const hex = (v) => Math.round(v / n).toString(16).padStart(2, '0');
-  const [ax, ay] = anchorOf(cell, size);
-  return { data, ax, ay, flat: `#${hex(r)}${hex(g)}${hex(b)}` };
+  return { data, ax: TERRAIN_CELL.w / 2 - box.x, ay: TERRAIN_CELL.h / 2 - box.y, flat: n ? hexOf([r / n, g / n, b / n]) : null };
 }

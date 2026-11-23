@@ -16,5 +16,6 @@ if [ -n "$slow" ]; then echo "test files over a minute:" >&2; echo "$slow" >&2; 
 ./build-web.sh
 ./cross-build.sh
 node www/check.mjs
+node www/check-map.mjs
 node www/assets/draw-atlas.mjs --check
 node www/play/all.mjs

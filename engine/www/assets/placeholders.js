@@ -16,6 +16,20 @@ export const TERRAIN_COLOR = {
 export const WIDTH = 1024;
 /** The circumradius of a terrain cell's hex, in cell pixels (the cell is 2 × this tall). */
 export const HEX_R = 74;
+/** A terrain cell's size, in cell pixels: the hex sits centred in it. */
+export const TERRAIN_CELL = { w: 128, h: 148 };
+/** A fringe's strip along a hex edge: its depth from the edge, in cell px, before the noise. */
+export const DEPTH = 16;
+/** The strip's depth varies by up to this many px either way, along the edge (`noise`). */
+export const AMP = 6;
+/** The strip's mask falls from 1 to 0 over this many px past its depth. */
+export const FEATHER = 4;
+/** The strip's mask tapers to 0 over this many px at each end of the edge, so it stops short of the corners. */
+export const TAPER = 12;
+/** The bank's shore cells: an edge piece is 112 px square, a corner piece 48 px (its anchor is the vertex). */
+export const SHORE = { edge: { w: 112, h: 112, ax: 56, ay: 56 }, corner: { w: 48, h: 48, ax: 24, ay: 24 } };
+/** The kinds that bleed a fringe into a neighbour of a lower kind, highest first: a shared land edge draws the higher. */
+export const FRINGE = ['desert', 'marsh', 'forest', 'hills', 'mountain', 'coast'];
 /** How many world units (a hex has circumradius 1) a 64 px icon cell spans. */
 export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth': 1.6, 'icon.pass': 1, 'icon.town': 1.1 };
 
@@ -23,6 +37,56 @@ const UNITS = ['camp', 'scout'];
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
 /** A mountain piece's cell: 224 × 144, its ground point (the anchor) at (112, 128). */
 const MOUNTAIN = { w: 224, h: 144, ax: 112, ay: 128 };
+
+// The fringe geometry, in a terrain cell: a pointy-top hex of circumradius HEX_R, its apothem A, and edge d
+// facing the screen angle 60 d (EDGE_DIR's order: E, SE, SW, W, NW, NE).
+const APOTHEM = (HEX_R * Math.sqrt(3)) / 2;
+const EDGE_NORMAL = [0, 1, 2, 3, 4, 5].map((d) => [Math.cos((Math.PI / 3) * d), Math.sin((Math.PI / 3) * d)]);
+
+/** A point's place for edge `d` of a terrain cell: `s` its depth in px inward from the edge, `t` its place along it
+ *  (0 at the middle), or null when it is outside the hex or past the strip's reach (`DEPTH + AMP + FEATHER`). */
+function stripAt(d, x, y) {
+  const px = x - TERRAIN_CELL.w / 2, py = y - TERRAIN_CELL.h / 2;
+  const u = px / APOTHEM, v = py / HEX_R;
+  if (Math.abs(u) > 1 || Math.abs(v) + Math.abs(u) / 2 > 1) return null;
+  const [nx, ny] = EDGE_NORMAL[d];
+  const s = APOTHEM - (px * nx + py * ny);
+  const t = -px * ny + py * nx;
+  if (s < 0 || s > DEPTH + AMP + FEATHER || Math.abs(t) > HEX_R / 2) return null;
+  return { s, t };
+}
+
+/** The fringe mask of edge `d`, variant `v`, at cell px (x, y) of a terrain cell: 1 inside the strip, 0 outside. */
+export function fringeMask(d, v, x, y) {
+  const p = stripAt(d, x, y);
+  if (!p) return 0;
+  // A smooth noise along the edge: two or three sines, phased by the edge and the variant, so the strip is ragged.
+  const ph = 2.1 * d + 3.7 * v;
+  const n = (Math.sin(p.t * 0.118 + ph) + 0.5 * Math.sin(p.t * 0.33 + 1.7 * ph + 1) + 0.25 * Math.sin(p.t * 0.9 + 2.3 * ph + 2)) / 1.75;
+  const depth = DEPTH + AMP * n;
+  const feather = Math.min(1, Math.max(0, 1 - (p.s - depth) / FEATHER));
+  const taper = Math.min(1, (HEX_R / 2 - Math.abs(p.t)) / TAPER);
+  return feather * taper;
+}
+
+const boxes = new Map();
+/** The rectangle of a terrain cell that holds every pixel of edge `d`'s fringe: `{ x, y, w, h }`, whole px. */
+export function fringeBox(d) {
+  if (!boxes.has(d)) {
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    for (let y = 0; y < TERRAIN_CELL.h; y++) {
+      for (let x = 0; x < TERRAIN_CELL.w; x++) {
+        if (!stripAt(d, x + 0.5, y + 0.5)) continue;
+        x0 = Math.min(x0, x);
+        y0 = Math.min(y0, y);
+        x1 = Math.max(x1, x);
+        y1 = Math.max(y1, y);
+      }
+    }
+    boxes.set(d, { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 });
+  }
+  return boxes.get(d);
+}
 
 /** Every cell with its place in the sheet, its size and a note: `{width, height, cells}`. */
 export function layout() {
@@ -51,7 +115,7 @@ export function layout() {
   }
   row();
   put('overlay.floodplain', 128, 148, hexNote('floodplain wash, translucent, drawn over the tile'));
-  put('overlay.desert-dots', 128, 148, hexNote('desert stipple, translucent, drawn over a desert tile'));
+  put('overlay.desert-dots', 128, 148, hexNote('desert stipple, translucent (no longer drawn: the desert ground is sand)'));
   put('overlay.fields', 128, 148, hexNote('field furrows: three short dark ochre strokes in the lower half, translucent, drawn over a tile with fields'));
   row();
   for (const u of UNITS) {
@@ -74,6 +138,25 @@ export function layout() {
     for (let v = 0; v < 2; v++) piece(`mountain.ridge.${dir}.${v}`, `the ridge across a shared edge in direction ${dir}, variant ${v}: its midpoint at the anchor, transparent outside`);
   }
   row();
+  for (let d = 0; d < 6; d++) {
+    for (let v = 0; v < 2; v++) {
+      put(`shore.edge.${d}.${v}`, SHORE.edge.w, SHORE.edge.h, `the bank across hex edge ${d} (EDGE_DIR order), variant ${v}, on the land side: its midpoint at the anchor, transparent outside`, { ax: SHORE.edge.ax, ay: SHORE.edge.ay });
+    }
+  }
+  row();
+  for (let c = 0; c < 6; c++) put(`shore.in.${c}`, SHORE.corner.w, SHORE.corner.h, `the bank at hex vertex ${c}, where water pokes into land: the bank fanned round the vertex, transparent outside`, { ax: SHORE.corner.ax, ay: SHORE.corner.ay });
+  row();
+  for (let c = 0; c < 6; c++) put(`shore.out.${c}`, SHORE.corner.w, SHORE.corner.h, `the bank at hex vertex ${c}, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside`, { ax: SHORE.corner.ax, ay: SHORE.corner.ay });
+  row();
+  for (const kind of FRINGE) {
+    for (let d = 0; d < 6; d++) {
+      const b = fringeBox(d);
+      for (let v = 0; v < 2; v++) {
+        put(`fringe.${kind}.${d}.${v}`, b.w, b.h, `${kind} along hex edge ${d}, variant ${v}: a ragged strip inside the tile, cut from its ${kind} cell, the hex centre at the anchor, transparent outside`, { ax: TERRAIN_CELL.w / 2 - b.x, ay: TERRAIN_CELL.h / 2 - b.y });
+      }
+    }
+    row();
+  }
   return { width: WIDTH, height: y, cells };
 }
 
@@ -153,6 +236,7 @@ export function draw(name, ctx, w, h) {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   const [kind, id] = name.split('.');
+  if (kind === 'shore' || kind === 'fringe') return; // cut from the source: no placeholder
   if (kind === 'terrain') {
     ctx.fillStyle = TERRAIN_COLOR[id];
     hexPath(ctx, w, h, HEX_R * 1.0);
