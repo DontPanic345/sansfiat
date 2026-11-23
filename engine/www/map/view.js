@@ -38,7 +38,7 @@ import { CORNER, EDGE_DIR } from './geom.js';
 import { attach as attachInput } from './input.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, edges, woods, ridges,fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
+export const LAYERS = [terrain, edges, woods, ridges, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */
