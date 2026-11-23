@@ -11,6 +11,19 @@ export { isStatic as static };
 const FLAT_BELOW = 12;
 const OVER = 1.03; // a tile is drawn this much wider than its hex, so neighbours overlap
 
+/** A terrain cell's height on the canvas, in device px: the scale the other atlas pieces are drawn at too. */
+export const cellHeight = (view) => Math.round(2 * OVER * view.k * view.dpr);
+/** Whether the tiles are flat fills at cell height `H`: too small to draw cells, or no atlas. */
+export const isFlat = (H, view) => H < FLAT_BELOW || !view.atlas;
+
+/** A flat fill's colour for terrain `key`: its cell's mean, else the placeholder colour. A mountain's is its
+ *  peak's rock, so a range reads as grey at the flat zoom. */
+const flatColour = (view, key) => {
+  const cells = view.atlas?.json.cells;
+  if (key === 'mountain') return cells?.['mountain.peak.0']?.flat || cells?.['terrain.mountain.0']?.flat || TERRAIN_COLOR.mountain;
+  return cells?.[`terrain.${key}.0`]?.flat || TERRAIN_COLOR[key] || '#f0f';
+};
+
 export function draw(ctx, model, view) {
   const { l } = view;
   const k = view.k;
@@ -19,8 +32,8 @@ export function draw(ctx, model, view) {
     const t = l.terrain[i];
     return t === 0 && l.lake[i] ? 'lake' : view.names[t];
   };
-  const H = Math.round(2 * OVER * k * view.dpr); // a cell's height on the canvas
-  const flat = H < FLAT_BELOW || !view.atlas;
+  const H = cellHeight(view);
+  const flat = isFlat(H, view);
   view.stats.atlas = !flat;
   if (flat) {
     const buckets = new Map();
@@ -32,7 +45,7 @@ export function draw(ctx, model, view) {
       b.push(i);
     }
     for (const [key, list] of buckets) {
-      ctx.fillStyle = view.atlas?.json.cells[`terrain.${key}.0`]?.flat || TERRAIN_COLOR[key] || '#f0f';
+      ctx.fillStyle = flatColour(view, key);
       ctx.beginPath();
       for (const i of list) view.hexAt(ctx, i, OVER);
       ctx.fill();

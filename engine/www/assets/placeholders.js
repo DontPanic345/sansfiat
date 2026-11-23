@@ -21,18 +21,20 @@ export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth
 
 const UNITS = ['camp', 'scout'];
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
+/** A mountain piece's cell: 192 × 128, its ground point (the anchor) at (96, 112). */
+const MOUNTAIN = { w: 192, h: 128, ax: 96, ay: 112 };
 
 /** Every cell with its place in the sheet, its size and a note: `{width, height, cells}`. */
 export function layout() {
   const cells = {};
   let x = 0, y = 0, rowH = 0;
-  const put = (name, w, h, note) => {
+  const put = (name, w, h, note, anchor) => {
     if (x + w > WIDTH) {
       x = 0;
       y += rowH;
       rowH = 0;
     }
-    cells[name] = { x, y, w, h, note };
+    cells[name] = { x, y, w, h, note, ...anchor };
     x += w;
     rowH = Math.max(rowH, h);
   };
@@ -64,6 +66,13 @@ export function layout() {
   put('icon.hearth', 64, 64, 'hearth: a small yellow square with a dark edge');
   put('icon.pass', 64, 64, 'pass: a pale dot with a dark edge');
   put('icon.town', 64, 64, 'town: a white diamond with a dark casing, at the top of a festival tile that several clans live on');
+  row();
+  const piece = (name, note) => put(name, MOUNTAIN.w, MOUNTAIN.h, note, { ax: MOUNTAIN.ax, ay: MOUNTAIN.ay });
+  for (let v = 0; v < 2; v++) piece(`mountain.lone.${v}`, `a lone mountain's peak, variant ${v}: its ground point at the anchor, transparent outside`);
+  for (let v = 0; v < 3; v++) piece(`mountain.peak.${v}`, `a mountain's peak in a range, variant ${v}: its ground point at the anchor, transparent outside`);
+  for (const dir of ['e', 'se', 'sw']) {
+    for (let v = 0; v < 2; v++) piece(`mountain.ridge.${dir}.${v}`, `the ridge across a shared edge in direction ${dir}, variant ${v}: its midpoint at the anchor, transparent outside`);
+  }
   row();
   return { width: WIDTH, height: y, cells };
 }
@@ -111,6 +120,34 @@ const ring = (ctx, w, h, r, colour, line, casing) => {
   }
 };
 
+/**
+ * A mountain piece, standing on its anchor (the ground point): a peak is a tall triangle, a ridge two low
+ * triangles along its direction (e: east, se: down to the right, sw: down to the left).
+ */
+const mountainPiece = (ctx, [, kind, dir]) => {
+  const ax = MOUNTAIN.ax, ay = MOUNTAIN.ay;
+  const triangles = [];
+  if (kind === 'ridge') {
+    const [ux, uy] = { e: [1, 0], se: [0.5, Math.sqrt(3) / 2], sw: [-0.5, Math.sqrt(3) / 2] }[dir];
+    for (const s of [-1, 1]) {
+      const bx = ax + s * 60 * ux, by = ay + s * 60 * uy;
+      triangles.push([[bx, by], [ax, ay], [(bx + ax) / 2, (by + ay) / 2 - 50]]);
+    }
+  } else {
+    triangles.push([[ax - 55, ay], [ax + 55, ay], [ax, ay - 90]]);
+  }
+  for (const tri of triangles) {
+    ctx.beginPath();
+    tri.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fillStyle = TERRAIN_COLOR.mountain;
+    ctx.fill();
+    ctx.strokeStyle = '#3c3a46';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+};
+
 /** Draws cell `name` into `ctx`, filling (0, 0, w, h); the cell is clear before. */
 export function draw(name, ctx, w, h) {
   ctx.lineJoin = 'round';
@@ -146,6 +183,8 @@ export function draw(name, ctx, w, h) {
       }
       ctx.stroke();
     }
+  } else if (kind === 'mountain') {
+    mountainPiece(ctx, name.split('.'));
   } else if (name === 'overlay.floodplain') {
     ctx.fillStyle = 'rgba(96,235,70,0.42)';
     hexPath(ctx, w, h, HEX_R * 1.02);
