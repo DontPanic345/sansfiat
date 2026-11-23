@@ -1,0 +1,27 @@
+[
+  {
+    "id": "build-1",
+    "title": "The atlas build from named source regions, its check, and the views tool",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 1 (every done is exact: a byte-identical repeat build, placeholder pixels unchanged, --check passing and failing, two cameras matching; only the views tool's waits are the builder's), New 1 (the codec and the cut are ports of proto/ in the spec dir; the Chrome stage and play.mjs exist), Miss 1 (the check it writes, the repeat build's sha256), Reach 1 (atlas.json gains fields its four readers ignore; check.sh gains a line). An easel with an exact done; Haiku high, since the codec and the page waits are fiddly. About 9 files, 450 lines: assets/png.mjs, sources.js, cut.mjs, draw-atlas.mjs, atlas.png/json regenerated, www/views.mjs, check.sh, engine/CLAUDE.md, easel.md."
+  },
+  {
+    "id": "build-2",
+    "title": "The plains tile on the map, judged beside main",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 9,
+    "why": "Open 4 (how the grass sits beside the placeholders, the variants, the rocks over rivers and fields: judged by eye), New 1 (the terrain layer's anchor and flat colour adapt its present draw), Miss 3 (only the captures on the retro maps catch a bad tile), Reach 1 (terrain.js, drawn every frame, but no rule). A canvas at 9: Sonnet high. About 5 files and 8 committed PNGs, 120 lines: map/layers/terrain.js, assets/sources.js, atlas.png/json, views.md, shots/."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is a tile judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved, repeats the atlas build twice for identical bytes, breaks --check once, shoots two views on a main worktree and the branch and diffs the cameras, reads the pairs, and puts the captures in the PR."
+  }
+]
