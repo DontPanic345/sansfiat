@@ -8,6 +8,8 @@
    "y": 0,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "sea, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.sea.1": {
@@ -15,6 +17,8 @@
    "y": 0,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "sea, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.sea.2": {
@@ -22,6 +26,8 @@
    "y": 0,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "sea, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.lake.0": {
@@ -29,6 +35,8 @@
    "y": 0,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "lake, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.lake.1": {
@@ -36,6 +44,8 @@
    "y": 0,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "lake, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.lake.2": {
@@ -43,6 +53,8 @@
    "y": 0,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "lake, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.coast.0": {
@@ -50,6 +62,8 @@
    "y": 0,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "coast, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.coast.1": {
@@ -57,6 +71,8 @@
    "y": 0,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "coast, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.coast.2": {
@@ -64,6 +80,8 @@
    "y": 148,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "coast, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.plains.0": {
@@ -71,27 +89,41 @@
    "y": 148,
    "w": 128,
    "h": 148,
-   "note": "plains, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "ax": 64,
+   "ay": 74,
+   "note": "plains, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#7b8732"
   },
   "terrain.plains.1": {
    "x": 256,
    "y": 148,
    "w": 128,
    "h": 148,
-   "note": "plains, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "ax": 64,
+   "ay": 74,
+   "note": "plains, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass (mirror): bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#7b8732"
   },
   "terrain.plains.2": {
    "x": 384,
    "y": 148,
    "w": 128,
    "h": 148,
-   "note": "plains, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "ax": 64,
+   "ay": 74,
+   "note": "plains, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#7b8732"
   },
   "terrain.forest.0": {
    "x": 512,
    "y": 148,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "forest, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.forest.1": {
@@ -99,6 +131,8 @@
    "y": 148,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "forest, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.forest.2": {
@@ -106,6 +140,8 @@
    "y": 148,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "forest, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.hills.0": {
@@ -113,6 +149,8 @@
    "y": 148,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "hills, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.hills.1": {
@@ -120,6 +158,8 @@
    "y": 296,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "hills, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.hills.2": {
@@ -127,6 +167,8 @@
    "y": 296,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "hills, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.mountain.0": {
@@ -134,6 +176,8 @@
    "y": 296,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "mountain, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.mountain.1": {
@@ -141,6 +185,8 @@
    "y": 296,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "mountain, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.mountain.2": {
@@ -148,6 +194,8 @@
    "y": 296,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "mountain, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.desert.0": {
@@ -155,6 +203,8 @@
    "y": 296,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "desert, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.desert.1": {
@@ -162,6 +212,8 @@
    "y": 296,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "desert, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.desert.2": {
@@ -169,6 +221,8 @@
    "y": 296,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "desert, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.marsh.0": {
@@ -176,6 +230,8 @@
    "y": 444,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "marsh, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.marsh.1": {
@@ -183,6 +239,8 @@
    "y": 444,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "marsh, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "terrain.marsh.2": {
@@ -190,6 +248,8 @@
    "y": 444,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "marsh, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "overlay.floodplain": {
@@ -197,6 +257,8 @@
    "y": 592,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "floodplain wash, translucent, drawn over the tile: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "overlay.desert-dots": {
@@ -204,6 +266,8 @@
    "y": 592,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "desert stipple, translucent, drawn over a desert tile: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "overlay.fields": {
@@ -211,6 +275,8 @@
    "y": 592,
    "w": 128,
    "h": 148,
+   "ax": 64,
+   "ay": 74,
    "note": "field furrows: three short dark ochre strokes in the lower half, translucent, drawn over a tile with fields: pointy-top hex, circumradius 74, centred, transparent outside"
   },
   "unit.camp": {
@@ -218,6 +284,8 @@
    "y": 740,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "camp figure: dark casing and edge, transparent inside (the civ's colour shows through from the mask)"
   },
   "unit.camp.mask": {
@@ -225,6 +293,8 @@
    "y": 740,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "camp silhouette in opaque white: tinted in the civ's colour and drawn under the figure"
   },
   "unit.scout": {
@@ -232,6 +302,8 @@
    "y": 740,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "scout figure: dark casing and edge, transparent inside (the civ's colour shows through from the mask)"
   },
   "unit.scout.mask": {
@@ -239,6 +311,8 @@
    "y": 740,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "scout silhouette in opaque white: tinted in the civ's colour and drawn under the figure"
   },
   "icon.capital": {
@@ -246,6 +320,8 @@
    "y": 804,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "capital: a house with a door, casing and white edge, transparent inside (the civ's colour shows through from the mask)"
   },
   "icon.capital.mask": {
@@ -253,6 +329,8 @@
    "y": 804,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "capital silhouette in opaque white: tinted in the civ's colour"
   },
   "icon.festival": {
@@ -260,6 +338,8 @@
    "y": 804,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "festival: a white ring with a dark casing"
   },
   "icon.centre": {
@@ -267,6 +347,8 @@
    "y": 804,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "centre: a gold ring with a dark casing, round the festival that is a centre"
   },
   "icon.hearth": {
@@ -274,6 +356,8 @@
    "y": 804,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "hearth: a small yellow square with a dark edge"
   },
   "icon.pass": {
@@ -281,6 +365,8 @@
    "y": 804,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "pass: a pale dot with a dark edge"
   },
   "icon.town": {
@@ -288,6 +374,8 @@
    "y": 804,
    "w": 64,
    "h": 64,
+   "ax": 32,
+   "ay": 32,
    "note": "town: a white diamond with a dark casing, at the top of a festival tile that several clans live on"
   }
  }
