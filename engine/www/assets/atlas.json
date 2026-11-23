@@ -1,7 +1,7 @@
 {
  "image": "atlas.png",
  "width": 1024,
- "height": 868,
+ "height": 1300,
  "cells": {
   "terrain.sea.0": {
    "x": 0,
@@ -178,7 +178,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "mountain, variant 0: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "mountain, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7b882d"
   },
   "terrain.mountain.1": {
    "x": 384,
@@ -187,7 +189,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "mountain, variant 1: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "mountain, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass: bottom-left row, third hex: grass, tufts and rocks",
+   "src": "plains.grass",
+   "flat": "#7b8732"
   },
   "terrain.mountain.2": {
    "x": 512,
@@ -196,7 +200,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "mountain, variant 2: pointy-top hex, circumradius 74, centred, transparent outside"
+   "note": "mountain, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (mirror): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7b882d"
   },
   "terrain.desert.0": {
    "x": 640,
@@ -377,6 +383,127 @@
    "ax": 32,
    "ay": 32,
    "note": "town: a white diamond with a dark casing, at the top of a festival tile that several clans live on"
+  },
+  "mountain.lone.0": {
+   "x": 0,
+   "y": 868,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "a lone mountain's peak, variant 0: its ground point at the anchor, transparent outside. Cut from peak.left: the range's left peak, with its foot's boulders",
+   "src": "peak.left",
+   "flat": "#777370"
+  },
+  "mountain.lone.1": {
+   "x": 224,
+   "y": 868,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "a lone mountain's peak, variant 1: its ground point at the anchor, transparent outside. Cut from peak.right (mirror): the range's right peak and its skirt of rocks",
+   "src": "peak.right",
+   "flat": "#726f6f"
+  },
+  "mountain.peak.0": {
+   "x": 448,
+   "y": 868,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "a mountain's peak in a range, variant 0: its ground point at the anchor, transparent outside. Cut from peak.left: the range's left peak, with its foot's boulders",
+   "src": "peak.left",
+   "flat": "#777370"
+  },
+  "mountain.peak.1": {
+   "x": 672,
+   "y": 868,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "a mountain's peak in a range, variant 1: its ground point at the anchor, transparent outside. Cut from peak.right: the range's right peak and its skirt of rocks",
+   "src": "peak.right",
+   "flat": "#726f6f"
+  },
+  "mountain.peak.2": {
+   "x": 0,
+   "y": 1012,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "a mountain's peak in a range, variant 2: its ground point at the anchor, transparent outside. Cut from peak.front: the range's front peak, low in the middle",
+   "src": "peak.front",
+   "flat": "#787574"
+  },
+  "mountain.ridge.e.0": {
+   "x": 224,
+   "y": 1012,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "the ridge across a shared edge in direction e, variant 0: its midpoint at the anchor, transparent outside. Cut from low.mid: the low peak between the big ones",
+   "src": "low.mid",
+   "flat": "#76706a"
+  },
+  "mountain.ridge.e.1": {
+   "x": 448,
+   "y": 1012,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "the ridge across a shared edge in direction e, variant 1: its midpoint at the anchor, transparent outside. Cut from low.spur: the lower peak right of the low one",
+   "src": "low.spur",
+   "flat": "#726d6a"
+  },
+  "mountain.ridge.se.0": {
+   "x": 672,
+   "y": 1012,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "the ridge across a shared edge in direction se, variant 0: its midpoint at the anchor, transparent outside. Cut from low.spur.s (mirror): the lower peak, small: the diagonal ridges",
+   "src": "low.spur.s",
+   "flat": "#726d6a"
+  },
+  "mountain.ridge.se.1": {
+   "x": 0,
+   "y": 1156,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "the ridge across a shared edge in direction se, variant 1: its midpoint at the anchor, transparent outside. Cut from low.mid.s: the low peak, small: the diagonal ridges",
+   "src": "low.mid.s",
+   "flat": "#76706b"
+  },
+  "mountain.ridge.sw.0": {
+   "x": 224,
+   "y": 1156,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "the ridge across a shared edge in direction sw, variant 0: its midpoint at the anchor, transparent outside. Cut from low.spur.s: the lower peak, small: the diagonal ridges",
+   "src": "low.spur.s",
+   "flat": "#726d6a"
+  },
+  "mountain.ridge.sw.1": {
+   "x": 448,
+   "y": 1156,
+   "w": 224,
+   "h": 144,
+   "ax": 112,
+   "ay": 128,
+   "note": "the ridge across a shared edge in direction sw, variant 1: its midpoint at the anchor, transparent outside. Cut from low.mid.s (mirror): the low peak, small: the diagonal ridges",
+   "src": "low.mid.s",
+   "flat": "#76706b"
   }
  }
 }

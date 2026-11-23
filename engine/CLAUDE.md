@@ -15,6 +15,7 @@ node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in hea
 node www/play/all.mjs                        # every touch-point script; check.sh runs it
 node www/assets/draw-atlas.mjs [--check]     # atlas.png and atlas.json from placeholders.js and sources.js (--check: no Chrome)
 node www/shots.mjs --out DIR                 # the map's fixed views, as canvases; --diff A B compares two folders
+node www/shots.mjs --cull DIR                # each mountain view with the ridge layer's culling on and off: identical, or exit 1
 ```
 
 `cargo test` runs optimised: whole pre-games are too slow otherwise.
@@ -31,7 +32,7 @@ node www/shots.mjs --out DIR                 # the map's fixed views, as canvase
 | `cli/src/` | The `sansfiat` binary, one module per command: `main.rs` (USAGE), `sweep*.rs` (the sweep and its judges), `game_judge.rs` (a played file's judge), `view.rs` (the text view), `story.rs` (stories of war). |
 | `web/src/` | The wasm `Sim` the page drives: `lib.rs` (`layout`, `view`, `act`, the orders; `Sim.stage` builds one, `Sim.stage_test` a test) and `stage_test.rs`. |
 | `www/` | The page: `main.js` (the router), `app.js`, `model.js` (the view model), `panel.js` and `panels.js` (a selection's shape and buttons), `save.js`, `check.mjs` (the page's data checks under Node, through `Sim`), `play.mjs` (headless Chrome; `play/live.mjs` holds one page across shell calls), `shots.mjs` (the fixed map views). `assets/` is the atlas: `placeholders.js` (every cell's drawing and `layout()`), `sources.js` (the regions and the cells cut from them), `cut.mjs`, `png.mjs`, `draw-atlas.mjs`. |
-| `www/map/` | `view.js` (`MapView`), and `layers/`, a file per layer. |
+| `www/map/` | `view.js` (`MapView`), and `layers/`, a file per layer. `ridges.js` makes the mountain pieces (a peak per tile, a ridge per shared edge; pure), which `layers/ridges.js` draws. |
 | `www/screens/` | One file a screen: `pick.js`, `play.js`, `orders.js`, `start.js`, `end.js`, `tests.js` (the Tests screen). |
 | `www/play/` | One script per touch point of `docs/design/page.md`, each exiting non-zero when its touch point is missing; each stages its world through `../play-stage.mjs`; `all.mjs` runs them. |
 
