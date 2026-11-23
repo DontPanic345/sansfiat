@@ -9,9 +9,13 @@
 // It is not in www/play/, so play/all.mjs (which check.sh runs) doesn't run it. Its --out imports only
 // play.mjs, so this file copies alone onto a worktree of main and shoots there.
 //
-//   node www/shots.mjs --cull DIR                   each view with an `on` (mountain and shore) twice in one page, the
-//                                                   second with the ridge and edge layers' culling off: DIR/NAME.png and
-//                                                   DIR/NAME-nocull.png; exit 1 unless the two are byte-identical
+//   node www/shots.mjs --cull DIR                   each view with an `on` (mountain, shore and wood) twice in one page, the
+//                                                   second with the edge, woods and ridge layers' culling off: DIR/NAME.png
+//                                                   and DIR/NAME-nocull.png; exit 1 unless the two are byte-identical
+//   node www/shots.mjs --time NAME,…                for each named view, five static redraws: each one's stats.terrainMs and
+//                                                   the median; stats.woods where the branch has it (main prints -)
+// A view with `turns` leads the first civ and ends that many turns before its camera is set; every view's record holds
+// the game's digest, which --diff compares too.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { open, SIZES } from './play.mjs';
@@ -58,6 +62,21 @@ export const VIEWS = [
   { name: 'large8-pond-play', size: 'large', seed: 8, window: 'laptop', k: 18, on: 'pond', tile: 1289 },
   { name: 'small2-neck-edge', size: 'small', seed: 2, window: 'phone', k: 6, on: 'neck', tile: 402 },
   { name: 'small2-neck-flat', size: 'small', seed: 2, window: 'phone', k: 5, on: 'neck', tile: 402 },
+  { name: 'medium9-woods-close', size: 'medium', seed: 9, window: 'laptop', k: 35, on: 'interior', tile: 827 },
+  { name: 'medium9-woods-play', size: 'medium', seed: 9, window: 'laptop', k: 18, on: 'interior', tile: 827 },
+  { name: 'medium9-woods-near', size: 'medium', seed: 9, window: 'laptop', k: 12, on: 'interior', tile: 827 },
+  { name: 'medium9-woods-far', size: 'medium', seed: 9, window: 'laptop', k: 11, on: 'interior', tile: 827 },
+  { name: 'medium9-woods-edge', size: 'medium', seed: 9, window: 'phone', k: 6, on: 'interior', tile: 827 },
+  { name: 'medium9-woods-flat', size: 'medium', seed: 9, window: 'phone', k: 5, on: 'interior', tile: 827 },
+  { name: 'small2-lone-close', size: 'small', seed: 2, window: 'laptop', k: 35, on: 'lone', tile: 439 },
+  { name: 'small2-lone-play', size: 'small', seed: 2, window: 'laptop', k: 18, on: 'lone', tile: 439 },
+  { name: 'small9-river-close', size: 'small', seed: 9, window: 'laptop', k: 35, on: 'forest-river', tile: 258 },
+  { name: 'small2-delta-near', size: 'small', seed: 2, window: 'laptop', k: 12, on: 'marsh', tile: 506 },
+  { name: 'small2-delta-far', size: 'small', seed: 2, window: 'laptop', k: 11, on: 'marsh', tile: 506 },
+  { name: 'small2-delta-edge', size: 'small', seed: 2, window: 'phone', k: 6, on: 'marsh', tile: 506 },
+  { name: 'small2-delta-flat', size: 'small', seed: 2, window: 'phone', k: 5, on: 'marsh', tile: 506 },
+  { name: 'medium9-fields-close', size: 'medium', seed: 9, window: 'laptop', k: 35, on: 'forest-fields', tile: 828, turns: 8 },
+  { name: 'small2-marsh-fields-close', size: 'small', seed: 2, window: 'laptop', k: 35, on: 'marsh-fields', tile: 535, turns: 8 },
 ];
 
 /**
@@ -100,7 +119,20 @@ const CAMERA = `(view) => {
     'mouth-lake': (i) => mouthInto(i, true),
     marsh: (i) => l.terrain[i] === m.byName.marsh,
   };
-  const pick = view.on === 'plains' ? (i) => l.terrain[i] === m.byName.plains : SHORE[view.on] ?? ((i) => l.terrain[i] === M && classOf(i) === view.on);
+  // The wood classes (map/woods.js's rule): a forest tile by its forest neighbours, a river through it, or its field plots.
+  const FOREST = m.byName.forest, MARSH = m.byName.marsh;
+  const plots = new Set(); for (const c of Object.values(game.view().clans)) for (const [i] of c.plots) plots.add(i);
+  const forestNbs = (i) => { let f = 0; for (let d = 0; d < 6; d++) { const j = m.nb[i * 6 + d]; if (j >= 0 && l.terrain[j] === FOREST) f++; } return f; };
+  const riverAt = (i) => l.river[i] > 0 && l.flow[i] >= 0;
+  const intoRiver = (i) => { for (let d = 0; d < 6; d++) { const j = m.nb[i * 6 + d]; if (j >= 0 && riverAt(j) && l.flow[j] === i) return true; } return false; };
+  const WOOD = {
+    interior: (i) => l.terrain[i] === FOREST && forestNbs(i) === 6,
+    lone: (i) => l.terrain[i] === FOREST && forestNbs(i) === 0,
+    'forest-river': (i) => l.terrain[i] === FOREST && (riverAt(i) || intoRiver(i)),
+    'forest-fields': (i) => l.terrain[i] === FOREST && plots.has(i),
+    'marsh-fields': (i) => l.terrain[i] === MARSH && plots.has(i),
+  };
+  const pick = view.on === 'plains' ? (i) => l.terrain[i] === m.byName.plains : SHORE[view.on] ?? WOOD[view.on] ?? ((i) => l.terrain[i] === M && classOf(i) === view.on);
   let tile = -1, bd = Infinity;
   for (let i = 0; i < n; i++) {
     if (!pick(i)) continue;
@@ -115,11 +147,25 @@ const CAMERA = `(view) => {
   return { tile, cx, cy, k: view.k };
 }`;
 
-/** Opens `view`'s page, sets its camera and waits for it to settle: the page, and the camera's tile. */
+/** Leads the first civ and ends `n` turns: each waits for the turn number to move on (proto/fields.mjs's loop). */
+async function playTurns(page, n) {
+  await page.until("document.body.dataset.phase === 'choose'");
+  await page.button('Lead ');
+  await page.until("document.body.dataset.phase === 'main'");
+  for (let t = 0; t < n; t++) {
+    const before = (await page.data()).turn;
+    await page.key('Space');
+    await page.until(`document.body.dataset.turn !== '${before}'`, 60000);
+  }
+}
+
+/** Opens `view`'s page, plays its turns, sets its camera and waits for it to settle: the page, the camera's tile, and
+ *  the game's digest. */
 async function setUp(view) {
   const url = `?size=${view.size}&seed=${view.seed}&run=1`;
   const page = await open(url, { size: view.window });
   await page.until("document.body.dataset.phase && document.body.dataset.phase !== 'pregame'", 120000);
+  if (view.turns) await playTurns(page, view.turns);
   const asked = await page.eval(`(${CAMERA})(${JSON.stringify({ on: view.on ?? 'plains', k: view.k, edge: view.edge })})`);
   await page.until('!game.map.anim && !game.map.frame', 5000);
   const cam = await page.eval('(() => { const m = game.map; return { cx: m.cx, cy: m.cy, k: m.k }; })()');
@@ -128,28 +174,29 @@ async function setUp(view) {
     throw new Error(`${view.name}: asked for camera ${JSON.stringify(asked)}, the map gave ${JSON.stringify(cam)} (minK ${await page.eval('game.map.minK')})`);
   }
   if (view.tile !== undefined && asked.tile !== view.tile) throw new Error(`${view.name}: the tile is ${asked.tile}, the view names ${view.tile}`);
-  return { page, url, asked, cam };
+  const digest = await page.eval('game.digest()');
+  return { page, url, asked, cam, digest };
 }
 
 /** Shoots one view into `out`: its PNG, and its record for views.json. */
 async function shoot(view, out) {
-  const { page, url, asked, cam } = await setUp(view);
+  const { page, url, asked, cam, digest } = await setUp(view);
   try {
     const png = await page.eval("(() => { game.map.drawNow(); return game.map.canvas.toDataURL('image/png'); })()");
     writeFileSync(join(out, `${view.name}.png`), Buffer.from(png.split(',')[1], 'base64'));
     const stats = await page.eval('({ ...game.map.stats })');
     for (const e of page.errors()) throw new Error(`${view.name}: page error: ${e}`);
-    return { url, window: view.window, tile: asked.tile, cx: cam.cx, cy: cam.cy, k: cam.k, stats };
+    return { url, window: view.window, tile: asked.tile, cx: cam.cx, cy: cam.cy, k: cam.k, digest, stats };
   } finally {
     await page.close();
   }
 }
 
-/** Shoots a mountain view with the ridge layer culling and again without, in one page; true if the PNGs match. */
+/** Shoots a view with the edge, woods and ridge layers culling and again without, in one page; true if the PNGs match. */
 async function cull(view, out) {
   const { page, asked } = await setUp(view);
   try {
-    const grab = "(() => { game.map.drawNow(); return { png: game.map.canvas.toDataURL('image/png'), ridges: game.map.stats.ridges, edges: game.map.stats.edges }; })()";
+    const grab = "(() => { game.map.drawNow(); const s = game.map.stats; return { png: game.map.canvas.toDataURL('image/png'), ridges: s.ridges, edges: s.edges, woods: s.woods ?? '-' }; })()";
     const culled = await page.eval(grab);
     await page.eval('(() => { game.map.noCull = true; game.map.dirty = true; })()');
     const uncut = await page.eval(grab);
@@ -157,8 +204,21 @@ async function cull(view, out) {
     writeFileSync(join(out, `${view.name}.png`), Buffer.from(culled.png.split(',')[1], 'base64'));
     writeFileSync(join(out, `${view.name}-nocull.png`), Buffer.from(uncut.png.split(',')[1], 'base64'));
     const same = culled.png === uncut.png;
-    console.log(`${view.name}  tile ${asked.tile}  stats.ridges ${culled.ridges} culled, ${uncut.ridges} unculled  stats.edges ${culled.edges} culled, ${uncut.edges} unculled  ${same ? 'identical' : 'DIFFER'}`);
+    console.log(`${view.name}  tile ${asked.tile}  stats.ridges ${culled.ridges} culled, ${uncut.ridges} unculled  stats.edges ${culled.edges} culled, ${uncut.edges} unculled  stats.woods ${culled.woods} culled, ${uncut.woods} unculled  ${same ? 'identical' : 'DIFFER'}`);
     return same;
+  } finally {
+    await page.close();
+  }
+}
+
+/** Five static redraws of a view, each one's terrain time, and the median; prints them with stats.woods. */
+async function time(view) {
+  const { page, asked } = await setUp(view);
+  try {
+    const r = await page.eval('(() => { const m = game.map, ms = []; for (let i = 0; i < 5; i++) { m.dirty = true; m.drawNow(); ms.push(m.stats.terrainMs); } return { ms, woods: m.stats.woods ?? null }; })()');
+    for (const e of page.errors()) throw new Error(`${view.name}: page error: ${e}`);
+    const median = [...r.ms].sort((a, b) => a - b)[2];
+    console.log(`${view.name}  tile ${asked.tile}  terrainMs ${r.ms.map((x) => x.toFixed(1)).join(' ')}  median ${median.toFixed(1)}  stats.woods ${r.woods ?? '-'}`);
   } finally {
     await page.close();
   }
@@ -178,6 +238,11 @@ async function diff(a, b) {
     const cam = (v) => ({ tile: v.tile, cx: v.cx, cy: v.cy, k: v.k });
     if (JSON.stringify(cam(va[name])) !== JSON.stringify(cam(vb[name]))) {
       console.error(`${name}  cameras differ: ${JSON.stringify(cam(va[name]))} vs ${JSON.stringify(cam(vb[name]))}`);
+      failed = true;
+      continue;
+    }
+    if (va[name].digest !== undefined && vb[name].digest !== undefined && va[name].digest !== vb[name].digest) {
+      console.error(`${name}  digests differ: ${va[name].digest} vs ${vb[name].digest}`);
       failed = true;
       continue;
     }
@@ -216,6 +281,13 @@ if (args.includes('--cull')) {
 } else if (args.includes('--diff')) {
   const at = args.indexOf('--diff');
   await diff(resolve(args[at + 1]), resolve(args[at + 2]));
+} else if (args.includes('--time')) {
+  const names = args[args.indexOf('--time') + 1]?.split(',') ?? [];
+  for (const name of names) {
+    const view = VIEWS.find((v) => v.name === name);
+    if (!view) throw new Error(`no view ${name}`);
+    await time(view);
+  }
 } else {
   const at = args.indexOf('--out');
   if (at < 0 || !args[at + 1]) {

@@ -1,0 +1,382 @@
+{
+ "small2": {
+  "n": 817,
+  "forest": 33,
+  "neighbours": [
+   4,
+   17,
+   4,
+   7,
+   0,
+   0,
+   1
+  ],
+  "clusters": 14,
+  "biggest": [
+   7,
+   4,
+   3,
+   3,
+   2
+  ],
+  "count": {
+   "marsh": 8,
+   "marsh with a river": 4,
+   "forest with a river": 3
+  },
+  "meets": {
+   "coast": 65,
+   "plains": 42,
+   "hills": 21,
+   "mountain": 15,
+   "marsh": 3
+  },
+  "marshMeets": {
+   "hills": 2,
+   "mountain": 2,
+   "sea": 16,
+   "marsh": 10,
+   "plains": 11,
+   "forest": 3,
+   "coast": 4
+  },
+  "near": {
+   "lone": {
+    "tile": 439,
+    "d": 9
+   },
+   "edge": {
+    "tile": 378,
+    "d": 21
+   },
+   "marsh": {
+    "tile": 506,
+    "d": 57
+   },
+   "interior": {
+    "tile": 290,
+    "d": 144
+   },
+   "forest-river": {
+    "tile": 378,
+    "d": 21
+   }
+  }
+ },
+ "small3": {
+  "n": 817,
+  "forest": 49,
+  "neighbours": [
+   5,
+   3,
+   14,
+   18,
+   3,
+   5,
+   1
+  ],
+  "clusters": 11,
+  "biggest": [
+   18,
+   8,
+   7,
+   4,
+   4
+  ],
+  "count": {
+   "forest with a river": 1
+  },
+  "meets": {
+   "coast": 82,
+   "plains": 28,
+   "hills": 20,
+   "mountain": 25,
+   "desert": 11
+  },
+  "marshMeets": {},
+  "near": {
+   "lone": {
+    "tile": 556,
+    "d": 117
+   },
+   "edge": {
+    "tile": 532,
+    "d": 36
+   },
+   "forest-river": {
+    "tile": 562,
+    "d": 63
+   },
+   "interior": {
+    "tile": 670,
+    "d": 273
+   }
+  }
+ },
+ "small6": {
+  "n": 817,
+  "forest": 61,
+  "neighbours": [
+   5,
+   8,
+   18,
+   10,
+   17,
+   2,
+   1
+  ],
+  "clusters": 12,
+  "biggest": [
+   22,
+   9,
+   8,
+   7,
+   4
+  ],
+  "count": {
+   "forest with a river": 9
+  },
+  "meets": {
+   "coast": 93,
+   "plains": 55,
+   "hills": 28,
+   "mountain": 28,
+   "desert": 4
+  },
+  "marshMeets": {},
+  "near": {
+   "edge": {
+    "tile": 474,
+    "d": 21
+   },
+   "forest-river": {
+    "tile": 347,
+    "d": 36
+   },
+   "lone": {
+    "tile": 347,
+    "d": 36
+   },
+   "interior": {
+    "tile": 570,
+    "d": 327
+   }
+  }
+ },
+ "small9": {
+  "n": 817,
+  "forest": 48,
+  "neighbours": [
+   2,
+   11,
+   15,
+   8,
+   6,
+   5,
+   1
+  ],
+  "clusters": 11,
+  "biggest": [
+   15,
+   8,
+   7,
+   4,
+   3
+  ],
+  "count": {
+   "forest with a river": 16
+  },
+  "meets": {
+   "coast": 63,
+   "mountain": 29,
+   "desert": 17,
+   "plains": 25,
+   "hills": 34
+  },
+  "marshMeets": {},
+  "near": {
+   "edge": {
+    "tile": 258,
+    "d": 75
+   },
+   "lone": {
+    "tile": 549,
+    "d": 453
+   },
+   "forest-river": {
+    "tile": 258,
+    "d": 75
+   },
+   "interior": {
+    "tile": 234,
+    "d": 189
+   }
+  }
+ },
+ "medium8": {
+  "n": 1657,
+  "forest": 85,
+  "neighbours": [
+   6,
+   15,
+   33,
+   20,
+   7,
+   3,
+   1
+  ],
+  "clusters": 21,
+  "biggest": [
+   15,
+   9,
+   7,
+   7,
+   6
+  ],
+  "count": {
+   "forest with a river": 3
+  },
+  "meets": {
+   "coast": 155,
+   "plains": 83,
+   "hills": 41,
+   "mountain": 27,
+   "desert": 14
+  },
+  "marshMeets": {},
+  "near": {
+   "edge": {
+    "tile": 568,
+    "d": 129
+   },
+   "forest-river": {
+    "tile": 1275,
+    "d": 543
+   },
+   "lone": {
+    "tile": 830,
+    "d": 12
+   },
+   "interior": {
+    "tile": 1311,
+    "d": 567
+   }
+  }
+ },
+ "medium9": {
+  "n": 1657,
+  "forest": 213,
+  "neighbours": [
+   10,
+   30,
+   48,
+   62,
+   41,
+   12,
+   10
+  ],
+  "clusters": 38,
+  "biggest": [
+   20,
+   15,
+   15,
+   13,
+   13
+  ],
+  "count": {
+   "forest with a river": 25
+  },
+  "meets": {
+   "plains": 104,
+   "hills": 139,
+   "desert": 36,
+   "coast": 271,
+   "mountain": 132
+  },
+  "marshMeets": {},
+  "near": {
+   "edge": {
+    "tile": 828,
+    "d": 0
+   },
+   "forest-river": {
+    "tile": 828,
+    "d": 0
+   },
+   "interior": {
+    "tile": 827,
+    "d": 3
+   },
+   "lone": {
+    "tile": 833,
+    "d": 75
+   }
+  }
+ },
+ "large8": {
+  "n": 3367,
+  "forest": 185,
+  "neighbours": [
+   13,
+   39,
+   44,
+   41,
+   32,
+   8,
+   8
+  ],
+  "clusters": 46,
+  "biggest": [
+   16,
+   15,
+   14,
+   13,
+   11
+  ],
+  "count": {
+   "forest with a river": 40,
+   "marsh": 9,
+   "marsh with a river": 4
+  },
+  "meets": {
+   "plains": 294,
+   "coast": 145,
+   "mountain": 117,
+   "hills": 67,
+   "desert": 20,
+   "marsh": 1
+  },
+  "marshMeets": {
+   "marsh": 14,
+   "sea": 18,
+   "coast": 3,
+   "plains": 15,
+   "desert": 1,
+   "hills": 1,
+   "forest": 1,
+   "mountain": 1
+  },
+  "near": {
+   "edge": {
+    "tile": 1687,
+    "d": 48
+   },
+   "forest-river": {
+    "tile": 1805,
+    "d": 309
+   },
+   "interior": {
+    "tile": 1622,
+    "d": 93
+   },
+   "lone": {
+    "tile": 2070,
+    "d": 108
+   },
+   "marsh": {
+    "tile": 2639,
+    "d": 1008
+   }
+  }
+ }
+}

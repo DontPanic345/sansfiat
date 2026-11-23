@@ -1,6 +1,6 @@
 // The source art: named regions of the studies in `docs/proposals/map-art/`, and the atlas cells cut
 // from them. `draw-atlas.mjs` reads these; the browser never does.
-import { FRINGE, HEX_R } from './placeholders.js';
+import { FRINGE, HEX_R, TREE } from './placeholders.js';
 
 /** Source studies, by name: repo paths, outside the site. */
 export const FILES = { terrain: 'docs/proposals/map-art/terrain.png' };
@@ -78,6 +78,51 @@ export const REGIONS = {
 REGIONS['low.spur.s'] = { ...REGIONS['low.spur'], scale: 0.52, note: 'the lower peak, small: the diagonal ridges' };
 REGIONS['low.mid.s'] = { ...REGIONS['low.mid'], scale: 0.52, note: 'the low peak, small: the diagonal ridges' };
 
+// The trees: whole trees from the source's tree groups, each keep-polygon round its own crown so no tree behind it
+// comes along. The big ones are the left clump's front tree and two of the band's front row; the small ones are the
+// right group's thinning tail and its mid tree, cut smaller. Ground points are the trunks' feet.
+REGIONS['tree.big.0'] = {
+  file: 'terrain', rect: [130, 556, 68, 92],
+  keep: [[163, 560], [178, 575], [190, 596], [194, 612], [178, 612], [172, 618], [174, 640], [152, 640], [154, 618], [146, 612], [132, 612], [135, 596], [149, 575]],
+  key: 'tree', ground: [160, 637], scale: 0.9,
+  note: "the left clump's front tree, whole: its crown and trunk, the trees behind it cut off",
+};
+REGIONS['tree.big.1'] = {
+  file: 'terrain', rect: [448, 562, 50, 76],
+  keep: [[473, 566], [486, 580], [493, 592], [491, 604], [484, 606], [478, 616], [479, 630], [468, 630], [466, 616], [458, 606], [452, 596], [455, 582], [464, 576]],
+  key: 'tree', ground: [473, 632], scale: 0.9,
+  note: "the band's front tree, the one whose trunk stands at (473, 632)",
+};
+REGIONS['tree.big.2'] = {
+  file: 'terrain', rect: [600, 542, 62, 96],
+  keep: [[630, 546], [644, 560], [656, 580], [658, 594], [646, 600], [642, 610], [640, 624], [632, 632], [622, 632], [618, 622], [614, 610], [606, 600], [602, 586], [612, 568], [622, 556]],
+  key: 'tree', ground: [627, 632], scale: 0.9,
+  note: "the band's front tree at its right end, its trunk at (627, 632)",
+};
+REGIONS['tree.small.0'] = {
+  file: 'terrain', rect: [1396, 558, 36, 50],
+  keep: [[1416, 562], [1426, 576], [1430, 588], [1426, 597], [1419, 600], [1417, 606], [1409, 606], [1407, 599], [1401, 592], [1402, 581], [1409, 570]],
+  key: 'tree', ground: [1412, 603], scale: 0.85,
+  note: "the right group's tail: an isolated small tree, its trunk at (1412, 603)",
+};
+REGIONS['tree.small.1'] = {
+  file: 'terrain', rect: [1432, 538, 48, 66],
+  keep: [[1452, 541], [1466, 560], [1473, 578], [1476, 590], [1466, 596], [1456, 598], [1455, 606], [1449, 606], [1449, 598], [1440, 594], [1434, 582], [1438, 566], [1446, 552]],
+  key: 'tree', ground: [1452, 600], scale: 0.85,
+  note: "the right group's tail: a slim small tree, its trunk at (1452, 600)",
+};
+REGIONS['tree.small.2'] = {
+  file: 'terrain', rect: [1336, 528, 52, 82],
+  keep: [[1364, 530], [1378, 552], [1384, 572], [1380, 586], [1368, 590], [1366, 600], [1358, 600], [1356, 590], [1346, 586], [1341, 572], [1348, 552], [1356, 538]],
+  key: 'tree', ground: [1362, 598], scale: 0.65,
+  note: 'the mid tree of the right group, cut smaller than the big trees',
+};
+
+// The reeds: the plains hex's yellow tuft blades, kept by `tuft` and stretched tall (scaleY is twice scale), then
+// ramped from the trees' dark to a straw colour taken from a tuft (`RAMP.straw`). Two tufts, and the first mirrored.
+REGIONS['reed.0'] = { file: 'terrain', rect: [496, 800, 60, 40], keep: [[496, 800], [556, 800], [556, 840], [496, 840]], key: 'tuft', ground: [524, 836], scale: 0.75, scaleY: 1.2, note: 'a tuft of the plains hex, stretched tall: its base at (524, 836)' };
+REGIONS['reed.1'] = { file: 'terrain', rect: [556, 786, 48, 30], keep: [[556, 788], [600, 788], [600, 814], [556, 814]], key: 'tuft', ground: [578, 811], scale: 1.1, scaleY: 2.0, note: 'the small tuft by the plains hex, enlarged (it is small in the source): its base at (578, 811)' };
+
 // The water: clean blocks of the sea (no foam arc, no bank), each repeated and mirrored into a hex. Variant 0 is open
 // water with faint streaks, 1 and 2 carry a few light specks, so a bay is not one ripple repeated; the scales differ
 // so the copies' seams do not line up from one variant to the next.
@@ -87,17 +132,18 @@ REGIONS['sea.1'] = { ...SEA, fill: { rect: [1312, 852, 70, 40], scale: 1.0, offs
 REGIONS['sea.2'] = { ...SEA, fill: { rect: [1304, 846, 74, 26], scale: 1.0, offset: [40, 9] } };
 
 // The hills: the bottom-left row's first two hexes. Hex 2's left-lower part is the first hill's tail: grass over it.
-// The marsh: the plains' grass hex with two pools patched in from the water block, so the marsh has water in it.
+// The marsh: the plains' clean hex (no rocks) with four pools patched in from the water block, large enough to read
+// as water at play zoom, so the marsh is wet ground with reeds standing in it.
 REGIONS['marsh.grass'] = {
-  ...REGIONS['plains.grass'],
+  ...REGIONS['plains.clean'],
   patches: [
-    ...REGIONS['plains.grass'].patches,
-    { from: [1280, 836], to: [520, 826], w: 30, h: 18, feather: 4, note: 'a pool of the sea block, in the marsh' },
-    { from: [1300, 840], to: [585, 880], w: 26, h: 16, feather: 4, note: 'a second pool of the sea block' },
-    { from: [1330, 850], to: [598, 822], w: 36, h: 14, feather: 5, note: 'a third pool, upper right' },
-    { from: [1340, 862], to: [490, 880], w: 30, h: 14, feather: 5, note: 'a fourth pool, lower left' },
+    ...REGIONS['plains.clean'].patches,
+    { from: [1305, 852], to: [470, 838], w: 120, h: 44, feather: 5, note: 'a pool of the sea block, left: the largest' },
+    { from: [1330, 858], to: [562, 794], w: 80, h: 38, feather: 5, note: 'a second pool, upper right' },
+    { from: [1300, 852], to: [525, 892], w: 84, h: 36, feather: 5, note: 'a third pool, below' },
+    { from: [1380, 862], to: [500, 778], w: 52, h: 26, feather: 4, note: 'a fourth pool, top left' },
   ],
-  note: 'bottom-left row, third hex, with two pools of water patched in: the marsh',
+  note: 'bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh',
 };
 
 const HILLS = { file: 'terrain', hex: { cx: 164.5, cy: 854, rx: 96.5, ry: 109 }, inset: 3, insetRight: 5 };
@@ -128,6 +174,7 @@ const RAMP = {
   sandLit: [1070, 893, 30, 8],
   waterDark: [919, 902, 16, 8],
   waterLight: [919, 902, 4, 4],
+  straw: [520, 817, 8, 8], // the bright core of a plains tuft's blades: the reeds' light end
 };
 const ramp = (dark, light, mix) => ({ op: 'ramp', dark, light, mix });
 
@@ -170,11 +217,25 @@ const ground = (kind, rampOf, flat) => RECIPES.forEach((r, v) => {
 // Coast: grass warmed toward the sand, a band along the water that still reads as land. Its flat is the shaded sand.
 ground('coast', ramp(RAMP.grassDark, RAMP.sandLit, 0.8), RAMP.sandShade);
 // Forest: the grass darkened to the trees' floor and leaf, until the trees are planted.
-ground('forest', ramp(RAMP.treeDark, RAMP.treeLeaf, 0.95), RAMP.treeDark);
+ground('forest', ramp(RAMP.treeDark, RAMP.grassDark, 0.7), RAMP.treeFloor);
+// The wood and the marsh: the trees are cut from the studies' tree groups as they are; the reeds are a tuft ramped from
+// the trees' dark to the straw, the first of them mirrored for the third variant.
+for (let v = 0; v < 3; v++) {
+  CELLS[`tree.big.${v}`] = { region: `tree.big.${v}`, ops: [], anchor: [TREE.big.ax, TREE.big.ay] };
+  CELLS[`tree.small.${v}`] = { region: `tree.small.${v}`, ops: [], anchor: [TREE.small.ax, TREE.small.ay] };
+}
+const REED = [
+  { region: 'reed.0', ops: [] },
+  { region: 'reed.1', ops: [] },
+  { region: 'reed.0', ops: ['mirror'] },
+];
+REED.forEach((r, v) => {
+  CELLS[`reed.${v}`] = { region: r.region, ops: [ramp(RAMP.treeLeaf, RAMP.straw, 1), ...r.ops], anchor: [TREE.reed.ax, TREE.reed.ay] };
+});
 // Desert: the grass recoloured onto the sand, shaded to lit; the stipple no longer draws.
 ground('desert', ramp(RAMP.sandShade, RAMP.sandLit, 1), RAMP.sandLit);
 // Marsh: the grass with pools of the sea's water, murked toward the trees' dark teal.
-const MARSH = ramp(RAMP.treeDark, RAMP.grassDark, 0.6);
+const MARSH = { ...ramp(RAMP.treeDark, RAMP.grassDark, 0.45), keepWater: true };
 CELLS['terrain.marsh.0'] = { region: 'marsh.grass', ops: [MARSH], anchor: 'centre' };
 CELLS['terrain.marsh.1'] = { region: 'marsh.grass', ops: [MARSH], anchor: 'centre' };
 CELLS['terrain.marsh.2'] = { region: 'marsh.grass', ops: [MARSH, 'mirror'], anchor: 'centre' };

@@ -1,7 +1,7 @@
 {
  "image": "atlas.png",
  "width": 1024,
- "height": 2064,
+ "height": 2288,
  "cells": {
   "terrain.sea.0": {
    "x": 0,
@@ -144,7 +144,7 @@
    "ay": 74,
    "note": "forest, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (ramp): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
    "src": "plains.clean",
-   "flat": "#2d4735"
+   "flat": "#34442e"
   },
   "terrain.forest.1": {
    "x": 640,
@@ -155,7 +155,7 @@
    "ay": 74,
    "note": "forest, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass (ramp): bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
-   "flat": "#2d4735"
+   "flat": "#34442e"
   },
   "terrain.forest.2": {
    "x": 768,
@@ -166,7 +166,7 @@
    "ay": 74,
    "note": "forest, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (ramp, mirror): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
    "src": "plains.clean",
-   "flat": "#2d4735"
+   "flat": "#34442e"
   },
   "terrain.hills.0": {
    "x": 896,
@@ -274,9 +274,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "marsh, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp): bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp): bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#57672e"
+   "flat": "#3f5f42"
   },
   "terrain.marsh.1": {
    "x": 128,
@@ -285,9 +285,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "marsh, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp): bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp): bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#57672e"
+   "flat": "#3f5f42"
   },
   "terrain.marsh.2": {
    "x": 256,
@@ -296,9 +296,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "marsh, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp, mirror): bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from marsh.grass (ramp, mirror): bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#57672e"
+   "flat": "#3f5f42"
   },
   "overlay.floodplain": {
    "x": 0,
@@ -950,9 +950,9 @@
    "h": 74,
    "ax": -38,
    "ay": 37,
-   "note": "marsh along hex edge 0, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 0, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 0, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 0, variant 0: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#54662e"
+   "flat": "#556b35"
   },
   "fringe.marsh.0.1": {
    "x": 26,
@@ -961,9 +961,9 @@
    "h": 74,
    "ax": -38,
    "ay": 37,
-   "note": "marsh along hex edge 0, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 0, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 0, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 0, variant 1: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#51632f"
+   "flat": "#506838"
   },
   "fringe.marsh.1.0": {
    "x": 52,
@@ -972,9 +972,9 @@
    "h": 59,
    "ax": 13,
    "ay": -15,
-   "note": "marsh along hex edge 1, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 1, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 1, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 1, variant 0: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#566630"
+   "flat": "#3b5d44"
   },
   "fringe.marsh.1.1": {
    "x": 129,
@@ -983,9 +983,9 @@
    "h": 59,
    "ax": 13,
    "ay": -15,
-   "note": "marsh along hex edge 1, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 1, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 1, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 1, variant 1: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#55652d"
+   "flat": "#43613f"
   },
   "fringe.marsh.2.0": {
    "x": 206,
@@ -994,9 +994,9 @@
    "h": 59,
    "ax": 64,
    "ay": -15,
-   "note": "marsh along hex edge 2, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 2, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 2, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 2, variant 0: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#57672b"
+   "flat": "#596b2f"
   },
   "fringe.marsh.2.1": {
    "x": 283,
@@ -1005,9 +1005,9 @@
    "h": 59,
    "ax": 64,
    "ay": -15,
-   "note": "marsh along hex edge 2, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 2, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 2, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 2, variant 1: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#57672c"
+   "flat": "#5c6d2d"
   },
   "fringe.marsh.3.0": {
    "x": 360,
@@ -1016,9 +1016,9 @@
    "h": 74,
    "ax": 64,
    "ay": 37,
-   "note": "marsh along hex edge 3, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 3, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 3, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 3, variant 0: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#5a6a2b"
+   "flat": "#526837"
   },
   "fringe.marsh.3.1": {
    "x": 386,
@@ -1027,9 +1027,9 @@
    "h": 74,
    "ax": 64,
    "ay": 37,
-   "note": "marsh along hex edge 3, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 3, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 3, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 3, variant 1: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#5a6a2b"
+   "flat": "#4f6738"
   },
   "fringe.marsh.4.0": {
    "x": 412,
@@ -1038,9 +1038,9 @@
    "h": 59,
    "ax": 64,
    "ay": 74,
-   "note": "marsh along hex edge 4, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 4, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 4, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 4, variant 0: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#5c6b2b"
+   "flat": "#49633c"
   },
   "fringe.marsh.4.1": {
    "x": 489,
@@ -1049,9 +1049,9 @@
    "h": 59,
    "ax": 64,
    "ay": 74,
-   "note": "marsh along hex edge 4, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 4, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 4, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 4, variant 1: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#5a6a2b"
+   "flat": "#48623c"
   },
   "fringe.marsh.5.0": {
    "x": 566,
@@ -1060,9 +1060,9 @@
    "h": 59,
    "ax": 13,
    "ay": 74,
-   "note": "marsh along hex edge 5, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 5, variant 0: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 5, variant 0: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.0, masked to fringe edge 5, variant 0: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#57682b"
+   "flat": "#4e6636"
   },
   "fringe.marsh.5.1": {
    "x": 643,
@@ -1071,9 +1071,9 @@
    "h": 59,
    "ax": 13,
    "ay": 74,
-   "note": "marsh along hex edge 5, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 5, variant 1: bottom-left row, third hex, with two pools of water patched in: the marsh",
+   "note": "marsh along hex edge 5, variant 1: a ragged strip inside the tile, cut from its marsh cell, the hex centre at the anchor, transparent outside. Derived from terrain.marsh.1, masked to fringe edge 5, variant 1: bottom-left row, third hex, rocks patched out, with four large pools of water patched in: the marsh",
    "src": "marsh.grass",
-   "flat": "#58682b"
+   "flat": "#4d6636"
   },
   "fringe.forest.0.0": {
    "x": 0,
@@ -1084,7 +1084,7 @@
    "ay": 37,
    "note": "forest along hex edge 0, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 0, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
    "src": "plains.clean",
-   "flat": "#3b5330"
+   "flat": "#4f612d"
   },
   "fringe.forest.0.1": {
    "x": 26,
@@ -1095,7 +1095,7 @@
    "ay": 37,
    "note": "forest along hex edge 0, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 0, variant 1: bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
-   "flat": "#3c5430"
+   "flat": "#50612c"
   },
   "fringe.forest.1.0": {
    "x": 52,
@@ -1106,7 +1106,7 @@
    "ay": -15,
    "note": "forest along hex edge 1, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 1, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
    "src": "plains.clean",
-   "flat": "#3b5330"
+   "flat": "#4e602d"
   },
   "fringe.forest.1.1": {
    "x": 129,
@@ -1117,7 +1117,7 @@
    "ay": -15,
    "note": "forest along hex edge 1, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 1, variant 1: bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
-   "flat": "#3c5330"
+   "flat": "#4e602d"
   },
   "fringe.forest.2.0": {
    "x": 206,
@@ -1128,7 +1128,7 @@
    "ay": -15,
    "note": "forest along hex edge 2, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 2, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
    "src": "plains.clean",
-   "flat": "#3b5330"
+   "flat": "#4e602d"
   },
   "fringe.forest.2.1": {
    "x": 283,
@@ -1139,7 +1139,7 @@
    "ay": -15,
    "note": "forest along hex edge 2, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 2, variant 1: bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
-   "flat": "#3c5430"
+   "flat": "#50612c"
   },
   "fringe.forest.3.0": {
    "x": 360,
@@ -1150,7 +1150,7 @@
    "ay": 37,
    "note": "forest along hex edge 3, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 3, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
    "src": "plains.clean",
-   "flat": "#3c5430"
+   "flat": "#51622d"
   },
   "fringe.forest.3.1": {
    "x": 386,
@@ -1161,7 +1161,7 @@
    "ay": 37,
    "note": "forest along hex edge 3, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 3, variant 1: bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
-   "flat": "#3e552f"
+   "flat": "#52632c"
   },
   "fringe.forest.4.0": {
    "x": 412,
@@ -1172,7 +1172,7 @@
    "ay": 74,
    "note": "forest along hex edge 4, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 4, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
    "src": "plains.clean",
-   "flat": "#3d5430"
+   "flat": "#53632c"
   },
   "fringe.forest.4.1": {
    "x": 489,
@@ -1183,7 +1183,7 @@
    "ay": 74,
    "note": "forest along hex edge 4, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 4, variant 1: bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
-   "flat": "#3e552f"
+   "flat": "#53632c"
   },
   "fringe.forest.5.0": {
    "x": 566,
@@ -1194,7 +1194,7 @@
    "ay": 74,
    "note": "forest along hex edge 5, variant 0: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.0, masked to fringe edge 5, variant 0: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
    "src": "plains.clean",
-   "flat": "#3b5330"
+   "flat": "#4f612d"
   },
   "fringe.forest.5.1": {
    "x": 643,
@@ -1205,7 +1205,7 @@
    "ay": 74,
    "note": "forest along hex edge 5, variant 1: a ragged strip inside the tile, cut from its forest cell, the hex centre at the anchor, transparent outside. Derived from terrain.forest.1, masked to fringe edge 5, variant 1: bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
-   "flat": "#3d542f"
+   "flat": "#51622c"
   },
   "fringe.hills.0.0": {
    "x": 0,
@@ -1602,6 +1602,105 @@
    "note": "coast along hex edge 5, variant 1: a ragged strip inside the tile, cut from its coast cell, the hex centre at the anchor, transparent outside. Derived from terrain.coast.1, masked to fringe edge 5, variant 1: bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
    "flat": "#837d39"
+  },
+  "tree.big.0": {
+   "x": 0,
+   "y": 2064,
+   "w": 80,
+   "h": 100,
+   "ax": 40,
+   "ay": 95,
+   "note": "a full tree in a wood, variant 0: its trunk's foot is the ground point, at the anchor, transparent outside. Cut from tree.big.0: the left clump's front tree, whole: its crown and trunk, the trees behind it cut off",
+   "src": "tree.big.0",
+   "flat": "#4c5b2d"
+  },
+  "tree.big.1": {
+   "x": 80,
+   "y": 2064,
+   "w": 80,
+   "h": 100,
+   "ax": 40,
+   "ay": 95,
+   "note": "a full tree in a wood, variant 1: its trunk's foot is the ground point, at the anchor, transparent outside. Cut from tree.big.1: the band's front tree, the one whose trunk stands at (473, 632)",
+   "src": "tree.big.1",
+   "flat": "#53602c"
+  },
+  "tree.big.2": {
+   "x": 160,
+   "y": 2064,
+   "w": 80,
+   "h": 100,
+   "ax": 40,
+   "ay": 95,
+   "note": "a full tree in a wood, variant 2: its trunk's foot is the ground point, at the anchor, transparent outside. Cut from tree.big.2: the band's front tree at its right end, its trunk at (627, 632)",
+   "src": "tree.big.2",
+   "flat": "#4b582c"
+  },
+  "tree.small.0": {
+   "x": 0,
+   "y": 2164,
+   "w": 48,
+   "h": 64,
+   "ax": 24,
+   "ay": 60,
+   "note": "a sapling or small tree at a wood's margin, variant 0: its trunk's foot is the ground point, at the anchor, transparent outside. Cut from tree.small.0: the right group's tail: an isolated small tree, its trunk at (1412, 603)",
+   "src": "tree.small.0",
+   "flat": "#343b2c"
+  },
+  "tree.small.1": {
+   "x": 48,
+   "y": 2164,
+   "w": 48,
+   "h": 64,
+   "ax": 24,
+   "ay": 60,
+   "note": "a sapling or small tree at a wood's margin, variant 1: its trunk's foot is the ground point, at the anchor, transparent outside. Cut from tree.small.1: the right group's tail: a slim small tree, its trunk at (1452, 600)",
+   "src": "tree.small.1",
+   "flat": "#303d2b"
+  },
+  "tree.small.2": {
+   "x": 96,
+   "y": 2164,
+   "w": 48,
+   "h": 64,
+   "ax": 24,
+   "ay": 60,
+   "note": "a sapling or small tree at a wood's margin, variant 2: its trunk's foot is the ground point, at the anchor, transparent outside. Cut from tree.small.2: the mid tree of the right group, cut smaller than the big trees",
+   "src": "tree.small.2",
+   "flat": "#36492a"
+  },
+  "reed.0": {
+   "x": 0,
+   "y": 2228,
+   "w": 48,
+   "h": 60,
+   "ax": 24,
+   "ay": 56,
+   "note": "a reed clump on a marsh, variant 0: its base is the ground point, at the anchor, transparent outside. Cut from reed.0 (ramp): a tuft of the plains hex, stretched tall: its base at (524, 836)",
+   "src": "reed.0",
+   "flat": "#77812b"
+  },
+  "reed.1": {
+   "x": 48,
+   "y": 2228,
+   "w": 48,
+   "h": 60,
+   "ax": 24,
+   "ay": 56,
+   "note": "a reed clump on a marsh, variant 1: its base is the ground point, at the anchor, transparent outside. Cut from reed.1 (ramp): the small tuft by the plains hex, enlarged (it is small in the source): its base at (578, 811)",
+   "src": "reed.1",
+   "flat": "#707b2a"
+  },
+  "reed.2": {
+   "x": 96,
+   "y": 2228,
+   "w": 48,
+   "h": 60,
+   "ax": 24,
+   "ay": 56,
+   "note": "a reed clump on a marsh, variant 2: its base is the ground point, at the anchor, transparent outside. Cut from reed.0 (ramp, mirror): a tuft of the plains hex, stretched tall: its base at (524, 836)",
+   "src": "reed.0",
+   "flat": "#77812b"
   }
  }
 }
