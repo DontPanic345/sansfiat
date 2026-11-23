@@ -115,7 +115,7 @@ function paint(ctx, model, view, { only = null, colour = null, numbers = true } 
       labels.push({ unit: u.id, label, box });
       ctx.strokeText(label, tx, ty);
       ctx.fillText(label, tx, ty);
-      // Archers: a small bow over the figure's upper left.
+      // Archers: a small bow over the figure's right shoulder.
       if (u.stack && u.stack[1] >= 0.05) {
         ctx.beginPath();
         ctx.arc(x + FIGURE.bowX * s, y + FIGURE.bowY * s, FIGURE.bowR * s, -Math.PI / 2, Math.PI / 2);
