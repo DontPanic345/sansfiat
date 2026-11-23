@@ -14,11 +14,39 @@
 //                                                   and DIR/NAME-nocull.png; exit 1 unless the two are byte-identical
 //   node www/shots.mjs --time NAME,…                for each named view, five static redraws: each one's stats.terrainMs and
 //                                                   the median; stats.woods where the branch has it (main prints -)
-// A view with `turns` leads the first civ and ends that many turns before its camera is set; every view's record holds
-// the game's digest, which --diff compares too.
+//   node www/shots.mjs --units DIR                  each view with `units` (the unit views): DIR/NAME.png, and per unit its kind,
+//                                                   civ, terrain, opaque and tinted pixels, mean colour and nearest civ (the
+//                                                   units layer's probe); exit 1 unless every unit is nearest its own civ.
+//                                                   On main, which has no probe, prints '-'.
+// A view with `turns` leads the first civ and ends that many turns before its camera is set; `lead: 'Gold'` leads that civ
+// instead and `raise: N` raises an army of N warriors after leading (play.mjs's raiseArmy); `stage: 'lineup'` stages the
+// lineup (LINEUP) instead of a map. `on: 'at'` puts the camera on tile `at`, or on the mean of the tiles in `between`.
+// Every view's record holds the game's digest, which --diff compares too.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { open, SIZES } from './play.mjs';
+import { open, lead, raiseArmy, SIZES } from './play.mjs';
+import { grid, marks, stage } from './play-stage.mjs';
+
+// The unit lineup, as play-stage.mjs's LINEUP (kept here too, so this file copies alone onto a main worktree).
+const dist = (q, r) => Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
+const forest = (q, r) => q >= 3 && q <= 5 && r >= -2 && r <= 1;
+const LINEUP = {
+  map: grid(8, (q, r) => (dist(q, r) === 8 ? '~' : forest(q, r) ? 'f' : '.')),
+  marks: marks(8, { A: [-5, 0], B: [0, -5], C: [0, 5], a: [1, 0], b: [4, -1], c: [1, 1], s: [4, 0], t: [2, -1] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }, { mark: 'C' }],
+  people: 12,
+  lead: 0,
+  armies: [
+    { civ: 0, at: { mark: 'a' }, people: 6 }, // red on plains
+    { civ: 1, at: { mark: 'b' }, people: 6 }, // blue in the wood
+    { civ: 2, at: { mark: 'c' }, people: 4 }, // gold on plains, stacked with its scout
+  ],
+  scouts: [
+    { civ: 0, at: { mark: 's' }, pack: 0 }, // red in the wood
+    { civ: 1, at: { mark: 't' }, pack: 0 }, // blue on plains
+    { civ: 2, at: { mark: 'c' }, pack: 0 }, // gold on its army's tile
+  ],
+};
 
 /**
  * The views: `size` is a map (`small`, `medium`, `large`), `seed` its seed, `window` `laptop` or `phone`, `k` the
@@ -77,6 +105,20 @@ export const VIEWS = [
   { name: 'small2-delta-flat', size: 'small', seed: 2, window: 'phone', k: 5, on: 'marsh', tile: 506 },
   { name: 'medium9-fields-close', size: 'medium', seed: 9, window: 'laptop', k: 35, on: 'forest-fields', tile: 828, turns: 8 },
   { name: 'small2-marsh-fields-close', size: 'small', seed: 2, window: 'laptop', k: 35, on: 'marsh-fields', tile: 535, turns: 8 },
+  // The unit views (#443): the figures, the stacks and the lineup, each set up on main by proto/scenes.mjs and lineup.mjs.
+  { name: 'medium9-units-play', size: 'medium', seed: 9, window: 'laptop', k: 18, raise: 3, on: 'at', between: [547, 780], units: true },
+  { name: 'medium9-stack-close', size: 'medium', seed: 9, window: 'laptop', k: 35, raise: 3, on: 'at', at: 547, units: true },
+  { name: 'medium9-wood-close', size: 'medium', seed: 9, window: 'laptop', k: 35, on: 'at', at: 780, units: true },
+  { name: 'medium9-gold-play', size: 'medium', seed: 9, window: 'laptop', k: 18, lead: 'Gold', raise: 3, on: 'at', at: 780, units: true },
+  { name: 'medium9-gold-close', size: 'medium', seed: 9, window: 'laptop', k: 35, lead: 'Gold', raise: 3, on: 'at', at: 780, units: true },
+  { name: 'medium8-units-play', size: 'medium', seed: 8, window: 'laptop', k: 18, on: 'at', between: [1145, 639], units: true },
+  { name: 'small2-camps-play', size: 'small', seed: 2, window: 'laptop', k: 18, turns: 8, on: 'at', at: 527, units: true },
+  { name: 'small2-camps-close', size: 'small', seed: 2, window: 'laptop', k: 35, turns: 8, on: 'at', at: 527, units: true },
+  { name: 'medium9-units-edge', size: 'medium', seed: 9, window: 'phone', k: 6, raise: 3, on: 'at', between: [547, 780], units: true },
+  { name: 'medium9-units-flat', size: 'medium', seed: 9, window: 'phone', k: 5, raise: 3, on: 'at', between: [547, 780], units: true },
+  { name: 'lineup-close', window: 'laptop', k: 35, stage: 'lineup', on: 'at', between: [125, 170], units: true },
+  { name: 'lineup-play', window: 'laptop', k: 18, stage: 'lineup', on: 'at', between: [125, 170], units: true },
+  { name: 'lineup-edge', window: 'phone', k: 6, stage: 'lineup', on: 'at', between: [125, 170], units: true },
 ];
 
 /**
@@ -132,15 +174,24 @@ const CAMERA = `(view) => {
     'forest-fields': (i) => l.terrain[i] === FOREST && plots.has(i),
     'marsh-fields': (i) => l.terrain[i] === MARSH && plots.has(i),
   };
-  const pick = view.on === 'plains' ? (i) => l.terrain[i] === m.byName.plains : SHORE[view.on] ?? WOOD[view.on] ?? ((i) => l.terrain[i] === M && classOf(i) === view.on);
-  let tile = -1, bd = Infinity;
-  for (let i = 0; i < n; i++) {
-    if (!pick(i)) continue;
-    const d = m.px[i] * m.px[i] + m.py[i] * m.py[i];
-    if (d < bd) { bd = d; tile = i; }
+  let tile = -1, cx, cy;
+  if (view.on === 'at') {
+    // The named tile, or the mean of the tiles named (no tile then: -1).
+    const ts = view.between ?? [view.at];
+    cx = ts.reduce((a, i) => a + m.px[i], 0) / ts.length;
+    cy = ts.reduce((a, i) => a + m.py[i], 0) / ts.length;
+    tile = view.between ? -1 : view.at;
+  } else {
+    const pick = view.on === 'plains' ? (i) => l.terrain[i] === m.byName.plains : SHORE[view.on] ?? WOOD[view.on] ?? ((i) => l.terrain[i] === M && classOf(i) === view.on);
+    let bd = Infinity;
+    for (let i = 0; i < n; i++) {
+      if (!pick(i)) continue;
+      const d = m.px[i] * m.px[i] + m.py[i] * m.py[i];
+      if (d < bd) { bd = d; tile = i; }
+    }
+    if (tile < 0) throw new Error(\`the map has no \${view.on} tile\`);
+    cx = m.px[tile]; cy = m.py[tile];
   }
-  if (tile < 0) throw new Error(\`the map has no \${view.on} tile\`);
-  let cx = m.px[tile], cy = m.py[tile];
   if (view.edge?.side === 'bottom') cy = m.py[tile] - m.h / 2 / view.k - view.edge.by;
   if (view.edge?.side === 'right') cx = m.px[tile] - m.w / 2 / view.k - view.edge.by;
   m.cx = cx; m.cy = cy; m.k = view.k; m.viewChanged();
@@ -163,10 +214,22 @@ async function playTurns(page, n) {
  *  the game's digest. */
 async function setUp(view) {
   const url = `?size=${view.size}&seed=${view.seed}&run=1`;
-  const page = await open(url, { size: view.window });
-  await page.until("document.body.dataset.phase && document.body.dataset.phase !== 'pregame'", 120000);
-  if (view.turns) await playTurns(page, view.turns);
-  const asked = await page.eval(`(${CAMERA})(${JSON.stringify({ on: view.on ?? 'plains', k: view.k, edge: view.edge })})`);
+  let page;
+  if (view.stage === 'lineup') {
+    page = await open('', { size: view.window });
+    await stage(page, LINEUP);
+  } else if (view.lead || view.raise) {
+    page = await open('', { size: view.window });
+    await lead(page, { size: view.size, seed: view.seed, civ: view.lead });
+    if (view.raise) await raiseArmy(page, { warriors: view.raise, turns: 10 });
+  } else {
+    page = await open(url, { size: view.window });
+    await page.until("document.body.dataset.phase && document.body.dataset.phase !== 'pregame'", 120000);
+    if (view.turns) await playTurns(page, view.turns);
+  }
+  // Raising pans to the civ: the camera is set once the map has settled.
+  await page.until('!game.map.anim && !game.map.frame', 10000);
+  const asked = await page.eval(`(${CAMERA})(${JSON.stringify({ on: view.on ?? 'plains', k: view.k, edge: view.edge, at: view.at, between: view.between })})`);
   await page.until('!game.map.anim && !game.map.frame', 5000);
   const cam = await page.eval('(() => { const m = game.map; return { cx: m.cx, cy: m.cy, k: m.k }; })()');
   // The pan clamp moves a camera it doesn't like: the camera must be the one asked for, or the view is not the view named.
@@ -224,6 +287,38 @@ async function time(view) {
   }
 }
 
+/** Shoots a unit view into `out` and prints each unit's probe; false if a unit is nearest another civ's colour. On main,
+ *  which has no probe, prints '-' and passes. */
+async function units(view, out) {
+  const { page, asked } = await setUp(view);
+  try {
+    const png = await page.eval("(() => { game.map.drawNow(); return game.map.canvas.toDataURL('image/png'); })()");
+    writeFileSync(join(out, `${view.name}.png`), Buffer.from(png.split(',')[1], 'base64'));
+    const rows = await page.eval(`(() => {
+      const m = game.map;
+      if (typeof m.unitProbe !== 'function') return null;
+      const v = game.view(), names = Object.fromEntries(Object.entries(m.byName).map(([k, x]) => [x, k]));
+      return m.unitProbe().map((p) => ({ ...p, terrain: names[m.l.terrain[v.units[p.unit].tile]] }));
+    })()`);
+    for (const e of page.errors()) throw new Error(`${view.name}: page error: ${e}`);
+    if (rows === null) {
+      console.log(`${view.name}  tile ${asked.tile}  -`);
+      return true;
+    }
+    let ok = true;
+    for (const r of rows) {
+      const own = r.nearest === r.civ;
+      if (!own) ok = false;
+      const share = r.opaque ? ((100 * r.tinted) / r.opaque).toFixed(1) : '-';
+      const mean = r.mean ? r.mean.map((x) => Math.round(x)).join(',') : '-';
+      console.log(`${view.name}  unit ${r.unit}  ${r.kind}  civ ${r.civ}  on ${r.terrain}  opaque ${r.opaque}  tinted ${r.tinted}  share ${share}%  mean ${mean}  nearest ${r.nearest}  ${own ? 'ok' : 'NOT ITS OWN CIV'}`);
+    }
+    return ok;
+  } finally {
+    await page.close();
+  }
+}
+
 /** Compares two output folders: cameras must match; prints each view's share of differing pixels. */
 async function diff(a, b) {
   const { decode } = await import('./assets/png.mjs');
@@ -271,11 +366,23 @@ if (args.includes('--cull')) {
   mkdirSync(out, { recursive: true });
   let failed = false;
   for (const view of VIEWS) {
-    if (!view.on) continue;
+    if (!view.on || view.on === 'at') continue; // the units views have no culled layer
     if (!(await cull(view, out))) failed = true;
   }
   if (failed) {
     console.error('shots --cull: a mountain view draws differently with culling off');
+    process.exit(1);
+  }
+} else if (args.includes('--units')) {
+  const out = resolve(args[args.indexOf('--units') + 1]);
+  mkdirSync(out, { recursive: true });
+  let failed = false;
+  for (const view of VIEWS) {
+    if (!view.units) continue;
+    if (!(await units(view, out))) failed = true;
+  }
+  if (failed) {
+    console.error('shots --units: a unit is drawn nearest another civ\'s colour');
     process.exit(1);
   }
 } else if (args.includes('--diff')) {

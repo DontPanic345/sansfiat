@@ -13,10 +13,12 @@ cargo run -p sansfiat -- judge --compare a.json b.json [--all]   # two sweep rep
 cargo run -p sansfiat -- bench --size large 8 --after 50   # ms a turn past the pick
 node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in headless Chrome
 node www/play/all.mjs                        # every touch-point script; check.sh runs it
+node www/play/units.mjs                      # the lineup's units: six figures, probe colours, a stack's cycle and numbers
 node www/assets/draw-atlas.mjs [--check]     # atlas.png and atlas.json from placeholders.js and sources.js (--check: no Chrome)
 node www/shots.mjs --out DIR                 # the map's fixed views, as canvases; --diff A B compares two folders
 node www/shots.mjs --cull DIR                # each view with an `on` with the edge, woods and ridge layers' culling on and off: identical, or exit 1
 node www/shots.mjs --time NAME,…             # five static redraws of each named view: stats.terrainMs and the median
+node www/shots.mjs --units DIR             # the unit views (lead, raise, stage 'lineup', on 'at'): each unit's probe; exit 1 if not its own civ
 ```
 
 `cargo test` runs optimised: whole pre-games are too slow otherwise.

@@ -69,7 +69,10 @@ What the retro maps hold (`proto/units.mjs`, `proto/units.txt`, `proto/scenes.tx
 ## How the figures are drawn
 
 All in world units: a hex has circumradius 1. Every number is in `FIGURE`, a table at the top of
-`www/map/layers/units.js` with a `note` per number. Build-2 starts it at the values below, and build-3 tunes it.
+`www/map/layers/units.js` with a note per number. Build-2 starts it at the values below, and build-3 tunes it. Build-2
+also put the slot's point (`slotX` 0.9, `slotY` 1.1), the bow (`bowX` -0.9, `bowY` -0.7, `bowR` 0.45) and the number's
+font (`font` 0.9 `s`, not main's 1.1) in `FIGURE`: at 1.1 `s` a two-character number is 40.7 px wide at k 35, wider than
+the 35.7 px step between two units at `gap` 1.7, so Gold's two numbers ran together and `play/units.mjs` failed.
 
 - **The cells.** `unit.camp`, `unit.scout` and their masks are 96×96, anchor (48, 92): the figure's feet. A mask
   has its figure's size and anchor, so the two overlay exactly. The keys stay `unit.<kind>` and `unit.<kind>.mask`.

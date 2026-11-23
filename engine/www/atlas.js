@@ -1,6 +1,7 @@
 // The atlas loader: `assets/atlas.json` names every cell, `assets/atlas.png` holds them. `cell(name)`
 // gives a cell's source rectangle, `tinted(name, colour)` a `.mask` cell filled in a colour (once per
 // colour), and `scaled(name, h)` a cell pre-scaled to `h` px tall, for a map drawing thousands of tiles.
+// `shaded` multiplies a cell by a colour, `outline` edges its silhouette (the units' figures use both).
 
 export async function loadAtlas(base = './assets/') {
   const json = await (await fetch(`${base}atlas.json`)).json();
@@ -9,6 +10,8 @@ export async function loadAtlas(base = './assets/') {
   await image.decode();
   const tintCache = new Map();
   const scaleCache = new Map();
+  const shadeCache = new Map();
+  const outlineCache = new Map();
   const make = (w, h) => {
     const c = document.createElement('canvas');
     c.width = Math.max(1, w);
@@ -53,6 +56,51 @@ export async function loadAtlas(base = './assets/') {
         g.imageSmoothingQuality = 'high';
         g.drawImage(image, cell.x, cell.y, cell.w, cell.h, 0, 0, c.width, c.height);
         scaleCache.set(key, c);
+      }
+      return c;
+    },
+    /** Cell `name` scaled to `h` px tall, multiplied by `colour` with its alpha kept (a grey cloth shows the colour
+     *  through its shading), cached by name, colour and height. */
+    shaded(name, colour, h) {
+      const key = `${name}|${colour}|${h}`;
+      let c = shadeCache.get(key);
+      if (!c) {
+        if (shadeCache.size > 400) shadeCache.clear();
+        const s = this.scaled(name, h);
+        c = make(s.width, s.height);
+        const g = c.getContext('2d');
+        g.drawImage(s, 0, 0);
+        g.globalCompositeOperation = 'multiply';
+        g.fillStyle = colour;
+        g.fillRect(0, 0, c.width, c.height);
+        g.globalCompositeOperation = 'destination-in';
+        g.drawImage(s, 0, 0);
+        shadeCache.set(key, c);
+      }
+      return c;
+    },
+    /** The silhouette of cell `name` at `h` px tall, filled in `colour` and dilated by `width` device px, on a canvas
+     *  `width` larger each way: its anchor is the cell's plus `width`. Cached by name, colour, height and width. */
+    outline(name, colour, h, width) {
+      const key = `${name}|${colour}|${h}|${width}`;
+      let c = outlineCache.get(key);
+      if (!c) {
+        if (outlineCache.size > 400) outlineCache.clear();
+        const s = this.scaled(name, h);
+        const sil = make(s.width, s.height);
+        const g = sil.getContext('2d');
+        g.drawImage(s, 0, 0);
+        g.globalCompositeOperation = 'source-in';
+        g.fillStyle = colour;
+        g.fillRect(0, 0, sil.width, sil.height);
+        c = make(s.width + 2 * width, s.height + 2 * width);
+        const o = c.getContext('2d');
+        for (let dy = -width; dy <= width; dy++) {
+          for (let dx = -width; dx <= width; dx++) {
+            if (dx * dx + dy * dy <= width * width) o.drawImage(sil, width + dx, width + dy);
+          }
+        }
+        outlineCache.set(key, c);
       }
       return c;
     },
