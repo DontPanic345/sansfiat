@@ -9,9 +9,9 @@
 // It is not in www/play/, so play/all.mjs (which check.sh runs) doesn't run it. Its --out imports only
 // play.mjs, so this file copies alone onto a worktree of main and shoots there.
 //
-//   node www/shots.mjs --cull DIR                   each mountain view twice in one page, the second with the ridge
-//                                                   layer's culling off: DIR/NAME.png and DIR/NAME-nocull.png; exit 1
-//                                                   unless the two are byte-identical
+//   node www/shots.mjs --cull DIR                   each view with an `on` (mountain and shore) twice in one page, the
+//                                                   second with the ridge and edge layers' culling off: DIR/NAME.png and
+//                                                   DIR/NAME-nocull.png; exit 1 unless the two are byte-identical
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { open, SIZES } from './play.mjs';
@@ -21,6 +21,8 @@ import { open, SIZES } from './play.mjs';
  * zoom. `on` is the camera's tile: `plains` (the plains tile nearest world (0, 0), the default) or a mountain
  * class (`fork`, `bend`, `4+`), the tile of that class nearest world (0, 0). `tile` is the tile it must be.
  * `edge` moves the camera so the tile's centre sits `by` world units past that canvas edge.
+ * The shore classes (`neck`, `strait`, `bay`, `pond`, `mouth-sea`, `mouth-lake`, `marsh`) are shores.md's, as the
+ * chooser counts them: water is terrain 0, and off the map counts as water.
  */
 export const VIEWS = [
   { name: 'small2-close', size: 'small', seed: 2, window: 'laptop', k: 35 },
@@ -44,6 +46,18 @@ export const VIEWS = [
   { name: 'small9-edge-right', size: 'small', seed: 9, window: 'laptop', k: 35, on: 'bend', tile: 474, edge: { side: 'right', by: 0.8 } },
   { name: 'small9-fork-edge', size: 'small', seed: 9, window: 'phone', k: 6, on: 'fork', tile: 469 },
   { name: 'small9-fork-flat', size: 'small', seed: 9, window: 'phone', k: 5, on: 'fork', tile: 469 },
+  { name: 'small2-neck-close', size: 'small', seed: 2, window: 'laptop', k: 35, on: 'neck', tile: 402 },
+  { name: 'small2-delta-close', size: 'small', seed: 2, window: 'laptop', k: 35, on: 'mouth-sea', tile: 506 },
+  { name: 'small2-delta-play', size: 'small', seed: 2, window: 'laptop', k: 18, on: 'mouth-sea', tile: 506 },
+  { name: 'small6-bay-close', size: 'small', seed: 6, window: 'laptop', k: 35, on: 'bay', tile: 376 },
+  { name: 'small9-pond-close', size: 'small', seed: 9, window: 'laptop', k: 35, on: 'pond', tile: 341 },
+  { name: 'small9-lake-play', size: 'small', seed: 9, window: 'laptop', k: 18, on: 'mouth-lake', tile: 377 },
+  { name: 'medium8-strait-close', size: 'medium', seed: 8, window: 'laptop', k: 35, on: 'strait', tile: 875 },
+  { name: 'medium9-neck-play', size: 'medium', seed: 9, window: 'laptop', k: 18, on: 'neck', tile: 1004 },
+  { name: 'large8-delta-play', size: 'large', seed: 8, window: 'laptop', k: 18, on: 'marsh', tile: 2639 },
+  { name: 'large8-pond-play', size: 'large', seed: 8, window: 'laptop', k: 18, on: 'pond', tile: 1289 },
+  { name: 'small2-neck-edge', size: 'small', seed: 2, window: 'phone', k: 6, on: 'neck', tile: 402 },
+  { name: 'small2-neck-flat', size: 'small', seed: 2, window: 'phone', k: 5, on: 'neck', tile: 402 },
 ];
 
 /**
@@ -51,7 +65,7 @@ export const VIEWS = [
  * is proto/nearest.mjs's rule: the class's tile nearest world (0, 0), the lower index on a tie.
  */
 const CAMERA = `(view) => {
-  const m = game.map, M = m.byName.mountain, n = m.px.length;
+  const m = game.map, M = m.byName.mountain, n = m.px.length, l = m.l;
   const classOf = (i) => {
     const ds = [];
     for (let d = 0; d < 6; d++) { const j = m.nb[i * 6 + d]; if (j >= 0 && m.l.terrain[j] === M) ds.push(d); }
@@ -60,9 +74,36 @@ const CAMERA = `(view) => {
     if (ds.length === 2) { const g = Math.min((ds[1] - ds[0] + 6) % 6, (ds[0] - ds[1] + 6) % 6); return g === 3 ? 'straight' : g === 2 ? 'bend' : 'sharp'; }
     return ds.length === 3 ? 'fork' : '4+';
   };
+  // Water is terrain 0 and off the map counts as water, as proto/shore.mjs counts a shore.
+  const runsOf = (i) => {
+    const w = [];
+    for (let d = 0; d < 6; d++) { const j = m.nb[i * 6 + d]; w.push(j < 0 || l.terrain[j] === 0); }
+    let ch = 0;
+    for (let d = 0; d < 6; d++) if (w[d] !== w[(d + 1) % 6]) ch++;
+    return { water: w.filter((x) => x).length, runs: ch / 2 };
+  };
+  const lakeSize = (i) => {
+    const seen = new Set([i]), st = [i];
+    while (st.length && seen.size < 4) {
+      const a = st.pop();
+      for (let d = 0; d < 6; d++) { const b = m.nb[a * 6 + d]; if (b >= 0 && l.terrain[b] === 0 && l.lake[b] && !seen.has(b)) { seen.add(b); st.push(b); } }
+    }
+    return seen.size;
+  };
+  const mouthInto = (i, lake) => l.river[i] > 0 && l.flow[i] >= 0 && l.terrain[l.flow[i]] === 0 && !!l.lake[l.flow[i]] === lake;
+  const SHORE = {
+    neck: (i) => l.terrain[i] !== 0 && runsOf(i).runs >= 2,
+    strait: (i) => l.terrain[i] === 0 && runsOf(i).runs >= 2,
+    bay: (i) => l.terrain[i] === 0 && !l.lake[i] && runsOf(i).water <= 2 && runsOf(i).runs === 1,
+    pond: (i) => l.terrain[i] === 0 && !!l.lake[i] && lakeSize(i) <= 3,
+    'mouth-sea': (i) => mouthInto(i, false),
+    'mouth-lake': (i) => mouthInto(i, true),
+    marsh: (i) => l.terrain[i] === m.byName.marsh,
+  };
+  const pick = view.on === 'plains' ? (i) => l.terrain[i] === m.byName.plains : SHORE[view.on] ?? ((i) => l.terrain[i] === M && classOf(i) === view.on);
   let tile = -1, bd = Infinity;
   for (let i = 0; i < n; i++) {
-    if (view.on === 'plains' ? m.l.terrain[i] !== m.byName.plains : m.l.terrain[i] !== M || classOf(i) !== view.on) continue;
+    if (!pick(i)) continue;
     const d = m.px[i] * m.px[i] + m.py[i] * m.py[i];
     if (d < bd) { bd = d; tile = i; }
   }
@@ -108,14 +149,15 @@ async function shoot(view, out) {
 async function cull(view, out) {
   const { page, asked } = await setUp(view);
   try {
-    const culled = await page.eval("(() => { game.map.drawNow(); return { png: game.map.canvas.toDataURL('image/png'), ridges: game.map.stats.ridges }; })()");
+    const grab = "(() => { game.map.drawNow(); return { png: game.map.canvas.toDataURL('image/png'), ridges: game.map.stats.ridges, edges: game.map.stats.edges }; })()";
+    const culled = await page.eval(grab);
     await page.eval('(() => { game.map.noCull = true; game.map.dirty = true; })()');
-    const uncut = await page.eval("(() => { game.map.drawNow(); return { png: game.map.canvas.toDataURL('image/png'), ridges: game.map.stats.ridges }; })()");
+    const uncut = await page.eval(grab);
     for (const e of page.errors()) throw new Error(`${view.name}: page error: ${e}`);
     writeFileSync(join(out, `${view.name}.png`), Buffer.from(culled.png.split(',')[1], 'base64'));
     writeFileSync(join(out, `${view.name}-nocull.png`), Buffer.from(uncut.png.split(',')[1], 'base64'));
     const same = culled.png === uncut.png;
-    console.log(`${view.name}  tile ${asked.tile}  stats.ridges ${culled.ridges} culled, ${uncut.ridges} unculled  ${same ? 'identical' : 'DIFFER'}`);
+    console.log(`${view.name}  tile ${asked.tile}  stats.ridges ${culled.ridges} culled, ${uncut.ridges} unculled  stats.edges ${culled.edges} culled, ${uncut.edges} unculled  ${same ? 'identical' : 'DIFFER'}`);
     return same;
   } finally {
     await page.close();
