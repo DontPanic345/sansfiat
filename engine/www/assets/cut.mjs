@@ -33,6 +33,20 @@ export const KEYS = {
       return a <= this.minAlpha || !(r > 0.9 * g && r > b + 30);
     },
   },
+  tree: {
+    note: "a whole tree, crown and trunk: no colour clears, as the ground key's tuft test would cut the leaves' yellow, so the keep-polygon leaves the grass at the foot out",
+    clears() {
+      return false;
+    },
+  },
+  tuft: {
+    redShare: 0.98, // a blade is yellow: red at least this share of green (the grass round it is 0.9 to 0.98)
+    blueShare: 0.4, // and has little blue: b under this share of g (blades 0.29 to 0.37, grass 0.34 to 0.56)
+    note: "the plains hex's yellow tuft blades, not the green grass round them",
+    clears(r, g, b) {
+      return !(r >= this.redShare * g && b < this.blueShare * g);
+    },
+  },
 };
 
 /** Maps a source coordinate in a fill: copies of `n` px, every other mirrored, so neighbouring copies seam. */
@@ -172,7 +186,8 @@ function fillData(box, region, size) {
 }
 
 /**
- * A sprite region's cell: a cell sample maps to source `ground + Rot(−deg) (cell − anchor) / scale`, and counts when it
+ * A sprite region's cell: a cell sample maps to source `ground + Rot(−deg) (cell − anchor) / scale` (its y over `scaleY`, if the
+ * region names one, unturned), and counts when it
  * is inside the rectangle and the keep-polygon and the key doesn't clear it. Colour is the mean of the kept
  * samples weighted by their source alpha; alpha is those alphas summed over all the samples.
  */
@@ -182,6 +197,11 @@ function spriteData(source, box, region, cell, size) {
   if (!key) throw new Error(`no key ${region.key}`);
   const [ax, ay] = baseAnchor(cell, size);
   const [gx, gy] = region.ground, scale = region.scale;
+  // `scaleY` stretches the sprite vertically; it is unturned, so it cannot come with `rotate` or `shape`.
+  const scaleY = region.scaleY ?? scale;
+  if (region.scaleY !== undefined && (region.rotate !== undefined || cell.rotate !== undefined || cell.shape)) {
+    throw new Error(`region ${region.key} sets scaleY and also rotate or shape`);
+  }
   const [rx0, ry0, rx1, ry1] = rectOf(region);
   // The cell turns about its anchor by `rotate` degrees (the cell's, else the region's): Rot(−deg) on the cell offset.
   // `shape` bends the strip: an edge piece stops `half` px either side of its anchor along the edge; a corner
@@ -190,7 +210,7 @@ function spriteData(source, box, region, cell, size) {
   const rad = (deg) => (deg * Math.PI) / 180;
   const straight = (dx, dy, deg) => {
     const cs = Math.cos(rad(deg)), sn = Math.sin(rad(deg));
-    return [Math.floor(gx + (cs * dx + sn * dy) / scale), Math.floor(gy + (-sn * dx + cs * dy) / scale)];
+    return [Math.floor(gx + (cs * dx + sn * dy) / scale), Math.floor(gy + (-sn * dx + cs * dy) / scaleY)];
   };
   const wrap = (a) => ((((a + 180) % 360) + 360) % 360) - 180;
   const locate = (dx, dy) => {

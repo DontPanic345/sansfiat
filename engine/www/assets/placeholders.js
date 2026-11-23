@@ -30,6 +30,12 @@ export const TAPER = 12;
 export const SHORE = { edge: { w: 112, h: 112, ax: 56, ay: 56 }, corner: { w: 48, h: 48, ax: 24, ay: 24 } };
 /** The kinds that bleed a fringe into a neighbour of a lower kind, highest first: a shared land edge draws the higher. */
 export const FRINGE = ['desert', 'marsh', 'forest', 'hills', 'mountain', 'coast'];
+/** The wood and marsh pieces: a cell's size, and its ground point (the anchor), in cell px. Build-2 draws them at a slot. */
+export const TREE = {
+  big: { w: 64, h: 80, ax: 32, ay: 76 },
+  small: { w: 40, h: 52, ax: 20, ay: 49 },
+  reed: { w: 32, h: 40, ax: 16, ay: 37 },
+};
 /** How many world units (a hex has circumradius 1) a 64 px icon cell spans. */
 export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth': 1.6, 'icon.pass': 1, 'icon.town': 1.1 };
 
@@ -157,6 +163,14 @@ export function layout() {
     }
     row();
   }
+  // The wood and the marsh: a tree stands on its trunk's foot, a reed clump on its base; each cell's ground point is its anchor.
+  const at = (t) => ({ ax: TREE[t].ax, ay: TREE[t].ay });
+  for (let v = 0; v < 3; v++) put(`tree.big.${v}`, TREE.big.w, TREE.big.h, `a full tree in a wood, variant ${v}: its trunk's foot is the ground point, at the anchor, transparent outside`, at('big'));
+  row();
+  for (let v = 0; v < 3; v++) put(`tree.small.${v}`, TREE.small.w, TREE.small.h, `a sapling or small tree at a wood's margin, variant ${v}: its trunk's foot is the ground point, at the anchor, transparent outside`, at('small'));
+  row();
+  for (let v = 0; v < 3; v++) put(`reed.${v}`, TREE.reed.w, TREE.reed.h, `a reed clump on a marsh, variant ${v}: its base is the ground point, at the anchor, transparent outside`, at('reed'));
+  row();
   return { width: WIDTH, height: y, cells };
 }
 
@@ -231,6 +245,40 @@ const mountainPiece = (ctx, [, kind, dir]) => {
   }
 };
 
+/** A tree placeholder standing on its anchor: a dark green cone on a brown trunk. */
+const treePiece = (ctx, w, h, { ax, ay }) => {
+  const trunkW = 0.1 * w, base = ay - 0.22 * h;
+  ctx.fillStyle = '#5e4128';
+  ctx.fillRect(ax - trunkW / 2, base, trunkW, ay - base);
+  ctx.beginPath();
+  ctx.moveTo(ax, 0.08 * h);
+  ctx.lineTo(ax + 0.4 * w, base);
+  ctx.lineTo(ax - 0.4 * w, base);
+  ctx.closePath();
+  ctx.fillStyle = '#2f6b3a';
+  ctx.fill();
+  ctx.strokeStyle = '#1d3d24';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+};
+
+/** A reed placeholder standing on its anchor: a few upright straw strokes on a dark green base. */
+const reedPiece = (ctx, w, h, { ax, ay }) => {
+  ctx.strokeStyle = '#8c9a3a';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (const [dx, lean, len] of [[-0.3, -0.05, 0.85], [-0.1, 0.04, 1], [0.08, -0.03, 0.9], [0.28, 0.06, 0.7]]) {
+    const x = ax + dx * w;
+    ctx.moveTo(x, ay);
+    ctx.lineTo(x + lean * w, ay - len * h * 0.9);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#3d5a2a';
+  ctx.beginPath();
+  ctx.ellipse(ax, ay - 1, 0.42 * w, 0.06 * h, 0, 0, 2 * Math.PI);
+  ctx.fill();
+};
+
 /** Draws cell `name` into `ctx`, filling (0, 0, w, h); the cell is clear before. */
 export function draw(name, ctx, w, h) {
   ctx.lineJoin = 'round';
@@ -294,6 +342,10 @@ export function draw(name, ctx, w, h) {
       const ax = next(), ay = next();
       if (Math.abs(ax) * 2 + Math.abs(ay) * 1.6 < 1.3) ctx.fillRect(w / 2 + ax * 1.4 * HEX_R - 3, h / 2 + ay * 1.4 * HEX_R - 3, 6, 6);
     }
+  } else if (kind === 'tree') {
+    treePiece(ctx, w, h, TREE[id]);
+  } else if (kind === 'reed') {
+    reedPiece(ctx, w, h, TREE.reed);
   } else if (kind === 'unit') {
     shield(ctx, w, h);
     if (name.endsWith('.mask')) {

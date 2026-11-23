@@ -41,8 +41,8 @@ In `www/assets/sources.js`, add the regions and `CELLS` entries:
 
 - **`tree.big.*`**: three whole front trees, from the left clump's front row (bases along y 600–640,
   one about (130–192, 555–640) with its base at (160, 637)) or from the band's front row. Each gets a
-  `keep` polygon round that tree's own silhouette, so no tree behind it comes along, key `ground`
-  (which clears the grass at its foot), and `ground` on the trunk's base. Start the scale near the
+  `keep` polygon round that tree's own silhouette, so no tree behind it comes along, key `tree`
+  (a new key that clears nothing: `ground` cut the leaves' yellow and green, see `atlas.md`), and `ground` on the trunk's base. Start the scale near the
   peaks' (0.7). A variant may be another's `mirror`.
 - **`tree.small.*`**: the right group's isolated small trees (about (1400–1428, 563–606) with its base
   at (1412, 603), and (1435–1470, 541–603) with its base at (1452, 600)), and the mid tree at about
