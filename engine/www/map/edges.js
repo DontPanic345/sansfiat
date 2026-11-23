@@ -1,10 +1,12 @@
 // The shore and fringe pieces of a map, in draw order: the bank along each land–water edge and round each shore
 // vertex, and the ragged fringe where two land kinds meet. Pure (no DOM): the layer draws them, and www/check-map.mjs
 // and www/play/edges.mjs read them. Directions are `EDGE_DIR`'s: 0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE.
+import { FRINGE } from '../assets/placeholders.js';
 import { CORNER } from './geom.js';
 
-/** The fringe order, highest first: a kind bleeds into its lower neighbours. Plains is lowest and absent. */
-export const FRINGE = ['desert', 'marsh', 'forest', 'hills', 'mountain', 'coast'];
+/** The fringe order, highest first (the atlas's, which cuts a cell for each): a kind bleeds into its lower
+ *  neighbours. Plains is lowest and absent. */
+export { FRINGE };
 
 /** A tile's kind: the terrain's name, terrain 0 split into 'sea' and 'lake'. */
 export function kindOf(i, { terrain, lake, names }) {
