@@ -91,9 +91,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "plains, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass: bottom-left row, third hex: grass, tufts and rocks",
-   "src": "plains.grass",
-   "flat": "#7b8732"
+   "note": "plains, variant 0: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean: the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7b882d"
   },
   "terrain.plains.1": {
    "x": 256,
@@ -102,7 +102,7 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "plains, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass (mirror): bottom-left row, third hex: grass, tufts and rocks",
+   "note": "plains, variant 1: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass: bottom-left row, third hex: grass, tufts and rocks",
    "src": "plains.grass",
    "flat": "#7b8732"
   },
@@ -113,9 +113,9 @@
    "h": 148,
    "ax": 64,
    "ay": 74,
-   "note": "plains, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.grass: bottom-left row, third hex: grass, tufts and rocks",
-   "src": "plains.grass",
-   "flat": "#7b8732"
+   "note": "plains, variant 2: pointy-top hex, circumradius 74, centred, transparent outside. Cut from plains.clean (mirror): the same hex with the rocks patched out: a plains tile that is not a grey blob at play zoom",
+   "src": "plains.clean",
+   "flat": "#7b882d"
   },
   "terrain.forest.0": {
    "x": 512,

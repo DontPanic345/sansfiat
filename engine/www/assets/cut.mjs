@@ -62,8 +62,10 @@ function patched(source, region) {
 export function cut(source, region, cell, { w, h }) {
   const box = patched(source, region);
   const R = HEX_R, A = (R * Math.sqrt(3)) / 2; // the cell hex's half-width and circumradius, in cell px
-  const { cx, cy } = region.hex;
-  const rx = region.hex.rx - region.inset, ry = region.hex.ry - region.inset;
+  // The inset drops the drawn outline; the right edge may take more (`insetRight`), which moves the centre.
+  const left = region.inset, right = region.insetRight ?? region.inset;
+  const cx = region.hex.cx + (left - right) / 2, cy = region.hex.cy;
+  const rx = region.hex.rx - (left + right) / 2, ry = region.hex.ry - region.inset;
   const data = new Uint8Array(w * h * 4);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
