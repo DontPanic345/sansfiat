@@ -102,7 +102,10 @@ try {
     need(n >= 8, `clan ${id} is drawn on the tile (${n} pixels in its civ's colour)`);
   }
 
-  // The town mark: on with the layer, gone with it off.
+  // The town mark: on with the layer, gone with it off. The capital's house is on, as on any capital: the mark must
+  // show above it, not under it.
+  await page.eval("game.map.setLayer('capitals', true)");
+  await page.eval(frames);
   const mark = await around(tile, 24);
   await page.eval("game.map.setLayer('towns', false)");
   await page.eval(frames);
@@ -113,7 +116,7 @@ try {
   }
   await page.eval("game.map.setLayer('towns', true)");
   await page.eval(frames);
-  need(differing > 0, `the town mark is drawn above the tile (${differing} pixels differ with the layer off)`);
+  need(differing >= 100, `the town mark shows above the capital's house (${differing} pixels differ with the layer off)`);
 
   // A turn: the feed has the town line.
   await page.button('End turn');

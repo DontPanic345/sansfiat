@@ -171,6 +171,7 @@ pub const TURN: &[Step] = &[
     Step { name: "units", run: units::step },
     Step { name: "claim", run: claim::step },
     Step { name: "hold", run: land::tend },
+    Step { name: "settling", run: crate::settling::step },
     Step { name: "markets", run: markets::form_and_fade },
     Step { name: "end", run: pregame::check_end },
     Step { name: "over", run: over::step },
@@ -179,7 +180,7 @@ pub const TURN: &[Step] = &[
 /// The save format's version. Any change that moves a world's digest bumps it with the constants
 /// of `the_save_version_pins_the_rules`, so a save from before the change is refused, not replayed
 /// into a different world.
-pub const SAVE_VERSION: u32 = 29;
+pub const SAVE_VERSION: u32 = 30;
 
 /// What a save holds: enough to replay the world. A save without `version` reads as 0.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

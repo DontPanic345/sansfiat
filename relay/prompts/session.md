@@ -102,5 +102,5 @@ names them under `took`.
    - `ideas` each have a `title`, a `body` and a `class`; a `fix` also has a `repro`. The play step
      puts its findings under `findings` in the same form.
    - `took` names the open ideas this step built, by title.
-   - The review adds `"merge": true` or `false`: without it the step isn't done. So does a
-     whole step, unless its `steps.json` hands on.
+   - The review adds `"merge": true` or `false`: without it the step isn't done. A whole step
+     gives no verdict: it is done when its `steps.json` hands on to the review.

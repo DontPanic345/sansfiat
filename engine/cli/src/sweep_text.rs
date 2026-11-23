@@ -197,6 +197,7 @@ pub(crate) fn print_text(r: &Report) {
     );
     print_fields(r);
     print_towns(r);
+    crate::sweep_settling::print_settling(r);
     crate::sweep_settle::print_settle(r);
     crate::sweep_goods::print_goods(r);
     crate::sweep_trade::print_trade(r);

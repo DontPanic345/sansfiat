@@ -1,34 +1,35 @@
 # Whole step
 
-This piece is yours from its plan: you design it and build it, and you choose how it ends.
-Plan it, build it, play it and judge it the way you think best. The piece's `Spec`,
+This piece is yours from its plan: you design it and build it, and a review after you gives
+its verdict. Plan it, build it, play it and judge it the way you think best. The piece's `Spec`,
 `Spec-review`, `Play` and `Shape` lines were written for a run of smaller sessions; take from
 them what helps.
 
 ## The window
 
-You started on a 5-hour usage window that was nearly unused, and it is the budget: on Fable it
-lasts about ninety minutes of steady work, not five hours. The prompt gives both windows as you
-start and a hook repeats them every ten minutes, and tells you to stop at 85%. Helpers spend the
-same window.
+You started on a 5-hour usage window that was at most half used, and what is left of it is the
+budget: the piece is yours for this one window. The prompt gives both windows as you start and a
+hook repeats them every ten minutes, and tells you to commit at 70% and stop at 85%. Helpers
+spend the same window.
 
 - Spend the window on what only you can do: the design, the core, the rules that have to be
   right. Hand on what a cheaper session can do from a brief (below).
 - Keep `relay/specs/<piece>/progress.md` current: the plan, and what is done.
-- Commit and push before every long run and at least every twenty minutes. When the window runs
-  out the session ends where it stands, and the next attempt has only the branch.
+- Commit and push before every long run and at least every twenty minutes.
+- At 70%, plan the hand-on. At 85%, hand on: write a brief for each part still to build, list
+  them in `steps.json` before the review, push, and finish `done`. Finish `pending` only when
+  the window ends you before you can.
 
 ## Handing on
 
-You may finish without a verdict and hand the rest to sessions after you. Write
-`relay/specs/<piece>/steps.json` as `spec.md` (the prompt file) describes it: any `build-N`
-steps, each with a brief `build-N.md` that carries all its build needs, then `review`. The crew
-makes those steps, and adds a play step before the review when the piece's `Play:` line names a
-model. A review alone is a fair hand-on: a cold reader on Sonnet, and a Sonnet player, judge
-what you built on a different axis than you can.
+You always finish by handing on. Write `relay/specs/<piece>/steps.json` as `spec.md` (the
+prompt file) describes it: any `build-N` steps, each with a brief `build-N.md` that carries all
+its build needs, then `review`. The crew makes those steps, and adds a play step before the
+review when the piece's `Play:` line names a model. A review alone is the usual hand-on: a cold
+reader judges what you built on a different axis than you can, and gives the merge verdict.
 
-Hand on what is settled. What is still open when you stop is yours to finish, or to say plainly
-in `progress.md` and your summary.
+Hand on what is settled. What is still open when you stop goes in a build's brief as a question
+with what you found, and in your summary.
 
 ## Done
 
@@ -46,12 +47,8 @@ that will make it hold:
 - CI is green on your last commit.
 - Each decision of the weight the design ledger holds (`review.md`, The design ledger) is one
   line in the `## Decided` ledger of its design file.
-- The PR is open against `main`, titled as the piece, its body starting `Closes #<piece>.` and
-  written for the owner to read once on a phone: the answer in the scores with its control, the
-  ledger lines, what the played games showed, and your verdict last. The crew adds the steps
-  table.
+- The PR is open against `main`, titled as the piece, its body starting `Closes #<piece>.`
+  The review writes its description and its verdict.
 
-Finish with `"merge": true` or `false` in `result.json` when you end the piece yourself. On
-`true` the crew merges the PR unread, so the verdict is the one a cold reviewer gives: the diff
-against `main`, read by someone who didn't write it. Finish without `merge` when `steps.json`
-hands on, and the review gives the verdict.
+Finish `done` with `steps.json` ending in `review`, and no `merge` in `result.json`: the verdict
+is the review's.

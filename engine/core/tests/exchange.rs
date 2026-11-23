@@ -257,8 +257,8 @@ fn army_flow() {
                                 paid += 1;
                             }
                             let end = u.routes.first().map(|r| r.to);
-                            let at_market = end.is_some_and(|t| w.markets.values().any(|m| m.tile == t));
-                            if at_market && end != engine::units::store_of(&w, u.id) {
+                            let stall = u.stall.as_ref().and_then(|s| w.markets.get(&s.market)).map(|m| m.tile);
+                            if stall.is_some() && stall == end {
                                 ends += 1;
                             }
                             if let Some(t) = u.traded.as_ref().filter(|t| t.food > 1e-6) {

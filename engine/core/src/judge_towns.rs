@@ -1,6 +1,6 @@
-//! Towns in the judge: the towns that form, the farmers and town clans in them at +100 and +200, and over
-//! the clan-turns after +100 what town clans, farmers outside towns and all clans walk, trade and starve
-//! at. Settled farmers' home moves are split into town steps (a home that comes a tile nearer its
+//! Towns in the judge: the towns that form, the farmers and town clans in them at +100 and +200, the
+//! capitals that are towns, and over the clan-turns after +100 what town clans, clans outside towns,
+//! farmers outside towns and all clans walk, trade and starve at. Settled farmers' home moves are split into town steps (a home that comes a tile nearer its
 //! festival) and the rest, and town clans' moves off their town are counted, every turn past the pick.
 //! `Watch` reads these after each turn and reports them as the `towns` group; the world is only read.
 
@@ -65,9 +65,14 @@ pub struct TownCiv {
     pub town_clans_200: u32,
     pub town_farmers_200: u32,
     pub towns_fields_200: u32,
-    /// Town clans, farmers outside towns and all clans, over the clan-turns after +100.
+    /// Capitals whose tile reads as a town at +100 and at +200, counted under their civ.
+    pub capital_towns_100: u32,
+    pub capital_towns_200: u32,
+    /// Town clans, farmers outside towns, every clan outside a town and all clans, over the clan-turns
+    /// after +100.
     pub town: TownGroup,
     pub farmers_outside: TownGroup,
+    pub outside: TownGroup,
     pub all: TownGroup,
 }
 
@@ -78,14 +83,18 @@ impl TownCiv {
         self.town_clans_200 += o.town_clans_200;
         self.town_farmers_200 += o.town_farmers_200;
         self.towns_fields_200 += o.towns_fields_200;
+        self.capital_towns_100 += o.capital_towns_100;
+        self.capital_towns_200 += o.capital_towns_200;
         self.town.add(&o.town);
         self.farmers_outside.add(&o.farmers_outside);
+        self.outside.add(&o.outside);
         self.all.add(&o.all);
     }
 
     pub fn share(&mut self) {
         self.town.share();
         self.farmers_outside.share();
+        self.outside.share();
         self.all.share();
     }
 }
@@ -111,6 +120,8 @@ pub struct TownScores {
     pub most_homes_200: u32,
     pub first_town: Option<u32>,
     pub formed: u32,
+    /// The civs alive at +200: the capitals a capital town is read against.
+    pub capitals_200: u32,
 }
 
 /// What the watch remembers of a clan from the turn before.
@@ -132,8 +143,14 @@ pub(crate) struct Towns {
     most_homes_200: u32,
     first_town: Option<u32>,
     formed: u32,
+    capitals_200: u32,
     event_mark: usize,
     turns: u32,
+}
+
+/// The civ whose capital is `tile`, while it is alive.
+fn capital_civ(w: &World, tile: usize) -> Option<u32> {
+    crate::civs::alive(w).find(|c| c.capital == tile).map(|c| c.id)
 }
 
 /// Whether a home move from `from` to `to` brings the home a tile nearer its festival's tile: the
@@ -216,12 +233,13 @@ impl Towns {
                     ..Default::default()
                 };
                 let f = self.by.entry(c.civ).or_default();
-                let outside = !in_town.contains(&c.home) && fields::farmer(c);
                 if in_town.contains(&c.home) {
                     f.town.add(&one);
-                }
-                if outside {
-                    f.farmers_outside.add(&one);
+                } else {
+                    f.outside.add(&one);
+                    if fields::farmer(c) {
+                        f.farmers_outside.add(&one);
+                    }
                 }
                 f.all.add(&one);
             }
@@ -230,14 +248,21 @@ impl Towns {
         if now == 100 || now == 200 {
             for t in &tw {
                 let civ = Self::town_civ(w, t);
+                let capital = capital_civ(w, t.tile).map(Some);
                 if now == 100 {
                     self.by.entry(civ).or_default().towns_100 += 1;
+                    if let Some(k) = capital {
+                        self.by.entry(k).or_default().capital_towns_100 += 1;
+                    }
                     continue;
                 }
                 let works = t.clans.iter().any(|id| fields::plots(w, &w.clans[id]).iter().any(|p| p.1 > 0.0));
                 let f = self.by.entry(civ).or_default();
                 f.towns_200 += 1;
                 f.towns_fields_200 += works as u32;
+                if let Some(k) = capital {
+                    self.by.entry(k).or_default().capital_towns_200 += 1;
+                }
                 for id in &t.clans {
                     let c = &w.clans[id];
                     let g = self.by.entry(c.civ).or_default();
@@ -247,6 +272,7 @@ impl Towns {
             }
             if now == 200 {
                 self.most_homes_200 = homes::homes(w).values().map(Vec::len).max().unwrap_or(0) as u32;
+                self.capitals_200 = crate::civs::alive(w).count() as u32;
             }
         }
         self.remember(w);
@@ -275,6 +301,7 @@ impl Towns {
             most_homes_200: self.most_homes_200,
             first_town: self.first_town,
             formed: self.formed,
+            capitals_200: self.capitals_200,
         }
     }
 }

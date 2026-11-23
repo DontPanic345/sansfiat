@@ -25,7 +25,7 @@ pub(crate) struct TotalTrade {
     pub(crate) need_foreign: f64,
     pub(crate) army_turns_own: u32,
     pub(crate) unit_turns: u32,
-    pub(crate) fills: u32,
+    pub(crate) line_at_market: u32,
     pub(crate) control_army_turns_foreign: u32,
     pub(crate) control_army_turns_own: u32,
     /// The largest share any one good has at +200 on any map, by count and by worth, and the map's good.
@@ -52,7 +52,7 @@ pub(crate) fn total_trade(maps: &[MapJudged]) -> TotalTrade {
         t.need_foreign += r.need_foreign;
         t.army_turns_own += r.army_turns_own;
         t.unit_turns += r.unit_turns;
-        t.fills += r.fills;
+        t.line_at_market += r.line_at_market;
         t.control_army_turns_foreign += c.army_turns_foreign;
         t.control_army_turns_own += c.army_turns_own;
         if r.largest_count_200 > t.largest_count_200 {
@@ -73,10 +73,10 @@ pub(crate) fn print_trade(r: &Report) {
     for m in &r.maps {
         let t = &m.trade_vs_control.trade;
         println!(
-            "  {} {}: fills {}, army-turns fed at a foreign market {} (food {:.1} of {:.1} needed), at its own {}, unit-turns trading {}; trades {} ({} at +200); control: foreign {}, own {}; largest count share at +200 {} {:.1}%, by worth {} {:.1}%",
+            "  {} {}: army-turns with their line at a market {}, fed at a foreign market {} (food {:.1} of {:.1} needed), at its own {}, unit-turns trading {}; trades {} ({} at +200); control: foreign {}, own {}; largest count share at +200 {} {:.1}%, by worth {} {:.1}%",
             m.size,
             m.seed,
-            t.fills,
+            t.line_at_market,
             t.army_turns_foreign,
             t.food_foreign,
             t.need_foreign,
@@ -104,8 +104,8 @@ pub(crate) fn print_trade(r: &Report) {
     }
     let t = &r.total.trade_vs_control;
     println!(
-        "total trade: fills {}, army-turns fed at a foreign market {} (control {}), at its own {} (control {}), food {:.1} of {:.1} needed, unit-turns trading {}; trades {} ({} at +200); largest count share at +200 {} {:.1}%, by worth {} {:.1}%",
-        t.fills,
+        "total trade: army-turns with their line at a market {}, fed at a foreign market {} (control {}), at its own {} (control {}), food {:.1} of {:.1} needed, unit-turns trading {}; trades {} ({} at +200); largest count share at +200 {} {:.1}%, by worth {} {:.1}%",
+        t.line_at_market,
         t.army_turns_foreign,
         t.control_army_turns_foreign,
         t.army_turns_own,

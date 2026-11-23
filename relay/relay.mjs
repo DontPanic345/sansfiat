@@ -52,32 +52,47 @@ const WHOLE_TIMEOUT_MS = Number(process.env.RELAY_WHOLE_MIN ?? 300) * 60_000;
 // Written into transcripts, which become a workflow artifact anyone signed in can read.
 export const SECRETS = ["CLAUDE_CODE_OAUTH_TOKEN", "RELAY_APP_KEY", "DISPATCH_TOKEN", "RELAY_BOARD_TOKEN"];
 
-export const MODELS = ["haiku", "sonnet", "opus", "fable"];
+export const MODELS = ["haiku", "sonnet", "opus"];
 export const EFFORTS = ["low", "medium", "high"];
 // A build step's part in its piece's shape (prompts/spec.md).
 export const PARTS = ["ford", "easel", "canvas", "clay", "kiln", "glaze", "magnum"];// The steps that judge, which never run at low effort.
 const JUDGES = ["spec-review", "review"];
 
 const SESSION_STOP = 75;
-// A whole step starts on a 5-hour window that is all but unused, so the window lasts its session.
-export const WHOLE_STOP = 10;
+// A whole step starts on a 5-hour window that is at most half used.
+export const WHOLE_STOP = 50;
 // How long a retro waits for the owner's notes.
 export const RETRO_WAIT_MS = 72 * 3600_000;
 
 // ---- Pure logic (covered by relay.test.mjs) ----
 
-// Start a step only while the 5-hour window is under `stop`%. A stop says when it lifts, as
-// `until`, where that's known.
-// Both windows as the run log gives them: "5-hour 55%, week 60%".
-export const usageReport = (u) => `5-hour ${Math.round(u.session)}%, week ${Math.round(u.weekly)}%`;
+// Start a step only while the 5-hour window is under `stop`%, and the weekly window is under
+// day-of-cycle / 7 × 95%. A stop says when it lifts, as `until`, where that's known.
+// The weekly ramp: the day of the weekly cycle, and the share of the week it allows.
+export const ramp = (weeklyResetsAt, now) => {
+    const cycleStart = weeklyResetsAt.getTime() - 7 * 86400_000;
+    const day = Math.min(7, Math.max(1, Math.floor((now.getTime() - cycleStart) / 86400_000) + 1));
+    return { cycleStart, day, weeklyLimit: (day / 7) * 95 };
+};
+// Both windows as the run log gives them: "5-hour 55%, week 60% of the 67.9% day 5 allows".
+export const usageReport = (u, now) => {
+    const { day, weeklyLimit } = ramp(u.weeklyResetsAt, now);
+    return `5-hour ${Math.round(u.session)}%, week ${Math.round(u.weekly)}% of the ${weeklyLimit.toFixed(1)}% day ${day} allows`;
+};
 
-export const pace = ({ session, weekly, sessionResetsAt }, now, stop = SESSION_STOP) => {
+export const pace = ({ session, weekly, weeklyResetsAt, sessionResetsAt }, now, stop = SESSION_STOP) => {
+    const { cycleStart, day, weeklyLimit } = ramp(weeklyResetsAt, now);
     const [s, w] = [Math.round(session), Math.round(weekly)];
     if (session >= stop) {
         const resets = sessionResetsAt ? `, resets ${sessionResetsAt.toISOString()}` : "";
         return { ok: false, window: "5-hour", until: sessionResetsAt ?? null, reason: `5-hour usage ${s}% ≥ ${stop}%${resets}` };
     }
-    return { ok: true, reason: `5-hour ${s}%, weekly ${w}%` };
+    if (weekly >= weeklyLimit) {
+        const lifts = Math.floor((weekly * 7) / 95) + 1;
+        const until = lifts > 7 ? weeklyResetsAt : new Date(cycleStart + (lifts - 1) * 86400_000);
+        return { ok: false, window: "weekly", until, reason: `weekly usage ${w}% ≥ ${weeklyLimit.toFixed(1)}% (day ${day})` };
+    }
+    return { ok: true, reason: `5-hour ${s}%, weekly ${w}% < ${weeklyLimit.toFixed(1)}% (day ${day})` };
 };
 
 // The board's "Waiting on" for a budget stop, in the owner's time: "5-hour usage, until
@@ -140,7 +155,7 @@ export const playChoice = (body) => {
     return { model, effort: words.find((w) => EFFORTS.includes(w)) ?? "medium", seeds, why: line };
 };
 
-// `**Whole:** fable medium`: one session does the whole piece, on this model and effort.
+// `**Whole:** opus medium`: one session does the whole piece, on this model and effort.
 export const wholeChoice = (body) => readChoice(pieceField(body, "Whole"));
 
 // `**After:** #31, #32`: the pieces this one waits to see merged.
@@ -162,9 +177,9 @@ export const RETRO_STEPS = [
     { id: "architecture", title: "The architecture angle", model: "opus", effort: "medium", why: "Reads the code's shape against docs/architecture.md." },
     { id: "relay", title: "The relay angle", model: "opus", effort: "medium", why: "Reads the crew, the prompts and the transcripts." },
     { id: "wait", title: "The owner's notes", model: "none", effort: "none", why: "Up to 72 hours for the owner's notes, or `/relay retro go`." },
-    { id: "game", title: "The game and players angles", model: "fable", effort: "medium", why: "Reads the owner's notes; one session, two files." },
-    { id: "retro", title: "The retro", model: "fable", effort: "medium", why: "Reads the angles and writes the retro." },
-    { id: "proposal", title: "The next proposal", model: "fable", effort: "medium", why: "Writes the next milestone's proposals from the retro." },
+    { id: "game", title: "The game and players angles", model: "opus", effort: "medium", why: "Reads the owner's notes; one session, two files." },
+    { id: "retro", title: "The retro", model: "opus", effort: "medium", why: "Reads the angles and writes the retro." },
+    { id: "proposal", title: "The next proposal", model: "opus", effort: "medium", why: "Writes the next milestone's proposals from the retro." },
 ];
 const RETRO_IDS = RETRO_STEPS.map((s) => s.id);
 
@@ -185,7 +200,7 @@ export const stepKind = (id) => {
     return ["spec", "spec-review", "play", "review", "whole"].includes(id) ? id : "build";
 };
 // The steps whose `result.json` carries the merge verdict the crew acts on.
-const VERDICTS = ["review", "whole"];
+const VERDICTS = ["review"];
 // How long a step's session may run, and the 5-hour usage it may start at.
 export const capOf = (id) => (stepKind(id) === "whole" ? WHOLE_TIMEOUT_MS : SESSION_TIMEOUT_MS);
 export const stopOf = (id) => (stepKind(id) === "whole" ? WHOLE_STOP : SESSION_STOP);
@@ -235,6 +250,21 @@ export const checkSteps = (text, builds = 1) => {
         if (!s.why) return { error: `${s.id}: no why for its model and effort` };
     }
     return { steps };
+};
+
+// A finished step's result as the crew takes it. A review is done only with its merge verdict. A
+// whole step is done only by handing on to the steps its steps.json lists, which end in the review:
+// it gives no verdict. `stepsError` is why that steps.json can't be read, or null.
+export const checkDone = (kind, result, stepsError) => {
+    if (result?.status !== "done") return { result, handed: false };
+    if (kind === "whole") {
+        if (!stepsError) return { result, handed: true };
+        return { result: { status: "pending", note: `You reported done, but a whole step hands on to the review, and steps.json can't be read: ${stepsError}.` }, handed: false };
+    }
+    if (VERDICTS.includes(kind) && typeof result.merge !== "boolean") {
+        return { result: { status: "pending", note: 'You reported done without `merge`: result.json needs `"merge": true` or `false`.' }, handed: false };
+    }
+    return { result, handed: false };
 };
 
 // The open pieces a fixes piece waits for: its milestone's others that aren't paused.
@@ -389,7 +419,7 @@ export const sessionPrompt = (piece, step, files) => {
             "spec-review": "Review the spec, the briefs and steps.json for this piece",
             play: `Play this piece's branch and write its play note, on ${playChoice(piece.body)?.seeds ?? 1} seed${(playChoice(piece.body)?.seeds ?? 1) > 1 ? "s" : ""}`,
             review: "Review this piece as built",
-            whole: "Do this whole piece in this one session, from its plan to its merge verdict",
+            whole: "Plan and build this whole piece in this one session, then hand it to the review",
         }[kind];
         const like = kind === "spec" && files.lastSpec ? ` Write \`spec.md\` and the briefs as \`${files.lastSpec}/\` did.` : "";
         parts.push(`# Your step: #${piece.number} ${step.meta.id}\n\n${what}, as agreed with the owner.${like} The piece:`);
@@ -572,12 +602,14 @@ export const fixesBody = (milestone) =>
     ].join("\n");
 
 // The steps table in a PR description replaced with `table`, or put under its "Closes" line.
-export const withTable = (body, table) => {
-    const lines = (body ?? "").split("\n");
+// The description always opens with "Closes #<number>." so the merge closes the piece.
+export const withTable = (body, table, number) => {
+    const closing = new RegExp(`Closes #${number}\\b`);
+    const lines = (closing.test(body ?? "") ? body : `Closes #${number}.\n\n${body ?? ""}`).split("\n");
     const start = lines.findIndex((l) => l.startsWith("| Step | State"));
     const end = lines.findIndex((l, i) => i > start && /at list price so far\.$/.test(l));
     if (start >= 0 && end >= 0) return [...lines.slice(0, start), table, ...lines.slice(end + 1)].join("\n");
-    const closes = lines.findIndex((l) => /Closes #\d+/.test(l));
+    const closes = lines.findIndex((l) => closing.test(l));
     return [...lines.slice(0, closes + 1), "", table, "", ...lines.slice(closes + 1)].join("\n");
 };
 
@@ -626,6 +658,15 @@ const clip = (text, n) => (text.length > n ? `${text.slice(0, n - 1)}…` : text
 // What a session's outcome does to its step's meta. Returns { meta, outcome }, where outcome
 // is "done", "pending" or "blocked"; `why` says what blocked it.
 // `said` is the session's last message, which stands in for a note it didn't write.
+// Why a session that ended unfinished costs its step no attempt, or null: the usage limit ended it
+// ("limit"), or it stopped itself as the hook told it to when the 5-hour window passed its last
+// mark ("window"). Neither is the step's doing.
+export const freeStop = ({ limited, exitOk, result, after }) => {
+    if (limited) return "limit";
+    if (exitOk && result?.status === "pending" && (after?.session ?? 0) >= MARKS[1]) return "window";
+    return null;
+};
+
 export const applyResult = (meta, result, exitOk, said = null) => {
     const next = { ...meta };
     // A session that crashed may not have read the reply, so the next one gets it again.
@@ -1257,7 +1298,7 @@ const afterStep = async (piece, step, result) => {
         if (pr) {
             const fresh = await loadPiece(piece.number);
             const { body } = await github("GET", `/pulls/${pr.number}`);
-            await github("PATCH", `/pulls/${pr.number}`, { body: withTable(body ?? `Closes #${piece.number}.`, stepsTable(fresh.steps)) });
+            await github("PATCH", `/pulls/${pr.number}`, { body: withTable(body, stepsTable(fresh.steps), piece.number) });
             await markReady(pr);
         }
         const why = await autoMerge(piece, pr, result);
@@ -1441,12 +1482,9 @@ const runStep = async (piece, step, before) => {
         const { error } = readSteps(piece);
         if (error) result = { status: "pending", note: `You reported done, but steps.json can't be read: ${error}` };
     }
-    // A whole step ends with its verdict, or hands on to the steps it wrote in steps.json.
-    const handed = kind === "whole" && result?.status === "done" && typeof result.merge !== "boolean" && !readSteps(piece, 0).error;
-    if (VERDICTS.includes(kind) && result?.status === "done" && typeof result.merge !== "boolean" && !handed) {
-        const hand = kind === "whole" ? `, or a \`steps.json\` the crew can read to hand on (${readSteps(piece, 0).error})` : "";
-        result = { status: "pending", note: `You reported done without \`merge\`: result.json needs \`"merge": true\` or \`false\`${hand}.` };
-    }
+    const checked = checkDone(kind, result, kind === "whole" ? readSteps(piece, 0).error : null);
+    result = checked.result;
+    const { handed } = checked;
     let after = null;
     try {
         after = await usage();
@@ -1457,12 +1495,15 @@ const runStep = async (piece, step, before) => {
     const applied = applyResult(step.meta, result, exitOk, said);
     let { outcome, why } = applied;
     const { meta } = applied;
-    // The usage limit ending a session isn't the step's doing, so it costs no attempt.
-    if (limited && outcome !== "done") {
+    const free = freeStop({ limited, exitOk, result, after });
+    if (free && outcome !== "done") {
         outcome = "pending";
         meta.status = "pending";
         meta.attempts = step.meta.attempts ?? 0;
-        meta.note = `The usage limit ended the last session, not anything it did. The branch's last commit is \`${head}\`.`;
+        meta.note =
+            free === "limit"
+                ? `The usage limit ended the last session, not anything it did. The branch's last commit is \`${head}\`.`
+                : `${result.note ?? ""} The last session stopped as the 5-hour window passed ${MARKS[1]}%. The branch's last commit is \`${head}\`.`.trim();
     }
     if (kept && outcome !== "done") meta.note = `${meta.note ?? ""} The crew committed what the session left uncommitted, as the branch's last commit: it may not build.`.trim();
     if (handed) meta.handed = true;
@@ -1616,7 +1657,7 @@ const run = async () => {
     if (ran.length > 0 || !/^(budget stop|nothing to do)/.test(reason)) {
         const steps = ran.length ? ran.map((r) => `- ${r}`).join("\n") : "- (no steps)";
         const url = process.env.GITHUB_RUN_ID ? `\n\n[The run](https://github.com/${GH_REPO}/actions/runs/${process.env.GITHUB_RUN_ID})` : "";
-        const windows = ran.usage ? `\n\n${usageReport(ran.usage)}.` : "";
+        const windows = ran.usage ? `\n\n${usageReport(ran.usage, new Date())}.` : "";
         await comment(await logIssue(ran.milestone), `🏃 Run finished: ${reason}\n\n${steps}${windows}${url}`);
     }
 };

@@ -78,7 +78,7 @@ fn events_are_in_turn_order_with_valid_tiles_and_wording() {
     let h = w.tiles[e.tile].hex();
     assert_eq!(
         e.text(&w),
-        format!("Clan {} divides; clan {} settles at ({}, {})", e.clan.unwrap(), e.other.unwrap(), h.q, h.r)
+        format!("Clan {} divides; clan {} makes its home at ({}, {})", e.clan.unwrap(), e.other.unwrap(), h.q, h.r)
     );
 }
 

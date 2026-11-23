@@ -66,6 +66,12 @@ pub struct Clan {
     /// reads it next turn, to leave the other clans their share of the ground.
     #[serde(default)]
     pub sown: Vec<(usize, f64)>,
+    /// Whether it has settled (`settling.rs`): a reading no rule reads.
+    #[serde(default, skip_serializing_if = "crate::towns::is_false")]
+    pub settled: bool,
+    /// Turns in a row its field share has stood past the line that would change `settled`.
+    #[serde(default, skip_serializing_if = "crate::settling::is_zero")]
+    pub settle_run: u32,
 }
 
 impl Deref for Clan {
@@ -144,6 +150,8 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         parent: None,
         fields: 0.0,
         sown: Vec::new(),
+        settled: false,
+        settle_run: 0,
     }
 }
 
@@ -216,8 +224,8 @@ pub fn reap(
     let fields = if fields::open(w) { fields } else { 0.0 };
     let mut reaped = reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget);
     // A clan gathers a source's good only up to what it holds of it (`SOURCE.hold`).
-    for g in 0..N {
-        let held = reaped.dug[g].min((SOURCE.hold * people - store[g]).max(0.0));
+    for (g, have) in store.iter().enumerate() {
+        let held = reaped.dug[g].min((SOURCE.hold * people - have).max(0.0));
         let scale = if reaped.dug[g] > 0.0 { held / reaped.dug[g] } else { 0.0 };
         for d in reaped.dug_at.iter_mut().filter(|d| d.1 == g) {
             d.2 *= scale;

@@ -2,7 +2,7 @@
 //! in which any good moved for it; a good is in a trade if that row gave or took it. Each good's share by count
 //! is the trades it is in over the sum of every good's; by worth, its volume times the price it cleared at over
 //! the sum. Also: the army-turns that bought food at a market that is not their civ's own (its capital market or
-//! a settlement's), with the food they bought beside what those armies needed.
+//! a settlement's), with the food they bought beside what those armies needed, and those whose line ended at one.
 
 use serde::Serialize;
 
@@ -46,16 +46,14 @@ pub struct TradeScores {
     pub army_turns_own: u32,
     /// Unit-turns (armies and scouts) that bought food at any market.
     pub unit_turns: u32,
-    /// Fill orders given from the pick to +200 (the armies' pack salt, by the planner or the player).
-    pub fills: u32,
+    /// Army-turns from the pick to +200 whose line ended at a market: fed from their stall there.
+    pub line_at_market: u32,
 }
 
 /// The watch's trade counts.
 #[derive(Clone, Debug)]
 pub struct Trade {
     pick: u32,
-    /// The world's Fill orders at the last turn read.
-    fills: u32,
     /// Per good: the trades it is in, and its worth moved, over the watch and at +200.
     count: [f64; N],
     worth: [f64; N],
@@ -68,7 +66,6 @@ impl Trade {
     pub fn pick(w: &World) -> Trade {
         Trade {
             pick: w.turn,
-            fills: fills(w),
             count: [0.0; N],
             worth: [0.0; N],
             count_200: [0.0; N],
@@ -99,17 +96,18 @@ impl Trade {
                         volume[g] += net[g].max(0.0);
                     }
                 }
-                for g in 0..N {
-                    let worth = volume[g] * c.prices[g];
+                for (g, moved) in volume.iter().enumerate() {
+                    let worth = moved * c.prices[g];
                     self.worth[g] += worth;
                     self.worth_200[g] += worth * at_200 as u32 as f64;
                 }
             }
         }
-        let now = fills(w);
-        self.scores.fills += now - self.fills;
-        self.fills = now;
         for u in w.units.values() {
+            let end = u.routes.first().map(|r| r.to);
+            if u.stall.as_ref().and_then(|s| w.markets.get(&s.market)).is_some_and(|m| Some(m.tile) == end) {
+                self.scores.line_at_market += 1;
+            }
             let Some(t) = u.traded.as_ref().filter(|t| t.food > 1e-6) else { continue };
             self.scores.unit_turns += 1;
             if u.kind() != UnitKind::Camp {
@@ -145,11 +143,6 @@ impl Trade {
         (s.largest_worth_200, s.largest_worth_good) = largest(|g| g.worth_200);
         s
     }
-}
-
-/// The Fill orders the world has been given.
-fn fills(w: &World) -> u32 {
-    w.orders.values().map(|k| k.get("fill").copied().unwrap_or(0)).sum()
 }
 
 /// Good `g`'s share of the total of `xs`; 0 with none.

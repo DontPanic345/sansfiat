@@ -35,7 +35,7 @@ import * as overlay from './layers/overlay.js';
 import { CORNER, EDGE_DIR } from './geom.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, flow, clans, towns, leanings, centres, capitals, settle, ring, units, routes, overlay];
+export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, flow, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */

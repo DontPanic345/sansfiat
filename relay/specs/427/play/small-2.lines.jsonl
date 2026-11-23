@@ -1,0 +1,73 @@
+{"turn":287,"line":"note meant: win clan 35 by claim, it is 7.6 people did: claim 1 tile to 76 as offered surprised: gift reaches no clan at all; 25 clans already mine","result":"noted"}
+{"turn":287,"line":"{\"type\":\"claim\",\"tiles\":[97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76]}","result":"ok"}
+{"turn":287,"line":"note meant: draw clan 17 in by extending claim did: claim again with 1 more tile -13,-1 (tile id unknown; use map) surprised: nothing","result":"noted"}
+{"turn":287,"line":"map","result":"ok"}
+{"turn":287,"line":"note meant: look at the map did: map surprised: nothing","result":"noted"}
+{"turn":287,"line":"view","result":"ok"}
+{"turn":287,"line":"view","result":"ok"}
+{"turn":287,"line":"view","result":"ok"}
+{"turn":287,"line":"note meant: claim toward clan 17 at (-13,-1) did: try tile 54 surprised: tile id unknown, guessing","result":"noted"}
+{"turn":287,"line":"{\"type\":\"claim\",\"tiles\":[97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,54]}","result":"refused: a claim can only cover land"}
+{"turn":287,"line":"note meant: claim toward clan 17 at (-13,-1) did: try tile 53 surprised: tile id unknown, guessing","result":"noted"}
+{"turn":287,"line":"{\"type\":\"claim\",\"tiles\":[97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,53]}","result":"refused: a claim can only cover land"}
+{"turn":287,"line":"note meant: claim toward clan 17 at (-13,-1) did: try tile 77 surprised: tile id unknown, guessing","result":"noted"}
+{"turn":287,"line":"{\"type\":\"claim\",\"tiles\":[97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,77]}","result":"ok"}
+{"turn":287,"line":"view","result":"ok"}
+{"turn":287,"line":"map","result":"ok"}
+{"turn":287,"line":"note meant: raise a first army to guard the capital (capital no army warning) did: raise 1 warriors surprised: claim of tile 77 did not bring clan 17; its tile is -13,-1 which I guessed wrong","result":"noted"}
+{"turn":287,"line":"{\"type\":\"raise\",\"n\":1}","result":"ok"}
+{"turn":287,"line":"note meant: send scout to explore did: route scout 471 to 193 surprised: nothing","result":"noted"}
+{"turn":287,"line":"{\"type\":\"route\",\"unit\":471,\"from\":219,\"to\":193}","result":"ok"}
+{"turn":287,"line":"note meant: see how it goes did: end 5 surprised: nothing","result":"noted"}
+{"turn":292,"line":"end 5","result":"ok"}
+{"turn":292,"line":"note meant: grow, watch feed did: end 10 surprised: Standing 15.7 to 20.2 in 5 turns from joins","result":"noted"}
+{"turn":302,"line":"end 10","result":"ok"}
+{"turn":302,"line":"view","result":"ok"}
+{"turn":302,"line":"note meant: look at orders did: view surprised: nothing","result":"noted"}
+{"turn":302,"line":"view","result":"ok"}
+{"turn":302,"line":"note meant: test gift lever did: setGift 6 though it reaches no clan, to see whether anything moves surprised: view said gift reaches no clan","result":"noted"}
+{"turn":302,"line":"{\"type\":\"setGift\",\"food\":6}","result":"ok"}
+{"turn":302,"line":"note meant: use army to forage did: forage 473 surprised: nothing","result":"noted"}
+{"turn":302,"line":"{\"type\":\"forage\",\"unit\":473}","result":"ok"}
+{"turn":302,"line":"note meant: move army to border tile did: move 473 to 222 (-6,-3) surprised: nothing","result":"noted"}
+{"turn":302,"line":"{\"type\":\"move\",\"unit\":473,\"to\":222}","result":"ok"}
+{"turn":302,"line":"note meant: pass time did: end 5 surprised: nothing","result":"noted"}
+{"turn":307,"line":"end 5","result":"ok"}
+{"turn":307,"line":"note meant: capital is unheld and Red army 12 steps away, bring army home did: move 473 to 219 surprised: Gold went to 0.0% share, Red probably took it","result":"noted"}
+{"turn":307,"line":"{\"type\":\"move\",\"unit\":473,\"to\":219}","result":"ok"}
+{"turn":307,"line":"note meant: grow did: end 10 surprised: nothing","result":"noted"}
+{"turn":317,"line":"end 10","result":"ok"}
+{"turn":317,"line":"view","result":"ok"}
+{"turn":317,"line":"{\"type\":\"claim\",\"tiles\":[76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,55]}","result":"refused: a claim can only cover land"}
+{"turn":317,"line":"{\"type\":\"claim\",\"tiles\":[76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,56]}","result":"ok"}
+{"turn":317,"line":"{\"type\":\"claim\",\"tiles\":[76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,78]}","result":"ok"}
+{"turn":317,"line":"{\"type\":\"claim\",\"tiles\":[76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,79]}","result":"refused: a claim must be joined to the capital or a settlement: (-12, 1) is not"}
+{"turn":317,"line":"{\"type\":\"claim\",\"tiles\":[76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,75]}","result":"refused: a claim can only cover land"}
+{"turn":317,"line":"{\"type\":\"claim\",\"tiles\":[76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,76,77,97,98,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,271,272,273,277,278,301,307,74]}","result":"refused: a claim can only cover land"}
+{"turn":317,"line":"note meant: settle and grow did: end 10 surprised: claim order for clan 17 gives coordinates but no tile number, I had to guess ids and several guesses silently changed my claim","result":"noted"}
+{"turn":327,"line":"end 10","result":"ok"}
+{"turn":327,"line":"note meant: strengthen defence vs Red army 14 steps away did: raise 2 into army 473 surprised: nothing","result":"noted"}
+{"turn":327,"line":"{\"type\":\"raise\",\"n\":2,\"into\":473}","result":"ok"}
+{"turn":327,"line":"note meant: pass did: end 10 surprised: nothing","result":"noted"}
+{"turn":337,"line":"end 10","result":"ok"}
+{"turn":337,"line":"note meant: pass did: end 10 surprised: nothing","result":"noted"}
+{"turn":347,"line":"end 10","result":"ok"}
+{"turn":347,"line":"note meant: pass did: end 10 surprised: nothing","result":"noted"}
+{"turn":357,"line":"end 10","result":"ok"}
+{"turn":357,"line":"view","result":"ok"}
+{"turn":357,"line":"note meant: look at the standing and orders did: view surprised: nothing","result":"noted"}
+{"turn":357,"line":"view","result":"ok"}
+{"turn":357,"line":"view","result":"ok"}
+{"turn":357,"line":"note meant: hold the lead did: end 15 surprised: the largest settled clans pay no levy so my store gets 11 a turn from big clans doing nothing","result":"noted"}
+{"turn":372,"line":"end 15","result":"ok"}
+{"turn":372,"line":"note meant: hold the lead did: end 15 surprised: nothing","result":"noted"}
+{"turn":387,"line":"end 15","result":"ok"}
+{"turn":387,"line":"note meant: reach 100 turns did: end 10 surprised: nothing","result":"noted"}
+{"turn":397,"line":"end 10","result":"ok"}
+{"turn":397,"line":"view","result":"ok"}
+{"turn":397,"line":"view","result":"ok"}
+{"turn":397,"line":"note could not tell: gift: whether any clan can ever receive it, it reached no one all game","result":"noted"}
+{"turn":397,"line":"note could not tell: land and guard: tile numbers for the claim order, and what a claim covers beyond the one named tile","result":"noted"}
+{"turn":397,"line":"note could not tell: army: whether Red would attack; no pillage order was ever offered","result":"noted"}
+{"turn":397,"line":"note could not tell: scout: what a route to an adjacent tile gains; it sat idle with nothing to search","result":"noted"}
+{"turn":397,"line":"note could not tell: settling: why a settled clan pays no levy, and whether settled clans are stronger","result":"noted"}

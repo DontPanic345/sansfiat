@@ -310,8 +310,7 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
     );
     let t = &j.game.trade;
     println!(
-        "trade (game): fills {}, army-turns fed at a foreign market {} (food {:.1} of {:.1} needed), at its own {}, unit-turns trading {}; trades {}, largest count share at +200 {} {:.1}%, by worth {} {:.1}%",
-        t.fills,
+        "trade (game): army-turns fed at a foreign market {} (food {:.1} of {:.1} needed), at its own {}, unit-turns trading {}; trades {}, largest count share at +200 {} {:.1}%, by worth {} {:.1}%",
         t.army_turns_foreign,
         t.food_foreign,
         t.need_foreign,
@@ -322,6 +321,30 @@ fn print_game(j: &GameJudged, game: &Watch, control: &Watch) {
         100.0 * t.largest_count_200,
         t.largest_worth_good,
         100.0 * t.largest_worth_200
+    );
+    let settled = |s: &Scores| s.settling.civs.get(&j.led).cloned().unwrap_or_default();
+    let (gs, cs) = (settled(&j.game), settled(&j.control));
+    let at = |n: u32, c: u32, p: f64, all: f64, turn: u32| {
+        if j.turns >= turn {
+            format!("{n}/{c} clans ({p:.0}/{all:.0} people)")
+        } else {
+            "-".to_string()
+        }
+    };
+    println!(
+        "settling, led civ (game / control): settled at +100 {} / {}, at +200 {} / {}, settles {} / {}, back to gathering {} / {}; towns at +200 {} / {}, capital towns {} / {}",
+        at(gs.settled_100, gs.clans_100, gs.settled_people_100, gs.people_100, 100),
+        at(cs.settled_100, cs.clans_100, cs.settled_people_100, cs.people_100, 100),
+        at(gs.settled_200, gs.clans_200, gs.settled_people_200, gs.people_200, 200),
+        at(cs.settled_200, cs.clans_200, cs.settled_people_200, cs.people_200, 200),
+        gs.settles,
+        cs.settles,
+        gs.goes_back,
+        cs.goes_back,
+        j.game.towns.total.towns_200,
+        j.control.towns.total.towns_200,
+        j.game.towns.total.capital_towns_200,
+        j.control.towns.total.capital_towns_200
     );
     let p = &j.player;
     let kinds: Vec<String> = p.orders_by_kind.iter().map(|(k, v)| format!("{k} {v}")).collect();

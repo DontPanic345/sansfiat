@@ -6,7 +6,7 @@ use std::process::Command;
 use engine::world::SAVE_VERSION;
 
 /// The version these digests are for.
-const VERSION: u32 = 29;
+const VERSION: u32 = 30;
 
 /// `sansfiat digest` for `seed` on the small map, from turn 0 to `turn`, and the digest it prints
 /// for that turn (the last line).
@@ -40,12 +40,12 @@ fn the_save_version_pins_the_rules() {
     // to turn 300, past its pick at 287: the turns are fixed, whatever the picks.
     assert_eq!(digest("1", "290", false), "3b91184c9b699440");
     assert_eq!(digest("2", "279", false), "fe26b98f28f58272");
-    assert_eq!(digest("3", "308", false), "1c084e7c35714f0a");
-    assert_eq!(digest("2", "300", true), "54dc7932b7e6694d");
+    assert_eq!(digest("3", "308", false), "d20b52269ff036b5");
+    assert_eq!(digest("2", "300", true), "a9c33c346852bdec");
 }
 
 #[test]
 fn the_led_game_state_digest_is_its_baseline() {
     // The led game's world without its log: the rules' fingerprint, which the log's shape does not move.
-    assert_eq!(digest_with("2", "300", true, true), "5a3a4de2feb4b88a");
+    assert_eq!(digest_with("2", "300", true, true), "47be1b9b9882794d");
 }

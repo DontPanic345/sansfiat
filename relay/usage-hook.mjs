@@ -25,7 +25,7 @@ export const say = (u, now = new Date()) => {
     const left = u.sessionResetsAt ? `, which resets in ${Math.max(0, Math.round((u.sessionResetsAt - now) / 60_000))} minutes` : "";
     const head = `Usage: ${Math.round(u.session)}% of the 5-hour window${left}; ${Math.round(u.weekly)}% of the week.`;
     if (u.session >= MARKS[1]) {
-        return `${head} Stop here, before the window ends the session: commit and push, write result.json (\`pending\` with a note on where the next attempt picks up, if the step isn't done), and end. A helper reading this reports back to its session now.`;
+        return `${head} Stop here, before the window ends the session: commit and push, write result.json (\`pending\` with a note on where the next attempt picks up, if the step isn't done; a whole step hands on in steps.json instead and finishes \`done\`), and end. A helper reading this reports back to its session now.`;
     }
     if (u.session >= MARKS[0]) return `${head} Commit and push what you have, and start no helper or long run that the rest of the window can't finish.`;
     return head;

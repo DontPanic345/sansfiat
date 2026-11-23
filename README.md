@@ -28,12 +28,13 @@ I approve it, it becomes a GitHub issue, and from there Relay runs on its own in
 Actions:
 
 ```
-proposal ─▶ issue ─▶ spec ─▶ spec-review ─▶ build-1 … build-N ─▶ review ─▶ merge
-   me                ╰────────────── cold Claude Code sessions ──────────╯    me / crew
+proposal ─▶ issue ─▶ spec ─▶ spec-review ─▶ build-1 … build-N ─▶ play ─▶ review ─▶ merge
+   me                ╰───────────────── cold Claude Code sessions ─────────────╯    me / crew
 ```
 
 Each step is a `claude -p` session with a fresh context. It hands on a summary and its
-decisions, which every later step reads.
+decisions, which every later step reads. A piece may instead start with one `whole` session
+that plans and builds it, and hands on only what it chooses to.
 
 - **The designer plans the work.** The spec step settles open rules, splits the piece into
   builds, and writes a brief for each. Spec-review reads the code and runs the simulation
@@ -48,7 +49,6 @@ decisions, which every later step reads.
 - **Every milestone ends in a retro.** Relay reads the milestone back from five angles (the
   ladder, the architecture, Relay itself, the game and its players), waits for the owner's
   notes, and opens the next proposal as a PR.
-  M2 ran 35 steps across six pieces at about $8 a piece at list price.
 
 [`relay/README.md`](relay/README.md) has the detail, and
 [`docs/process.md`](docs/process.md) the loop around it.
