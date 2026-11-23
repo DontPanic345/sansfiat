@@ -1,0 +1,1043 @@
+{
+ "small2": {
+  "n": 817,
+  "kinds": {
+   "sea": 210,
+   "coast": 196,
+   "plains": 118,
+   "forest": 33,
+   "hills": 72,
+   "desert": 34,
+   "lake": 84,
+   "mountain": 62,
+   "marsh": 8
+  },
+  "count": {
+   "shore water": 222,
+   "shore land": 265,
+   "cape (land, 4+ water in one run)": 11,
+   "neck (land, 2+ water runs)": 28,
+   "mouth into sea": 6,
+   "big mouth (river >= 9)": 4,
+   "strait (water, 2+ land runs)": 32,
+   "bay (water, 4+ land in one run)": 21
+  },
+  "lakes": [
+   1,
+   1,
+   1,
+   6,
+   9,
+   12,
+   23,
+   31
+  ],
+  "verts": {
+   "one water": 293,
+   "two water": 251
+  },
+  "edges": {
+   "coast|sea": 240,
+   "coast|lake": 174,
+   "coast|plains": 95,
+   "hills|mountain": 83,
+   "mountain|plains": 77,
+   "coast|forest": 65,
+   "coast|hills": 61,
+   "hills|plains": 61,
+   "coast|desert": 58,
+   "desert|plains": 45,
+   "forest|plains": 42,
+   "hills|lake": 39,
+   "lake|mountain": 36,
+   "coast|mountain": 35,
+   "desert|hills": 22,
+   "forest|hills": 21,
+   "desert|mountain": 17,
+   "marsh|sea": 16,
+   "forest|mountain": 15,
+   "plains|sea": 12,
+   "hills|sea": 11,
+   "marsh|plains": 11,
+   "mountain|sea": 9,
+   "lake|plains": 7,
+   "coast|marsh": 4,
+   "forest|marsh": 3,
+   "hills|marsh": 2,
+   "marsh|mountain": 2
+  },
+  "near": {
+   "cape": {
+    "tile": 565,
+    "d": 117,
+    "x": 10.39,
+    "y": 3
+   },
+   "neck": {
+    "tile": 402,
+    "d": 108,
+    "x": -5.2,
+    "y": -9
+   },
+   "mouth-sea": {
+    "tile": 506,
+    "d": 57,
+    "x": 6.93,
+    "y": 3
+   },
+   "mouth-big": {
+    "tile": 506,
+    "d": 57,
+    "x": 6.93,
+    "y": 3
+   },
+   "strait": {
+    "tile": 536,
+    "d": 84,
+    "x": 8.66,
+    "y": 3
+   },
+   "bay-lake": {
+    "tile": 404,
+    "d": 48,
+    "x": -3.46,
+    "y": -6
+   },
+   "bay-sea": {
+    "tile": 537,
+    "d": 111,
+    "x": 9.53,
+    "y": 4.5
+   },
+   "small-lake": {
+    "tile": 315,
+    "d": 27,
+    "x": -2.6,
+    "y": 4.5
+   },
+   "coast": {
+    "tile": 346,
+    "d": 21,
+    "x": -0.87,
+    "y": 4.5
+   },
+   "forest": {
+    "tile": 439,
+    "d": 9,
+    "x": 0,
+    "y": -3
+   },
+   "hills": {
+    "tile": 408,
+    "d": 0,
+    "x": 0,
+    "y": 0
+   },
+   "desert": {
+    "tile": 376,
+    "d": 3,
+    "x": -0.87,
+    "y": 1.5
+   },
+   "marsh": {
+    "tile": 506,
+    "d": 57,
+    "x": 6.93,
+    "y": 3
+   }
+  }
+ },
+ "small3": {
+  "n": 817,
+  "kinds": {
+   "sea": 351,
+   "coast": 220,
+   "mountain": 42,
+   "plains": 47,
+   "hills": 42,
+   "forest": 49,
+   "lake": 35,
+   "desert": 31
+  },
+  "count": {
+   "shore water": 260,
+   "shore land": 254,
+   "cape (land, 4+ water in one run)": 26,
+   "neck (land, 2+ water runs)": 27,
+   "strait (water, 2+ land runs)": 22,
+   "bay (water, 4+ land in one run)": 23,
+   "mouth into sea": 4,
+   "mouth into lake": 3
+  },
+  "lakes": [
+   1,
+   2,
+   4,
+   5,
+   10,
+   13
+  ],
+  "verts": {
+   "one water": 281,
+   "two water": 281
+  },
+  "edges": {
+   "coast|sea": 416,
+   "coast|plains": 115,
+   "coast|lake": 84,
+   "coast|forest": 82,
+   "coast|hills": 56,
+   "hills|mountain": 53,
+   "coast|mountain": 38,
+   "coast|desert": 35,
+   "desert|plains": 29,
+   "forest|plains": 28,
+   "hills|sea": 27,
+   "desert|mountain": 27,
+   "forest|mountain": 25,
+   "forest|hills": 20,
+   "mountain|sea": 19,
+   "hills|plains": 19,
+   "desert|hills": 14,
+   "mountain|plains": 13,
+   "desert|forest": 11,
+   "lake|mountain": 9,
+   "hills|lake": 7
+  },
+  "near": {
+   "cape": {
+    "tile": 374,
+    "d": 9,
+    "x": -2.6,
+    "y": -1.5
+   },
+   "neck": {
+    "tile": 256,
+    "d": 57,
+    "x": -6.06,
+    "y": 4.5
+   },
+   "strait": {
+    "tile": 375,
+    "d": 3,
+    "x": -1.73,
+    "y": 0
+   },
+   "bay-sea": {
+    "tile": 438,
+    "d": 21,
+    "x": -0.87,
+    "y": -4.5
+   },
+   "mouth-sea": {
+    "tile": 504,
+    "d": 27,
+    "x": 5.2,
+    "y": 0
+   },
+   "bay-lake": {
+    "tile": 463,
+    "d": 252,
+    "x": -5.2,
+    "y": -15
+   },
+   "mouth-lake": {
+    "tile": 661,
+    "d": 219,
+    "x": 8.66,
+    "y": -12
+   },
+   "small-lake": {
+    "tile": 616,
+    "d": 117,
+    "x": 10.39,
+    "y": -3
+   },
+   "coast": {
+    "tile": 376,
+    "d": 3,
+    "x": -0.87,
+    "y": 1.5
+   },
+   "hills": {
+    "tile": 342,
+    "d": 21,
+    "x": -4.33,
+    "y": -1.5
+   },
+   "forest": {
+    "tile": 532,
+    "d": 36,
+    "x": 5.2,
+    "y": -3
+   },
+   "desert": {
+    "tile": 501,
+    "d": 27,
+    "x": 2.6,
+    "y": -4.5
+   }
+  }
+ },
+ "small6": {
+  "n": 817,
+  "kinds": {
+   "sea": 235,
+   "coast": 208,
+   "hills": 53,
+   "plains": 100,
+   "mountain": 52,
+   "desert": 39,
+   "forest": 61,
+   "lake": 69
+  },
+  "count": {
+   "shore water": 211,
+   "shore land": 255,
+   "bay (water, 4+ land in one run)": 20,
+   "cape (land, 4+ water in one run)": 17,
+   "strait (water, 2+ land runs)": 36,
+   "neck (land, 2+ water runs)": 23,
+   "mouth into sea": 6,
+   "mouth into lake": 3,
+   "big mouth (river >= 9)": 1
+  },
+  "lakes": [
+   2,
+   2,
+   3,
+   7,
+   8,
+   21,
+   26
+  ],
+  "verts": {
+   "one water": 278,
+   "two water": 248
+  },
+  "edges": {
+   "coast|sea": 297,
+   "coast|lake": 141,
+   "coast|plains": 109,
+   "coast|forest": 93,
+   "coast|hills": 64,
+   "forest|plains": 55,
+   "coast|desert": 51,
+   "desert|plains": 47,
+   "hills|mountain": 46,
+   "coast|mountain": 45,
+   "mountain|plains": 41,
+   "desert|mountain": 35,
+   "hills|lake": 29,
+   "forest|hills": 28,
+   "forest|mountain": 28,
+   "hills|plains": 27,
+   "lake|mountain": 23,
+   "mountain|sea": 16,
+   "hills|sea": 15,
+   "desert|hills": 7,
+   "lake|plains": 5,
+   "desert|forest": 4
+  },
+  "near": {
+   "bay-sea": {
+    "tile": 376,
+    "d": 3,
+    "x": -0.87,
+    "y": 1.5
+   },
+   "cape": {
+    "tile": 344,
+    "d": 9,
+    "x": -2.6,
+    "y": 1.5
+   },
+   "strait": {
+    "tile": 375,
+    "d": 3,
+    "x": -1.73,
+    "y": 0
+   },
+   "neck": {
+    "tile": 310,
+    "d": 57,
+    "x": -6.93,
+    "y": -3
+   },
+   "mouth-sea": {
+    "tile": 407,
+    "d": 3,
+    "x": -0.87,
+    "y": -1.5
+   },
+   "bay-lake": {
+    "tile": 445,
+    "d": 63,
+    "x": 5.2,
+    "y": 6
+   },
+   "mouth-lake": {
+    "tile": 446,
+    "d": 93,
+    "x": 6.06,
+    "y": 7.5
+   },
+   "mouth-big": {
+    "tile": 639,
+    "d": 147,
+    "x": 9.53,
+    "y": -7.5
+   },
+   "small-lake": {
+    "tile": 203,
+    "d": 117,
+    "x": -7.79,
+    "y": 7.5
+   },
+   "coast": {
+    "tile": 408,
+    "d": 0,
+    "x": 0,
+    "y": 0
+   },
+   "hills": {
+    "tile": 371,
+    "d": 63,
+    "x": -5.2,
+    "y": -6
+   },
+   "desert": {
+    "tile": 441,
+    "d": 3,
+    "x": 1.73,
+    "y": 0
+   },
+   "forest": {
+    "tile": 474,
+    "d": 21,
+    "x": 4.33,
+    "y": 1.5
+   }
+  }
+ },
+ "small9": {
+  "n": 817,
+  "kinds": {
+   "sea": 184,
+   "coast": 201,
+   "hills": 77,
+   "plains": 67,
+   "mountain": 70,
+   "forest": 48,
+   "desert": 37,
+   "lake": 133
+  },
+  "count": {
+   "shore water": 226,
+   "shore land": 263,
+   "cape (land, 4+ water in one run)": 10,
+   "bay (water, 4+ land in one run)": 19,
+   "mouth into lake": 7,
+   "strait (water, 2+ land runs)": 24,
+   "mouth into sea": 3,
+   "big mouth (river >= 9)": 2,
+   "neck (land, 2+ water runs)": 22
+  },
+  "lakes": [
+   2,
+   3,
+   3,
+   3,
+   17,
+   33,
+   72
+  ],
+  "verts": {
+   "one water": 286,
+   "two water": 250
+  },
+  "edges": {
+   "coast|sea": 238,
+   "coast|lake": 187,
+   "coast|plains": 99,
+   "coast|hills": 91,
+   "hills|mountain": 82,
+   "coast|forest": 63,
+   "coast|desert": 55,
+   "coast|mountain": 51,
+   "hills|plains": 51,
+   "lake|mountain": 47,
+   "desert|mountain": 40,
+   "mountain|plains": 39,
+   "hills|lake": 38,
+   "forest|hills": 34,
+   "forest|mountain": 29,
+   "forest|plains": 25,
+   "desert|plains": 22,
+   "desert|forest": 17,
+   "desert|hills": 14,
+   "lake|plains": 14,
+   "hills|sea": 6,
+   "mountain|sea": 6
+  },
+  "near": {
+   "cape": {
+    "tile": 535,
+    "d": 63,
+    "x": 7.79,
+    "y": 1.5
+   },
+   "bay-sea": {
+    "tile": 671,
+    "d": 309,
+    "x": 17.32,
+    "y": 3
+   },
+   "mouth-lake": {
+    "tile": 377,
+    "d": 9,
+    "x": 0,
+    "y": 3
+   },
+   "strait": {
+    "tile": 505,
+    "d": 39,
+    "x": 6.06,
+    "y": 1.5
+   },
+   "bay-lake": {
+    "tile": 341,
+    "d": 36,
+    "x": -5.2,
+    "y": -3
+   },
+   "mouth-sea": {
+    "tile": 353,
+    "d": 252,
+    "x": 5.2,
+    "y": 15
+   },
+   "mouth-big": {
+    "tile": 377,
+    "d": 9,
+    "x": 0,
+    "y": 3
+   },
+   "neck": {
+    "tile": 342,
+    "d": 21,
+    "x": -4.33,
+    "y": -1.5
+   },
+   "small-lake": {
+    "tile": 341,
+    "d": 36,
+    "x": -5.2,
+    "y": -3
+   },
+   "coast": {
+    "tile": 470,
+    "d": 21,
+    "x": 0.87,
+    "y": -4.5
+   },
+   "hills": {
+    "tile": 409,
+    "d": 3,
+    "x": 0.87,
+    "y": 1.5
+   },
+   "forest": {
+    "tile": 258,
+    "d": 75,
+    "x": -4.33,
+    "y": 7.5
+   },
+   "desert": {
+    "tile": 380,
+    "d": 63,
+    "x": 2.6,
+    "y": 7.5
+   }
+  }
+ },
+ "medium8": {
+  "n": 1657,
+  "kinds": {
+   "sea": 386,
+   "coast": 422,
+   "plains": 201,
+   "mountain": 124,
+   "hills": 126,
+   "forest": 85,
+   "desert": 83,
+   "lake": 230
+  },
+  "count": {
+   "shore water": 406,
+   "shore land": 511,
+   "strait (water, 2+ land runs)": 68,
+   "cape (land, 4+ water in one run)": 22,
+   "mouth into sea": 6,
+   "bay (water, 4+ land in one run)": 45,
+   "neck (land, 2+ water runs)": 34,
+   "mouth into lake": 8,
+   "big mouth (river >= 9)": 2
+  },
+  "lakes": [
+   1,
+   1,
+   2,
+   2,
+   2,
+   3,
+   4,
+   6,
+   7,
+   8,
+   10,
+   19,
+   79,
+   86
+  ],
+  "verts": {
+   "one water": 545,
+   "two water": 473
+  },
+  "edges": {
+   "coast|lake": 499,
+   "coast|sea": 357,
+   "coast|plains": 279,
+   "coast|forest": 155,
+   "hills|plains": 152,
+   "hills|mountain": 146,
+   "mountain|plains": 117,
+   "coast|desert": 115,
+   "coast|mountain": 102,
+   "forest|plains": 83,
+   "desert|hills": 77,
+   "desert|plains": 69,
+   "coast|hills": 65,
+   "lake|mountain": 60,
+   "desert|mountain": 51,
+   "forest|hills": 41,
+   "hills|lake": 41,
+   "mountain|sea": 27,
+   "forest|mountain": 27,
+   "hills|sea": 16,
+   "desert|forest": 14,
+   "plains|sea": 12,
+   "lake|plains": 6
+  },
+  "near": {
+   "strait": {
+    "tile": 875,
+    "d": 3,
+    "x": 1.73,
+    "y": 0
+   },
+   "cape": {
+    "tile": 605,
+    "d": 57,
+    "x": -6.93,
+    "y": 3
+   },
+   "mouth-sea": {
+    "tile": 1160,
+    "d": 576,
+    "x": 0,
+    "y": -24
+   },
+   "bay-sea": {
+    "tile": 1329,
+    "d": 567,
+    "x": 23.38,
+    "y": 4.5
+   },
+   "neck": {
+    "tile": 873,
+    "d": 9,
+    "x": 0,
+    "y": -3
+   },
+   "bay-lake": {
+    "tile": 826,
+    "d": 12,
+    "x": -1.73,
+    "y": -3
+   },
+   "mouth-lake": {
+    "tile": 1255,
+    "d": 372,
+    "x": 19.05,
+    "y": 3
+   },
+   "mouth-big": {
+    "tile": 399,
+    "d": 468,
+    "x": -20.78,
+    "y": -6
+   },
+   "small-lake": {
+    "tile": 821,
+    "d": 147,
+    "x": -6.06,
+    "y": -10.5
+   },
+   "coast": {
+    "tile": 829,
+    "d": 3,
+    "x": 0.87,
+    "y": 1.5
+   },
+   "hills": {
+    "tile": 1057,
+    "d": 183,
+    "x": 12.12,
+    "y": 6
+   },
+   "forest": {
+    "tile": 830,
+    "d": 12,
+    "x": 1.73,
+    "y": 3
+   },
+   "desert": {
+    "tile": 642,
+    "d": 144,
+    "x": -10.39,
+    "y": -6
+   }
+  }
+ },
+ "medium9": {
+  "n": 1657,
+  "kinds": {
+   "sea": 351,
+   "hills": 169,
+   "mountain": 147,
+   "coast": 400,
+   "plains": 87,
+   "desert": 97,
+   "forest": 213,
+   "lake": 193
+  },
+  "count": {
+   "shore water": 421,
+   "shore land": 513,
+   "mouth into sea": 6,
+   "neck (land, 2+ water runs)": 33,
+   "bay (water, 4+ land in one run)": 37,
+   "strait (water, 2+ land runs)": 68,
+   "cape (land, 4+ water in one run)": 21,
+   "mouth into lake": 2,
+   "big mouth (river >= 9)": 2
+  },
+  "lakes": [
+   1,
+   1,
+   1,
+   1,
+   8,
+   10,
+   14,
+   15,
+   22,
+   30,
+   35,
+   55
+  ],
+  "verts": {
+   "one water": 546,
+   "two water": 486
+  },
+  "edges": {
+   "coast|sea": 495,
+   "coast|lake": 326,
+   "coast|forest": 271,
+   "hills|mountain": 203,
+   "coast|hills": 142,
+   "forest|hills": 139,
+   "forest|mountain": 132,
+   "coast|desert": 126,
+   "forest|plains": 104,
+   "coast|mountain": 98,
+   "coast|plains": 80,
+   "desert|plains": 77,
+   "hills|sea": 63,
+   "lake|mountain": 56,
+   "hills|plains": 52,
+   "desert|hills": 51,
+   "hills|lake": 44,
+   "desert|mountain": 38,
+   "mountain|sea": 36,
+   "desert|forest": 36,
+   "mountain|plains": 27,
+   "plains|sea": 10,
+   "lake|plains": 2
+  },
+  "near": {
+   "mouth-sea": {
+    "tile": 1003,
+    "d": 111,
+    "x": 0.87,
+    "y": -10.5
+   },
+   "neck": {
+    "tile": 1004,
+    "d": 84,
+    "x": 1.73,
+    "y": -9
+   },
+   "bay-lake": {
+    "tile": 1047,
+    "d": 93,
+    "x": 3.46,
+    "y": -9
+   },
+   "strait": {
+    "tile": 1048,
+    "d": 75,
+    "x": 4.33,
+    "y": -7.5
+   },
+   "cape": {
+    "tile": 1089,
+    "d": 108,
+    "x": 5.2,
+    "y": -9
+   },
+   "bay-sea": {
+    "tile": 955,
+    "d": 291,
+    "x": -4.33,
+    "y": -16.5
+   },
+   "mouth-lake": {
+    "tile": 602,
+    "d": 93,
+    "x": -9.53,
+    "y": -1.5
+   },
+   "mouth-big": {
+    "tile": 602,
+    "d": 93,
+    "x": -9.53,
+    "y": -1.5
+   },
+   "small-lake": {
+    "tile": 960,
+    "d": 81,
+    "x": 0,
+    "y": -9
+   },
+   "hills": {
+    "tile": 779,
+    "d": 21,
+    "x": -3.46,
+    "y": -3
+   },
+   "coast": {
+    "tile": 876,
+    "d": 9,
+    "x": 2.6,
+    "y": 1.5
+   },
+   "desert": {
+    "tile": 969,
+    "d": 81,
+    "x": 7.79,
+    "y": 4.5
+   },
+   "forest": {
+    "tile": 828,
+    "d": 0,
+    "x": 0,
+    "y": 0
+   }
+  }
+ },
+ "large8": {
+  "n": 3367,
+  "kinds": {
+   "sea": 512,
+   "coast": 687,
+   "desert": 285,
+   "plains": 758,
+   "hills": 312,
+   "mountain": 295,
+   "forest": 185,
+   "lake": 324,
+   "marsh": 9
+  },
+  "count": {
+   "shore water": 646,
+   "shore land": 889,
+   "cape (land, 4+ water in one run)": 27,
+   "bay (water, 4+ land in one run)": 67,
+   "mouth into sea": 13,
+   "strait (water, 2+ land runs)": 145,
+   "mouth into lake": 12,
+   "big mouth (river >= 9)": 9,
+   "neck (land, 2+ water runs)": 39,
+   "islet": 1
+  },
+  "lakes": [
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   2,
+   4,
+   5,
+   6,
+   15,
+   18,
+   19,
+   22,
+   22,
+   27,
+   35,
+   44,
+   85
+  ],
+  "verts": {
+   "one water": 927,
+   "two water": 783
+  },
+  "edges": {
+   "coast|lake": 712,
+   "coast|plains": 684,
+   "coast|sea": 664,
+   "desert|plains": 409,
+   "hills|mountain": 390,
+   "mountain|plains": 344,
+   "hills|plains": 301,
+   "forest|plains": 294,
+   "coast|desert": 200,
+   "desert|hills": 172,
+   "coast|hills": 163,
+   "desert|mountain": 160,
+   "coast|forest": 145,
+   "forest|mountain": 117,
+   "coast|mountain": 99,
+   "hills|lake": 93,
+   "hills|sea": 67,
+   "lake|mountain": 67,
+   "forest|hills": 67,
+   "lake|plains": 38,
+   "mountain|sea": 34,
+   "desert|forest": 20,
+   "marsh|sea": 18,
+   "plains|sea": 17,
+   "marsh|plains": 15,
+   "coast|marsh": 3,
+   "desert|marsh": 1,
+   "hills|marsh": 1,
+   "marsh|mountain": 1,
+   "forest|marsh": 1
+  },
+  "near": {
+   "cape": {
+    "tile": 1749,
+    "d": 3,
+    "x": 0.87,
+    "y": -1.5
+   },
+   "bay-sea": {
+    "tile": 2958,
+    "d": 1197,
+    "x": 28.58,
+    "y": -19.5
+   },
+   "mouth-sea": {
+    "tile": 2170,
+    "d": 1011,
+    "x": -4.33,
+    "y": -31.5
+   },
+   "strait": {
+    "tile": 1750,
+    "d": 3,
+    "x": 1.73,
+    "y": 0
+   },
+   "mouth-lake": {
+    "tile": 1807,
+    "d": 201,
+    "x": -4.33,
+    "y": -13.5
+   },
+   "mouth-big": {
+    "tile": 1740,
+    "d": 273,
+    "x": -6.93,
+    "y": -15
+   },
+   "neck": {
+    "tile": 1880,
+    "d": 21,
+    "x": 4.33,
+    "y": -1.5
+   },
+   "bay-lake": {
+    "tile": 1423,
+    "d": 36,
+    "x": -5.2,
+    "y": 3
+   },
+   "islet": {
+    "tile": 2541,
+    "d": 1413,
+    "x": 33.77,
+    "y": 16.5
+   },
+   "small-lake": {
+    "tile": 1289,
+    "d": 381,
+    "x": -16.45,
+    "y": -10.5
+   },
+   "coast": {
+    "tile": 1682,
+    "d": 3,
+    "x": -0.87,
+    "y": -1.5
+   },
+   "desert": {
+    "tile": 2124,
+    "d": 147,
+    "x": 6.06,
+    "y": -10.5
+   },
+   "hills": {
+    "tile": 1299,
+    "d": 81,
+    "x": -7.79,
+    "y": 4.5
+   },
+   "forest": {
+    "tile": 1687,
+    "d": 48,
+    "x": 3.46,
+    "y": 6
+   },
+   "marsh": {
+    "tile": 2639,
+    "d": 1008,
+    "x": 31.18,
+    "y": 6
+   }
+  }
+ }
+}

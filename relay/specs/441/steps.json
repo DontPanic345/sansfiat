@@ -1,0 +1,36 @@
+[
+  {
+    "id": "build-1",
+    "title": "The cut ops, the eight grounds' first cuts, and the shore and fringe cells",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 1 (the ops are exact and checked by asserts the brief names; the first cuts need only be visible and the right ground, from starting recipes), New 1 (fill, rotate and ramp extend cut.mjs's hex and sprite paths; proto/shore-cut.mjs is the fill and the turned bank working; derived cells are a mask over an existing cut), Miss 1 (--check's recut and its three new asserts), Reach 1 (the atlas every map draw reads; layout grows after the mountain pieces). An easel with an exact done at 4: Haiku high, as 439's and 440's easels ran. About 7 files, 450 lines plus the PNG: assets/cut.mjs (216 to about 400), sources.js, placeholders.js, draw-atlas.mjs, atlas.png/json, engine/CLAUDE.md, atlas.md and cells.png. Cut from the map easel by area (the atlas, then the map) so each session reads one half of the code."
+  },
+  {
+    "id": "build-2",
+    "title": "The edge pieces, the edges layer, the shore views and the checks",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 1 (the piece rules, corner indices, order and culling are the spec's word for word; the view tiles are named), New 1 (map/edges.js and layers/edges.js follow map/ridges.js and layers/ridges.js; the chooser ports proto/shore.mjs), Miss 1 (check-map.mjs counts every piece against the neighbours; play/edges.mjs checks a staged map and culling), Reach 1 (a static layer redrawn when the view moves, not each turn). Haiku high. About 10 files, 600 lines: map/edges.js, map/layers/edges.js, map/view.js (import, entry, a comment), shots.mjs, check.mjs (the ridge block moved out: it is 602 lines), check-map.mjs, check.sh, play/edges.mjs, engine/CLAUDE.md, easel.md. It waits on a main worktree's wasm build and 33 views shot twice: minutes, not a model's worth."
+  },
+  {
+    "id": "build-3",
+    "title": "The shores and grounds on the map, judged beside main",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 9,
+    "why": "Open 4 (the water's fill, the bank and its twelve corners, eight grounds' recipes, the fringes and the flat colours: judged by eye), New 1 (the ops and pieces are the easels'; adding corner cells or a fringe rule adapts them), Miss 3 (only captures on the retro maps catch a bank that gaps at a cape or a coast that reads as beach), Reach 1 (sources.js and the edge pieces, drawn every static redraw, but no rule). A canvas at 9: Sonnet high, as 440's. Larger than 440's in cells (about 30 recipes and the corners) but the easels ship first cuts of every one. About 6 files and 12 committed PNGs, 250 lines: assets/sources.js, cut.mjs, placeholders.js, atlas.png/json, maybe map/edges.js with check-map.mjs and play/edges.mjs, views.md, shots/."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is shores and grounds judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved, repeats the atlas build for identical bytes, runs --cull and the CI checks, shoots views on a main worktree and the branch and diffs the cameras, reads the pairs for necks, a strait, bays, ponds, river mouths and the flat zoom, checks selection on coast and water, and puts the captures in the PR."
+  }
+]
