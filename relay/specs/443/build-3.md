@@ -27,9 +27,12 @@ Shoot every unit view on a main worktree (the branch's `shots.mjs` copied in) an
   and phone k 6. In `medium9-units-play` and `medium9-gold-play` your units read beside the capital's house, ring
   and clans, on plains and in the wood. Gold's banner must not read as the study's ochre.
 - **Signals.** The selected unit's white edge and the hungry camp's red edge (`small2-camps-*`) read as clearly as
-  main's. Every number in a stack reads. An army with archers still shows its bow (`play/army.mjs`'s raise, or a
+  main's. Every number in a stack reads, and two wide numbers ("6+2" beside "3.0") don't run
+  into each other at the stack's `gap`: `play/units.mjs` holds the lineup's two boxes apart, and a real stack's are
+  in `stats.labels`. An army with archers still shows its bow (`play/army.mjs`'s raise, or a
   shot of it).
-- **Fit.** A lone figure stands in its own hex at k 18 and 35, and doesn't hide the capital's house or the clans
+- **Fit.** A lone figure stands in its own hex at k 18 and 35 (at the starting `feet` its feet are 1.2 world units
+  below the tile's centre, past the hex's lower edge, as main's shield hangs over it: move them in), and doesn't hide the capital's house or the clans
   more than main's shield does. Trees, rivers, borders and icons sit where main has them.
 - **Numbers.** `--units` on every view: every unit nearest its own civ (it exits 1 otherwise). Set a bar for the
   tinted pixels per figure at k 18 and at phone k 6 that the views show is enough to read the colour, and hold

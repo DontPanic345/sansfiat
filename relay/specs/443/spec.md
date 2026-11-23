@@ -86,10 +86,13 @@ All in world units: a hex has circumradius 1. Every number is in `FIGURE`, a tab
 - **The outlines.** A figure's alpha, pre-scaled, dilated by a width in device px and filled in one colour: white
   `FIGURE.selected` (2.4 css px) for the selected unit, red `#ff2a2a` `FIGURE.hungry` (3.5 css px) for a hungry
   one, as main's shield strokes. Cached by name, height, width and colour.
-- **What it reports.** `view.stats.units` lists each figure drawn: `{ unit, civ, kind, x, y, w, h }`, its rectangle
+- **What it reports.** Each entry of `view.stats.labels` keeps `{ unit, label }` (`play/army.mjs` reads it) and
+  gains `box`, the number's text box in canvas px. `view.stats.units` lists each figure drawn: `{ unit, civ, kind, x, y, w, h }`, its rectangle
   in canvas px. `MapView.unitProbe()` draws the units alone on transparent canvases, once in their colours and once
   with every civ's colour black, and returns per unit its rectangle, its opaque pixels, its tinted pixels (those
-  that differ), their mean colour, and the civ colour nearest it of the three. On main there is no probe.
+  that differ), their mean colour, and the civ colour nearest it of the three by chromaticity (each colour divided
+  by its r+g+b), so the art's shading doesn't count: in plain RGB, gold multiplied by a grey of 0.6 is nearer red
+  than gold (spec-review, `review.md`). On main there is no probe.
 
 ## Shape: Easel and Canvas
 
@@ -198,8 +201,10 @@ selects the civ and pans to it). Each records `game.digest()`. Laptop is 1280×8
   - six figures drawn, each kind's cell;
   - every unit's tinted pixels nearest its own civ's colour;
   - a click on Gold's tile cycles its two units, and the white outline follows the selection;
-  - both numbers on Gold's tile are drawn and neither is covered (`stats.labels`, and their rectangles clear of the
-    other figure's).
+  - both numbers on Gold's tile are in `stats.labels`, and their boxes don't overlap each other. No figure covers a
+    number because every number draws after every figure: read the order in `units.js`. (A number's anchor can't
+    sit outside the next figure's cell rectangle: at the starting `gap` 1.7 the cells, 2.4 s wide, overlap, and the
+    first number at +0.95 s falls inside the second cell from +0.5 s.)
 - Make a main worktree with the branch's `shots.mjs`, shoot every unit view on both and `--diff`: cameras and
   digests match. Run `--units` on the branch. Then read the pairs:
   - camp and scout are different figures at k 18 and phone k 6;

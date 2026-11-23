@@ -33,13 +33,14 @@ Read these before you edit: `www/map/layers/{units.js,icon.js,capitals.js,woods.
 - Order on a tile, as the spec: hungry outline (red `#ff2a2a`), selected outline (white), figure (`scaled`), mask
   (`shaded` in `v.civs[u.civ].color`), for each unit; then each unit's number and its archers' bow, at its figure's
   upper right and upper left. A fallen civ's units draw nothing, as now.
-- `view.stats.labels` stays as it is. `view.stats.units` lists each figure drawn: `{ unit, civ, kind, x, y, w, h }`,
+- `view.stats.labels` keeps `{ unit, label }` and gains `box: { x, y, w, h }`, the number's text box in canvas px
+  (from `measureText`). `view.stats.units` lists each figure drawn: `{ unit, civ, kind, x, y, w, h }`,
   its rectangle in canvas px, with `selected` and `hungry`.
 - `export function probe(model, view)`: draws the units layer alone on two transparent canvases the size of the
   map's, once as drawn and once with every civ's colour `#000000`, and returns for each unit in `stats.units` its
   rectangle, `opaque` (pixels with alpha in the first), `tinted` (pixels that differ between the two), `mean` (the
-  mean RGB of the tinted pixels in the first) and `nearest` (the civ whose colour is nearest `mean` in RGB, of the
-  living civs). `MapView.unitProbe()` calls it with the view's model.
+  mean RGB of the tinted pixels in the first) and `nearest` (the living civ whose colour is nearest `mean` by
+  chromaticity: each colour divided by its r+g+b, then the RGB distance; plain RGB calls gold shaded to 0.6 red). `MapView.unitProbe()` calls it with the view's model.
 
 ## 3. The views, in `www/shots.mjs`
 
@@ -62,8 +63,9 @@ camera between tiles 125 and 170 at k 35, laptop. Check, each with a `need(…)`
 - every unit's `nearest` in `unitProbe()` is its own civ, and its `tinted` is above zero;
 - a click on Gold's tile (126) selects one of its two units, a second click the other: `data().selected` changes
   and `stats.units` marks the selected one;
-- both numbers on Gold's tile are in `stats.labels`, and each number's anchor lies outside the other unit's figure
-  rectangle.
+- both numbers on Gold's tile are in `stats.labels`, and their `box`es don't overlap each other. (Not "outside the
+  other figure's rectangle": at `gap` 1.7 the 2.4 s cells overlap, so the first number always lies inside the
+  second cell. No figure covers a number because every number draws after every figure.)
 
 Add it to nothing: `all.mjs` runs every script in `www/play/`.
 
