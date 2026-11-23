@@ -6,7 +6,7 @@
     "model": "haiku",
     "effort": "high",
     "points": 4,
-    "why": "Open 1 (every done is exact: a byte-identical repeat build, placeholder pixels unchanged, --check passing and failing, two cameras matching; only the views tool's waits are the builder's), New 1 (the codec and the cut are ports of proto/ in the spec dir; the Chrome stage and play.mjs exist), Miss 1 (the check it writes, the repeat build's sha256), Reach 1 (atlas.json gains fields its four readers ignore; check.sh gains a line). An easel with an exact done; Haiku high, since the codec and the page waits are fiddly. About 9 files, 450 lines: assets/png.mjs, sources.js, cut.mjs, draw-atlas.mjs, atlas.png/json regenerated, www/views.mjs, check.sh, engine/CLAUDE.md, easel.md."
+    "why": "Open 1 (every done is exact: a byte-identical repeat build, placeholder pixels unchanged, --check passing and failing, two cameras matching; the views tool's waits and capture were settled by running in spec-review, so only the codec's edge cases are the builder's), New 1 (the codec and the cut are ports of proto/ in the spec dir; the Chrome stage and play.mjs exist), Miss 1 (the check it writes, the repeat build's sha256), Reach 1 (atlas.json gains fields its four readers ignore; check.sh gains a line). An easel with an exact done; Haiku high, since the codec and the page waits are fiddly. About 9 files, 450 lines: assets/png.mjs, sources.js, cut.mjs, draw-atlas.mjs, atlas.png/json regenerated, www/shots.mjs, check.sh, engine/CLAUDE.md, easel.md. Spec-review kept the scores: it renamed the views tool www/shots.mjs (www/play/views.mjs exists) and made a shot the map canvas, which settles rather than adds work."
   },
   {
     "id": "build-2",

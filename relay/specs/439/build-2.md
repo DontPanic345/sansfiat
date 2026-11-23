@@ -12,7 +12,7 @@ main. No Rust changes; nothing under `engine/core`, `engine/cli` or `engine/web`
 - `www/assets/cut.mjs` (region → cell), `png.mjs`, and `draw-atlas.mjs`, which writes
   `atlas.png` and `atlas.json` (each cell's `ax`, `ay`; a cut cell's `src` and `flat`) and
   `--check`s them in `check.sh`.
-- `www/views.mjs`: `--out DIR` shoots the spec's views (fixed seed, camera, zoom and window),
+- `www/shots.mjs`: `--out DIR` shoots the spec's views (fixed seed, camera, zoom and window),
   `--diff A B` checks the cameras match and gives each view's changed-pixel share.
 
 You may change any of it; record why in your summary. The keys and rectangles of every
@@ -39,7 +39,9 @@ desert and the rest, on the views in `spec.md`. What you judge, in the captures:
 - No outline, no hill, no seam at the hex edge (the prototype left a faint dark line on the
   right edge: a pixel or two more inset there).
 - The variants: three plains side by side shouldn't read as a tiled stamp, and rocks on
-  every plains tile shouldn't make the land busy. A variant with the rocks patched out (a patch
+  every plains tile shouldn't make the land busy. Look hard at the rocks at play zoom (k 18,
+  a cell about 37 px tall): there they shrink to grey blobs the size of the map's grey
+  hearth and wild-grain circles, which sit on plains, and must not be mistaken for them. A variant with the rocks patched out (a patch
   from clean grass in the same hex) is one way; changing which variant is which is another.
   Only regions of `terrain.png`; every pixel from a named rectangle.
 - Rivers, trails, fields, borders, clans, icons and units stay as easy to read on the new
@@ -54,9 +56,9 @@ placeholders, the HUD. They are later pieces.
 
 1. `node www/assets/draw-atlas.mjs` twice: same sha256 both times; `--check` passes.
 2. A main worktree (`git worktree add /tmp/main main`, `./build-web.sh` there), with this
-   branch's `www/views.mjs` copied in. Shoot every view on main and on the branch, and
+   branch's `www/shots.mjs` copied in. Shoot every view on main and on the branch, and
    `--diff` them: cameras match for all ten.
-3. Commit main's and the branch's PNGs for `small2-close`, `small2-play`, `small2-flat`
+3. The shots are the map canvas alone (no bar, no pick panel). Commit main's and the branch's PNGs for `small2-close`, `small2-play`, `small2-flat`
    and `medium8-play` under `relay/specs/439/shots/` as `<view>-main.png` and
    `<view>-branch.png` (only these eight: the shots are large).
 4. `relay/specs/439/views.md`: the `--diff` table (view, changed share), the repeat-build

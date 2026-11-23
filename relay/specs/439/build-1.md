@@ -107,36 +107,42 @@ Done for 1–4:
 - `--check` passes, and fails when one byte of a plains rectangle in a scratch copy of
   `atlas.png` changes (an `--atlas DIR` flag that reads another folder is the easy way; or edit, run and revert).
 
-## 5. `www/views.mjs`
+## 5. `www/shots.mjs`
 
-`node www/views.mjs --out DIR [--only NAME,…]` and `node www/views.mjs --diff A B`. A
-script of its own that imports only `./play.mjs` (and `./assets/png.mjs` for `--diff`, which
-it may inline instead so the file copies alone onto a main worktree: say which you did at its
-top).
+`node www/shots.mjs --out DIR [--only NAME,…]` and `node www/shots.mjs --diff A B`. A
+script of its own, in `www/` (not `www/play/`, where `play/all.mjs` would run it in CI; and not
+`views.mjs`, which `www/play/` already has). `--out` imports only `./play.mjs`, so the file
+copies alone onto a main worktree and shoots there; `--diff` runs on the branch and imports
+`./assets/png.mjs` dynamically, inside the `--diff` path, so main never needs it.
 
 - The views are the table in `spec.md` ("The views"), in a `VIEWS` list at the top of the
   file: name, map size, seed, window (`laptop` or `phone`), k.
-- Each view: `open('?size=S&seed=N&run=1', { size: window })`, wait until the pick is up and
-  the map has drawn, find the plains tile nearest world (0, 0) (lowest index on a tie;
-  plains is `game.map.byName.plains`, not a lake), set `game.map.cx`, `cy` to its centre and
-  `k` to the view's, call `viewChanged()`, wait for the draw, read `cx`, `cy`, `k` back, and
-  fail the view if `k` isn't the one asked (clamped by `minK`). Shoot at scale 1 to
-  `DIR/NAME.png`. Reuse one Chrome per window size if `play.mjs` makes that easy; otherwise
-  one per view is fine.
+- Each view (the spec-review ran this sequence on main, and it is byte-stable):
+  `open('?size=S&seed=N&run=1', { size: window })`;
+  `page.until("document.body.dataset.phase && document.body.dataset.phase !== 'pregame'", 120000)`;
+  find the plains tile nearest world (0, 0) over `game.map.px`/`py` (lowest index on a tie;
+  plains is `game.map.l.terrain[i] === game.map.byName.plains`; it is tile 440 on small 2);
+  set `game.map.cx`, `cy` to its centre and `k` to the view's, call `viewChanged()`,
+  `page.until('!game.map.anim && !game.map.frame', 5000)`, read `cx`, `cy`, `k` back, and
+  fail the view if `k` isn't the one asked (clamped by `minK`).
+- The shot is the map canvas, not the page: `game.map.drawNow(); return
+  game.map.canvas.toDataURL('image/png')`, written to `DIR/NAME.png`. A page screenshot would
+  show the pick panel, which covers nearly all of a phone's map. One Chrome per view is fine
+  (a few seconds each).
 - `DIR/views.json`: per view its url, window, tile index, `cx`, `cy`, `k` and
   `{ ...game.map.stats }`.
 - `--diff A B`: for each view in both, the cameras (`tile`, `cx`, `cy`, `k`) must match
   (exit 1 if not), and it prints the view, the share of pixels that differ and the PNG sizes.
 
 Done: two runs of `--out` on the same checkout give identical PNGs (`--diff` prints 0 for
-every view). Copy `views.mjs` onto a main worktree (`git worktree add /tmp/main main`, then
+every view). Copy `shots.mjs` onto a main worktree (`git worktree add /tmp/main main`, then
 `./build-web.sh` there), shoot `small2-play` on both, and `--diff` them: the cameras match.
 Put that output and the two sha256 lines from the repeat build in `relay/specs/439/easel.md`.
 
 ## 6. `engine/CLAUDE.md`
 
 Add the two commands to the command block (`node www/assets/draw-atlas.mjs [--check]` the
-atlas from placeholders and sources; `node www/views.mjs --out DIR` fixed map views) and, in
+atlas from placeholders and sources; `node www/shots.mjs --out DIR` fixed map views) and, in
 the `www/` row, `assets/` (the atlas: `placeholders.js`, `sources.js`, `cut.mjs`,
 `draw-atlas.mjs`). Stay under 8 KB.
 

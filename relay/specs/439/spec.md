@@ -41,9 +41,14 @@ The control is main at the same commit the branch starts from, captured with the
    - `node www/assets/draw-atlas.mjs --check`, without Chrome, recuts every sourced cell and
      compares it pixel for pixel with the checked-in `atlas.png`, and checks `atlas.json` holds
      every key `placeholders.js` lays out. `check.sh` runs it beside `www/check.mjs`.
-3. **Identical views** (build-1). `node www/views.mjs --out DIR` shoots a fixed list of map
-   views through `play.mjs`, each at its window (below), device pixel ratio 1, screenshot scale 1, with
-   the camera set directly (`cx`, `cy`, `k`) on the tile the view names, and writes
+3. **Identical views** (build-1). `node www/shots.mjs --out DIR` shoots a fixed list of map
+   views through `play.mjs`, each at its window (below), device pixel ratio 1, with the camera
+   set directly (`cx`, `cy`, `k`) on the tile the view names. A shot is the map canvas itself
+   (`game.map.canvas.toDataURL()` after `drawNow()`), not a page screenshot: at the pick the
+   "Choose your civ" panel covers the left 390 px of a laptop map and nearly all of a phone's.
+   It's named `shots.mjs`, not `views.mjs`, because `www/play/views.mjs` is already the map
+   views' play script; it sits in `www/`, not `www/play/`, so `play/all.mjs` doesn't run it in
+   CI. It writes
    `views.json` (each view's url, tile, `cx`, `cy`, `k` and `game.map.stats`). It reads only
    `play.mjs` and the page, so a copy of it runs on a main worktree. `--diff A B` compares two
    output folders: the cameras must match, and it prints each view's share of changed pixels.
@@ -86,6 +91,14 @@ given.
   the right edge, so the right inset wants a pixel or two more. The grass is darker and more
   olive than the placeholder `#9cbf5a`. `proto/png.cjs` is a working decoder and encoder,
   Chrome's PNGs included.
+- **The views hold** (this review, `small 2` and `large 8` on main, probes not committed). The
+  pick is up when `document.body.dataset.phase` leaves `pregame` (it reads `choose`), a few
+  seconds after `open` at every size. The plains tile nearest (0, 0) is tile 440 on small 2
+  and 1680 on large 8. Laptop map canvas 1280×759, `minK` 7.47; phone 390×786, `minK` 3.34.
+  On the phone, k 6 draws cells (`stats.atlas` true) and k 5 the flat fill; laptop k 35 and
+  18 are not clamped. Setting `cx`, `cy`, `k`, calling `viewChanged()` and waiting on
+  `!game.map.anim && !game.map.frame` gives byte-identical page shots and canvas PNGs across
+  two runs.
 - **Callers.** `terrain.js` draws `terrain.<kind>.<i % 3>` through `atlas.scaled(name, H)`,
   centred by `img.width / 2` and `H / 2`, and fills a flat colour from `placeholders.js`'s
   `TERRAIN_COLOR` below 12 device px. `fields.js`, `passes.js` and `icon.js` read
@@ -120,13 +133,15 @@ given.
 - **`check.sh` holds the cut cells, not the whole PNG**, and compares decoded pixels, not
   bytes: zlib's bytes can differ between Node versions, the pixels can't. The whole file's
   byte-for-byte repeat is the review's run.
-- **The evidence is a tool, not a one-off**: `www/views.mjs` serves pieces 2–8 too, which
+- **A shot is the map canvas, not the page**: the pick panel would hide the map, and the
+  piece changes only the map. The PR's captures are the map alone.
+- **The evidence is a tool, not a one-off**: `www/shots.mjs` serves pieces 2–8 too, which
   each compare identical views.
 
 ## Unsettled, and which step holds it
 
 - **How the plains tile looks** (build-2, the canvas): the inset, the patch, the variants, how
-  the art's colour sits beside the placeholder terrains, whether the rocks on every plains
+  the art's colour sits beside the placeholder terrains, whether the rocks (grey blobs at k 18, like the map's grey hearth circles) on every plains
   tile hide rivers, trails and fields. Proof: the captures of the views below, main beside the
   branch, read by eye, and the changed-pixel shares from `--diff`, in
   `relay/specs/439/views.md`.
@@ -137,11 +152,11 @@ None: no open idea is about the map's art.
 
 ## The views
 
-The list `www/views.mjs` shoots, each at the pick (`?size=S&seed=N&run=1`), with the camera
+The list `www/shots.mjs` shoots, each at the pick (`?size=S&seed=N&run=1`), with the camera
 on the plains tile nearest world (0, 0), ties to the lower index. The window is `play.mjs`'s
-laptop (1280×800) unless the view says phone (390×844): at laptop size the least zoom is about
-k 7 (`MapView.minK`), so the flat fill (a cell under 12 device px, k below about 5.8) is only
-ever drawn on a phone. The tool reads `game.map.k` back and fails a view whose k was clamped.
+laptop (1280×800) unless the view says phone (390×844): at laptop size the least zoom is
+k 7.47 (`MapView.minK`, measured), so the flat fill (a cell under 12 device px, k below about
+5.8) is only ever drawn on a phone, where `minK` is 3.34 and k 5 draws it (measured). The tool reads `game.map.k` back and fails a view whose k was clamped.
 
 | View | Map | Window | k |
 |---|---|---|---|
@@ -159,8 +174,9 @@ ever drawn on a phone. The tool reads `game.map.k` back and fails a view whose k
   `node www/assets/draw-atlas.mjs --check` passes, and fails after a byte of a sourced cell's
   rectangle in a scratch copy is changed (or a patch in `sources.js` is nudged).
 - `atlas.json` has every key main's has, each with main's `x`, `y`, `w`, `h`.
-- `git worktree add /tmp/main main`, build its wasm, copy `www/views.mjs` into it, and shoot
-  `small2-play` and one other view on both; `--diff` says the cameras match. Look at the
+- `git worktree add /tmp/main main`, build its wasm, copy `www/shots.mjs` into it, and shoot
+  `small2-play` and one other view on both (`--out` there needs only `shots.mjs`); run
+  `--diff` from the branch: the cameras match. Look at the
   pairs: only plains changed, and rivers, borders, fields, icons and units sit where they did.
   Shoot `small2-edge` and `small2-flat` on the branch (phone): plains are the same colour in both.
 - On the branch page, select a tile and a unit, pan and zoom: they behave as on main.
