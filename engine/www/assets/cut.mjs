@@ -4,8 +4,10 @@
 // Three kinds of region. A hex region is a hex in the source, cut at the cell's hex size. A fill region
 // (`fill`) is a hex whose samples read a source rectangle repeated, every other copy mirrored. A sprite region
 // (`rect`) is a rectangle of the source with a keep-polygon, cut at a scale into the cell with its ground
-// point on the cell's anchor (turned by `rotate`), and a key that clears what is not the sprite. Ops then
-// recolour (`ramp`) or flip (`mirror`) the cut; a derived cell (`derive`) masks another cell's cut to a fringe.
+// point on the cell's anchor (turned by `rotate`), and a key that clears what is not the sprite. A cell may add
+// sprites over its region (`over`, source-over at each one's ground point) and keep only some samples of them
+// (`cloth`, polygons in source px). Ops then recolour (`ramp`, `grey`) or flip (`mirror`) the cut; a derived cell
+// (`derive`) masks another cell's cut to a fringe.
 import { HEX_R, TERRAIN_CELL, fringeBox, fringeMask } from './placeholders.js';
 
 const SS = 4; // samples per pixel, each way: a pixel's alpha is its hex's coverage in 16ths
@@ -47,7 +49,16 @@ export const KEYS = {
       return !(r >= this.redShare * g && b < this.blueShare * g);
     },
   },
+  actor: {
+    note: "a unit's figure or banner from the actor study: its ground is transparent, so no colour clears, and the cut weights by the study's alpha",
+    clears() {
+      return false;
+    },
+  },
 };
+
+/** The darkest grey a `grey` op gives the cell's least luminous opaque pixel: the cloth's shading lifted off black. */
+const GREY_LO = 90;
 
 /** Maps a source coordinate in a fill: copies of `n` px, every other mirrored, so neighbouring copies seam. */
 export const fold = (t, n) => {
@@ -255,6 +266,8 @@ function spriteData(source, box, region, cell, size) {
           const [sx, sy] = at;
           if (sx < rx0 || sx >= rx1 || sy < ry0 || sy >= ry1) continue;
           if (!inside(sx + 0.5, sy + 0.5, region.keep)) continue;
+          // A cloth cell keeps only the samples inside its cloth polygons (of this region, in source px).
+          if (cell.cloth && !cell.cloth.some((p) => inside(sx + 0.5, sy + 0.5, p))) continue;
           const bx = sx - box.x0, by = sy - box.y0;
           const s = (by * box.w + bx) * 3;
           const R = box.rgb[s], G = box.rgb[s + 1], B = box.rgb[s + 2];
@@ -279,6 +292,43 @@ function spriteData(source, box, region, cell, size) {
 }
 
 const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b; // Rec. 601
+
+/**
+ * The grey op: each pixel becomes its luminance, normalised over the cell's opaque pixels (the brightest is 255,
+ * the darkest GREY_LO; a flat cell is 255), alpha kept. White stays white, so a multiply by a colour gives it.
+ */
+function grey(data) {
+  const opaque = (o) => data[o + 3] >= OPAQUE;
+  let lo = Infinity, hi = -Infinity;
+  for (let o = 0; o < data.length; o += 4) {
+    if (!opaque(o)) continue;
+    const l = lum(data[o], data[o + 1], data[o + 2]);
+    lo = Math.min(lo, l);
+    hi = Math.max(hi, l);
+  }
+  for (let o = 0; o < data.length; o += 4) {
+    if (!data[o + 3]) continue;
+    const t = hi > lo ? Math.min(1, Math.max(0, (lum(data[o], data[o + 1], data[o + 2]) - lo) / (hi - lo))) : 1;
+    const v = Math.round(GREY_LO + t * (255 - GREY_LO));
+    data[o] = data[o + 1] = data[o + 2] = v;
+  }
+}
+
+/**
+ * Source-over: a sprite layer (RGBA8, its own alpha 0 to 255) drawn over the cell's pixels in integers. `div` rounds
+ * half up, so the result is the same on any machine.
+ */
+function overLayer(data, layer) {
+  const div = (n, d) => Math.floor((n + d / 2) / d);
+  for (let o = 0; o < data.length; o += 4) {
+    const sa = layer[o + 3];
+    if (!sa) continue;
+    const keep = div(data[o + 3] * (255 - sa), 255); // the share of the cell's pixel the layer leaves showing
+    const a = sa + keep;
+    for (let c = 0; c < 3; c++) data[o + c] = div(layer[o + c] * sa + data[o + c] * keep, a);
+    data[o + 3] = a;
+  }
+}
 
 /** The mean colour of a source rectangle `[x, y, w, h]`, as `[r, g, b]`. */
 function meanOf(source, [x, y, w, h]) {
@@ -338,15 +388,23 @@ function flatOf(data, source, cell) {
 }
 
 /**
- * Cuts `cell` (an atlas cell spec: `{ ops, anchor, rotate?, flat? }`) of size `size` `{ w, h, ax?, ay? }` from
- * `region` in `source` (`{ width, height, data }`, RGBA8). Returns `{ data, ax, ay, flat }`: `data` RGBA8 for the
- * cell, the anchor in cell px, and `flat`, the mean colour of its opaque pixels as `#rrggbb` (or of its `flat`
- * rectangle of the source, when it names one).
+ * Cuts `cell` (an atlas cell spec: `{ ops, anchor, rotate?, flat?, cloth?, over? }`) of size `size` `{ w, h, ax?, ay? }`
+ * from `region` in `source` (`{ width, height, data }`, RGBA8). `cloth` is the region's polygons in source px (a sample
+ * counts only inside one); `over` is a list of `{ source, region, at, cloth? }`, each a sprite layer cut at its ground
+ * point `at` (cell px) and drawn over the cell. Returns `{ data, ax, ay, flat }`: `data` RGBA8 for the cell, the anchor
+ * in cell px, and `flat`, the mean colour of its opaque pixels as `#rrggbb` (or of its `flat` rectangle of the source,
+ * when it names one).
  */
 export function cut(source, region, cell, size) {
   const { w, h } = size;
   const box = patched(source, region);
   const data = region.rect ? spriteData(source, box, region, cell, size) : region.fill ? fillData(box, region, size) : hexData(box, region, size);
+  // Each `over` layer is a sprite cut at its own ground point and source-over the cell, before the ops.
+  for (const layer of cell.over ?? []) {
+    if (!layer.region.rect) throw new Error(`over ${layer.region.note} is not a sprite region`);
+    const lbox = patched(layer.source, layer.region);
+    overLayer(data, spriteData(layer.source, lbox, layer.region, { anchor: layer.at, cloth: layer.cloth }, size));
+  }
   for (const op of cell.ops ?? []) {
     if (op === 'mirror') {
       for (let y = 0; y < h; y++) {
@@ -355,6 +413,8 @@ export function cut(source, region, cell, size) {
           for (let c = 0; c < 4; c++) [data[a + c], data[b + c]] = [data[b + c], data[a + c]];
         }
       }
+    } else if (op === 'grey') {
+      grey(data);
     } else if (op?.op === 'ramp') {
       ramp(data, source, op);
     } else {

@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cut, anchorOf, derive, fold } from './cut.mjs';
 import { decode, encode, readPng } from './png.mjs';
-import { fringeBox, fringeMask, layout, TERRAIN_CELL } from './placeholders.js';
+import { fringeBox, fringeMask, layout, TERRAIN_CELL, UNIT } from './placeholders.js';
 import { CELLS, FILES, REGIONS } from './sources.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -25,6 +25,22 @@ const sourceOf = (file) => {
 /** The region a CELLS entry is cut from; a derived cell's is its `from` cell's. */
 const srcOf = (name) => (CELLS[name].from ? CELLS[CELLS[name].from].region : CELLS[name].region);
 
+/**
+ * A cell spec with its names resolved for `cut`: `cloth` is the base region's polygons (a region the cell's `cloth`
+ * does not name keeps none), and each `over` entry is a sprite layer with its source, region, ground point and cloth.
+ */
+const resolved = (spec) => {
+  if (!spec.cloth && !spec.over) return spec;
+  const clothOf = (name) => (spec.cloth ? spec.cloth[name] ?? [] : undefined);
+  return {
+    ...spec,
+    cloth: clothOf(spec.region),
+    over: (spec.over ?? []).map((o) => ({
+      source: sourceOf(REGIONS[o.region].file), region: REGIONS[o.region], at: o.at, cloth: clothOf(o.region),
+    })),
+  };
+};
+
 /** The cut of CELLS entry `name` in a cell of `size` `{ w, h }`: `{ data, ax, ay, flat }`. A derived cell is
  *  its `from` cell's cut at the terrain size, masked to its fringe. */
 const recut = (name, size) => {
@@ -35,7 +51,7 @@ const recut = (name, size) => {
     return derive(cut(sourceOf(region.file), region, from, fromSize), fromSize, spec.fringe, size);
   }
   const region = REGIONS[spec.region];
-  return cut(sourceOf(region.file), region, spec, size);
+  return cut(sourceOf(region.file), region, resolved(spec), size);
 };
 
 const opName = (op) => (typeof op === 'string' ? op : op.op);
@@ -95,6 +111,27 @@ function asserts() {
   for (let j = 0; j < 4; j++) {
     if (red(40 - 1 - j) !== red(40 + j)) bad.push(`assert: a fill's copies do not mirror across the seam at x 40 (${red(39 - j)} and ${red(40 + j)})`);
     if (fold(40 - 1 - j, 40) !== fold(40 + j, 40)) bad.push(`assert: fold does not mirror across a copy boundary`);
+  }
+  // An `over` with no regions is the plain cut; a cloth polygon round the whole rectangle is the plain cut; `grey` on a
+  // white cell is white (a fill of white, cut with the op, keeps every opaque pixel at 255).
+  {
+    const region = REGIONS['actor.camp'], size = sheet.cells['unit.camp'];
+    const plain = cut(sourceOf(region.file), region, { anchor: [UNIT.ax, UNIT.ay], ops: [] }, size);
+    const none = cut(sourceOf(region.file), region, { anchor: [UNIT.ax, UNIT.ay], ops: [], over: [] }, size);
+    if (Buffer.compare(Buffer.from(plain.data), Buffer.from(none.data)) !== 0) bad.push('assert: a cell with an over of no regions differs from the plain cut');
+    const [x, y, w, h] = region.rect;
+    const whole = [[[x, y], [x + w, y], [x + w, y + h], [x, y + h]]];
+    const clothed = cut(sourceOf(region.file), region, { anchor: [UNIT.ax, UNIT.ay], ops: [], cloth: whole }, size);
+    if (Buffer.compare(Buffer.from(plain.data), Buffer.from(clothed.data)) !== 0) bad.push('assert: a cloth polygon round the whole rectangle differs from the plain cut');
+    const white = { width: 200, height: 100, data: new Uint8Array(200 * 100 * 4).fill(255) };
+    const fillRegion = { file: 'terrain', fill: { rect: [0, 0, 40, 60], scale: 1, offset: [0, 0] }, note: 'the white test' };
+    const lit = cut(white, fillRegion, { ops: ['grey'] }, { w: 128, h: 148 });
+    for (let o = 0; o < lit.data.length; o += 4) {
+      if (lit.data[o + 3] && (lit.data[o] !== 255 || lit.data[o + 1] !== 255 || lit.data[o + 2] !== 255)) {
+        bad.push('assert: grey on a white cell is not white');
+        break;
+      }
+    }
   }
   // Every derived cell's rectangle holds every pixel of its mask above 0.
   for (const [name, spec] of Object.entries(CELLS)) {
