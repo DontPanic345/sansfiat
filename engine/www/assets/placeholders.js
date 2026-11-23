@@ -21,8 +21,8 @@ export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth
 
 const UNITS = ['camp', 'scout'];
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
-/** A mountain piece's cell: 192 × 128, its ground point (the anchor) at (96, 112). */
-const MOUNTAIN = { w: 192, h: 128, ax: 96, ay: 112 };
+/** A mountain piece's cell: 224 × 144, its ground point (the anchor) at (112, 128). */
+const MOUNTAIN = { w: 224, h: 144, ax: 112, ay: 128 };
 
 /** Every cell with its place in the sheet, its size and a note: `{width, height, cells}`. */
 export function layout() {

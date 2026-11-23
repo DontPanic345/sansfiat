@@ -18,7 +18,7 @@ export const KEYS = {
   ground: {
     grassRed: 6, // grass is green over red and blue: g > r + 6 and g > b + 25
     grassBlue: 25,
-    tuftBlue: 0.6, // yellow tufts and the hill under them have little blue: b < 0.6 g
+    tuftBlue: 0.72, // yellow tufts and the hill under them have little blue: b < 0.72 g
     note: 'grass, and the yellow tufts and hill under the peaks',
     clears(r, g, b) {
       return (g > r + this.grassRed && g > b + this.grassBlue) || b < this.tuftBlue * g;
