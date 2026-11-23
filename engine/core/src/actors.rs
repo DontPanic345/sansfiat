@@ -107,7 +107,7 @@ pub fn spoil(store: &mut Basket) -> f64 {
 }
 
 /// `spoil`, with `back` of the store's salt held back from its keeping: that salt keeps nothing and spoils
-/// at no more than the salt's own rate, so a pack can be filled from it (`KEEPING.packs`).
+/// at no more than the salt's own rate (an army's pay, `exchange.rs`).
 pub fn spoil_keeping(store: &mut Basket, back: f64) -> f64 {
     let food = total(store);
     let salt = keepers(store);
@@ -158,12 +158,11 @@ pub fn keeps_back(b: &Basket, people: f64) -> Basket {
 }
 
 /// The most a civ's store of food cap `cap` holds of each good that isn't eaten: the salt that keeps a
-/// full store for a turn, and the `packs` it keeps back for its packs (`KEEPING.packs`, or 0 with exchange
-/// off), and `ARMS.hold` of obsidian. Infinite for a food: the cap counts food.
-pub fn civ_holds(cap: f64, packs: f64) -> Basket {
+/// full store for a turn, and `ARMS.hold` of obsidian. Infinite for a food: the cap counts food.
+pub fn civ_holds(cap: f64) -> Basket {
     std::array::from_fn(|g| match GOOD[g].uses {
         Use::Food => f64::INFINITY,
-        Use::Keeps => cap / KEEPING.keeps + packs,
+        Use::Keeps => cap / KEEPING.keeps,
         Use::Arms => ARMS.hold,
     })
 }
@@ -171,12 +170,7 @@ pub fn civ_holds(cap: f64, packs: f64) -> Basket {
 /// What each good is worth to a civ's store at its market: it wants salt and obsidian both, at
 /// `KEEPING.civ_want` with none, falling to 0 as `store` fills to what it holds (`civ_holds`).
 pub fn civ_worths(store: &Basket, cap: f64) -> Basket {
-    civ_worths_packs(store, cap, 0.0)
-}
-
-/// `civ_worths` with the salt a store keeps for its packs (`KEEPING.packs`, with exchange on).
-pub fn civ_worths_packs(store: &Basket, cap: f64, packs: f64) -> Basket {
-    let holds = civ_holds(cap, packs);
+    let holds = civ_holds(cap);
     std::array::from_fn(|g| {
         if GOOD[g].eaten {
             1.0

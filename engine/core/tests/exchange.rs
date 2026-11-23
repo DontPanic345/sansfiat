@@ -1,5 +1,6 @@
-//! Exchange (`exchange.rs`): a unit on a market's tile joins its clearing with its pack's wares and wants
-//! food; a market that is a rival civ's takes none.
+//! Exchange (`exchange.rs`): an army's line may end at a market that isn't a rival's. Its civ pays it in wares
+//! along its line home, it posts them in that market's clearing, the food it buys waits at its stall there, and
+//! its line brings it.
 
 mod common;
 
@@ -36,18 +37,21 @@ fn pack_salt(w: &mut World, civ: u32, tile: usize, salt: f64, source: usize) -> 
 }
 
 #[test]
-fn a_camp_with_salt_on_a_festival_buys_food_and_the_clans_hold_where_it_came_from() {
+fn a_camp_with_salt_on_a_festival_buys_food_into_its_stall_and_the_clans_hold_where_it_came_from() {
     let (mut w, civs, mid, tile) = scene();
     let source = at_big(3, 3);
     let id = pack_salt(&mut w, civs[0], tile, 3.0, source);
     let salt_before: f64 = 3.0;
     trade(&mut w);
     let u = &w.units[&id];
-    assert!(total(&u.store) > 0.5, "it bought food: {}", total(&u.store));
+    let stall = u.stall.as_ref().expect("the food waits at its stall");
+    assert_eq!(stall.market, mid);
+    assert!(total(&stall.food) > 0.5, "it bought food: {}", total(&stall.food));
+    assert!(total(&u.store) < 1e-9, "none of it is in its pack until its line brings it");
     assert!(u.store[SALT] < salt_before - 0.1, "and sold salt: {}", u.store[SALT]);
     let t = u.traded.as_ref().expect("its trade is kept");
     assert_eq!(t.market, mid);
-    assert!((t.food - total(&u.store)).abs() < 1e-9);
+    assert!((t.food - total(&stall.food)).abs() < 1e-9);
     // Salt is conserved between the pack and the clans, and the clans' lots say it came from the source.
     let held: f64 =
         u.store[SALT] + w.clans.values().filter(|c| c.market == Some(mid)).map(|c| c.basket[SALT]).sum::<f64>();
@@ -80,62 +84,123 @@ fn with_exchange_off_a_camp_trades_nothing() {
     assert!(w.units[&id].traded.is_none());
 }
 
-/// The seven retro maps and how long the sweep plays each past the pick.
-const MAPS: [(&str, u32, u32); 7] = [
-    ("small", 2, 200),
-    ("small", 3, 200),
-    ("small", 6, 200),
-    ("small", 9, 200),
-    ("medium", 8, 250),
-    ("medium", 9, 250),
-    ("large", 8, 300),
-];
-
-/// What Carry moves on the retro maps: run with `cargo test --release --test exchange carry_flow -- --ignored
-/// --nocapture`. One line a map: second routes walked (clan-turns), clan-turns that sold wares there, the
-/// salt and obsidian sold, and the festivals where a carrier sold.
-#[test]
-#[ignore]
-fn carry_flow() {
-    let lines: Vec<String> = std::thread::scope(|s| {
-        let jobs: Vec<_> = MAPS
-            .iter()
-            .map(|&(size, seed, turns)| {
-                s.spawn(move || {
-                    let mut w = engine::stage::Stage::retro(size, seed).unwrap().into_world();
-                    w.act(engine::Action::ChooseCiv { civ: None }).unwrap();
-                    let (mut walked, mut sold, mut salt, mut obsidian) = (0, 0, 0.0, 0.0);
-                    let mut festivals = std::collections::BTreeSet::new();
-                    for _ in 0..turns {
-                        w.run(1);
-                        walked += w.clans.values().filter(|c| c.routes.len() > 1).count();
-                        for (_, m, b) in &w.carried {
-                            if b[SALT] + b[OBSIDIAN] > 1e-9 {
-                                sold += 1;
-                                festivals.insert(*m);
-                            }
-                            salt += b[SALT];
-                            obsidian += b[OBSIDIAN];
-                        }
-                    }
-                    format!(
-                        "{size} {seed}: walked {walked} clan-turns, sold on {sold}, salt {salt:.0}, obsidian {obsidian:.0}, {} festivals",
-                        festivals.len()
-                    )
-                })
-            })
-            .collect();
-        jobs.into_iter().map(|j| j.join().unwrap()).collect()
-    });
-    for l in lines {
-        println!("{l}");
+/// An army of civ 0 alone on a tile past its line's reach, with no food in its pack, its capital's store holding
+/// 40 salt and food, and a festival on the next tile out whose four clans, with food to spare, want salt and last
+/// traded it at a food's price. Returns the world, the civ, the army, the festival's market and tile.
+fn far() -> (World, u32, u32, u32, usize) {
+    let (mut w, civs, _) = three();
+    let civ = civs[0];
+    let capital = w.civs[&civ].capital;
+    let id = put_camp(&mut w, civ, capital);
+    camp_mut(&mut w, id).actor.store = [0.0; N];
+    // The nearest tile straight out from the capital, away from the rivals, past the reach, and the next one out.
+    let h = w.tiles[capital].hex();
+    let out = |k: i32| at_big(h.q, h.r + k);
+    let k = (1..10).find(|&k| engine::units::past_reach(&w, id, out(k))).expect("a tile past the reach");
+    let (tile, at) = (out(k), out(k + 1));
+    put_camp(&mut w, civ, tile);
+    let mid = open(&mut w, at);
+    let m = w.markets.get_mut(&mid).unwrap();
+    m.goods = vec![GRAIN, SALT];
+    m.prices[GRAIN] = 1.0;
+    m.prices[SALT] = 1.0;
+    let free: Vec<usize> = engine::land::neighbours(&w, at).filter(|&t| t != tile).take(4).collect();
+    for t in free {
+        let c = put(&mut w, &[t], 8.0);
+        let c = w.clans.get_mut(&c).unwrap();
+        c.market = Some(mid);
+        c.basket[GRAIN] = 80.0;
     }
+    let store = &mut w.civs.get_mut(&civ).unwrap().store;
+    store[SALT] = 40.0;
+    store[GRAIN] = 60.0;
+    (w, civ, id, mid, at)
 }
 
-/// A clan of the civ's land with a basket of grain and salt pays its levy at the civ's market.
-fn levied(exchange: bool) -> (f64, f64) {
+#[test]
+fn an_army_past_its_lines_reach_is_paid_salt_along_its_line_home_and_its_line_ends_at_the_festival() {
+    let (mut w, civ, id, _, at) = far();
+    let capital = w.civs[&civ].capital;
+    assert!(engine::units::past_reach(&w, id, w.units[&id].home), "food can't come down its line home");
+    engine::units::step(&mut w);
+    let u = &w.units[&id];
+    let paid = u.store[SALT];
+    assert!(paid > 1.0, "its civ paid it salt: {paid}");
+    assert!((w.civs[&civ].store[SALT] - (40.0 - paid)).abs() < 1e-9, "from its capital's store");
+    let stall = u.stall.as_ref().expect("a stall at the festival");
+    assert_eq!(w.markets[&stall.market].tile, at, "its stall is at the festival");
+    assert_eq!(engine::units::store_of(&w, id), Some(capital), "and its line home still ends at its capital");
+    assert!(w.notes[&id].iter().any(|n| n.text.contains("paid it") && n.text.contains("salt")));
+}
+
+#[test]
+fn the_food_it_buys_waits_at_its_stall_and_its_line_brings_it() {
+    let (mut w, _, id, mid, at) = far();
+    engine::units::step(&mut w);
+    trade(&mut w);
+    let bought = engine::exchange::stall_at(&w.units[&id], mid);
+    assert!(bought > 1.0, "it bought food at the festival: {bought}");
+    engine::units::step(&mut w);
+    let u = &w.units[&id];
+    assert!(engine::exchange::stall_at(u, mid) < bought * 0.5, "its line took the food from the stall");
+    assert!(w.notes[&id].iter().any(|n| n.text.contains("its line brings food")));
+    assert_eq!(u.routes.first().map(|r| r.to), Some(at), "its line ended at the festival this turn");
+    assert_eq!(u.hungry, 0, "and it ate");
+}
+
+#[test]
+fn a_festival_that_didnt_trade_a_ware_doesnt_make_it_pay() {
+    let (mut w, civ, id, mid, _) = far();
+    w.markets.get_mut(&mid).unwrap().goods = vec![GRAIN];
+    engine::units::step(&mut w);
+    assert_eq!(w.units[&id].store[SALT], 0.0);
+    assert_eq!(w.civs[&civ].store[SALT], 40.0);
+}
+
+#[test]
+fn a_ware_that_buys_less_than_its_weight_in_food_isnt_pay() {
+    let (mut w, _, id, mid, _) = far();
+    w.markets.get_mut(&mid).unwrap().prices[SALT] = 0.5 * GOOD[SALT].weight;
+    engine::units::step(&mut w);
+    assert_eq!(w.units[&id].store[SALT], 0.0, "food is cheaper carried than bought with it");
+}
+
+#[test]
+fn a_rivals_market_never_ends_its_line() {
+    let (mut w, civs, _) = three();
+    let rival = w.civs[&civs[1]].market;
+    let theirs = w.civs[&civs[1]].capital;
+    let id = put_camp(&mut w, civs[0], theirs);
+    let mut food = [0.0; N];
+    food[GRAIN] = 10.0;
+    camp_mut(&mut w, id).stall = Some(engine::exchange::Stall { market: rival, food });
+    assert!(engine::exchange::market_end(&w, &w.units[&id]).is_none());
+}
+
+#[test]
+fn the_store_keeps_its_armies_pay_back_from_its_keeping() {
+    let (mut w, civ, id, _, _) = far();
+    let capital = w.civs[&civ].capital;
+    let back = engine::exchange::pay_back(&w, civ, capital);
+    let plan = engine::exchange::pay_plan(&w, id).expect("it is paid");
+    assert!((back - plan.wares[SALT]).abs() < 1e-9 && back > 1.0, "it keeps back the pay: {back}");
+    engine::civs::upkeep(&mut w);
+    assert!(w.civs[&civ].store[SALT] + 1e-9 >= back, "its keeping used none of it: {}", w.civs[&civ].store[SALT]);
+}
+
+#[test]
+fn with_exchange_off_an_army_isnt_paid() {
+    let (mut w, civ, id, _, _) = far();
+    w.config.exchange = false;
+    engine::units::step(&mut w);
+    assert_eq!(w.units[&id].store[SALT], 0.0);
+    assert_eq!(w.civs[&civ].store[SALT], 40.0);
+    assert!(w.units[&id].routes.first().is_none_or(|r| r.to == w.civs[&civ].capital));
+}
+
+#[test]
+fn the_levy_takes_salt_at_the_foods_share() {
     let (mut w, ids, _) = led();
-    w.config.exchange = exchange;
     let red = ids[0];
     let mid = w.civs[&red].market;
     hold_land(&mut w, red, &[at_big(-4, 0)]);
@@ -149,20 +214,24 @@ fn levied(exchange: bool) -> (f64, f64) {
     engine::leaning::land(&mut w, false);
     engine::civs::levy(&mut w, mid);
     let store = &w.civs[&red].store;
-    (store[GRAIN], store[SALT])
+    assert!((store[GRAIN] - CIV.levy * 10.0).abs() < 1e-9);
+    assert!((store[SALT] - CIV.levy * 4.0).abs() < 1e-9);
 }
 
-#[test]
-fn the_levy_takes_salt_at_its_own_share_with_exchange_on_and_the_food_share_with_it_off() {
-    let (grain, salt) = levied(true);
-    assert!((grain - CIV.levy * 10.0).abs() < 1e-9, "the food pays CIV.levy");
-    assert!((salt - KEEPING.levy * 4.0).abs() < 1e-9, "the salt pays KEEPING.levy");
-    let (grain, salt) = levied(false);
-    assert!((grain - CIV.levy * 10.0).abs() < 1e-9);
-    assert!((salt - CIV.levy * 4.0).abs() < 1e-9, "with exchange off, salt pays the food's share");
-}
+/// The seven retro maps and how long the sweep plays each past the pick.
+const MAPS: [(&str, u32, u32); 7] = [
+    ("small", 2, 200),
+    ("small", 3, 200),
+    ("small", 6, 200),
+    ("small", 9, 200),
+    ("medium", 8, 250),
+    ("medium", 9, 250),
+    ("large", 8, 300),
+];
 
-/// What stands between an army and a foreign market, a map at a time: run with `--ignored --nocapture`.
+/// What armies do with exchange on the retro maps, a map a line: run with `cargo test --release --test exchange
+/// army_flow -- --ignored --nocapture`. Army-turns, those past their line home's reach, those paid, those whose
+/// line ends at a market, those that bought food there and the food, and the salt a civ's store held a turn.
 #[test]
 #[ignore]
 fn army_flow() {
@@ -173,38 +242,38 @@ fn army_flow() {
                 s.spawn(move || {
                     let mut w = engine::stage::Stage::retro(size, seed).unwrap().into_world();
                     w.act(engine::Action::ChooseCiv { civ: None }).unwrap();
-                    let (mut camps, mut salted, mut low, mut bought, mut res, mut civt) = (0, 0, 0, 0, 0.0, 0);
-                    let (mut full, mut got) = (0, 0.0);
+                    let (mut camps, mut past, mut paid, mut ends, mut bought, mut food) = (0, 0, 0, 0, 0, 0.0);
+                    let (mut civt, mut salt) = (0, 0.0);
                     for _ in 0..turns {
+                        let before: std::collections::BTreeMap<u32, f64> =
+                            w.units.values().map(|u| (u.id, u.store[SALT])).collect();
                         w.run(1);
                         for u in w.units.values().filter(|u| u.camp().is_some()) {
                             camps += 1;
-                            if u.store[SALT] > 1e-9 {
-                                salted += 1;
-                                if engine::market::total(&u.store) < PLAN.trade_at * u.people * UNIT.food {
-                                    low += 1;
-                                }
+                            if engine::units::past_reach(&w, u.id, u.home) {
+                                past += 1;
+                            }
+                            if u.store[SALT] > before.get(&u.id).copied().unwrap_or(0.0) + 1e-9 {
+                                paid += 1;
+                            }
+                            let end = u.routes.first().map(|r| r.to);
+                            let at_market = end.is_some_and(|t| w.markets.values().any(|m| m.tile == t));
+                            if at_market && end != engine::units::store_of(&w, u.id) {
+                                ends += 1;
                             }
                             if let Some(t) = u.traded.as_ref().filter(|t| t.food > 1e-6) {
-                                let own = w.civs.get(&u.civ).map(|c| c.market) == Some(t.market)
-                                    || engine::settle::of(&w, u.civ).any(|s| s.market == t.market);
-                                if !own {
-                                    bought += 1;
-                                    got += t.food;
-                                }
+                                bought += 1;
+                                food += t.food;
                             }
                         }
                         for c in w.civs.values().filter(|c| !c.is_out()) {
                             civt += 1;
-                            res += c.store[SALT];
-                            if c.store[SALT] >= 3.0 {
-                                full += 1;
-                            }
+                            salt += c.store[SALT];
                         }
                     }
                     format!(
-                        "{size} {seed}: camp-turns {camps}, with salt {salted}, with salt and low {low}, foreign army-turns {bought} (food {got:.2}); civ-turns {civt}, mean store salt {:.2}, store salt >= 3 on {full}",
-                        res / civt.max(1) as f64
+                        "{size} {seed}: army-turns {camps}, past reach {past}, paid {paid}, line at a market {ends}, bought {bought} (food {food:.1}); mean store salt {:.2}",
+                        salt / civt.max(1) as f64
                     )
                 })
             })
@@ -214,144 +283,4 @@ fn army_flow() {
     for l in lines {
         println!("{l}");
     }
-}
-
-/// Two festivals three steps apart on the big world, a clan between them on festival A, holding salt A's
-/// last clearing didn't take (A trades grain only, B salt too), and two clans at B that want salt.
-fn two_festivals() -> (World, u32, u32, u32) {
-    let mut w = big();
-    let (a, b) = (open(&mut w, at_big(0, 0)), open(&mut w, at_big(3, 0)));
-    w.markets.get_mut(&a).unwrap().goods = vec![GRAIN];
-    w.markets.get_mut(&b).unwrap().goods = vec![GRAIN, SALT];
-    let id = put(&mut w, &[at_big(1, 0)], 8.0);
-    let c = w.clans.get_mut(&id).unwrap();
-    c.market = Some(a);
-    c.store[GRAIN] = 10.0;
-    c.store[SALT] = 4.0;
-    c.lots = Lots::dug(SALT, at_big(-2, 1));
-    for t in [at_big(4, 0), at_big(3, 1)] {
-        let k = put(&mut w, &[t], 4.0);
-        let c = w.clans.get_mut(&k).unwrap();
-        c.market = Some(b);
-        c.basket[GRAIN] = 30.0;
-        c.basket[GAME] = 10.0;
-    }
-    (w, id, a, b)
-}
-
-#[test]
-fn a_clan_walks_a_second_route_for_salt_its_festival_left_unsold() {
-    let (w, id, a, b) = two_festivals();
-    let c = &w.clans[&id];
-    let festivals = engine::markets::festival_costs(&w, &mut engine::reach::Scratch::new(&w), c.home);
-    let route = engine::exchange::carry_route(&w, c, &festivals).expect("worth the walk");
-    assert_eq!(route.to, w.markets[&b].tile);
-    assert!(route.cost > 0.0);
-    // Salt A trades is no second walk.
-    let mut w = w;
-    w.markets.get_mut(&a).unwrap().goods = vec![GRAIN, SALT];
-    let c = &w.clans[&id];
-    assert!(engine::exchange::carry_route(&w, c, &festivals).is_none());
-}
-
-#[test]
-fn a_carrier_trades_its_wares_at_the_second_festival_and_its_lots_go_with_them() {
-    let (mut w, id, a, b) = two_festivals();
-    let c = &w.clans[&id];
-    let festivals = engine::markets::festival_costs(&w, &mut engine::reach::Scratch::new(&w), c.home);
-    let route = engine::exchange::carry_route(&w, c, &festivals).unwrap();
-    let c = w.clans.get_mut(&id).unwrap();
-    c.routes = vec![engine::Route { to: w.markets[&a].tile, path: vec![], cost: 0.0 }, route];
-    c.basket = c.store;
-    c.store = [0.0; N];
-    let salt: f64 = w.clans.values().map(|c| c.basket[SALT]).sum();
-    trade(&mut w);
-    let sold = w.carried.iter().find(|x| x.0 == id).expect("it carried");
-    assert_eq!(sold.1, b);
-    assert!(sold.2[SALT] > 0.5, "it sold salt: {}", sold.2[SALT]);
-    assert!(w.clans[&id].basket[SALT] < 4.0);
-    let after: f64 = w.clans.values().map(|c| c.basket[SALT]).sum();
-    assert!((after - salt).abs() < 1e-9, "salt is conserved");
-    let buyer = w.clans.values().find(|c| c.market == Some(b) && c.basket[SALT] > 1e-9).expect("a buyer");
-    let lot = buyer.lots.of(SALT).next().unwrap();
-    assert_eq!((lot.source, lot.markets.clone()), (at_big(-2, 1), vec![b]));
-}
-
-/// Civ `civ`'s capital holds `salt` dug at `source`, with its lots.
-fn capital_salt(w: &mut World, civ: u32, salt: f64, source: usize) {
-    let c = w.civs.get_mut(&civ).unwrap();
-    c.store[SALT] = salt;
-    c.actor.lots = Lots::dug(SALT, source);
-}
-
-#[test]
-fn fill_on_a_capital_moves_salt_from_the_store_into_the_pack_with_its_lots() {
-    let (mut w, civs, _) = led();
-    let source = at_big(3, 3);
-    let capital = w.civs[&civs[0]].capital;
-    capital_salt(&mut w, civs[0], 100.0, source);
-    let id = put_camp(&mut w, civs[0], capital);
-    camp_mut(&mut w, id).actor.store = [0.0; N];
-    let room = UNIT.salt * w.units[&id].people;
-    w.order(civs[0], engine::orders::Order::Fill { unit: id }).expect("a store with salt, and room");
-    let u = &w.units[&id];
-    let took = room.min(100.0);
-    assert!((u.store[SALT] - took).abs() < 1e-9, "the pack took {took}: {}", u.store[SALT]);
-    assert!((w.civs[&civs[0]].store[SALT] - (100.0 - took)).abs() < 1e-9, "the store kept the rest");
-    let lot = u.lots.of(SALT).next().expect("the pack has its lot");
-    assert_eq!((lot.source, lot.markets.clone()), (source, Vec::<u32>::new()));
-    // A full pack is refused with the reason.
-    let err = w.order(civs[0], engine::orders::Order::Fill { unit: id }).unwrap_err();
-    assert!(err.contains("full"), "{err}");
-}
-
-#[test]
-fn fill_off_a_store_is_refused_and_with_exchange_off_it_is_refused_too() {
-    let (mut w, civs, _) = led();
-    let tile = at_big(0, 3);
-    capital_salt(&mut w, civs[0], 5.0, at_big(3, 3));
-    let id = put_camp(&mut w, civs[0], tile);
-    let err = w.order(civs[0], engine::orders::Order::Fill { unit: id }).unwrap_err();
-    assert!(err.contains("off a store"), "{err}");
-    let capital = w.civs[&civs[0]].capital;
-    put_camp(&mut w, civs[0], capital);
-    w.config.exchange = false;
-    let err = w.order(civs[0], engine::orders::Order::Fill { unit: id }).unwrap_err();
-    assert!(err.contains("exchange is off"), "{err}");
-}
-
-#[test]
-fn a_store_keeps_its_pack_salt_back_from_its_keeping_and_a_clans_store_does_not() {
-    let mut store = [0.0; N];
-    store[GAME] = 40.0;
-    store[SALT] = 12.0;
-    let mut clan = store;
-    engine::actors::spoil_keeping(&mut store, KEEPING.packs);
-    // The store's 12 salt keeps 2 beyond its reserve: all 2 are used, and the reserve of 10 stays whole.
-    assert!((store[SALT] - KEEPING.packs).abs() < 1e-9, "the reserve stays: {}", store[SALT]);
-    engine::actors::spoil(&mut clan);
-    assert!(clan[SALT] < 12.0 - 1e-9, "a clan's salt keeps its food: {}", clan[SALT]);
-    assert!(clan[SALT] < store[SALT], "a clan's salt is used where a store's reserve is not");
-}
-
-#[test]
-fn an_army_with_salt_and_no_food_marches_to_a_festival_to_buy_food() {
-    let (mut w, civs, _, tile) = scene();
-    w.act(engine::Action::ChooseCiv { civ: Some(civs[0]) }).unwrap();
-    // The camp stands a step from the festival with salt and no food; its line may feed it, so the test
-    // checks the planner's order, not its feeding.
-    let start = engine::land::neighbours(&w, tile).next().unwrap();
-    let id = pack_salt(&mut w, civs[0], start, 3.0, at_big(3, 3));
-    let mut give = |w: &mut World, civ: u32, d: engine::units::Decision| match d {
-        engine::units::Decision::Order(o) => w.order(civ, o),
-        engine::units::Decision::Gift(_) => Ok(()),
-    };
-    engine::units::plan(&mut w, civs[0], &mut give);
-    let u = &w.units[&id];
-    assert!(
-        u.dest() == Some(tile) || u.home == tile,
-        "it marches to the festival to buy food: dest {:?}, home {}",
-        u.dest(),
-        u.home
-    );
 }

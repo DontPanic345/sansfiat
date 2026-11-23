@@ -335,14 +335,6 @@ const CASES = {
       need(f1 <= f0 + 1e-9 && eaten >= 0 && eaten <= 2 + 1e-9, `Forage on the full scout is accepted and its pack falls only by what it eats (${f0.toFixed(2)} → ${f1.toFixed(2)})`);
     }
   },
-  'Fill salt': async (kind) => {
-    // The staged army and scout stand off a store, so Fill salt is greyed and its tooltip says why. A press that
-    // goes through is exchange.mjs's: it needs a store with salt, which this stage does not give.
-    await select(kind);
-    const b = await page.eval(`(() => { const x = [...document.querySelectorAll('button')].filter((b) => b.offsetParent)
-      .find((b) => b.textContent.trim().startsWith('Fill salt')); return x ? { disabled: x.disabled, title: x.title } : null; })()`);
-    need(b && b.disabled && /store/.test(b.title), `Fill salt is greyed on the ${kind} off a store, and says why (${b?.title ?? 'no button'})`);
-  },
   Pillage: async () => {
     // The camp stands on the rival's plains beside its capital (P), the rival's claim. What this staged map can
     // show is that the order is open there: the tile is the rival's and Pillage is pressed. The food is not

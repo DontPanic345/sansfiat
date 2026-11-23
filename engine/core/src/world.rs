@@ -17,7 +17,6 @@ use crate::events::{Event, EventKind};
 use crate::land;
 use crate::leaning;
 use crate::map::{self, Tile};
-use crate::market::Basket;
 use crate::markets::{self, Market};
 use crate::orders::Order;
 use crate::over::{self, Over};
@@ -42,10 +41,6 @@ pub struct World {
     /// derived, not saved, and a clan at no market that cleared has none.
     #[serde(skip)]
     pub traded: BTreeMap<u32, f64>,
-    /// The wares each carrier sold at its second festival this turn, as `trade` writes it: (clan, market, wares
-    /// sold). Derived, not saved; the judge counts them.
-    #[serde(skip)]
-    pub carried: Vec<(u32, u32, Basket)>,
     /// The food each clan paid in levy this turn, as `civs::levy` writes it (the views read it, no rule).
     #[serde(skip)]
     pub levied: BTreeMap<u32, f64>,
@@ -210,7 +205,6 @@ impl World {
             clans: BTreeMap::new(),
             sowers: Vec::new(),
             traded: BTreeMap::new(),
-            carried: Vec::new(),
             levied: BTreeMap::new(),
             markets: BTreeMap::new(),
             moved: 0.0,

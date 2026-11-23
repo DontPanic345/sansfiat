@@ -16,12 +16,11 @@ mod ai;
 mod camp;
 pub mod fight;
 mod forage;
-mod line;
+pub(crate) mod line;
 mod muster;
 mod paths;
 mod scout;
 mod search;
-pub mod trade;
 
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
@@ -31,7 +30,7 @@ use serde::{Deserialize, Serialize};
 use crate::actors::{Actor, Carrier};
 use crate::claim;
 use crate::data::*;
-use crate::exchange::UnitTrade;
+use crate::exchange::{Stall, UnitTrade};
 use crate::world::World;
 
 pub use ai::{ai, claim_plan, outweighs, plan, post, signpost_plan, signpost_sites, Decision, Give};
@@ -124,6 +123,8 @@ pub struct Unit {
     pub state: UnitState,
     /// What its pack did at a market's clearing last turn, if it joined one (`exchange.rs`).
     pub traded: Option<UnitTrade>,
+    /// The food it bought at a market that its line hasn't brought yet (`exchange.rs`).
+    pub stall: Option<Stall>,
 }
 
 /// What a unit is, and the state only that kind has.
@@ -184,6 +185,8 @@ struct UnitFlat {
     back: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     traded: Option<UnitTrade>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    stall: Option<Stall>,
 }
 
 impl From<Unit> for UnitFlat {
@@ -228,6 +231,7 @@ impl From<Unit> for UnitFlat {
             homing: scout.homing,
             back: scout.back,
             traded: u.traded,
+            stall: u.stall,
         }
     }
 }
@@ -266,7 +270,16 @@ impl From<UnitFlat> for Unit {
                 doing: Doing::Idle,
             }),
         };
-        Unit { id: f.id, civ: f.civ, actor: f.actor, banked: f.banked, hungry: f.hungry, state, traded: f.traded }
+        Unit {
+            id: f.id,
+            civ: f.civ,
+            actor: f.actor,
+            banked: f.banked,
+            hungry: f.hungry,
+            state,
+            traded: f.traded,
+            stall: f.stall,
+        }
     }
 }
 

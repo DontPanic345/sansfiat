@@ -1,5 +1,5 @@
-// The goods on the page (#356): a store's wares as rows that pick a good (the picked one marked), the Fill salt
-// button a unit's row gains, and the chains a picked good makes on the map, which the flow layer draws
+// The goods on the page (#356): a store's wares as rows that pick a good (the picked one marked), and the chains
+// a picked good makes on the map, which the flow layer draws
 // (map/layers/flow.js). Imported by panels.js and panels-land.js.
 import { f2 } from './panels.js';
 
@@ -24,16 +24,6 @@ export function wareRows(ctx, store, always, what, at = null) {
         picked,
       };
     });
-}
-
-/** The Fill salt button a unit's row gains: the order that fills its pack from the store it stands on, greyed
- *  with the engine's reason when it can't act now (`u.fill`, from the view). */
-export function fillButton(u) {
-  return {
-    label: 'Fill salt',
-    action: { type: 'order', civ: u.civ, order: { type: 'fill', unit: u.id } },
-    why: u.fill.ok ? '' : u.fill.why,
-  };
 }
 
 /** The chains the picked good makes on the map: `{good, store, chains}`, each chain a lot of it in the store

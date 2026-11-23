@@ -40,14 +40,15 @@ pub(super) fn strip_at(w: &mut World, id: u32, tile: usize, labour: f64, room: f
     (food / rate, food)
 }
 
-/// Puts up to `labour` on the line for up to `want` of food into the pack, from the store the line
-/// ends at and no other. Returns
+/// Puts up to `labour` on the line for up to `want` of food into the pack, from the end the line
+/// ends at and no other: a store of its civ, or its stall at a market (`exchange::Stall`). Returns
 /// the labour used and the food brought.
 pub(super) fn supply(w: &mut World, id: u32, labour: f64, want: f64) -> (f64, f64) {
     let (civ, home) = (w.units[&id].civ, w.units[&id].home);
     let Some((path, cost, _)) = line(w, id) else { return (0.0, 0.0) };
-    let store = path.last().copied().unwrap_or(home);
-    let held = settle::store(w, civ, store).map_or(0.0, total);
+    let end = path.last().copied().unwrap_or(home);
+    let stall = settle::store(w, civ, end).is_none();
+    let held = if stall { stall_food(w, id, end) } else { settle::store(w, civ, end).map_or(0.0, total) };
     let mut food = want.min(held);
     let mut used = 0.0;
     if cost > 0.0 {
@@ -58,9 +59,22 @@ pub(super) fn supply(w: &mut World, id: u32, labour: f64, want: f64) -> (f64, f6
     if food <= EPS {
         return (0.0, 0.0);
     }
-    let got = settle::store_mut(w, civ, store).map(|s| take(s, food)).unwrap_or_default();
+    let got = if stall {
+        w.units.get_mut(&id).unwrap().stall.as_mut().map(|s| take(&mut s.food, food)).unwrap_or_default()
+    } else {
+        settle::store_mut(w, civ, end).map(|s| take(s, food)).unwrap_or_default()
+    };
     add(&mut w.units.get_mut(&id).unwrap().store, &got);
     (used, food)
+}
+
+/// The food in unit `id`'s stall, when its stall is at the market on `tile`.
+fn stall_food(w: &World, id: u32, tile: usize) -> f64 {
+    let u = &w.units[&id];
+    u.stall
+        .as_ref()
+        .filter(|s| w.markets.get(&s.market).is_some_and(|m| m.tile == tile))
+        .map_or(0.0, |s| total(&s.food))
 }
 
 /// The labour a unit has left this turn, spent down rung by rung: each spend takes its labour off

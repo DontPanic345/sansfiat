@@ -500,12 +500,6 @@ fn legal(w: &World, me: u32) -> String {
         let near: Vec<usize> = engine::land::neighbours(w, u.tile()).collect();
         match u.kind() {
             UnitKind::Camp => {
-                if ok(Order::Fill { unit: id }) {
-                    out += &format!(
-                        "  {{\"type\":\"fill\",\"unit\":{id}}}  fills its pack with salt from the store it stands on, up to {:.1}\n",
-                        engine::data::UNIT.salt * u.people
-                    );
-                }
                 if ok(Order::Disband { unit: id, n: None, fighter: None }) {
                     out += &format!("  {{\"type\":\"disband\",\"unit\":{id}}}\n");
                 }

@@ -1,9 +1,7 @@
-// Exchange on the page (#356): Fill salt moves salt from the capital's store into the army's pack, and a store's
-// picked good draws its chains on the map. A staged game: the led civ's capital A with an army on it, a rival's
-// capital B, a salt source S and an obsidian source O, and the capital's store holding 40 salt and 3 obsidian, each
-// dug at its source. Presses Fill salt on the army and checks the pack's salt rose and the store's fell in
-// `Sim.view()`; picks the store's obsidian and checks the flow layer drew a chain whose first point is a source,
-// then salt, then the second click and Escape clear it.
+// Exchange on the page (#356): a store's picked good draws its chains on the map. A staged game: the led civ's
+// capital A, a rival's capital B, a salt source S and an obsidian source O, and the capital's store holding 40 salt
+// and 3 obsidian, each dug at its source. Picks the store's obsidian and checks the flow layer drew a chain whose
+// first point is a source, then salt, then the second click and Escape clear it.
 //   node www/play/exchange.mjs [--out DIR]
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -41,7 +39,6 @@ const SPEC = {
     { at: { mark: 'O' }, good: 'obsidian' },
   ],
   stores: [{ civ: 0, food: 10, salt: 40, obsidian: 3 }],
-  armies: [{ civ: 0, at: { mark: 'A' }, people: 4 }],
 };
 
 const page = await open('');
@@ -53,39 +50,8 @@ try {
   const sources = await page.eval('game.map.l.source');
   const S = sources.indexOf('salt');
   const O = sources.indexOf('obsidian');
-  const army = Object.values(v0.units).find((u) => u.civ === civ && u.kind === 'camp');
-  need(army && army.tile === capital, `an army of the led civ stands on its capital (${capital})`);
   need(S >= 0 && O >= 0, `the map has a salt source (${S}) and an obsidian source (${O})`);
   need(v0.civs[civ].store[SALT] > 0 && v0.civs[civ].store[OBSIDIAN] > 0, 'the capital’s store holds salt and obsidian');
-
-  // Select the army: clicks on its tile cycle through what is there until it is selected.
-  for (let n = 0; n < 12 && (await page.data()).selected !== `unit:${army.id}`; n++) {
-    await page.click(capital);
-    await page.eval(frames);
-  }
-  need((await page.data()).selected === `unit:${army.id}`, `the army is selected`);
-
-  // Fill salt: the pack's salt rises and the store's falls by the same amount.
-  const before = await page.eval('game.view()');
-  await page.button('Fill salt');
-  await page.eval(frames);
-  const after = await page.eval('game.view()');
-  const packBefore = before.units[army.id].store[SALT];
-  const packAfter = after.units[army.id].store[SALT];
-  const storeBefore = before.civs[civ].store[SALT];
-  const storeAfter = after.civs[civ].store[SALT];
-  need(packAfter > packBefore + 1e-9, `Fill salt raises the pack's salt (${packBefore.toFixed(2)} → ${packAfter.toFixed(2)})`);
-  need(
-    Math.abs((packAfter - packBefore) - (storeBefore - storeAfter)) < 1e-9,
-    `the store's salt falls by what the pack gained (${storeBefore.toFixed(2)} → ${storeAfter.toFixed(2)})`,
-  );
-  const carried = after.units[army.id].lots.find((l) => l.good === SALT);
-  need(carried && carried.source === S, `the pack's salt is dug at the salt source (${S})`);
-  const full = await page.eval(`(() => {
-    const b = [...document.querySelectorAll('button')].filter((x) => x.offsetParent).find((x) => x.textContent.trim().startsWith('Fill salt'));
-    return b && b.disabled ? b.title : null;
-  })()`);
-  need(full && /full/.test(full), `Fill salt is greyed once the pack is full, and says so (${full})`);
 
   // The store's obsidian: pick it, and the flow layer draws its chain from the obsidian source.
   for (let n = 0; n < 12 && (await page.data()).selected !== `civ:${civ}`; n++) {

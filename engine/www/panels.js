@@ -7,7 +7,7 @@
 // goods, rules, sim, view (MapView), routing, outcome, painting}.
 
 import { festivalShape, settlementShape, tileShape } from './panels-land.js';
-import { fillButton, wareRows } from './panels-goods.js';
+import { wareRows } from './panels-goods.js';
 
 export const f2 = (x) => (Math.round(x * 100) / 100).toString();
 const ZONES = ['', 'valley', 'sealed valley', 'neck'];
@@ -229,7 +229,8 @@ function campShape(ctx, u) {
       : []),
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
     { label: 'Line', value: line, tip: 'Its line home: steps, the days it costs, and the food a turn it carries with all its labour' },
-    { label: 'Draws on', value: u.draws_on ? (u.draws_on.label === 'capital' ? 'its capital' : `its settlement at (${hex(ctx, u.draws_on.tile)})`) : 'none', tip: 'The store its line ends at: the one that feeds it cheapest' },
+    { label: 'Draws on', value: u.draws_on ? (u.draws_on.label === 'capital' ? 'its capital' : `its settlement at (${hex(ctx, u.draws_on.tile)})`) : 'none', tip: 'The store its line home ends at: its pay comes from here, and its food when no market feeds it cheaper' },
+    ...(u.buys_at ? [{ label: 'Buys at', value: `the festival at (${hex(ctx, u.buys_at.tile)}), ${f2(u.buys_at.food)} food waiting`, tip: 'Its line ends at this market: it buys food there with the wares its civ sends it' }] : []),
   ];
   if (u.kind === 'camp') {
     const guard = u.guard.length ? u.guard.reduce((a, b) => a + b, 0) / u.guard.length : 0;
@@ -249,7 +250,6 @@ function campShape(ctx, u) {
     buttons.push({ label: 'Forage', action: unitOrder(u, { type: 'forage' }) });
     buttons.push({ label: 'Pillage', action: unitOrder(u, { type: 'pillage' }) });
     buttons.push({ label: 'Resupply', action: unitOrder(u, { type: 'resupply' }) });
-    buttons.push(fillButton(u));
     buttons.push(...switchButtons(u));
     if (deployed) buttons.push({ label: 'Undeploy', action: unitOrder(u, { type: 'zone', tiles: [] }) });
     if (u.kind === 'camp') buttons.push(raiseInto(u, rules));
@@ -333,7 +333,6 @@ function scoutShape(ctx, u) {
   const buttons = [];
   if (mine) {
     buttons.push({ label: 'Move to…', arm: 'move' }, { label: 'Route from…', arm: 'start' }, { label: 'Route to…', arm: 'to' });
-    buttons.push(fillButton(u));
     if (u.route) buttons.push({ label: 'Clear route', action: unitOrder(u, { type: 'clearRoute' }) });
     if (u.dest != null) buttons.push({ label: 'Stop', action: unitOrder(u, { type: 'move', to: u.tile }) });
     buttons.push(...disband(u));

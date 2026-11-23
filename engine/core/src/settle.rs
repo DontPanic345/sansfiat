@@ -317,9 +317,9 @@ pub fn fallen(w: &mut World, civ: u32) {
 /// The civs' part of the `civs` step for settlements: each store spoils and what is over
 /// `SETTLE.store_cap` is lost.
 pub fn upkeep(w: &mut World) {
-    let packs = crate::exchange::packs(w);
-    for s in w.settlements.values_mut() {
-        crate::actors::spoil_keeping(&mut s.store, packs);
+    let backs: Vec<f64> = w.settlements.values().map(|s| crate::exchange::pay_back(w, s.civ, s.tile)).collect();
+    for (s, back) in w.settlements.values_mut().zip(backs) {
+        crate::actors::spoil_keeping(&mut s.store, back);
         let all = total(&s.store);
         s.lost = (all - SETTLE.store_cap).max(0.0);
         if s.lost > 0.0 {

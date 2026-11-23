@@ -143,6 +143,7 @@ fn join(w: &mut World, civ: u32, k: f64, pack: Basket, fighter: Fighter, into: O
                 hungry: 0,
                 state: UnitState::Camp(CampState::new(capital, [0.0; 2])),
                 traded: None,
+                stall: None,
             };
             unit.add_people(fighter, k);
             w.units.insert(id, unit);
@@ -177,6 +178,7 @@ pub(crate) fn make_camp(w: &mut World, civ: u32) -> u32 {
         hungry: 0,
         state: UnitState::Camp(CampState::new(capital, [0.0; 2])),
         traded: None,
+        stall: None,
     };
     w.units.insert(id, unit);
     w.civs.get_mut(&civ).unwrap().army.raised += 1;
@@ -220,8 +222,16 @@ fn make_scout(w: &mut World, civ: u32, k: f64, capital: usize) -> u32 {
     actor.store = pack;
     let id = w.next_id;
     w.next_id += 1;
-    let unit =
-        Unit { id, civ, actor, banked: 0.0, hungry: 0, state: UnitState::Scout(ScoutState::new()), traded: None };
+    let unit = Unit {
+        id,
+        civ,
+        actor,
+        banked: 0.0,
+        hungry: 0,
+        state: UnitState::Scout(ScoutState::new()),
+        traded: None,
+        stall: None,
+    };
     w.units.insert(id, unit);
     id
 }

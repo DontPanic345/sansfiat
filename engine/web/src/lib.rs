@@ -5,8 +5,8 @@ use engine::script::Lead;
 use engine::stage::{Stage, StageSpec};
 use engine::units::UnitKind;
 use engine::{
-    civs, fields, markets, outlook, settle, stats, units, Action, Basket, Config, Order, Phase, Save, World, FOODS,
-    GOODS, TERRAIN,
+    civs, fields, markets, outlook, settle, stats, units, Action, Basket, Config, Phase, Save, World, FOODS, GOODS,
+    TERRAIN,
 };
 use std::collections::BTreeMap;
 
@@ -132,8 +132,7 @@ impl Sim {
     /// `rules()` gives `join`, the leaning a clan joins a civ at, for the tints. `units` is the camps,
     /// `{id: camp}`, a camp being its engine fields (`kind`, `people` (warriors), `home`, `store` (the
     /// pack, a basket), `dest`, `banked`, `hungry`, `auto_forage`, `auto_supply`, `routes`, ...) and
-    /// `tile`, `lots` (the pack's wares' lots, as the store's), `fill` (`{ok, why}`: whether `Order::Fill` goes
-    /// through now, and the engine's reason if not), `draws_on` (`{tile, label, name}`: the store its line ends at, `label` "capital" or "settlement"; null with no line), `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
+    /// `tile`, `lots` (the pack's wares' lots, as the store's), `draws_on` (`{tile, label, name}`: the store its line home ends at, `label` "capital" or "settlement"; null with no line), `buys_at` (`{tile, food}`: the market its line ends at instead, and the food waiting at its stall there; null when its line ends at a store), `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
     /// (`{path, cost, carry}`: the path after its tile to the capital, its cost, and the food it carries
     /// a turn with all its labour; carry null is without limit, at the capital; `line` itself null when
     /// there is no line), `cut_off`, `cut_by` (the rival whose land cuts its line, `units::cut_by_rival`, else null), `territory` (its zone, sorted, its tile in it), `held` (the zone's
@@ -238,9 +237,11 @@ impl Sim {
                         serde_json::json!({ "tile": tile, "label": label, "name": settle::store_name(w, u.civ, tile) })
                     })
                     .into();
-                // Fill: whether the order goes through now, and if not, why (the button's greyed reason).
-                let fill = w.validate(&Action::Order { civ: u.civ, order: Order::Fill { unit: u.id } });
-                row["fill"] = serde_json::json!({ "ok": fill.is_ok(), "why": fill.err().unwrap_or_default() });
+                row["buys_at"] = units::line(w, u.id)
+                    .and_then(|(path, _, _)| path.last().copied().or(Some(u.tile())))
+                    .and_then(|end| w.markets.values().find(|m| m.tile == end && settle::store(w, u.civ, end).is_none()))
+                    .map(|m| serde_json::json!({ "tile": m.tile, "food": engine::exchange::stall_at(u, m.id) }))
+                    .into();
                 row["cut_off"] = units::cut_off(w, u.id).into();
                 row["cut_by"] = units::cut_by_rival(w, u.id).into();
                 row["zone_cap"] = units::zone_cap(u).into();
