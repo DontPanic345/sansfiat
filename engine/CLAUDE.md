@@ -13,6 +13,10 @@ cargo run -p sansfiat -- judge --compare a.json b.json [--all]   # two sweep rep
 cargo run -p sansfiat -- bench --size large 8 --after 50   # ms a turn past the pick
 node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in headless Chrome
 node www/play/all.mjs                        # every touch-point script; check.sh runs it
+node www/assets/draw-atlas.mjs [--check]     # atlas.png and atlas.json from placeholders.js and sources.js (--check: no Chrome)
+node www/shots.mjs --out DIR                 # the map's fixed views, as canvases; --diff A B compares two folders
+node www/shots.mjs --cull DIR                # each view with an `on` with the edge, woods and ridge layers' culling on and off: identical, or exit 1
+node www/shots.mjs --time NAME,…             # five static redraws of each named view: stats.terrainMs and the median
 ```
 
 `cargo test` runs optimised: whole pre-games are too slow otherwise.
@@ -28,8 +32,8 @@ node www/play/all.mjs                        # every touch-point script; check.s
 | `core/tests/` | Tests, one file a system (`clans.rs`, `fields.rs`, `goods.rs`, …), with the helpers they share in `common/`. |
 | `cli/src/` | The `sansfiat` binary, one module per command: `main.rs` (USAGE), `sweep*.rs` (the sweep and its judges; `sweep_trade.rs` the exchange-off control), `view_goods.rs` (a store's lots as chains, a pack's wares), `game_judge.rs` (a played file's judge), `view.rs` (the text view), `story.rs` (stories of war). |
 | `web/src/` | The wasm `Sim` the page drives: `lib.rs` (`layout`, `view`, `act`, the orders; `Sim.stage` builds one, `Sim.stage_test` a test) and `stage_test.rs`. |
-| `www/` | The page: `main.js` (the router), `app.js`, `model.js` (the view model), `panel.js` and `panels.js` (a selection's shape and buttons), `save.js`, `check.mjs` (the page's data checks under Node, through `Sim`), `play.mjs` (headless Chrome; `play/live.mjs` holds one page across shell calls). |
-| `www/map/` | `view.js` (`MapView`), and `layers/`, a file per layer. |
+| `www/` | The page: `main.js` (the router), `app.js`, `model.js` (the view model), `panel.js` and `panels.js` (a selection's shape and buttons), `save.js`, `check.mjs` (the page's data checks under Node, through `Sim`), `check-map.mjs` (the map's pieces: ridges, shores, fringes, woods), `play.mjs` (headless Chrome; `play/live.mjs` holds one page across shell calls), `shots.mjs` (the fixed map views). `assets/` is the atlas: `placeholders.js` (every cell's drawing and `layout()`), `sources.js` (the regions and the cells cut from them), `cut.mjs` (hex, fill and sprite regions; ops `mirror`, `ramp`; `rotate`; a sprite's `scaleY`, unturned; the keys `ground`, `bank`, `tree` and `tuft`; a derived fringe cell from another; a `flat` rectangle), `png.mjs`, `draw-atlas.mjs`. The wood cells are `tree.big.<v>` (80×100, anchor 40,95), `tree.small.<v>` (48×64, anchor 24,60) and `reed.<v>` (48×60, anchor 24,56): each one's ground point is its anchor. |
+| `www/map/` | `view.js` (`MapView`), `input.js` (its pointer input), and `layers/`, a file per layer. `woods.js` makes the wood pieces (a tree or a reed on each lattice slot, the rule and `WOODS`'s numbers; pure), which `layers/woods.js` draws. `ridges.js` makes the mountain pieces (a peak per tile, a ridge per shared edge; pure), which `layers/ridges.js` draws. `edges.js` makes the shore and fringe pieces (a bank per land–water edge and per shore vertex, a fringe per land edge that bleeds; pure), which `layers/edges.js` draws. |
 | `www/screens/` | One file a screen: `pick.js`, `play.js`, `orders.js`, `start.js`, `end.js`, `tests.js` (the Tests screen). |
 | `www/play/` | One script per touch point of `docs/design/page.md`, each exiting non-zero when its touch point is missing; each stages its world through `../play-stage.mjs`; `all.mjs` runs them. |
 
