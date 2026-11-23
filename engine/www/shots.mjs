@@ -16,7 +16,7 @@
 //                                                   the median; stats.woods where the branch has it (main prints -)
 //   node www/shots.mjs --units DIR                  each view with `units` (the unit views): DIR/NAME.png, and per unit its kind,
 //                                                   civ, terrain, opaque and tinted pixels, mean colour and nearest civ (the
-//                                                   units layer's probe); exit 1 unless every unit is nearest its own civ.
+//                                                   units layer's probe); exit 1 unless every unit is nearest its own civ and has at least TINT_BAR[k] tinted pixels.
 //                                                   On main, which has no probe, prints '-'.
 // A view with `turns` leads the first civ and ends that many turns before its camera is set; `lead: 'Gold'` leads that civ
 // instead and `raise: N` raises an army of N warriors after leading (play.mjs's raiseArmy); `stage: 'lineup'` stages the
@@ -119,6 +119,9 @@ export const VIEWS = [
   { name: 'lineup-close', window: 'laptop', k: 35, stage: 'lineup', on: 'at', between: [125, 170], units: true },
   { name: 'lineup-play', window: 'laptop', k: 18, stage: 'lineup', on: 'at', between: [125, 170], units: true },
   { name: 'lineup-edge', window: 'phone', k: 6, stage: 'lineup', on: 'at', between: [125, 170], units: true },
+  // The signals: a unit selected (white edge), and a hungry camp selected (white over red).
+  { name: 'lineup-selected', window: 'laptop', k: 18, stage: 'lineup', on: 'at', between: [125, 170], select: { kind: 'camp', civ: 'red' }, units: true },
+  { name: 'small2-camps-selected', size: 'small', seed: 2, window: 'laptop', k: 35, turns: 8, on: 'at', at: 527, select: { tile: 527 }, units: true },
 ];
 
 /**
@@ -237,6 +240,19 @@ async function setUp(view) {
     throw new Error(`${view.name}: asked for camera ${JSON.stringify(asked)}, the map gave ${JSON.stringify(cam)} (minK ${await page.eval('game.map.minK')})`);
   }
   if (view.tile !== undefined && asked.tile !== view.tile) throw new Error(`${view.name}: the tile is ${asked.tile}, the view names ${view.tile}`);
+  // `select` presses a unit on the map: the first unit of that `kind` and civ (the civ's mark colour name, or its index), or on `tile`.
+  if (view.select) {
+    const picked = await page.eval(`((sel) => {
+      const v = game.view(), us = Object.values(v.units);
+      const u = us.find((x) => (sel.tile === undefined || x.tile === sel.tile) && (!sel.kind || x.kind === sel.kind)
+        && (sel.civ === undefined || x.civ === (typeof sel.civ === 'string' ? Object.values(v.civs).find((c) => c.capital === game.map.at(...({ red: [-5, 0], blue: [0, -5], gold: [0, 5] })[sel.civ])).id : sel.civ)));
+      if (!u) return null;
+      game.map.setSelection(u.tile, u.id);
+      game.map.drawNow();
+      return u.id;
+    })(${JSON.stringify(view.select)})`);
+    if (picked == null) throw new Error(`${view.name}: no unit to select`);
+  }
   const digest = await page.eval('game.digest()');
   return { page, url, asked, cam, digest };
 }
@@ -287,6 +303,9 @@ async function time(view) {
   }
 }
 
+/** The least tinted pixels a figure has, by the view's zoom: enough that the views show the civ's colour reading (relay/specs/443/views.md). */
+const TINT_BAR = { 35: 350, 18: 100, 6: 40, 5: 40 };
+
 /** Shoots a unit view into `out` and prints each unit's probe; false if a unit is nearest another civ's colour. On main,
  *  which has no probe, prints '-' and passes. */
 async function units(view, out) {
@@ -306,12 +325,14 @@ async function units(view, out) {
       return true;
     }
     let ok = true;
+    const bar = TINT_BAR[view.k] ?? 0;
     for (const r of rows) {
       const own = r.nearest === r.civ;
-      if (!own) ok = false;
+      const enough = r.tinted >= bar;
+      if (!own || !enough) ok = false;
       const share = r.opaque ? ((100 * r.tinted) / r.opaque).toFixed(1) : '-';
       const mean = r.mean ? r.mean.map((x) => Math.round(x)).join(',') : '-';
-      console.log(`${view.name}  unit ${r.unit}  ${r.kind}  civ ${r.civ}  on ${r.terrain}  opaque ${r.opaque}  tinted ${r.tinted}  share ${share}%  mean ${mean}  nearest ${r.nearest}  ${own ? 'ok' : 'NOT ITS OWN CIV'}`);
+      console.log(`${view.name}  unit ${r.unit}  ${r.kind}  civ ${r.civ}  on ${r.terrain}  opaque ${r.opaque}  tinted ${r.tinted}  share ${share}%  mean ${mean}  nearest ${r.nearest}  ${!own ? 'NOT ITS OWN CIV' : enough ? 'ok' : `BELOW THE BAR (${bar})`}`);
     }
     return ok;
   } finally {

@@ -112,7 +112,7 @@ function asserts() {
     if (red(40 - 1 - j) !== red(40 + j)) bad.push(`assert: a fill's copies do not mirror across the seam at x 40 (${red(39 - j)} and ${red(40 + j)})`);
     if (fold(40 - 1 - j, 40) !== fold(40 + j, 40)) bad.push(`assert: fold does not mirror across a copy boundary`);
   }
-  // An `over` with no regions is the plain cut; a cloth polygon round the whole rectangle is the plain cut; `grey` on a
+  // An `over` with no regions is the plain cut; a cloth polygon round the whole rectangle is the plain cut, with or without a colour test that accepts all; `grey` on a
   // white cell is white (a fill of white, cut with the op, keeps every opaque pixel at 255).
   {
     const region = REGIONS['actor.camp'], size = sheet.cells['unit.camp'];
@@ -123,6 +123,8 @@ function asserts() {
     const whole = [[[x, y], [x + w, y], [x + w, y + h], [x, y + h]]];
     const clothed = cut(sourceOf(region.file), region, { anchor: [UNIT.ax, UNIT.ay], ops: [], cloth: whole }, size);
     if (Buffer.compare(Buffer.from(plain.data), Buffer.from(clothed.data)) !== 0) bad.push('assert: a cloth polygon round the whole rectangle differs from the plain cut');
+    const gated = cut(sourceOf(region.file), region, { anchor: [UNIT.ax, UNIT.ay], ops: [], cloth: [{ poly: whole[0], where: () => true }] }, size);
+    if (Buffer.compare(Buffer.from(plain.data), Buffer.from(gated.data)) !== 0) bad.push('assert: a cloth polygon with a colour test that accepts everything differs from the plain cut');
     const white = { width: 200, height: 100, data: new Uint8Array(200 * 100 * 4).fill(255) };
     const fillRegion = { file: 'terrain', fill: { rect: [0, 0, 40, 60], scale: 1, offset: [0, 0] }, note: 'the white test' };
     const lit = cut(white, fillRegion, { ops: ['grey'] }, { w: 128, h: 148 });

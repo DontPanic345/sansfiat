@@ -11,17 +11,18 @@ export const FIGURE = {
   s: 0.6, // the least scale: a figure at a far zoom is this many world units per cell unit
   minPx: 6, // the figure's scale is never under this many css px, so it shows zoomed out
   h: 2.4, // the figure's height, in `s`
-  feet: 0.9, // the feet, below the slot's point, in `s`
-  slotX: 0.9, // the slot's point (the first unit on a tile), in `s` from the tile's centre
-  slotY: 1.1, // the slot's point, in `s` below the tile's centre
-  gap: 1.7, // the distance from one unit's slot to the next on a tile, in `s`
-  selected: 2.4, // the white edge of the selected unit, in css px
+  feet: 0.5, // the feet, below the slot's point, in `s`: the slot's point is the figure's waist
+  slotX: 0.8, // the slot's point (the first unit on a tile), in `s` from the tile's centre
+  slotY: 0.55, // the slot's point, in `s` below the tile's centre: the feet (slotY + feet = 1.05 s, 0.63 world units) stand in the hex
+  gap: 2.9, // the least distance from one unit's slot to the next on a tile, in `s`: a figure, its number, a margin, the next figure
+  pad: 0.4, // the margin after a number, in `s`: a wider number ("4.0+2.0") pushes the next unit on, so numbers never meet
+  selected: 3, // the white edge of the selected unit, in css px
   hungry: 3.5, // the red edge of a hungry unit, in css px
   labelX: 0.95, // the number's left edge from the slot's point, in `s` (as main's)
-  labelY: -0.3, // the number's baseline-middle from the slot's point, in `s` (as main's)
+  labelY: -0.5, // the number's middle from the slot's point, in `s`: beside the figure's chest
   font: 0.9, // the number's font size, in `s` (main's 1.1 runs two stacked numbers together at gap 1.7)
-  bowX: -0.9, // an archers' bow: its centre from the slot's point, in `s` (the figure's upper left)
-  bowY: -0.7,
+  bowX: 0.4, // an archers' bow: its centre from the slot's point, in `s` (over the figure's right shoulder, clear of the number before it)
+  bowY: -1.55,
   bowR: 0.45, // the bow's radius, in `s`
 };
 
@@ -65,12 +66,13 @@ function paint(ctx, model, view, { only = null, colour = null, numbers = true } 
   const units = [], places = [];
   for (const [tile, list] of model.stacks) {
     if (!view.onScreen(tile)) continue;
-    let n = 0;
+    let off = 0; // the next slot's distance from the first, in world units
     for (const u of list) {
       if (v.civs[u.civ]?.fallen) continue;
-      const slot = n++;
+      const here = off;
+      off += Math.max(FIGURE.gap * s, (FIGURE.labelX + FIGURE.pad) * s + measure(countLabel(u), s * FIGURE.font).width);
       if (only != null && u.id !== only) continue;
-      const x = view.px[tile] + slot * FIGURE.gap * s + FIGURE.slotX * s;
+      const x = view.px[tile] + here + FIGURE.slotX * s;
       const y = view.py[tile] + FIGURE.slotY * s;
       const cell = `unit.${u.kind}`;
       const c = view.atlas.cell(cell);
@@ -117,8 +119,11 @@ function paint(ctx, model, view, { only = null, colour = null, numbers = true } 
       if (u.stack && u.stack[1] >= 0.05) {
         ctx.beginPath();
         ctx.arc(x + FIGURE.bowX * s, y + FIGURE.bowY * s, FIGURE.bowR * s, -Math.PI / 2, Math.PI / 2);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 3.4 / k;
+        ctx.stroke();
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = Math.max(1.2 / k, 0.05);
+        ctx.lineWidth = 1.8 / k;
         ctx.stroke();
       }
     }

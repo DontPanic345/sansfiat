@@ -3,8 +3,8 @@
 ## Builds and checks
 
 - `node engine/www/assets/draw-atlas.mjs`, run twice: the bytes are the same both times (`cmp`), and the sha256 is
-  `atlas.png` `1e5622ae57671a950a84002eff503ea9658ddccb36edd8b0ae76ee1d18b836df`, `atlas.json`
-  `d32b9a0086a3a1fedf183e0579fa1a72e8cb7fb92383dc194121a3c9cf68941c`. The sheet is 1024 × 2320 (main 1024 × 2288):
+  `atlas.png` `541a12f9d12c3c65a8061b868e285c3ee7a96dd6c9bfbc0cdafa70beda72eb44`, `atlas.json`
+  `47be6d6d43cc9e6612b611a8516454fae443ac1f72e20dbd85f432d23a8319fd`. The sheet is 1024 × 2320 (main 1024 × 2288):
   the unit row is 96 px tall, so the rows below it move down by 32.
 - `node engine/www/assets/draw-atlas.mjs --check`: `atlas: 147 cut cells match their sources, 157 cells match layout()`.
   The new asserts in `asserts()` pass: an `over` of no regions is the plain cut; a cloth polygon round the whole
@@ -24,9 +24,9 @@
 | Key | Size | Anchor | Figure | Scale | Over | Cloth | Ops |
 |---|---|---|---|---|---|---|---|
 | `unit.camp` | 96×96 | 48,92 | `actor.camp`: rect 580,69 135×193, ground (feet) 645,256 | 0.48 | `actor.flag` at 25,34 | none | none |
-| `unit.camp.mask` | 96×96 | 48,92 | `actor.camp` as above | 0.48 | `actor.flag` at 25,34 | `actor.camp`: the shield face, a 24-point ellipse 31 × 34 about (675.5, 193.5); `actor.flag`: the cloth, 14 points | `grey` |
+| `unit.camp.mask` | 96×96 | 48,92 | `actor.camp` as above | 0.48 | `actor.flag` at 25,34 | `actor.camp`: the shield face (a 24-point ellipse 31 × 34 about (675.5, 193.5)) and `CAMP_TUNIC` (a 12-point polygon round the body, samples of luminance 60 and up); `actor.flag`: the cloth, 14 points | `grey` from 190 |
 | `unit.scout` | 96×96 | 48,92 | `actor.scout`: rect 190,104 117×155, ground (feet) 246,253 | 0.6 | `actor.flag` at 75.5,30 | none | none |
-| `unit.scout.mask` | 96×96 | 48,92 | `actor.scout` as above | 0.6 | `actor.flag` at 75.5,30 | `actor.flag`: the cloth only; the walker keeps no sample | `grey` |
+| `unit.scout.mask` | 96×96 | 48,92 | `actor.scout` as above | 0.6 | `actor.flag` at 75.5,30 | `actor.scout`: `SCOUT_BODY` (13 points) and `SCOUT_SHORTS` (5 points), samples of luminance 60 and up; `actor.flag`: the cloth | `grey` from 190 |
 
 `actor.flag` is rect 1357,97 110×163, ground (the pole's top) 1372,106, scale 0.2. Each `actor.*` region's keep-polygon
 is its rect (the study's box with a 3 px margin); no other figure falls inside any of the four margins. The camp's
@@ -53,3 +53,15 @@ the camp's mask covers 1001 of 3315 (30.2%), the scout's 200 of 4114 (4.9%); the
   it, it times out waiting for `window.game`, as 442 did.
 - The map (`www/map/layers/units.js`) still draws each unit cell at the old size, so on the branch the figures stand
   larger than main's shields until build-2 lays them out. That is the piece's order, not a regression to fix here.
+
+## Build-3's final recipes
+
+- Hashes above are build-3's final atlas (`draw-atlas.mjs` run twice: the same; `--check` passes with the new assert; all
+  157 of main's keys keep their pixels, 0 differ by `proto/compare-main.mjs`). `cells.png` is regenerated.
+- **The tunic is cloth.** A cloth entry is a polygon or `{ poly, where }` (the polygon's samples whose colour `where(r, g, b)` accepts).
+  `CAMP_TUNIC`, `SCOUT_BODY` and `SCOUT_SHORTS` are polygons read off a 6× crop of each figure (`crop6(ox, oy, points)`, the
+  crop's px over 6 from the region's origin) with `where` luminance 60 and up (the outline stays black). Tinted share of the opaque pixels at k 35 (`units.txt`):
+  the scout 26% (412 of 1595 px), the camp 40% (485 of 1202).
+- **The grey runs from 190 to 255** (`GREY = { op: 'grey', lo: 190 }` in `sources.js`; the op without `lo` keeps `GREY_LO` 90). 
+  The banner's cloth and the shield's face share it, so the camp's shield boss is still lighter than its face.
+- A hue test (ochre by r, g, b) was tried for the tunic and dropped: the study's tunic ranges too far in shading.

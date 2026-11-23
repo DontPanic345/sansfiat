@@ -347,7 +347,7 @@
    "ay": 92,
    "note": "camp mask: its cloth in grey (the civ's colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the figure. Cut from actor.camp (grey): the round-shield spearman, standing: his feet at (645, 256), the spear's head at the box's top",
    "src": "actor.camp",
-   "flat": "#a5a5a5"
+   "flat": "#dbdbdb"
   },
   "unit.scout": {
    "x": 192,
@@ -369,7 +369,7 @@
    "ay": 92,
    "note": "scout mask: its cloth in grey (the civ's colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the figure. Cut from actor.scout (grey): the walker with a pack and a staff, standing: his feet at (246, 253), the staff's top at about (294, 149)",
    "src": "actor.scout",
-   "flat": "#d9d9d9"
+   "flat": "#d8d8d8"
   },
   "icon.capital": {
    "x": 0,

@@ -290,9 +290,18 @@ for (const kind of FRINGE) {
 const UNIT_ANCHOR = [UNIT.ax, UNIT.ay];
 const FLAG_CLOTH = [[1380, 132], [1394, 133], [1427, 132], [1429, 126], [1438, 124], [1451, 124], [1454, 130], [1454, 180], [1450, 184], [1446, 188], [1428, 191], [1421, 195], [1397, 195], [1380, 191]];
 const SHIELD_FACE = [[706.5, 193.5], [705.4, 202.3], [702.3, 210.5], [697.4, 217.5], [691, 222.9], [683.5, 226.3], [675.5, 227.5], [667.5, 226.3], [660, 222.9], [653.6, 217.5], [648.7, 210.5], [645.6, 202.3], [644.5, 193.5], [645.6, 184.7], [648.7, 176.5], [653.6, 169.5], [660, 164.1], [667.5, 160.7], [675.5, 159.5], [683.5, 160.7], [691, 164.1], [697.4, 169.5], [702.3, 176.5], [705.4, 184.7]];
+// The tunic: the study's ochre cloth, a polygon round the body (the skin, hair, boots, pack and gloves lie outside it), less the
+// outline's darkest pixels. Points are read off a 6x crop of each figure: its origin plus the crop's px over 6.
+const crop6 = (ox, oy, pts) => pts.map(([x, y]) => [ox + x / 6, oy + y / 6]);
+const lit = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b >= 60;
+const CAMP_TUNIC = { poly: crop6(580, 69, [[150, 560], [230, 490], [330, 480], [430, 540], [420, 640], [370, 700], [360, 930], [240, 930], [190, 880], [190, 780], [140, 770], [140, 590]]), where: lit };
+const SCOUT_BODY = { poly: crop6(190, 104, [[200, 340], [250, 290], [320, 285], [335, 360], [435, 360], [455, 335], [500, 325], [545, 420], [495, 475], [490, 580], [310, 580], [305, 430], [175, 420]]), where: lit };
+const SCOUT_SHORTS = { poly: crop6(190, 104, [[190, 590], [500, 590], [505, 710], [300, 715], [185, 690]]), where: lit };
+// The cloth's grey runs from this up to white: high, so the civ's colour stays bright under the art's shading.
+const GREY = { op: 'grey', lo: 190 };
 const CAMP_FLAG = { region: 'actor.flag', at: [25, 34] };
 const SCOUT_FLAG = { region: 'actor.flag', at: [75.5, 30] };
 CELLS['unit.camp'] = { region: 'actor.camp', over: [CAMP_FLAG], ops: [], anchor: UNIT_ANCHOR };
-CELLS['unit.camp.mask'] = { region: 'actor.camp', over: [CAMP_FLAG], cloth: { 'actor.camp': [SHIELD_FACE], 'actor.flag': [FLAG_CLOTH] }, ops: ['grey'], anchor: UNIT_ANCHOR };
+CELLS['unit.camp.mask'] = { region: 'actor.camp', over: [CAMP_FLAG], cloth: { 'actor.camp': [SHIELD_FACE, CAMP_TUNIC], 'actor.flag': [FLAG_CLOTH] }, ops: [GREY], anchor: UNIT_ANCHOR };
 CELLS['unit.scout'] = { region: 'actor.scout', over: [SCOUT_FLAG], ops: [], anchor: UNIT_ANCHOR };
-CELLS['unit.scout.mask'] = { region: 'actor.scout', over: [SCOUT_FLAG], cloth: { 'actor.flag': [FLAG_CLOTH] }, ops: ['grey'], anchor: UNIT_ANCHOR };
+CELLS['unit.scout.mask'] = { region: 'actor.scout', over: [SCOUT_FLAG], cloth: { 'actor.scout': [SCOUT_BODY, SCOUT_SHORTS], 'actor.flag': [FLAG_CLOTH] }, ops: [GREY], anchor: UNIT_ANCHOR };

@@ -75,6 +75,13 @@ export async function loadAtlas(base = './assets/') {
         g.fillRect(0, 0, c.width, c.height);
         g.globalCompositeOperation = 'destination-in';
         g.drawImage(s, 0, 0);
+        // The cloth's soft edge is made firmer: drawn over itself, a pixel of alpha a has 2a - a², so the figure's own colour
+        // shows less at the cloth's rim, which matters when a cell is shrunk to a dozen px.
+        const d = make(c.width, c.height);
+        const dg = d.getContext('2d');
+        dg.drawImage(c, 0, 0);
+        dg.drawImage(c, 0, 0);
+        c = d;
         shadeCache.set(key, c);
       }
       return c;

@@ -36,7 +36,8 @@ const EXPECT = [
 ];
 const GOLD = 126;
 
-const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+// Two boxes run into each other when they are nearer than `m` px (the default: they touch or overlap).
+const overlap = (a, b, m = 0) => a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m;
 // What the map has drawn, with each unit's tile, read after a fresh draw.
 const drawn = `(() => { game.map.drawNow(); const m = game.map, v = game.view(), tileOf = (id) => Object.values(v.units).find((u) => u.id === id).tile;
   return { units: m.stats.units.map((e) => ({ ...e, tile: tileOf(e.unit) })), labels: m.stats.labels.map((l) => ({ ...l, tile: tileOf(l.unit) })) }; })()`;
@@ -82,8 +83,16 @@ try {
   const after = await page.eval(drawn);
   const gold = after.labels.filter((l) => l.tile === GOLD);
   need(
-    gold.length === 2 && !overlap(gold[0].box, gold[1].box),
-    `both numbers on Gold's tile are drawn (${gold.map((l) => l.label).join(' and ')}), and their boxes do not overlap`,
+    gold.length === 2 && !overlap(gold[0].box, gold[1].box, 4),
+    `both numbers on Gold's tile are drawn (${gold.map((l) => l.label).join(' and ')}), and their boxes are at least 4 px apart`,
+  );
+
+  // A wide number ("3.5+3.5" on both units, the first before the second) pushes the next unit on: the boxes stay apart.
+  const wide = await page.eval(`(() => { const m = game.map; for (const [tile, list] of m.model.stacks) if (tile === ${GOLD}) for (const u of list) u.stack = [3.5, 3.5];
+    m.dirty = true; m.drawNow(); return m.stats.labels.filter((l) => game.view().units[l.unit].tile === ${GOLD}).map((l) => ({ label: l.label, box: l.box })); })()`);
+  need(
+    wide.length === 2 && wide.every((l) => l.label.includes('+')) && !overlap(wide[0].box, wide[1].box, 4),
+    `a wide number (${wide.map((l) => l.label).join(' and ')}) does not run into the next: the boxes are at least 4 px apart`,
   );
 
   const png = await page.eval("(() => { game.map.drawNow(); return game.map.canvas.toDataURL('image/png'); })()");

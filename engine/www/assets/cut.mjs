@@ -266,11 +266,12 @@ function spriteData(source, box, region, cell, size) {
           const [sx, sy] = at;
           if (sx < rx0 || sx >= rx1 || sy < ry0 || sy >= ry1) continue;
           if (!inside(sx + 0.5, sy + 0.5, region.keep)) continue;
-          // A cloth cell keeps only the samples inside its cloth polygons (of this region, in source px).
-          if (cell.cloth && !cell.cloth.some((p) => inside(sx + 0.5, sy + 0.5, p))) continue;
           const bx = sx - box.x0, by = sy - box.y0;
           const s = (by * box.w + bx) * 3;
           const R = box.rgb[s], G = box.rgb[s + 1], B = box.rgb[s + 2];
+          // A cloth cell keeps only the samples inside its cloth polygons (of this region, in source px). An entry is a
+          // polygon, or `{ poly, where }`: the polygon's samples whose colour `where(r, g, b)` accepts.
+          if (cell.cloth && !cell.cloth.some((p) => (p.poly ? inside(sx + 0.5, sy + 0.5, p.poly) && p.where(R, G, B) : inside(sx + 0.5, sy + 0.5, p)))) continue;
           const A = source.data[(sy * source.width + sx) * 4 + 3];
           if (key.clears(R, G, B, A)) continue;
           r += R * A;
@@ -297,7 +298,7 @@ const lum = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b; // Rec. 601
  * The grey op: each pixel becomes its luminance, normalised over the cell's opaque pixels (the brightest is 255,
  * the darkest GREY_LO; a flat cell is 255), alpha kept. White stays white, so a multiply by a colour gives it.
  */
-function grey(data) {
+function grey(data, lo0 = GREY_LO) {
   const opaque = (o) => data[o + 3] >= OPAQUE;
   let lo = Infinity, hi = -Infinity;
   for (let o = 0; o < data.length; o += 4) {
@@ -309,7 +310,7 @@ function grey(data) {
   for (let o = 0; o < data.length; o += 4) {
     if (!data[o + 3]) continue;
     const t = hi > lo ? Math.min(1, Math.max(0, (lum(data[o], data[o + 1], data[o + 2]) - lo) / (hi - lo))) : 1;
-    const v = Math.round(GREY_LO + t * (255 - GREY_LO));
+    const v = Math.round(lo0 + t * (255 - lo0));
     data[o] = data[o + 1] = data[o + 2] = v;
   }
 }
@@ -415,6 +416,8 @@ export function cut(source, region, cell, size) {
       }
     } else if (op === 'grey') {
       grey(data);
+    } else if (op?.op === 'grey') {
+      grey(data, op.lo);
     } else if (op?.op === 'ramp') {
       ramp(data, source, op);
     } else {
