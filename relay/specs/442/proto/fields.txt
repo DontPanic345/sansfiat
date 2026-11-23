@@ -1,0 +1,8 @@
+small 2 {"turn":"295","near":{"forest-fields":{"tile":378,"d":21},"forest-fields-river":{"tile":378,"d":21},"marsh-fields":{"tile":535,"d":63}},"digest":"ff55c006fe645483"}
+medium 9 {"turn":"475","near":{"forest-fields":{"tile":828,"d":0},"forest-fields-3":{"tile":828,"d":0},"forest-fields-river":{"tile":828,"d":0}},"digest":"e5fc275e001a30e2"}
+small 2 {"turn":"295","near":{"forest-fields":{"tile":378,"d":21},"forest-fields-river":{"tile":378,"d":21},"marsh-fields":{"tile":535,"d":63}},"digest":"ff55c006fe645483"}
+
+Field tiles by terrain, leading the first civ, at turns +4, +8, +12 (proto run of /tmp/fields.mjs, the same loop):
+small 2   plains 18/20/24, coast 5/7/8, forest 3/4/5, marsh 5/4/5, hills 3/6/7, desert 2/2/3
+medium 9  plains 4/4/3, forest 13/17/20, hills 5/8/9, desert 2/2/2, coast 3/4/4
+large 8   plains 85/88/100, forest 25/30/33, marsh 6/6/8, hills 18/18/18, coast 13/16/15, desert 13/15/14

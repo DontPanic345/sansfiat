@@ -1,0 +1,36 @@
+[
+  {
+    "id": "build-1",
+    "title": "The tree and reed cells, scaleY and the tuft key",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 1 (keys, sizes, anchors and the scaleY assert are exact; the cuts need only read as a tree and as reeds, from source coordinates the spec measured), New 1 (sprite regions with keep polygons are the peaks' pattern; scaleY and a tuft key adapt cut.mjs's sprite path and KEYS), Miss 1 (--check's recut and the new assert; play/art.mjs), Reach 1 (the atlas every map draw reads; new keys after the fringe rows move nothing). An easel with an exact done at 4: Haiku high, as 439 to 441's easels ran. About 6 files, 200 lines plus the PNG: cut.mjs, sources.js, placeholders.js, draw-atlas.mjs, atlas.png/json, engine/CLAUDE.md, atlas.md and cells.png."
+  },
+  {
+    "id": "build-2",
+    "title": "The wood pieces, the woods layer, the marsh shore, the views and the checks",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 1 (the slot lattice, sparse band, river course, clearing, order, culling, stale hook, marsh shore and the 15 views' tiles are the spec's word for word; WOODS starts at numbers that run), New 1 (woods.js and layers/woods.js follow edges.js and layers/edges.js; the turns loop is proto/fields.mjs; the input split moves code unchanged), Miss 1 (check-map.mjs recounts every slot and the river and clearing on a synthetic tile; play/woods.mjs checks a staged wood, marsh and culling), Reach 2 (one line in setModel runs every turn, and the input split moves every pointer handler). Haiku high at 5. About 12 files, 650 lines: map/woods.js, map/layers/woods.js, map/input.js (moved), map/view.js, map/edges.js, shots.mjs, check-map.mjs, play/woods.mjs, play/edges.mjs, engine/CLAUDE.md, easel.md. Kept apart from build-1 by area (atlas, then map) as 441 did: merged it would be about 18 files in one Haiku session. It waits on 15 views shot once."
+  },
+  {
+    "id": "build-3",
+    "title": "The woods and the marsh on the map, judged beside main",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 9,
+    "why": "Open 4 (dense interior, sparse margin, lone clump, reeds and wet ground, the river and the clearing, WOODS.from and the ground under the trees, all judged by eye; the flats held at 28 RGB and the time at 3 ms), New 1 (the cells and pieces are the easels'; a third tree size or a clump cell adapts them), Miss 3 (only captures on the retro maps show a wood that reads as hex blocks or a marsh that reads as forest), Reach 1 (sources.js and WOODS, drawn every static redraw, no rule). A canvas at 9: Sonnet high, as 440's and 441's. About 7 files and 14 committed PNGs, 250 lines: sources.js, maybe cut.mjs and placeholders.js, atlas.png/json, map/woods.js, shots.mjs, maybe check-map.mjs and play/woods.mjs, views.md, shots/."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved and the turns views' digests match, repeats the atlas build for identical bytes, runs --cull, --time and the CI checks, shoots both trees and diffs the cameras, reads the pairs for a dense interior, a lone clump, a river and fields through the wood, a reed-edged delta and the zoom boundary (the nine flats at least 28 RGB apart), checks selection and zoom on the page, and puts the captures in the PR."
+  }
+]
