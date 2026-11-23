@@ -1,6 +1,5 @@
-// Terrain: each tile's atlas cell (variant `i % 3`, so a map always looks the same), the desert's stipple
-// over it, and a hex outline when zoomed in. Where a cell is only a few pixels across the tile is a flat
-// fill, one path per colour.
+// Terrain: each tile's atlas cell (variant `i % 3`, so a map always looks the same) and a hex outline when zoomed
+// in. Where a cell is only a few pixels across the tile is a flat fill, one path per colour.
 import { TERRAIN_COLOR } from '../../assets/placeholders.js';
 
 export const name = 'terrain';
@@ -54,8 +53,6 @@ export function draw(ctx, model, view) {
   } else {
     // Whole device pixels, from pre-scaled cells: one drawImage per tile, with no resampling.
     const { atlas, dpr } = view;
-    const desert = view.byName.desert;
-    const dots = k >= 9 ? atlas.scaled('overlay.desert-dots', H) : null;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     // Each cell's anchor, scaled to the drawn size, lands on the tile's centre; read once per draw.
     const placed = new Map();
@@ -76,7 +73,6 @@ export function draw(ctx, model, view) {
       const x = Math.round(((view.px[i] - view.cx) * k + view.w / 2) * dpr - ax);
       const y = Math.round(((view.py[i] - view.cy) * k + view.h / 2) * dpr - ay);
       ctx.drawImage(img, x, y);
-      if (dots && l.terrain[i] === desert) ctx.drawImage(dots, x, y);
       n++;
     }
     view.stats.cells = n;

@@ -184,8 +184,38 @@ function spriteData(source, box, region, cell, size) {
   const [gx, gy] = region.ground, scale = region.scale;
   const [rx0, ry0, rx1, ry1] = rectOf(region);
   // The cell turns about its anchor by `rotate` degrees (the cell's, else the region's): Rot(−deg) on the cell offset.
-  const deg = cell.rotate ?? region.rotate ?? 0, rad = (deg * Math.PI) / 180;
-  const cs = Math.cos(rad), sn = Math.sin(rad);
+  // `shape` bends the strip: an edge piece stops `half` px either side of its anchor along the edge; a corner
+  // piece (`in`: water pokes into land, `out`: land pokes into water) fans or mitres the strip round the vertex.
+  const shape = cell.shape ?? null;
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const straight = (dx, dy, deg) => {
+    const cs = Math.cos(rad(deg)), sn = Math.sin(rad(deg));
+    return [Math.floor(gx + (cs * dx + sn * dy) / scale), Math.floor(gy + (-sn * dx + cs * dy) / scale)];
+  };
+  const wrap = (a) => ((((a + 180) % 360) + 360) % 360) - 180;
+  const locate = (dx, dy) => {
+    const deg = cell.rotate ?? region.rotate ?? 0;
+    if (!shape) return straight(dx, dy, deg);
+    if (shape.type === 'edge') {
+      const along = -dx * Math.sin(rad(deg + 90)) + dy * Math.cos(rad(deg + 90));
+      return Math.abs(along) > shape.half ? null : straight(dx, dy, deg);
+    }
+    const r = Math.hypot(dx, dy), phi = (Math.atan2(dy, dx) * 180) / Math.PI;
+    const psi = 60 * shape.c - 30; // the screen angle of corner c from its tile's centre
+    if (shape.type === 'in') {
+      // Water's corner: the bank fans round the vertex between the two edges' outward normals (psi ± 30).
+      const delta = wrap(phi - psi);
+      if (Math.abs(delta) > shape.span) return null;
+      return [Math.floor(gx + (r * rad(delta)) / scale), Math.floor(gy - r / scale)];
+    }
+    // Land's corner: the two edges' strips meet on the bisector (psi + 180), each serving the half nearer its edge.
+    if (Math.abs(wrap(phi - (psi + 180))) > 60 + shape.reach) return null;
+    const a1 = psi + 120, a2 = psi - 120;
+    const first = Math.abs(wrap(phi - a1)) <= Math.abs(wrap(phi - a2));
+    const a = first ? a1 : a2, d = first ? shape.c : (shape.c + 5) % 6;
+    const mx = (HEX_R / 2) * Math.cos(rad(a)), my = (HEX_R / 2) * Math.sin(rad(a));
+    return straight(dx - mx, dy - my, 60 * d - 90);
+  };
   const inside = (x, y, p) => {
     let c = false;
     for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
@@ -200,9 +230,9 @@ function spriteData(source, box, region, cell, size) {
       let r = 0, g = 0, b = 0, a = 0;
       for (let j = 0; j < SS; j++) {
         for (let i = 0; i < SS; i++) {
-          const dx = x + (i + 0.5) / SS - ax, dy = y + (j + 0.5) / SS - ay;
-          const sx = Math.floor(gx + (cs * dx + sn * dy) / scale);
-          const sy = Math.floor(gy + (-sn * dx + cs * dy) / scale);
+          const at = locate(x + (i + 0.5) / SS - ax, y + (j + 0.5) / SS - ay);
+          if (!at) continue;
+          const [sx, sy] = at;
           if (sx < rx0 || sx >= rx1 || sy < ry0 || sy >= ry1) continue;
           if (!inside(sx + 0.5, sy + 0.5, region.keep)) continue;
           const bx = sx - box.x0, by = sy - box.y0;
@@ -246,9 +276,10 @@ function meanOf(source, [x, y, w, h]) {
 
 /**
  * The ramp op: each pixel's luminance, normalised over the cell's opaque pixels, picks a colour on the line from
- * `dark` to `light` (the means of two source rectangles), blended with the pixel's own colour by `mix`.
+ * `dark` to `light` (the means of two source rectangles), blended with the pixel's own colour by `mix`. `lum: [lo, hi]`
+ * replaces the cell's own luminance range.
  */
-function ramp(data, source, { dark, light, mix }) {
+function ramp(data, source, { dark, light, mix, lum: fixed }) {
   const [dr, dg, db] = meanOf(source, dark), [lr, lg, lb] = meanOf(source, light);
   let lo = Infinity, hi = -Infinity;
   for (let o = 0; o < data.length; o += 4) {
@@ -257,6 +288,7 @@ function ramp(data, source, { dark, light, mix }) {
     lo = Math.min(lo, l);
     hi = Math.max(hi, l);
   }
+  if (fixed) [lo, hi] = fixed; // a fixed luminance range keeps a flat variant from stretching to the whole ramp
   const span = hi > lo ? hi - lo : 1;
   for (let o = 0; o < data.length; o += 4) {
     if (!data[o + 3]) continue;

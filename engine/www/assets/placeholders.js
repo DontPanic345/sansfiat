@@ -115,7 +115,7 @@ export function layout() {
   }
   row();
   put('overlay.floodplain', 128, 148, hexNote('floodplain wash, translucent, drawn over the tile'));
-  put('overlay.desert-dots', 128, 148, hexNote('desert stipple, translucent, drawn over a desert tile'));
+  put('overlay.desert-dots', 128, 148, hexNote('desert stipple, translucent (no longer drawn: the desert ground is sand)'));
   put('overlay.fields', 128, 148, hexNote('field furrows: three short dark ochre strokes in the lower half, translucent, drawn over a tile with fields'));
   row();
   for (const u of UNITS) {
@@ -144,9 +144,9 @@ export function layout() {
     }
   }
   row();
-  for (let c = 0; c < 6; c++) put(`shore.in.${c}`, SHORE.corner.w, SHORE.corner.h, `the bank at hex vertex ${c}, where water pokes into land: a disc of bank, centred on the vertex, transparent outside`, { ax: SHORE.corner.ax, ay: SHORE.corner.ay });
+  for (let c = 0; c < 6; c++) put(`shore.in.${c}`, SHORE.corner.w, SHORE.corner.h, `the bank at hex vertex ${c}, where water pokes into land: the bank fanned round the vertex, transparent outside`, { ax: SHORE.corner.ax, ay: SHORE.corner.ay });
   row();
-  for (let c = 0; c < 6; c++) put(`shore.out.${c}`, SHORE.corner.w, SHORE.corner.h, `the bank at hex vertex ${c}, where land pokes into water: a disc of bank, centred on the vertex, transparent outside`, { ax: SHORE.corner.ax, ay: SHORE.corner.ay });
+  for (let c = 0; c < 6; c++) put(`shore.out.${c}`, SHORE.corner.w, SHORE.corner.h, `the bank at hex vertex ${c}, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside`, { ax: SHORE.corner.ax, ay: SHORE.corner.ay });
   row();
   for (const kind of FRINGE) {
     for (let d = 0; d < 6; d++) {

@@ -1,6 +1,6 @@
 // The source art: named regions of the studies in `docs/proposals/map-art/`, and the atlas cells cut
 // from them. `draw-atlas.mjs` reads these; the browser never does.
-import { FRINGE } from './placeholders.js';
+import { FRINGE, HEX_R } from './placeholders.js';
 
 /** Source studies, by name: repo paths, outside the site. */
 export const FILES = { terrain: 'docs/proposals/map-art/terrain.png' };
@@ -78,13 +78,13 @@ export const REGIONS = {
 REGIONS['low.spur.s'] = { ...REGIONS['low.spur'], scale: 0.52, note: 'the lower peak, small: the diagonal ridges' };
 REGIONS['low.mid.s'] = { ...REGIONS['low.mid'], scale: 0.52, note: 'the low peak, small: the diagonal ridges' };
 
-// The water: the clean block of the sea (no ripple crosses it), filled into a hex at the plains' scale. Three
-// offsets give three cells that differ.
-const WATER = { file: 'terrain', rect: [1270, 832, 137, 60] };
-const SEA = { file: 'terrain', fill: { rect: WATER.rect, scale: 74 / 109 }, note: 'the sea: a clean block of water, repeated and mirrored, filled into the hex' };
-REGIONS['sea.0'] = { ...SEA, fill: { ...SEA.fill, offset: [0, 0] } };
-REGIONS['sea.1'] = { ...SEA, fill: { ...SEA.fill, offset: [37, 23] } };
-REGIONS['sea.2'] = { ...SEA, fill: { ...SEA.fill, offset: [71, 41] } };
+// The water: clean blocks of the sea (no foam arc, no bank), each repeated and mirrored into a hex. Variant 0 is open
+// water with faint streaks, 1 and 2 carry a few light specks, so a bay is not one ripple repeated; the scales differ
+// so the copies' seams do not line up from one variant to the next.
+const SEA = { file: 'terrain', note: 'the sea: a clean block of water, repeated and mirrored, filled into the hex' };
+REGIONS['sea.0'] = { ...SEA, fill: { rect: [1296, 814, 70, 28], scale: 1.0, offset: [0, 0] } };
+REGIONS['sea.1'] = { ...SEA, fill: { rect: [1312, 852, 70, 40], scale: 1.0, offset: [10, 5] } };
+REGIONS['sea.2'] = { ...SEA, fill: { rect: [1304, 846, 74, 26], scale: 1.0, offset: [40, 9] } };
 
 // The hills: the bottom-left row's first two hexes. Hex 2's left-lower part is the first hill's tail: grass over it.
 // The marsh: the plains' grass hex with two pools patched in from the water block, so the marsh has water in it.
@@ -94,6 +94,8 @@ REGIONS['marsh.grass'] = {
     ...REGIONS['plains.grass'].patches,
     { from: [1280, 836], to: [520, 826], w: 30, h: 18, feather: 4, note: 'a pool of the sea block, in the marsh' },
     { from: [1300, 840], to: [585, 880], w: 26, h: 16, feather: 4, note: 'a second pool of the sea block' },
+    { from: [1330, 850], to: [598, 822], w: 36, h: 14, feather: 5, note: 'a third pool, upper right' },
+    { from: [1340, 862], to: [490, 880], w: 30, h: 14, feather: 5, note: 'a fourth pool, lower left' },
   ],
   note: 'bottom-left row, third hex, with two pools of water patched in: the marsh',
 };
@@ -108,21 +110,22 @@ REGIONS['hills.b'] = {
 };
 
 // The bank: the level run of tan blocks on the land side of the water line (y 902). Two strips of it, one per
-// variant, 124 source px long, and a disc of it for the corners. Each keeps the bank's tan (key `bank`).
+// variant, turned to each edge; the corners bend the same run (`in` fans it, `out` mitres two strips). Each keeps the
+// bank's tan (key `bank`). Its scale sets the bank's thickness: the run's tan is 18 source px deep.
+const BANK_SCALE = 0.95;
 const RUN = [[1040, 878], [1240, 878], [1240, 906], [1040, 906]];
-REGIONS['bank.left'] = { file: 'terrain', rect: [1040, 878, 200, 29], keep: RUN, key: 'bank', ground: [1102, 902], scale: 74 / 109, note: 'the shore bank, the level run\'s left part, turned to each edge' };
+REGIONS['bank.left'] = { file: 'terrain', rect: [1040, 878, 200, 29], keep: RUN, key: 'bank', ground: [1102, 902], scale: BANK_SCALE, note: 'the shore bank, the level run\'s left part, turned to each edge' };
 REGIONS['bank.right'] = { ...REGIONS['bank.left'], ground: [1178, 902], note: 'the shore bank, the level run\'s right part, turned to each edge' };
-const DISC = Array.from({ length: 32 }, (_, i) => [1102 + 8.8 * Math.cos((i / 32) * 2 * Math.PI), 898 + 8.8 * Math.sin((i / 32) * 2 * Math.PI)]);
-REGIONS['bank.disc'] = { file: 'terrain', rect: [1040, 878, 200, 29], keep: DISC, key: 'bank', ground: [1102, 898], scale: 74 / 109, note: 'a disc of the shore bank, for a corner of the shore' };
 
-// The grounds the source lacks, as ramps between colours the source has: a shade of the woods, the grass, the
-// hill's shaded ochre and the bank's tan, the water and its pale rim. Each is a source rectangle's mean.
+// The grounds the source lacks, as ramps between colours the source has: the tree's dark floor and leaf, the grass,
+// the bank's shaded and lit sand and the water. Each end is a source rectangle's mean.
 const RAMP = {
   grassDark: [60, 700, 80, 40],
-  grassLight: [1000, 650, 60, 40],
-  woodsShade: [360, 615, 80, 18],
-  hillShade: [230, 862, 40, 16],
-  bankTan: [1080, 884, 100, 12],
+  treeFloor: [600, 600, 60, 20],
+  treeDark: [150, 540, 20, 20],
+  treeLeaf: [370, 510, 20, 20],
+  sandShade: [1080, 884, 100, 12],
+  sandLit: [1070, 893, 30, 8],
   waterDark: [919, 902, 16, 8],
   waterLight: [919, 902, 4, 4],
 };
@@ -162,29 +165,36 @@ const ground = (kind, rampOf, flat) => RECIPES.forEach((r, v) => {
 });
 ['sea.0', 'sea.1', 'sea.2'].forEach((region, v) => {
   CELLS[`terrain.sea.${v}`] = { region, ops: [], anchor: 'centre' };
-  CELLS[`terrain.lake.${v}`] = { region, ops: [ramp(RAMP.waterDark, RAMP.waterLight, 1)], anchor: 'centre' };
+  CELLS[`terrain.lake.${v}`] = { region, ops: [{ ...ramp(RAMP.waterDark, RAMP.waterLight, 1), lum: [45, 110] }], anchor: 'centre' };
 });
-ground('coast', ramp(RAMP.grassDark, RAMP.bankTan, 0.35), RAMP.bankTan);
-ground('forest', ramp(RAMP.woodsShade, RAMP.grassLight, 0.7));
-ground('desert', ramp(RAMP.hillShade, RAMP.bankTan, 1));
-CELLS['terrain.marsh.0'] = { region: 'marsh.grass', ops: [ramp(RAMP.woodsShade, RAMP.grassLight, 0.4)], anchor: 'centre' };
-CELLS['terrain.marsh.1'] = { region: 'marsh.grass', ops: [ramp(RAMP.woodsShade, RAMP.grassLight, 0.4)], anchor: 'centre' };
-CELLS['terrain.marsh.2'] = { region: 'marsh.grass', ops: [ramp(RAMP.woodsShade, RAMP.grassLight, 0.4), 'mirror'], anchor: 'centre' };
-const HILL_FLAT = [160, 845, 60, 25];
+// Coast: grass warmed toward the sand, a band along the water that still reads as land. Its flat is the shaded sand.
+ground('coast', ramp(RAMP.grassDark, RAMP.sandLit, 0.8), RAMP.sandShade);
+// Forest: the grass darkened to the trees' floor and leaf, until the trees are planted.
+ground('forest', ramp(RAMP.treeDark, RAMP.treeLeaf, 0.95), RAMP.treeDark);
+// Desert: the grass recoloured onto the sand, shaded to lit; the stipple no longer draws.
+ground('desert', ramp(RAMP.sandShade, RAMP.sandLit, 1), RAMP.sandLit);
+// Marsh: the grass with pools of the sea's water, murked toward the trees' dark teal.
+const MARSH = ramp(RAMP.treeDark, RAMP.grassDark, 0.6);
+CELLS['terrain.marsh.0'] = { region: 'marsh.grass', ops: [MARSH], anchor: 'centre' };
+CELLS['terrain.marsh.1'] = { region: 'marsh.grass', ops: [MARSH], anchor: 'centre' };
+CELLS['terrain.marsh.2'] = { region: 'marsh.grass', ops: [MARSH, 'mirror'], anchor: 'centre' };
+const HILL_FLAT = [170, 845, 40, 10];
 CELLS['terrain.hills.0'] = { region: 'hills.a', ops: [], anchor: 'centre', flat: HILL_FLAT };
 CELLS['terrain.hills.1'] = { region: 'hills.b', ops: [], anchor: 'centre', flat: HILL_FLAT };
 CELLS['terrain.hills.2'] = { region: 'hills.a', ops: ['mirror'], anchor: 'centre', flat: HILL_FLAT };
 
 // The bank's edge pieces: the strip turned to edge d (the source run faces south: 60 d − 90 degrees), on the
-// land side of the edge with its anchor at the edge's midpoint. The corners are a disc of the same bank.
+// land side of the edge with its anchor at the edge's midpoint, ending at the edge's two vertices (half the edge,
+// HEX_R / 2, and a half px over). The corners: water's corner c fans the run round the vertex; land's corner c
+// mitres the strips of its two edges.
 for (let d = 0; d < 6; d++) {
   for (let v = 0; v < 2; v++) {
-    CELLS[`shore.edge.${d}.${v}`] = { region: v ? 'bank.right' : 'bank.left', ops: [], anchor: [56, 56], rotate: 60 * d - 90 };
+    CELLS[`shore.edge.${d}.${v}`] = { region: v ? 'bank.right' : 'bank.left', ops: [], anchor: [56, 56], rotate: 60 * d - 90, shape: { type: 'edge', half: HEX_R / 2 + 0.5 } };
   }
 }
 for (let c = 0; c < 6; c++) {
-  CELLS[`shore.in.${c}`] = { region: 'bank.disc', ops: [], anchor: [24, 24] };
-  CELLS[`shore.out.${c}`] = { region: 'bank.disc', ops: [], anchor: [24, 24] };
+  CELLS[`shore.in.${c}`] = { region: 'bank.left', ops: [], anchor: [24, 24], shape: { type: 'in', c, span: 30.5 } };
+  CELLS[`shore.out.${c}`] = { region: 'bank.left', ops: [], anchor: [24, 24], shape: { type: 'out', c, reach: 0.5 } };
 }
 // The fringes: each is its kind's variant cell, masked to a ragged strip along the edge.
 for (const kind of FRINGE) {
