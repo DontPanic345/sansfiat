@@ -45,6 +45,11 @@ Keep every existing region's cut identical to the pixel (`--check` proves it on 
   variants differ. Start at `DEPTH` 16, `AMP` 6, `FEATHER` 4, `TAPER` 12 (cell px); the constants
   live with `HEX_R` in `placeholders.js`, each with a note, so `layout()` and `cut.mjs` share them.
 
+- **flat from a rectangle**: a `CELLS` entry may name `flat: [x, y, w, h]`, a rectangle of its region's
+  file: the cell's `flat` in `atlas.json` is that rectangle's mean colour instead of the cut's mean, and
+  `--check` compares against it. Measured: the hill hexes average `(127, 135, 48)`, the plains hex
+  `(122, 133, 50)`, 6 apart, so hills need it; main's nine flat colours are at least 28 apart in RGB.
+
 `cut()` returns `flat` for every cell as now (mean of its opaque pixels); a derived cell with no opaque
 pixel may give `flat` null rather than throw, since it is never a flat fill. `atlas.json`'s `src` for a
 derived cell is `from`'s region.
@@ -87,6 +92,8 @@ points; adjust a rectangle that cuts the wrong thing and say so in `atlas.md`.
 - **hills** `terrain.hills.0`–`.2`: hex regions on the bottom-left row's first two hexes (centres about
   (165, 854) and (358, 854), the plains hex's size and inset), each with grass patched over the hill
   that runs in from its left neighbour; `.2` the first mirrored.
+  Give them a `flat` rectangle on the hill's ochre (the mound, not the grass round it), so hills read as
+  hills at the flat zoom.
 - **mountain** `terrain.mountain.0`–`.2`: as now.
 - **desert** `terrain.desert.0`–`.2`: the plains' clean recipe with a `ramp` onto the source's sand
   and ochre (dark the hills' shaded ochre, light the bank's top), `mix` 1.
@@ -112,7 +119,7 @@ points; adjust a rectangle that cuts the wrong thing and say so in `atlas.md`.
    branch: every ground shows its first cut at k 35 and 18 (no placeholder hex left), and the flat fill at k 5 shows each kind's new `flat`.
 4. `relay/specs/441/atlas.md`: the sha256 lines, the `--check` output, the sheet's size, each new
    key family's size and anchor, the eight grounds' and the lake's `flat` colours beside main's
-   placeholder colours, any recipe you changed and why, and `relay/specs/441/cells.png`: every new
+   placeholder colours and the closest pair of the nine kinds' flats with its RGB distance (build-3 holds it at 28 or more; say which pairs a first cut leaves short), any recipe you changed and why, and `relay/specs/441/cells.png`: every new
    and recut cell at 2× on a mid-grey sheet, labelled by key or in key order, for the canvas.
 5. `engine/CLAUDE.md` (an 8 KB budget `check.sh` enforces): `cut.mjs`'s ops in a few words.
 

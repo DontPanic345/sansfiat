@@ -55,7 +55,10 @@ named rectangle of `terrain.png`, recoloured at most. What you judge, in the cap
   every ground and on the bank.
 - **Zoom.** `small2-neck-edge` (phone, k 6, cells) and `small2-neck-flat` (k 5, the flat fill) tell
   sea, lake, coast, plains, forest, hills, mountain, desert and marsh apart at a glance; so does
-  `small2-flat`. If two kinds' `flat` colours come too close, say how you separated them.
+  `small2-flat`. No two of the nine kinds' `flat` colours closer than 28 in RGB
+  (main's closest pair, hills and mountain): cell means of recoloured grass fall well under that, so set
+  a cell's `flat` rectangle where they do, on a colour of that ground in the sheet, and say how you
+  separated them.
 
 What you don't do: trees, reeds, units, settlements, the HUD and the legend. They are later pieces.
 
@@ -69,7 +72,7 @@ What you don't do: trees, reeds, units, settlements, the HUD and the legend. The
    `small6-bay-close`, `small9-lake-play`, `medium9-neck-play` and `small2-neck-flat` under
    `relay/specs/441/shots/` as `<view>-main.png` and `<view>-branch.png` (only these twelve).
 4. `relay/specs/441/views.md`: the `--diff` table, the sha256 lines, the `--cull` output, each play
-   view's `stats.terrainMs` on main and the branch, the flat colours, what you changed from the easels
+   view's `stats.terrainMs` on main and the branch, the nine flat colours and the closest pair's RGB distance (28 or more), what you changed from the easels
    and why, and a few lines on how each point above reads in the captures.
 5. On the branch page (`node www/play.mjs "?size=small&seed=2&run=1"` or `play/live.mjs`), select a
    coast tile, a water tile and a unit, then pan and zoom: they behave as on main. A line in

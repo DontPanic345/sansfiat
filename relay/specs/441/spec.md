@@ -37,6 +37,9 @@ worktree, the branch's `shots.mjs` copied in).
      six edges.
    - **derived cells**: a cell made from another cut cell, masked: the land fringes (below), each
      cropped to its mask.
+   - **flat from a rectangle**: a cell may name `flat: [x, y, w, h]`, a source rectangle whose mean
+     colour is the cell's `flat` instead of the cut's mean, so a ground whose cell is mostly grass (hills)
+     still has its own colour at the flat zoom.
 2. **The grounds** (build-1 first cuts, build-3 judged): `terrain.<kind>.0`–`.2` for sea, lake,
    coast, forest, hills, mountain, desert and marsh are cut from the sources (plains already is).
    No key is added for a ground: they are main's keys, at main's rectangles.
@@ -125,6 +128,13 @@ map.
   (`angle = 60 d − 90` degrees from the source's south-facing run), on the land side of the edge. The
   patch reads as grass, a bank and sea. The block's mirror shows as a regular ripple pattern, and the
   bank's ends leave small gaps and overlaps at the corners: those are the canvas's.
+- **The flat colours can't all be cell means** (spec-review, measured on `terrain.png`): the two hill
+  hexes average `(127, 135, 48)` and `(126, 134, 48)`, the plains hex `(122, 133, 50)`: 6 apart in RGB.
+  Taken as the cell's mean, hills would be plains at the flat zoom. Main's nine flat colours are at
+  least 28 apart (its closest pair hills and mountain), so that is the bar: **no two of the nine kinds'
+  flat colours (sea, lake, coast, plains, forest, hills, mountain, desert, marsh) closer than 28 in
+  RGB**. A cell's `flat` may come from a source rectangle (the hill's ochre, say) for this; every flat
+  is still a colour of the sheet.
 - **The views' cameras** (`shores.md`, `proto/cams.mjs`): each view's tile below, set at its zoom and
   window on main, reads back unclamped.
 - **Callers.** `atlas.json` is read by `atlas.js` (by key), `terrain.js` (`terrain.*` by key and
@@ -162,8 +172,10 @@ map.
   coast, plains lowest: the strong grounds bleed into the grass, not the grass into them. The order
   and which kinds bleed are a table the canvas may change. Land fringes have no corner pieces; the
   canvas adds them only if a seam shows.
-- **The flat fill takes every ground's `flat`** (its cell's mean), as plains does now; the mountain
-  keeps its peak's grey.
+- **The flat fill takes every ground's `flat`**, as plains does now: its cell's mean, or the mean of a
+  source rectangle the cell names where the mean is too close to another kind's (hills' starts from its
+  mound's ochre). The mountain keeps its peak's grey. No two kinds' flats closer than 28 in RGB, main's
+  closest pair.
 - **Variants are by tile index**: a ground `i % 3` (as now), an edge piece `min(i, j) % 2`, a corner
   one variant, so the map always looks the same.
 - **The layer is `edges`**, between `terrain` and `ridges`: rivers, floodplains, passes and the rest
@@ -177,7 +189,7 @@ map.
   ripples' repeat), the lake's tone, the bank's strip, thickness and placement, the twelve corners
   (gaps, lumps, the bend at a neck and in a pond), the eight grounds' recipes and colours beside the
   grass and the peaks, the fringes' depth and raggedness and `FRINGE`, the desert stipple, and the flat
-  colours' contrast. Proof: the captures of the views below, main beside the branch, read by eye, the
+  colours' contrast (each kind's `flat` rectangle, no pair closer than 28). Proof: the captures of the views below, main beside the branch, read by eye, the
   `--diff` shares and `--cull`, in `relay/specs/441/views.md`.
 
 ## Ideas taken
@@ -223,7 +235,7 @@ as `shores.md` defines them. Laptop is 1280×800, phone 390×844.
   as water held by a shore, the mouths open through the bank; lakes are lighter than the sea; land
   kinds meet in fringes; rivers, floodplains, passes, borders, fields, icons, clans, units and peaks
   sit where main has them. `small2-neck-edge` and `small2-neck-flat` tell every kind apart at both
-  zooms.
+  zooms, and `views.md` lists the nine flat colours with their closest pair, at least 28 apart in RGB.
 - `stats.terrainMs` beside main's on the play views: the branch's static draw stays within a few ms.
 - On the branch page, select a coast tile, a water tile and a unit, pan and zoom: they behave as on
   main.

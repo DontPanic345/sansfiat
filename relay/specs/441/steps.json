@@ -6,7 +6,7 @@
     "model": "haiku",
     "effort": "high",
     "points": 4,
-    "why": "Open 1 (the ops are exact and checked by asserts the brief names; the first cuts need only be visible and the right ground, from starting recipes), New 1 (fill, rotate and ramp extend cut.mjs's hex and sprite paths; proto/shore-cut.mjs is the fill and the turned bank working; derived cells are a mask over an existing cut), Miss 1 (--check's recut and its three new asserts), Reach 1 (the atlas every map draw reads; layout grows after the mountain pieces). An easel with an exact done at 4: Haiku high, as 439's and 440's easels ran. About 7 files, 450 lines plus the PNG: assets/cut.mjs (216 to about 400), sources.js, placeholders.js, draw-atlas.mjs, atlas.png/json, engine/CLAUDE.md, atlas.md and cells.png. Cut from the map easel by area (the atlas, then the map) so each session reads one half of the code."
+    "why": "Open 1 (the ops are exact and checked by asserts the brief names; the first cuts need only be visible and the right ground, from starting recipes), New 1 (fill, rotate and ramp extend cut.mjs's hex and sprite paths; proto/shore-cut.mjs is the fill and the turned bank working; derived cells are a mask over an existing cut; a cell's flat from a source rectangle, which spec-review added because the hill hexes' mean sits 6 RGB from the plains'), Miss 1 (--check's recut and its three new asserts), Reach 1 (the atlas every map draw reads; layout grows after the mountain pieces). An easel with an exact done at 4: Haiku high, as 439's and 440's easels ran. About 7 files, 450 lines plus the PNG: assets/cut.mjs (216 to about 400), sources.js, placeholders.js, draw-atlas.mjs, atlas.png/json, engine/CLAUDE.md, atlas.md and cells.png. Cut from the map easel by area (the atlas, then the map) so each session reads one half of the code."
   },
   {
     "id": "build-2",
@@ -24,13 +24,13 @@
     "model": "sonnet",
     "effort": "high",
     "points": 9,
-    "why": "Open 4 (the water's fill, the bank and its twelve corners, eight grounds' recipes, the fringes and the flat colours: judged by eye), New 1 (the ops and pieces are the easels'; adding corner cells or a fringe rule adapts them), Miss 3 (only captures on the retro maps catch a bank that gaps at a cape or a coast that reads as beach), Reach 1 (sources.js and the edge pieces, drawn every static redraw, but no rule). A canvas at 9: Sonnet high, as 440's. Larger than 440's in cells (about 30 recipes and the corners) but the easels ship first cuts of every one. About 6 files and 12 committed PNGs, 250 lines: assets/sources.js, cut.mjs, placeholders.js, atlas.png/json, maybe map/edges.js with check-map.mjs and play/edges.mjs, views.md, shots/."
+    "why": "Open 4 (the water's fill, the bank and its twelve corners, eight grounds' recipes, the fringes, judged by eye; the flat colours held to no pair under 28 RGB, main's closest), New 1 (the ops and pieces are the easels'; adding corner cells or a fringe rule adapts them), Miss 3 (only captures on the retro maps catch a bank that gaps at a cape or a coast that reads as beach), Reach 1 (sources.js and the edge pieces, drawn every static redraw, but no rule). A canvas at 9: Sonnet high, as 440's. Larger than 440's in cells (about 30 recipes and the corners) but the easels ship first cuts of every one. About 6 files and 12 committed PNGs, 250 lines: assets/sources.js, cut.mjs, placeholders.js, atlas.png/json, maybe map/edges.js with check-map.mjs and play/edges.mjs, views.md, shots/."
   },
   {
     "id": "review",
     "title": "Review the piece",
     "model": "opus",
     "effort": "medium",
-    "why": "The goal is shores and grounds judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved, repeats the atlas build for identical bytes, runs --cull and the CI checks, shoots views on a main worktree and the branch and diffs the cameras, reads the pairs for necks, a strait, bays, ponds, river mouths and the flat zoom, checks selection on coast and water, and puts the captures in the PR."
+    "why": "The goal is shores and grounds judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved, repeats the atlas build for identical bytes, runs --cull and the CI checks, shoots views on a main worktree and the branch and diffs the cameras, reads the pairs for necks, a strait, bays, ponds, river mouths and the flat zoom (the nine flats at least 28 RGB apart), checks selection on coast and water, and puts the captures in the PR."
   }
 ]
