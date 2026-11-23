@@ -32,7 +32,7 @@ export function draw(ctx, model, view) {
       b.push(i);
     }
     for (const [key, list] of buckets) {
-      ctx.fillStyle = TERRAIN_COLOR[key] || '#f0f';
+      ctx.fillStyle = view.atlas?.json.cells[`terrain.${key}.0`]?.flat || TERRAIN_COLOR[key] || '#f0f';
       ctx.beginPath();
       for (const i of list) view.hexAt(ctx, i, OVER);
       ctx.fill();
@@ -44,12 +44,24 @@ export function draw(ctx, model, view) {
     const desert = view.byName.desert;
     const dots = k >= 9 ? atlas.scaled('overlay.desert-dots', H) : null;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Each cell's anchor, scaled to the drawn size, lands on the tile's centre; read once per draw.
+    const placed = new Map();
+    const place = (name) => {
+      let p = placed.get(name);
+      if (!p) {
+        const cell = atlas.cell(name);
+        const img = atlas.scaled(name, H);
+        p = { img, ax: ((cell.ax ?? cell.w / 2) * img.width) / cell.w, ay: ((cell.ay ?? cell.h / 2) * H) / cell.h };
+        placed.set(name, p);
+      }
+      return p;
+    };
     let n = 0;
     for (let a = 0; a < view.nvis; a++) {
       const i = view.vis[a];
-      const img = atlas.scaled(`terrain.${kind(i)}.${i % 3}`, H);
-      const x = Math.round(((view.px[i] - view.cx) * k + view.w / 2) * dpr - img.width / 2);
-      const y = Math.round(((view.py[i] - view.cy) * k + view.h / 2) * dpr - H / 2);
+      const { img, ax, ay } = place(`terrain.${kind(i)}.${i % 3}`);
+      const x = Math.round(((view.px[i] - view.cx) * k + view.w / 2) * dpr - ax);
+      const y = Math.round(((view.py[i] - view.cy) * k + view.h / 2) * dpr - ay);
       ctx.drawImage(img, x, y);
       if (dots && l.terrain[i] === desert) ctx.drawImage(dots, x, y);
       n++;
