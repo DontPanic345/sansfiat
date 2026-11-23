@@ -46,7 +46,8 @@ fields better warriors than one that has to trade for blades.
 
 ## What it isn't
 
-- No wood, stone, horses, sheep or goats yet; no crafts, no beer, no traders.
+- No wood, stone, horses, sheep or goats yet; no crafts, no beer, no traders. Traders come
+  as a clan's job, carrying goods between two markets for what it gains (`roadmap.md`, M6).
 
 ## Decided
 
@@ -57,4 +58,4 @@ fields better warriors than one that has to trade for blades.
 - At a festival a clan brings all its obsidian and the salt its own store won't use; a good nobody there wants isn't traded. (#355)
 - A civ's store takes salt only to keep a full store and obsidian only for twenty warriors; past that the levy leaves them with the clan and the store wants none at its market. (#355)
 - A starving clan gives none of its days to a source: digging cost a clan its food. (#355)
-- A good passes from one market to the next by a clan carrying its unsold wares to a second festival, not by stores trading along lines between settlements: stores hold almost none of what moves, and clans hold it. A clan makes the second walk only fed, and only when the wares' worth covers a hundredth of its cost. (#356)
+- A good passes from one market to the next by a clan's festival, the levy into a store, and an army's pay from that store to the market its line ends at; clans don't walk to a second festival. (#356)

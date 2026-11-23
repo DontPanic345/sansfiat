@@ -6,7 +6,7 @@ line's end. The further from home, the more of its labour goes on staying fed.
 
 Every unit is an actor (`actors.md`) and works this way: the army's camp, whose pack is the
 camp's stock, and the scout.
-The pack is also what a unit will post from and fill when units trade at markets, later.
+The pack is also what an army posts from at a market its line ends at.
 
 The idea is `docs/notes/Supply Line Mechanic.md`, and merge4's numbers are a place to start
 tuning from.
@@ -26,6 +26,23 @@ tuning from.
   the labour, so a long line takes most of a unit's turn, and past some length it's cut off.
 - The line can't pass through a rival civ's land, or ground a rival army holds.
 - Trails lower the line's cost like any path, so the scout's trails stretch a civ's reach.
+
+## A line to a market
+
+Food is heavy and a line carries it a short way. A light good goes much further for the same
+labour, and a market near the army turns it back into food.
+
+- **Pay.** An army its line home can't feed is paid along that line in the goods its store
+  holds that buy food at the market nearest the army. A good is pay only while that market
+  gives more food for it than its own weight in food: nothing is named as pay, and what pays
+  changes with what the market wants.
+- **The stall.** The army keeps a stall at that market. Its pay goes into the market's
+  clearing as any trader's goods do, and the food it buys waits at the stall.
+- **The end.** The line ends at the stall instead of the store when the food waiting there
+  feeds the army better, so an army far from home lives off a friendly market.
+- A rival's market never ends a line, and the line to the market is cut as any line is.
+- The store keeps its armies' pay back from its own use, so an army's pay comes before the
+  store's keeping.
 
 ## Past the line
 
@@ -57,8 +74,6 @@ first, so there's no reserve to set.
 
 - Porters, caches, depots, roads and pack animals.
 - Rivers carrying supply.
-- Goods other than food on a line.
-- Units trading at markets.
 - Fighting.
 
 ## Decided
@@ -69,3 +84,4 @@ first, so there's no reserve to set.
 - The ring is every tile from which a civ's line feeds an army with days to spare. It is the same for every army and scout of the civ, and a rival's held ground is past it. (#154)
 - A unit's line runs to the store of its civ, capital or settlement, that feeds it for the least labour, and draws on that store alone. A store that doesn't hold a turn of the unit's food is passed over while another does, and a line a rival cuts looks for another store. The ring is every store's ring together. (#354)
 - A scout's food is its pack, filled at a store of its civ: it never forages or draws on a line, so an errand is trips out and home between stores and a rival further than a pack there and back waits for a nearer store. (#337)
+- An army its line home can't feed is paid along that line, at each good's weight, in any good its store holds that buys more food at the friendly market nearest it than its own weight in food; it posts the pay in that market's clearing, the food waits at its stall there, and its line ends at the stall when that feeds it better than its store. A store keeps its armies' pay back from its keeping. (#356)
