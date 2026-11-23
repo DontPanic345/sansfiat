@@ -1,6 +1,8 @@
-// Checks the map's pieces from the wasm build under Node: the mountain pieces (map/ridges.js) and the shore and fringe
+// Checks the map's pieces from the wasm build under Node: the mountain pieces (map/ridges.js), the shore and fringe
 // pieces (map/edges.js) on a medium world, each counted again here from the neighbours, and the shore pieces on a
-// synthetic seven-tile layout with a river mouth. Usage: node www/check-map.mjs [seed]. Needs www/pkg (./build-web.sh).
+// synthetic seven-tile layout with a river mouth, and the wood pieces (map/woods.js) on the same world, checked slot by slot
+// against the rule, and on synthetic rings (a river through forest, with and without fields; marsh with a river).
+// Usage: node www/check-map.mjs [seed]. Needs www/pkg (./build-web.sh).
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
@@ -92,7 +94,7 @@ const expectedPieces = ({ kinds, nb, px, py, river, flow }) => {
     if (wet(i)) continue;
     for (let d = 0; d < 6; d++) {
       const j = nb[i * 6 + d];
-      if (j < 0 || !wet(j) || mouth(i, j)) continue;
+      if (j < 0 || !wet(j) || mouth(i, j) || kinds[i] === 'marsh') continue;
       piece('edge', `shore.edge.${d}.${Math.min(i, j) % 2}`, (px[i] + px[j]) / 2, (py[i] + py[j]) / 2, i, j);
     }
   }
@@ -122,6 +124,7 @@ const expectedPieces = ({ kinds, nb, px, py, river, flow }) => {
       if (seen.has(id)) continue;
       seen.add(id);
       const tiles = [i, a, b];
+      if (tiles.every((u) => wet(u) || kinds[u] === 'marsh')) continue; // all marsh and water: the reeds run in
       const waterTiles = tiles.filter(wet);
       if (waterTiles.length === 1 || waterTiles.length === 2) {
         const t = waterTiles.length === 1 ? waterTiles[0] : tiles.find((u) => !wet(u));
@@ -184,4 +187,110 @@ const mouthCorners = synthetic.filter((p) => p.kind === 'corner' && p.tile === 1
 assert.deepEqual(mouthCorners, ['shore.in.3', 'shore.in.4'], 'the mouth\'s two corners draw, on the sea tile');
 assert.ok(synthetic.some((p) => p.kind === 'edge' && p.tile === 2), 'the land beside the sea still has its bank');
 
+// The wood pieces (map/woods.js). The lattice, the draws and the river's course come from the module; the rule is counted
+// here, slot by slot, from the neighbours and WOODS: each forest slot holds the tree the rule says (or nothing), each
+// marsh slot a reed, no piece lies within WOODS.river of its tile's course, and the order is the spec's.
+const { WOODS, SALT, slotDraw, slotsOf, riverSegments, woodPieces } = await import(pathToFileURL(`${here}map/woods.js`).href);
+const FOREST = TERRAIN.findIndex((t) => t.name === 'forest');
+const MARSH = TERRAIN.findIndex((t) => t.name === 'marsh');
+assert.ok(FOREST >= 0 && MARSH >= 0, 'the terrain has forest and marsh');
+const TREE_SLOTS = slotsOf(WOODS.gap.tree), REED_SLOTS = slotsOf(WOODS.gap.reed);
+const segDist = (x, y, [x0, y0, x1, y1]) => {
+  const dx = x1 - x0, dy = y1 - y0;
+  const t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(x0 + t * dx - x, y0 + t * dy - y);
+};
+/** Each slot's expected piece, by the rule: `{key, kind}` or null for a slot that holds nothing, for one tile. */
+const expectSlot = (m, i, slot, tree) => {
+  const lattice = tree ? TREE_SLOTS : REED_SLOTS;
+  const s = lattice[slot];
+  const x = m.px[i] + s.x + (slotDraw(i, slot, SALT.jx) * 2 - 1) * WOODS.jitter;
+  const y = m.py[i] + s.y + (slotDraw(i, slot, SALT.jy) * 2 - 1) * WOODS.jitter;
+  if (riverSegments(i, m).some((seg) => segDist(x, y, seg) < WOODS.river)) return null;
+  const lx = x - m.px[i], ly = y - m.py[i];
+  if (m.fields.has(i) && Math.abs(lx) < WOODS.clearing.x && ly > WOODS.clearing.top && ly < WOODS.clearing.bottom) return null;
+  const v =Math.floor(slotDraw(i, slot, SALT.variant) * 3);
+  if (!tree) return { key: `reed.${v}`, kind: 'reed' };
+  // Open edges, from the axial directions: a neighbour that is not forest, or off the map.
+  let depth = Infinity;
+  for (let d = 0; d < 6; d++) {
+    const j = m.nb[i * 6 + d];
+    if (j >= 0 && m.terrain[j] === FOREST) continue;
+    const [dq, dr] = EDGE[d];
+    const len = Math.hypot(Math.sqrt(3) * (dq + dr / 2), 1.5 * dr);
+    const nx = (Math.sqrt(3) * (dq + dr / 2)) / len, ny = (1.5 * dr) / len;
+    depth = Math.min(depth, Math.sqrt(3) / 2 - ((x - m.px[i]) * nx + (y - m.py[i]) * ny));
+  }
+  if (depth >= WOODS.band) return { key: `tree.big.${v}`, kind: 'tree' };
+  return slotDraw(i, slot, SALT.sparse) < WOODS.sparse ? { key: `tree.small.${v}`, kind: 'tree' } : null;
+};
+/** Checks a layout's wood pieces against the rule, and returns them with counts: `big`, `small`, `reed`, `cleared` slots. */
+const checkWoods = (m, label) => {
+  const pieces = woodPieces({ terrain: m.terrain, river: m.river, flow: m.flow, nb: m.nb, px: m.px, py: m.py, forest: FOREST, marsh: MARSH, fields: m.fields });
+  const got = new Map(pieces.map((p) => [`${p.tile}|${p.slot}`, p]));
+  assert.equal(got.size, pieces.length, `${label}: one piece a slot`);
+  const counts = { big: 0, small: 0, reed: 0, cleared: 0 };
+  for (let i = 0; i < m.terrain.length; i++) {
+    const t = m.terrain[i];
+    if (t !== FOREST && t !== MARSH) continue;
+    const slots = t === FOREST ? TREE_SLOTS : REED_SLOTS;
+    for (let slot = 0; slot < slots.length; slot++) {
+      const want = expectSlot(m, i, slot, t === FOREST);
+      const have = got.get(`${i}|${slot}`);
+      assert.equal(have ? have.key : null, want ? want.key : null, `${label}: tile ${i} slot ${slot} holds the rule's piece`);
+      if (!want) counts.cleared++;
+      else if (want.kind === 'reed') counts.reed++;
+      else counts[want.key.startsWith('tree.big') ? 'big' : 'small']++;
+      if (!have) continue;
+      assert.equal(have.x, m.px[i] + slots[slot].x + (slotDraw(i, slot, SALT.jx) * 2 - 1) * WOODS.jitter, `${label}: tile ${i} slot ${slot}: the moved x`);
+      assert.equal(have.y, m.py[i] + slots[slot].y + (slotDraw(i, slot, SALT.jy) * 2 - 1) * WOODS.jitter, `${label}: tile ${i} slot ${slot}: the moved y`);
+      for (const seg of riverSegments(i, m)) assert.ok(segDist(have.x, have.y, seg) >= WOODS.river, `${label}: tile ${i} slot ${slot} is clear of the river`);
+    }
+  }
+  for (let k = 1; k < pieces.length; k++) {
+    const a = pieces[k - 1], b = pieces[k];
+    const ordered = a.y < b.y || (a.y === b.y && (a.x < b.x || (a.x === b.x && (a.tile < b.tile || (a.tile === b.tile && a.slot < b.slot)))));
+    assert.ok(ordered, `${label}: pieces ${k - 1} and ${k} are in draw order`);
+  }
+  return { pieces, counts };
+};
+const mapOf = (layout) => ({
+  terrain: layout.terrain, river: layout.river, flow: layout.flow, nb: nbOf, px: pxOf, py: pyOf,
+  fields: new Set(), // the medium world is read before any turn: no fields
+});
+const wood = checkWoods(mapOf(layout), 'medium');
+const woodCount = (list) => list.filter((p) => p.kind === 'tree').length;
+// The forest's classes on the medium world: a forest tile by its forest neighbours (six: interior; none: lone; else edge).
+const forestTiles = [...Array(n).keys()].filter((i) => layout.terrain[i] === FOREST);
+const forestNbs = (i) => EDGE.map((_, d) => d).filter((d) => nbOf[i * 6 + d] >= 0 && layout.terrain[nbOf[i * 6 + d]] === FOREST).length;
+const classes = { interior: 0, edge: 0, lone: 0 };
+for (const i of forestTiles) classes[forestNbs(i) === 6 ? 'interior' : forestNbs(i) === 0 ? 'lone' : 'edge']++;
+const lacks = Object.keys(classes).filter((c) => classes[c] === 0);
+if (lacks.length) console.log(`note: the medium world's forest lacks ${lacks.join(', ')} tiles`);
+// Synthetic layouts on the seven-tile ring: forest with a river through its centre, with and without fields (the
+// clearing), and marsh with the same river.
+const ringOf = (terrainName, { river = false, fields = [] } = {}) => {
+  const t = TERRAIN.findIndex((x) => x.name === terrainName);
+  const L = {
+    terrain: ring.map(() => t),
+    river: ring.map((_, i) => (river && i === 0 ? 1 : 0)),
+    flow: ring.map((_, i) => (river && i === 0 ? 1 : -1)),
+    nb: nb7, px: px7, py: py7, fields: new Set(fields),
+  };
+  return L;
+};
+const withFields = checkWoods(ringOf('forest', { river: true, fields: [0] }), 'ring with fields');
+const withoutFields = checkWoods(ringOf('forest', { river: true }), 'ring without fields');
+const course = riverSegments(0, ringOf('forest', { river: true }));
+const inClearing = (list) => list.filter((p) => p.tile === 0 && Math.abs(p.x - px7[0]) < WOODS.clearing.x && p.y - py7[0] > WOODS.clearing.top && p.y - py7[0] < WOODS.clearing.bottom);
+const onCourse = (list) => list.filter((p) => p.tile === 0 && course.some((seg) => segDist(p.x, p.y, seg) < WOODS.river));
+assert.equal(inClearing(withFields.pieces).length, 0, 'a tile with fields has no piece in its clearing');
+assert.ok(inClearing(withoutFields.pieces).length > 0, 'the same tile without fields has pieces in its clearing');
+assert.equal(onCourse(withFields.pieces).length, 0, 'no piece stands on the river course');
+assert.equal(onCourse(withoutFields.pieces).length, 0, 'no piece stands on the river course without fields');
+const marshRing = checkWoods(ringOf('marsh', { river: true }), 'marsh ring');
+assert.ok(marshRing.pieces.every((p) => p.kind === 'reed'), 'a marsh tile holds reeds only');
+assert.ok(marshRing.pieces.some((p) => p.tile === 0), 'a marsh tile holds reeds');
+
 console.log(`ok: edges, medium seed ${seed}: ${counts.fringe} fringes, ${counts.edge} shore edges, ${counts.corner} corners, ${mouths.length} river mouths; the synthetic mouth draws its corners`);
+console.log(`ok: woods, medium seed ${seed}: ${wood.counts.big} big trees, ${wood.counts.small} small, ${wood.counts.reed} reeds, ${wood.counts.cleared} clear slots; forest tiles ${classes.interior} interior, ${classes.edge} edge, ${classes.lone} lone (${woodCount(wood.pieces)} trees); the ring's clearing and course hold`);

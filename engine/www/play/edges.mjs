@@ -1,5 +1,6 @@
 // The shore and fringe pieces on a staged map (map/edges.js): a pond of one tile in plains, a neck (land with sea on
-// one side and a lake on the other), a bay (a sea inlet of two tiles in plains) and desert beside plains. The pieces at
+// one side and a lake on the other), a bay (a sea inlet of two tiles in plains), desert beside plains, and a marsh on the
+// sea (no bank, a marsh fringe on its plains). The pieces at
 // named tiles are the spec's (their keys, kinds and counts), every land–water edge has its bank and every plains–desert
 // edge its fringe. With the camera put so the pond's shore tile sits 1.0 world unit beyond the canvas's bottom edge, the
 // culled draw and the unculled draw give identical PNGs, and the culled one counts the pieces whose rectangle meets the canvas.
@@ -25,6 +26,7 @@ const EXPECT_TERRAIN = {
   '2,2': '=', '1,2': '=', '1,3': '=', '0,3': '=', '0,4': '=', // the lake the neck meets
   '-3,-1': '~', '-3,-2': '~', // the bay: two sea tiles inland, one water neighbour each
   '3,-4': ':', '4,-4': ':', // desert beside plains
+  '0,-7': '%', // marsh on the sea: its water edges are reeds, not banks
 };
 const dist = (q, r) => Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
 const SPEC = {
@@ -63,7 +65,7 @@ const inPage = async ({ shoreKey, k }) => {
   for (let i = 0; i < m.n; i++) for (let d = 0; d < 6; d++) {
     const j = m.nb[i * 6 + d];
     if (j < 0 || j < i) continue;
-    if (wet(i) !== wet(j)) landWater++;
+    if (wet(i) !== wet(j)) { if (kinds[wet(i) ? j : i] !== 'marsh') landWater++; }
     else if (!wet(i) && kinds[i] !== kinds[j] && (FRINGE.includes(kinds[i]) || FRINGE.includes(kinds[j]))) fringes++;
   }
   const s = idx[shoreKey];
@@ -152,14 +154,25 @@ try {
 
   // The desert: each plains tile beside desert has a fringe of desert in it, toward the desert; no fringe between desert tiles.
   const D1 = T('3,-4'), D2 = T('4,-4');
-  const fr = pieces.filter((p) => p.kind === 'fringe');
-  need(fr.every((p) => p.key.startsWith('fringe.desert.')), 'every fringe here is desert');
+  const fr = pieces.filter((p) => p.kind === 'fringe' && p.key.startsWith('fringe.desert.'));
+  need(fr.length === pieces.filter((p) => p.kind === 'fringe').length - pieces.filter((p) => p.kind === 'fringe' && p.other === T('0,-7').i).length, 'every fringe but the marsh\'s is desert');
   const wantFringes = [D1, D2].flatMap((D) => [0, 1, 2, 3, 4, 5].map((d) => ({ D, d, P2: neighbour(D, d) }))).filter(({ P2 }) => P2.i !== D1.i && P2.i !== D2.i).map(({ D, P2 }) => `fringe.desert.${dirOf(P2, D)}.${pair(P2, D)}@${P2.i}`).sort();
   need(JSON.stringify(fr.map((p) => `${p.key}@${p.tile}`).sort()) === JSON.stringify(wantFringes), `the desert has a fringe in each of its ${wantFringes.length} plains neighbours, toward it`);
 
+  // The marsh on the sea: no bank on its water edges and no corner of its own (its reeds run into the water), and a
+  // marsh fringe on each of its plains neighbours, toward it.
+  const M = T('0,-7');
+  need(pieces.filter((p) => p.tile === M.i && p.kind === 'edge').length === 0, 'the marsh on the sea has no bank');
+  need(pieces.filter((p) => p.tile === M.i && p.kind === 'corner').length === 0, 'the marsh on the sea draws no corner of its own');
+  // Its plains neighbours are E, SE and SW (directions 0 to 2); the sea is W, NW and NE.
+  const plainsOfM = [0, 1, 2].map((d) => neighbour(M, d));
+  const wantMarsh = plainsOfM.map((P2) => `fringe.marsh.${dirOf(P2, M)}.${pair(P2, M)}@${P2.i}`).sort();
+  const gotMarsh = pieces.filter((p) => p.kind === 'fringe' && p.other === M.i).map((p) => `${p.key}@${p.tile}`).sort();
+  need(JSON.stringify(gotMarsh) === JSON.stringify(wantMarsh), `the marsh has a fringe toward each of its three plains neighbours, keyed toward it (${gotMarsh.length})`);
+
   // The counts: a bank per land–water edge, a fringe per land–land edge that bleeds.
   need(pieces.filter((p) => p.kind === 'edge').length === r.landWater, `a bank per land–water edge (${r.landWater})`);
-  need(fr.length === r.fringes, `a fringe per bleeding land–land edge (${r.fringes})`);
+  need(pieces.filter((p) => p.kind === 'fringe').length === r.fringes, `a fringe per bleeding land–land edge (${r.fringes})`);
 
   // The order: fringes from the lowest kind to the highest, then banks, then corners; each by y, x, tile, other.
   let ordered = true;

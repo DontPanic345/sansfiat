@@ -1,6 +1,7 @@
 // The shore and fringe pieces of a map, in draw order: the bank along each land–water edge and round each shore
 // vertex, and the ragged fringe where two land kinds meet. Pure (no DOM): the layer draws them, and www/check-map.mjs
-// and www/play/edges.mjs read them. Directions are `EDGE_DIR`'s: 0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE.
+// and www/play/edges.mjs read them. Directions are `EDGE_DIR`'s: 0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE. A marsh has no bank
+// on its water edges and no corner where only marsh meets the water: its shore is reeds (map/woods.js).
 import { FRINGE } from '../assets/placeholders.js';
 import { CORNER } from './geom.js';
 
@@ -46,6 +47,8 @@ export function edgePieces({ terrain, lake, river, flow, nb, px, py, names }) {
       if (water(j)) {
         // A mouth: the river crosses this edge into the water, so the bank has a gap for it.
         if (river[i] > 0 && flow[i] === j) continue;
+        // Marsh runs into the water as reeds (map/woods.js), not as a bank.
+        if (kinds[i] === 'marsh') continue;
         edges.push({ key: `shore.edge.${d}.${variantOf(i, j)}`, x: (px[i] + px[j]) / 2, y: (py[i] + py[j]) / 2, tile: i, other: j, kind: 'edge' });
       } else if (j > i && kinds[j] !== kinds[i] && (rankOf(kinds[i]) !== Infinity || rankOf(kinds[j]) !== Infinity)) {
         // Two land kinds meet: the higher kind bleeds into the lower tile. Each edge once, from the lower-numbered tile.
@@ -65,6 +68,8 @@ export function edgePieces({ terrain, lake, river, flow, nb, px, py, names }) {
       const trio = c === 1 ? [[i, 1], [nb[i * 6], 3], [nb[i * 6 + 1], 5]] : [[i, 2], [nb[i * 6 + 1], 4], [nb[i * 6 + 2], 0]];
       if (trio.some(([t]) => t < 0)) continue;
       const wet = trio.filter(([t]) => water(t));
+      // A vertex whose land tiles are all marsh draws no corner: the reeds run into the water there.
+      if (trio.every(([u]) => water(u) || kinds[u] === 'marsh')) continue;
       if (wet.length === 1) {
         const [t, k] = wet[0];
         corners.push({ key: `shore.in.${k}`, x: px[t] + CORNER[k][0], y: py[t] + CORNER[k][1], tile: t, other: -1, kind: 'corner' });
