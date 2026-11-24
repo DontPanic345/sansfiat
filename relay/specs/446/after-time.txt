@@ -1,0 +1,22 @@
+small2-close  tile 440  terrainMs 10.3 2.9 4.1 2.8 3.2  median 3.2  overlayMs 6.6 7.7 12.2 8.1 8.2  median 8.1  frame median 11.4  stats.woods 152
+medium9-places-close  tile -1  terrainMs 9.4 2.0 1.9 2.0 2.0  median 2.0  overlayMs 4.2 4.7 4.8 5.0 5.3  median 4.8  frame median 7.0  stats.woods 284
+large8-places-close  tile -1  terrainMs 14.5 2.3 2.3 2.8 2.3  median 2.3  overlayMs 7.6 5.2 5.6 5.4 5.1  median 5.4  frame median 7.9  stats.woods 116
+medium9-clans-close  tile -1  terrainMs 2.3 2.0 1.9 2.0 2.2  median 2.0  overlayMs 4.4 4.9 4.9 5.0 5.4  median 4.9  frame median 6.9  stats.woods 279
+lineup-close  tile -1  terrainMs 1.2 1.5 2.2 1.8 2.1  median 1.8  overlayMs 2.3 3.7 5.3 5.4 5.4  median 5.3  frame median 7.2  stats.woods 75
+small2-play  tile 440  terrainMs 13.7 6.1 6.2 5.9 6.1  median 6.1  overlayMs 8.1 9.3 9.2 9.7 9.6  median 9.3  frame median 15.6  stats.woods 265
+medium9-play  tile 924  terrainMs 18.7 19.1 20.3 18.6 27.0  median 19.1  overlayMs 5.0 4.3 3.5 5.2 4.8  median 4.8  frame median 23.8  stats.woods 870
+large8-play  tile 1680  terrainMs 21.3 21.4 25.9 20.8 18.9  median 21.3  overlayMs 7.5 8.2 6.3 40.0 5.1  median 7.5  frame median 29.6  stats.woods 479
+medium9-woods-play  tile 827  terrainMs 21.2 21.2 27.0 19.4 19.1  median 21.2  overlayMs 5.1 4.7 3.8 4.5 4.6  median 4.6  frame median 25.9  stats.woods 918
+medium9-places-play  tile -1  terrainMs 10.0 6.7 6.5 6.5 6.5  median 6.5  overlayMs 7.5 8.2 8.3 8.4 8.7  median 8.3  frame median 14.9  stats.woods 640
+large8-places-play  tile 2524  terrainMs 7.0 6.7 6.6 7.0 7.0  median 7.0  overlayMs 8.6 9.5 10.3 9.5 40.0  median 9.5  frame median 16.5  stats.woods 270
+medium9-units-play  tile -1  terrainMs 13.2 5.2 5.4 5.3 5.3  median 5.3  overlayMs 6.8 7.9 7.9 7.6 8.3  median 7.9  frame median 13.3  stats.woods 590
+medium9-clans-play  tile -1  terrainMs 7.3 6.8 6.7 6.9 7.4  median 6.9  overlayMs 7.4 8.2 8.4 8.4 9.0  median 8.4  frame median 15.1  stats.woods 750
+medium9-woods-near  tile 827  terrainMs 16.7 15.9 15.3 14.9 15.2  median 15.3  overlayMs 6.8 5.6 5.4 5.4 5.4  median 5.4  frame median 20.7  stats.woods 1231
+medium9-woods-far  tile 827  terrainMs 15.1 14.3 14.7 14.4 13.3  median 14.4  overlayMs 5.7 4.2 4.2 4.2 4.4  median 4.2  frame median 18.6  stats.woods 0
+small2-edge  tile 440  terrainMs 5.3 3.8 3.7 3.6 3.4  median 3.7  overlayMs 5.6 5.7 5.2 5.0 5.3  median 5.3  frame median 8.9  stats.woods 0
+medium9-woods-edge  tile 827  terrainMs 12.4 12.4 12.4 11.7 11.5  median 12.4  overlayMs 3.7 3.6 4.0 3.2 3.7  median 3.7  frame median 16.0  stats.woods 0
+medium9-units-edge  tile -1  terrainMs 11.2 10.3 9.9 10.0 10.0  median 10.0  overlayMs 2.6 2.1 1.9 2.4 1.9  median 2.1  frame median 12.4  stats.woods 0
+medium9-places-edge  tile -1  terrainMs 17.1 11.4 11.1 11.3 11.5  median 11.4  overlayMs 3.3 3.1 3.2 3.7 3.2  median 3.2  frame median 14.7  stats.woods 0
+small2-flat  tile 440  terrainMs 1.8 1.2 1.3 0.8 0.8  median 1.2  overlayMs 4.2 3.7 3.2 3.0 3.7  median 3.7  frame median 4.5  stats.woods 0
+medium9-units-flat  tile -1  terrainMs 2.6 2.0 1.7 1.6 1.7  median 1.7  overlayMs 4.3 4.2 4.5 4.5 4.0  median 4.3  frame median 6.2  stats.woods 0
+exit 0

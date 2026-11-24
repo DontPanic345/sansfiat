@@ -1,0 +1,6 @@
+small2-edge  0.255% differ  (783 of 306540 pixels; 390×786 vs 390×786)
+medium9-play  0.267% differ  (2591 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-units-flat  0.907% differ  (1571 of 173160 pixels; 390×444 vs 390×444)
+lineup-close  1.936% differ  (18806 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-places-play  0.581% differ  (3724 of 641280 pixels; 1280×501 vs 1280×501)
+large8-places-close  0.88% differ  (5646 of 641280 pixels; 1280×501 vs 1280×501)

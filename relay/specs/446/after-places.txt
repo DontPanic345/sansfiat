@@ -1,0 +1,66 @@
+medium9-places-play  tile 566  capital  civ 592  on plains  reads as a town false  clans 255  opaque 932  tinted 117  share 12.6%  mean 90,70,24  nearest 592  ok
+medium9-places-play  tile 602  settlement  civ 592  on hills  reads as a town false  clans 671  opaque 574  tinted 41  share 7.1%  mean 110,85,28  nearest 592  ok
+medium9-places-play  tile 919  settlement  civ 592  on forest  reads as a town true  clans 689,690,722  opaque 555  tinted 39  share 7.0%  mean 106,82,28  nearest 592  ok
+medium9-places-play  tile 735  town  civ none  on forest  reads as a town true  clans 208,223,609,621,633,679,683,720  opaque 558  tinted 0  share 0.0%  mean -  nearest -  ok
+medium9-places-play  tile -1  digest c38cfa6eb0163d07  places on screen 4  roles: capital 1, settlement 2, town 1
+medium9-places-play  capital: least tinted 117, share 12.6–12.6%
+medium9-places-play  settlement: least tinted 39, share 7.0–7.1%
+medium9-places-close  tile 566  capital  civ 592  on plains  reads as a town false  clans 255  opaque 3163  tinted 275  share 8.7%  mean 120,93,33  nearest 592  ok
+medium9-places-close  tile 602  settlement  civ 592  on hills  reads as a town false  clans 671  opaque 1877  tinted 89  share 4.7%  mean 138,107,37  nearest 592  ok
+medium9-places-close  tile 919  settlement  civ 592  on forest  reads as a town true  clans 689,690,722  opaque 1900  tinted 91  share 4.8%  mean 140,108,38  nearest 592  ok
+medium9-places-close  tile 735  town  civ none  on forest  reads as a town true  clans 208,223,609,621,633,679,683,720  opaque 1831  tinted 0  share 0.0%  mean -  nearest -  ok
+medium9-places-close  tile -1  digest c38cfa6eb0163d07  places on screen 4  roles: capital 1, settlement 2, town 1
+medium9-places-close  capital: least tinted 275, share 8.7–8.7%
+medium9-places-close  settlement: least tinted 89, share 4.7–4.8%
+medium9-places-edge  tile 1510  mark  civ 590  on forest  reads as a town false  clans 63  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-edge  tile 40  mark  civ 591  on plains  reads as a town false  clans 227,603  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-edge  tile 566  mark  civ 592  on plains  reads as a town false  clans 255  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-edge  tile 602  mark  civ 592  on hills  reads as a town false  clans 671  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-edge  tile 919  mark  civ 592  on forest  reads as a town true  clans 689,690,722  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-edge  tile 46  mark  civ 591  on coast  reads as a town false  clans 746  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-edge  tile -1  digest c38cfa6eb0163d07  places on screen 8  roles: mark 6
+medium9-places-flat  tile 1510  mark  civ 590  on forest  reads as a town false  clans 63  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-flat  tile 40  mark  civ 591  on plains  reads as a town false  clans 227,603  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-flat  tile 566  mark  civ 592  on plains  reads as a town false  clans 255  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-flat  tile 602  mark  civ 592  on hills  reads as a town false  clans 671  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-flat  tile 919  mark  civ 592  on forest  reads as a town true  clans 689,690,722  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-flat  tile 46  mark  civ 591  on coast  reads as a town false  clans 746  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+medium9-places-flat  tile -1  digest c38cfa6eb0163d07  places on screen 8  roles: mark 6
+small2-places-close  tile 506  capital  civ 454  on marsh  reads as a town false  clans 48  opaque 3181  tinted 277  share 8.7%  mean 32,62,120  nearest 454  ok
+small2-places-close  tile 288  settlement  civ 454  on plains  reads as a town false  clans -  opaque 1904  tinted 91  share 4.8%  mean 37,71,137  nearest 454  ok
+small2-places-close  tile 505  town  civ none  on forest  reads as a town true  clans 69,162,330,472  opaque 1846  tinted 0  share 0.0%  mean -  nearest -  ok
+small2-places-close  tile -1  digest 4ee21ce6517e1cc5  places on screen 3  roles: capital 1, settlement 1, town 1
+small2-places-close  capital: least tinted 277, share 8.7–8.7%
+small2-places-close  settlement: least tinted 91, share 4.8–4.8%
+large8-places-close  tile 2689  capital  civ 1600  on marsh  reads as a town false  clans 65  opaque 3188  tinted 279  share 8.8%  mean 32,61,119  nearest 1600  ok
+large8-places-close  tile 2787  town  civ none  on plains  reads as a town true  clans 107,401,1218,1632,1685,1777,1864,1911  opaque 1831  tinted 0  share 0.0%  mean -  nearest -  ok
+large8-places-close  tile -1  digest 37104de33cd8e31b  places on screen 2  roles: capital 1, town 1
+large8-places-close  capital: least tinted 279, share 8.8–8.8%
+large8-places-play  tile 2689  capital  civ 1600  on marsh  reads as a town false  clans 65  opaque 944  tinted 120  share 12.7%  mean 23,45,87  nearest 1600  ok
+large8-places-play  tile 2787  town  civ none  on plains  reads as a town true  clans 107,401,1218,1632,1685,1777,1864,1911  opaque 537  tinted 0  share 0.0%  mean -  nearest -  ok
+large8-places-play  tile 2871  town  civ none  on forest  reads as a town true  clans 597,1095,1250  opaque 532  tinted 0  share 0.0%  mean -  nearest -  ok
+large8-places-play  tile 2524  town  civ none  on plains  reads as a town true  clans 243,264,350,414,754,1742,1747,1775,1965  opaque 515  tinted 0  share 0.0%  mean -  nearest -  ok
+large8-places-play  tile 2524  digest 37104de33cd8e31b  places on screen 4  roles: capital 1, town 3
+large8-places-play  capital: least tinted 120, share 12.7–12.7%
+places-lineup-close  tile 47  capital  civ 10  on plains  reads as a town true  clans 7,16,17  opaque 3177  tinted 277  share 8.7%  mean 119,38,38  nearest 10  ok
+places-lineup-close  tile 102  capital  civ 11  on plains  reads as a town false  clans 8  opaque 3163  tinted 277  share 8.8%  mean 32,61,119  nearest 11  ok
+places-lineup-close  tile 97  capital  civ 12  on plains  reads as a town false  clans 9  opaque 3149  tinted 274  share 8.7%  mean 120,93,32  nearest 12  ok
+places-lineup-close  tile 140  settlement  civ 11  on plains  reads as a town true  clans 19,20,21  opaque 1889  tinted 91  share 4.8%  mean 37,70,136  nearest 11  ok
+places-lineup-close  tile 79  town  civ none  on plains  reads as a town true  clans 22,23,24,25  opaque 1807  tinted 0  share 0.0%  mean -  nearest -  ok
+places-lineup-close  tile -1  digest 514f01f255b6d28f  places on screen 5  roles: capital 3, settlement 1, town 1
+places-lineup-close  capital: least tinted 274, share 8.7–8.8%
+places-lineup-close  settlement: least tinted 91, share 4.8–4.8%
+places-lineup-play  tile 47  capital  civ 10  on plains  reads as a town true  clans 7,16,17  opaque 941  tinted 119  share 12.6%  mean 88,28,28  nearest 10  ok
+places-lineup-play  tile 102  capital  civ 11  on plains  reads as a town false  clans 8  opaque 945  tinted 119  share 12.6%  mean 24,45,89  nearest 11  ok
+places-lineup-play  tile 97  capital  civ 12  on plains  reads as a town false  clans 9  opaque 941  tinted 117  share 12.4%  mean 91,71,24  nearest 12  ok
+places-lineup-play  tile 140  settlement  civ 11  on plains  reads as a town true  clans 19,20,21  opaque 531  tinted 37  share 7.0%  mean 28,54,107  nearest 11  ok
+places-lineup-play  tile 79  town  civ none  on plains  reads as a town true  clans 22,23,24,25  opaque 531  tinted 0  share 0.0%  mean -  nearest -  ok
+places-lineup-play  tile -1  digest 514f01f255b6d28f  places on screen 5  roles: capital 3, settlement 1, town 1
+places-lineup-play  capital: least tinted 117, share 12.4–12.6%
+places-lineup-play  settlement: least tinted 37, share 7.0–7.0%
+places-lineup-edge  tile 47  mark  civ 10  on plains  reads as a town true  clans 7,16,17  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+places-lineup-edge  tile 102  mark  civ 11  on plains  reads as a town false  clans 8  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+places-lineup-edge  tile 97  mark  civ 12  on plains  reads as a town false  clans 9  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+places-lineup-edge  tile 140  mark  civ 11  on plains  reads as a town true  clans 19,20,21  opaque 0  tinted 0  share -%  mean -  nearest -  ok
+places-lineup-edge  tile -1  digest 514f01f255b6d28f  places on screen 5  roles: mark 4
+exit 0
