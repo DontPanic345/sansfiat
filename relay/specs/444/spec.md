@@ -90,10 +90,12 @@ In world units (a hex has circumradius 1). Every number is in `CLAN`, a table at
   `settled`, `settling.rs` says; it walks this turn and shows its hearth the next.)
 - **The size.** A lone clan's cell is drawn `max(CLAN.minPx / k, min(CLAN.max, CLAN.per · √people))` world units
   tall (`per` 0.42, `max` 1.5, `minPx` 10 css px), its width in the cell's proportion. So 5 people stand 0.94 tall,
-  13 or more 1.5. Pre-scaled to the device pixel (`atlas.scaled` and `atlas.shaded`, as `units.js` draws).
+  13 or more 1.5. At phone k 6 the floor wins for every clan (`10 / 6` = 1.67 > `max`): every clan stands 10 css px,
+  a little wider than its hex (10.4 px), and size doesn't tell people there. Build-3 judges that with `from`. Pre-scaled to the device pixel (`atlas.scaled` and `atlas.shaded`, as `units.js` draws).
 - **The place.** A lone clan's anchor is at `(px, py + CLAN.feet)` (`feet` 0.4), so the group's middle sits near the
   tile's centre, where main's circle is. Clans on one home stand on a ring of radius `CLAN.ring` (0.42) round the
-  centre, in id order from the top as main's, each at most `CLAN.shared` (0.8) tall, drawn back to front (by their
+  centre, in id order from the top as main's, each anchor at its ring point plus `(0, CLAN.feet)` as a lone clan's is
+  (so the four anchors lie between 0.02 above the centre and 0.82 below it, inside the hex), each at most `CLAN.shared` (0.8) tall, drawn back to front (by their
   y), so a lower one overlaps an upper one and none hides another whole.
 - **The colour.** The mask, pre-scaled, multiplied (`atlas.shaded`) by the civ's colour, or by `UNALIGNED` for a clan
   of no civ. The cell's own art shows outside the cloth.
@@ -220,7 +222,8 @@ clans' tiles: shared home 93, plains 110, 127, 143, 158, wood 155, 169, 182, 170
   new).
 - `node www/play/clans.mjs` (in CI) on the lineup with its states:
   - one cell per clan on screen, each of its state's kind: `walk` for the shared home's third clan, `hearth` for its
-    first, `tent` for the rest;
+    first and for the three civs' own clans (7, 8, 9, staged settled on the capitals 33, 103, 113, on screen under the
+    capitals' houses), `tent` for the rest;
   - every clan's `nearest` in `clanProbe()` is its own civ, or `none` for a clan of no civ (the leaning ones too), with
     `tinted` above zero;
   - the starving clan is marked `starving` in `stats.clans`, and red pixels (`#ff2a2a` within 24) lie round its cell;

@@ -65,7 +65,8 @@ all of it: a table of numbers at the top, pre-scaled cells, the multiply, the ou
 
 Keep `CLANS` and `CLAN_STATES` in `play-stage.mjs` too (the comment at its top says why the copy in `shots.mjs`).
 Stage the lineup, set the states, camera between tiles 93 and 170 at k 35, laptop. Check, each with a `need(…)` line,
-everything the spec's "For the review" lists for `play/clans.mjs`: the kinds, the colours, the starving clan's red
+everything the spec's "For the review" lists for `play/clans.mjs`: the kinds (the civs' own clans 7, 8 and 9 are
+staged settled and on screen, so they are hearths; check each clan's kind against the rule on its state, not a list), the colours, the starving clan's red
 edge, the shared home's four places inside its hex, the click cycling the shared home's four clans (`page.select`
 and `page.click` show how), and the dots at the flat zoom. On a laptop the lineup's map holds `k` at 7.47 or more (its `minK`), so the flat
 check stages the lineup again on a phone page (`open('', { size: 'phone' })`) at k 5, where `stats.atlas` is false

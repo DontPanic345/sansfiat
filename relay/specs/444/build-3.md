@@ -25,8 +25,9 @@ tent so it reads as more than a tent.
 Shoot every clan view on a main worktree (the branch's `shots.mjs` copied in) and on the branch, `--diff` them
 (cameras and digests match; `medium9-clans-flat` differs in no pixel), and read them side by side:
 
-- **Shape.** Tent, hearth and walkers are three different things at k 35 and k 18; tent and hearth at phone k 6. If
-  they don't read at k 6, raise `CLAN.from` to a cell height in device px below which main's circles draw, and say
+- **Shape.** Tent, hearth and walkers are three different things at k 35 and k 18; tent and hearth at phone k 6. At k 6 `minPx` sets every clan's height
+  (10 css px, 1.67 world units, over `max`), so every clan there is the same size and a little wider than its hex:
+  judge that crowd on `medium9-clans-edge` (185 clans). If they don't read at k 6, raise `CLAN.from` to a cell height in device px below which main's circles draw, and say
   which zoom it lands at. The walkers must read as people going somewhere, not as one more tent.
 - **Colour.** In `clans-lineup-*`, red's, blue's, gold's and none's clans are told apart on plains and in the wood,
   at k 35, 18 and phone k 6. A clan of no civ reads as pale, not as the study's own hide or as Gold. Gold's cloth must
