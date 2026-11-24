@@ -1,0 +1,36 @@
+[
+  {
+    "id": "build-1",
+    "title": "The place cells and their masks in the atlas",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 2 (keys, size, anchor and boxes are exact, from blobs the spec measured; the first cuts and the flag and banner cloth are read by eye, though they need only read as a hamlet, a palisade and a hall), New 1 (the regions, floor, cloth and grey are #444's; the third row is the same recipe), Miss 1 (--check's recut, play/art.mjs, the compare with main), Reach 1 (the atlas every map draw reads; only places.js reads the five cells). An easel at 5: Haiku high, as 443's and 444's atlas easels ran. About 7 files, 180 lines plus the PNG: sources.js, placeholders.js, atlas.png/json, engine/CLAUDE.md, atlas.md, cells.png and two or three protos."
+  },
+  {
+    "id": "build-2",
+    "title": "The places on the map, the views and the checks",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 1 (the role, size, place, order, colour, flat path, stats, probe, the 10 views and the lineup are the spec's, each setup run on main in proto/scene.mjs and proto/lineup.mjs; PLACE starts at numbers that run; the legend's swatches are the one choice), New 1 (clans.js is the pattern for the table, flat test, pre-scaled cells, multiply, stats and probe; the views and play script follow 444's), Miss 1 (play/places.mjs checks the roles, colours, clan order, click and marks; settle.mjs and towns.mjs stay), Reach 2 (a layer drawn every frame, and capitals.js and settle.js change). Haiku high at 5, as 444's map easel. About 11 files, 550 lines: layers/places.js, capitals.js, settle.js, map/view.js, legend.js, shots.mjs and the new shots-views.mjs (the table moved, shots.mjs at 563 lines), play-stage.mjs, play/places.mjs, engine/CLAUDE.md, easel.md. It waits on 10 views shot once, seven of them 40 turns into a real game (each about 5 s on this runner)."
+  },
+  {
+    "id": "build-3",
+    "title": "The places on the map, judged beside main",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 9,
+    "why": "Open 4 (hamlet, palisade and hall told apart at two zooms, three civs' flags and banners told apart with Gold not read as thatch, a crowded town that shows its place and its 8 clans, a unit beside a settlement readable, the threshold, any variant the art lacks: all judged by eye, with a tinted-pixel bar the build sets), New 1 (the cells and drawing are the easels'; a variant or a clan scale on place tiles adapts them), Miss 3 (only captures on the retro maps and the lineup show a hamlet that buries its clans or a flag lost at k 18), Reach 1 (sources.js and PLACE, drawn every frame, no rule). A canvas at 9: Sonnet high, as 440's to 444's. About 6 files and 14 committed PNGs, 200 lines: sources.js, atlas.png/json, layers/places.js, maybe clans.js, shots-views.mjs and play/places.mjs, views.md, shots/."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved and the place views' digests match, repeats the atlas build for identical bytes, runs --places and play/places.mjs, shoots both trees and diffs the cameras (the flat view identical), reads the pairs for three shapes, three civs' cloth, crowded places with every clan, a unit beside a settlement in a wood under a ridge, the markers in place, compares --time, clicks a capital, a settlement and a town and cycles a crowded tile on the page, and puts the captures in the PR."
+  }
+]
