@@ -23,6 +23,7 @@ import * as land from './layers/land.js';
 import * as held from './layers/held.js';
 import * as lines from './layers/lines.js';
 import * as flow from './layers/flow.js';
+import * as places from './layers/places.js';
 import * as clans from './layers/clans.js';
 import * as towns from './layers/towns.js';
 import * as leanings from './layers/leanings.js';
@@ -39,11 +40,11 @@ import { CORNER, EDGE_DIR } from './geom.js';
 import { attach as attachInput } from './input.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, edges, woods, ridges, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, flow, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
+export const LAYERS = [terrain, edges, woods, ridges, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, flow, places, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */
-const GROUPS = { civs: ['land', 'held', 'lines', 'capitals', 'settle', 'ring', 'units', 'routes'], markets: ['festivals', 'centres'] };
+const GROUPS = { civs: ['land', 'held', 'lines', 'places', 'capitals', 'settle', 'ring', 'units', 'routes'], markets: ['festivals', 'centres'] };
 
 const SQRT3 = Math.sqrt(3);
 const MAX_K = 35; // px per world unit: a tile is ~60 px wide
@@ -88,7 +89,7 @@ export class MapView {
     this.dirty = true;
     this.frame = 0;
     this.anim = null;
-    this.stats = { terrainMs: 0, overlayMs: 0, atlas: false, cells: 0, units: [], labels: [], clans: [] };
+    this.stats = { terrainMs: 0, overlayMs: 0, atlas: false, cells: 0, units: [], labels: [], clans: [], places: [] };
     this.pointers = new Map();
     this.drag = null;
     this.attach();
@@ -296,6 +297,12 @@ export class MapView {
   clanProbe() {
     this.drawNow();
     return clans.probe(this.model, this);
+  }
+
+  /** The places layer's probe (layers/places.js `probe`): each place on the map, drawn alone, with the pixels its civ's colour tints. */
+  placeProbe() {
+    this.drawNow();
+    return places.probe(this.model, this);
   }
 
   setSelection(i, unit = -1) {

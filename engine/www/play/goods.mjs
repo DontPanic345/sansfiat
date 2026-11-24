@@ -46,7 +46,7 @@ try {
   need(of('salt').length > 0 && of('obsidian').length > 0, `the map has ${of('salt').length} salt and ${of('obsidian').length} obsidian sources`);
 
   // The pixels round a tile, the layers over it off, so only the terrain and the sources show.
-  for (const l of ['units', 'capitals', 'centres', 'ring', 'routes', 'land', 'held', 'clans', 'towns', 'settle', 'hearths']) await page.eval(`game.map.setLayer('${l}', false)`);
+  for (const l of ['units', 'capitals', 'centres', 'ring', 'routes', 'land', 'held', 'clans', 'towns', 'settle', 'hearths', 'places']) await page.eval(`game.map.setLayer('${l}', false)`);
   const around = (i) =>
     page.eval(`(() => {
       const c = document.getElementById('map');

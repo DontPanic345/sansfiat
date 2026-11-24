@@ -70,7 +70,7 @@ try {
   need(flow && flow.chains.every((c) => c.path.length >= 2 && c.share > 0), 'each chain has its share and its path');
 
   // The drawn pixels: the chain is near-black, so the dark pixels round its midpoint are its; the layer off, they are not.
-  for (const l of ['units', 'capitals', 'centres', 'ring', 'routes', 'land', 'held', 'clans', 'towns', 'settle', 'hearths', 'sources']) {
+  for (const l of ['units', 'capitals', 'centres', 'ring', 'routes', 'land', 'held', 'clans', 'towns', 'settle', 'hearths', 'places', 'sources']) {
     await page.eval(`game.map.setLayer('${l}', false)`);
   }
   await page.eval(frames);

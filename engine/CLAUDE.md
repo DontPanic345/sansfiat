@@ -14,11 +14,12 @@ cargo run -p sansfiat -- bench --size large 8 --after 50   # ms a turn past the 
 node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in headless Chrome
 node www/play/all.mjs                        # every touch-point script; check.sh runs it
 node www/play/units.mjs                      # the lineup's units: six figures, probe colours, a stack's cycle and numbers
+node www/play/places.mjs                     # the place lineup: roles, cloth, the clans on them
 node www/assets/draw-atlas.mjs [--check]     # atlas.png and atlas.json from placeholders.js and sources.js (--check: no Chrome)
 node www/shots.mjs --out DIR                 # the map's fixed views, as canvases; --diff A B compares two folders
 node www/shots.mjs --cull DIR                # each view with an `on` with the edge, woods and ridge layers' culling on and off: identical, or exit 1
-node www/shots.mjs --time NAME,…             # five static redraws of each named view: stats.terrainMs and the median
-node www/shots.mjs --units|--clans DIR     # the unit or clan views: each figure's probe; exit 1 if not its civ's colour, under the bar, or (a clan) not its state's kind
+node www/shots.mjs --time NAME,…             # five static redraws of each view: stats.terrainMs and the median
+node www/shots.mjs --units|--clans|--places DIR  # those views (shots-views.mjs): exit 1 unless each probe is its civ's, state's or tile's
 ```
 
 `cargo test` runs optimised: whole pre-games are too slow otherwise.

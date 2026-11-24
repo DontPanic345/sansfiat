@@ -207,7 +207,7 @@ None. The one open idea is about units at the flat zoom.
 | `medium9-places-flat` | medium 9, 40 turns | phone | 5 | between 735, 566 | the flat zoom: main's marks |
 | `small2-places-close` | small 2, 40 turns | laptop | 35 | between 505, 506 | Blue's capital 506 and its scout beside the forest town 505 (4 clans), the settlement 288, a signpost |
 | `large8-places-close` | large 8, 40 turns | laptop | 35 | between 2787, 2689 | the town 2787 (8 clans) beside capital 2689 and its scout, hills |
-| `large8-places-play` | large 8, 40 turns | laptop | 18 | at 2524 | capital 2524 that reads as a town (9 clans), capital 2689, the forest town 2871 under mountains, camp 2731 |
+| `large8-places-play` | large 8, 40 turns | laptop | 18 | at 2524 | the fallen capital 2524 (its civ's capital fell by turn 40, so its tile is a town of 9 clans: the hamlet), capital 2689, the forest town 2871 under mountains, camp 2731 |
 | `places-lineup-close` | the place lineup, 1 turn, states | laptop | 35 | between 47, 140 | each role; Red's capital with its clans; Blue's settlement beside the wood, the ridge and Red's army; the town of no civ |
 | `places-lineup-play` | the same | laptop | 18 | between 47, 140 | the same at play zoom |
 | `places-lineup-edge` | the same | phone | 6 | between 47, 140 | the same at strategic zoom |
