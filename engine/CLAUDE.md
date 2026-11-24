@@ -19,6 +19,8 @@ node www/shots.mjs --out DIR                 # the map's fixed views, as canvase
 node www/shots.mjs --cull DIR                # each view with an `on` with the edge, woods and ridge layers' culling on and off: identical, or exit 1
 node www/shots.mjs --time NAME,…             # five static redraws of each named view: stats.terrainMs and the median
 node www/shots.mjs --units DIR             # the unit views (lead, raise, stage 'lineup', on 'at'): each unit's probe; exit 1 if not its own civ or under TINT_BAR
+node www/shots.mjs --clans DIR             # the clan views (stage 'clans', states): each clan's probe; exit 1 unless its civ's colour and its state's kind
+node www/play/clans.mjs                      # the lineup's clans: kinds, cloth colours, the red edge, a shared home's cycle, the flat dots
 ```
 
 `cargo test` runs optimised: whole pre-games are too slow otherwise.

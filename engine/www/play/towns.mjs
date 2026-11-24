@@ -88,18 +88,14 @@ try {
       const x = Math.round((p.x - r.left) * s), y = Math.round((p.y - r.top) * s);
       return { w: 2 * h, data: Array.from(c.getContext('2d').getImageData(x - h, y - h, 2 * h, 2 * h).data) };
     })()`);
-  const count = (px, [r, g, b]) => {
-    let n = 0;
-    for (let k = 0; k < px.data.length; k += 4) {
-      if (Math.abs(px.data[k] - r) < 24 && Math.abs(px.data[k + 1] - g) < 24 && Math.abs(px.data[k + 2] - b) < 24) n++;
-    }
-    return n;
-  };
-  const px = await around(tile, 24);
+  // Each town clan is drawn on the tile in its civ's colour: the clans layer's probe measures each clan alone, its cloth
+  // nearest its own colour (the pale for a clan of no civ). A multiplied cloth is shaded, so a count of pixels near the
+  // flat colour falls short; the probe measures the same claim.
+  const probes = await page.eval('game.map.clanProbe()');
   for (const id of town.clans) {
-    const hex = await page.eval(`(async () => { const v = game.view(); const civ = v.clans[${id}].civ; return civ != null ? v.civs[civ].color : (await import('./map/layers/clans.js')).UNALIGNED; })()`);
-    const n = count(px, [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16)));
-    need(n >= 8, `clan ${id} is drawn on the tile (${n} pixels in its civ's colour)`);
+    const p = probes.find((x) => x.clan === id);
+    need(p && p.tinted >= 8 && String(p.nearest) === String(p.civ ?? 'none'),
+      `clan ${id} is drawn on the tile in its civ's colour (${p ? p.tinted : 0} tinted pixels, nearest ${p ? p.nearest : 'none'})`);
   }
 
   // The town mark: on with the layer, gone with it off. The capital's house is on, as on any capital: the mark must

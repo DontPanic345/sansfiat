@@ -18,9 +18,14 @@
 //                                                   civ, terrain, opaque and tinted pixels, mean colour and nearest civ (the
 //                                                   units layer's probe); exit 1 unless every unit is nearest its own civ and has at least TINT_BAR[k] tinted pixels.
 //                                                   On main, which has no probe, prints '-'.
+//   node www/shots.mjs --clans DIR                  each view with `clans` (the clan views): DIR/NAME.png, and per clan its kind,
+//                                                   civ, terrain, starving, since, settled, tinted pixels, mean, nearest (the
+//                                                   clans layer's probe), then each kind's count; exit 1 unless every clan is nearest
+//                                                   its own civ (or none) and of the kind its state gives. On main, prints '-'.
 // A view with `turns` leads the first civ and ends that many turns before its camera is set; `lead: 'Gold'` leads that civ
 // instead and `raise: N` raises an army of N warriors after leading (play.mjs's raiseArmy); `stage: 'lineup'` stages the
-// lineup (LINEUP) instead of a map. `on: 'at'` puts the camera on tile `at`, or on the mean of the tiles in `between`.
+// lineup (LINEUP) and `stage: 'clans'` the clan lineup (CLANS) instead of a map; `states: true` then sets CLAN_STATES.
+// `on: 'at'` puts the camera on tile `at`, or on the mean of the tiles in `between`.
 // Every view's record holds the game's digest, which --diff compares too.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -47,6 +52,48 @@ const LINEUP = {
     { civ: 2, at: { mark: 'c' }, pack: 0 }, // gold on its army's tile
   ],
 };
+
+// The clan lineup, as play-stage.mjs's CLANS (kept here too, so this file copies alone onto a main worktree), and the
+// in-page code that sets its states (play-stage.mjs's CLAN_STATES).
+const CLANS = {
+  map: grid(8, (q, r) => (dist(q, r) === 8 ? '~' : forest(q, r) ? 'f' : '.')),
+  marks: marks(8, { A: [-5, 0], B: [0, -5], C: [0, 5], c: [1, 1], h: [-1, 2], p: [0, 2], q: [1, 2], r: [2, 2], s: [3, 2], w: [3, -1], x: [4, -1], y: [5, -1], z: [4, 0] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }, { mark: 'C' }],
+  people: 12,
+  lead: 0,
+  armies: [{ civ: 2, at: { mark: 'c' }, people: 4 }],
+  scouts: [{ civ: 2, at: { mark: 'c' }, pack: 0 }],
+  clans: [
+    { home: { mark: 'p' }, tiles: [{ mark: 'p' }], people: 6, civ: 0 },
+    { home: { mark: 'q' }, tiles: [{ mark: 'q' }], people: 6, civ: 1 },
+    { home: { mark: 'r' }, tiles: [{ mark: 'r' }], people: 6, civ: 2 },
+    { home: { mark: 's' }, tiles: [{ mark: 's' }], people: 6 },
+    { home: { mark: 'w' }, tiles: [{ mark: 'w' }], people: 6, civ: 0 },
+    { home: { mark: 'x' }, tiles: [{ mark: 'x' }], people: 6, civ: 1 },
+    { home: { mark: 'y' }, tiles: [{ mark: 'y' }], people: 6, civ: 2 },
+    { home: { mark: 'z' }, tiles: [{ mark: 'z' }], people: 6 },
+    { home: { mark: 'h' }, tiles: [{ mark: 'h' }], people: 9, civ: 0 },
+    { home: { mark: 'h' }, tiles: [], people: 5, civ: 0 },
+    { home: { mark: 'h' }, tiles: [], people: 3, civ: 0 },
+    { home: { mark: 'h' }, tiles: [], people: 4, civ: 1 },
+    { home: { mark: 'c' }, tiles: [], people: 4 },
+  ],
+};
+const CLAN_STATES = `(() => {
+  const m = game.map, v = m.model.v, at = (q, r) => m.at(q, r);
+  const on = (t) => Object.values(v.clans).filter((c) => c.home === t).sort((a, b) => a.id - b.id);
+  const h = on(at(-1, 2));
+  h[0].settled = true;
+  h[2].since = 0;
+  for (const c of Object.values(v.clans)) if (c.since === 0 && c !== h[2]) c.since = 5;
+  on(at(2, 2))[0].starving = true;
+  const civOf = (qr) => Object.values(v.civs).find((c) => c.capital === at(...qr)).id;
+  on(at(3, 2))[0].leaning = { [civOf([0, -5])]: 0.6 * m.model.rules.join };
+  on(at(4, 0))[0].leaning = { [civOf([0, 5])]: 0.2 * m.model.rules.join };
+  m.dirty = true;
+  m.drawNow();
+  return 'set';
+})()`;
 
 /**
  * The views: `size` is a map (`small`, `medium`, `large`), `seed` its seed, `window` `laptop` or `phone`, `k` the
@@ -122,6 +169,19 @@ export const VIEWS = [
   // The signals: a unit selected (white edge), and a hungry camp selected (white over red).
   { name: 'lineup-selected', window: 'laptop', k: 18, stage: 'lineup', on: 'at', between: [125, 170], select: { kind: 'camp', civ: 'red' }, units: true },
   { name: 'small2-camps-selected', size: 'small', seed: 2, window: 'laptop', k: 35, turns: 8, on: 'at', at: 527, select: { tile: 527 }, units: true },
+  // The clan views (#444): the clans as cells, their states and kinds, each set up on main by proto/scene.mjs and lineup.mjs.
+  { name: 'medium9-clans-play', size: 'medium', seed: 9, window: 'laptop', k: 18, turns: 16, on: 'at', between: [734, 874], clans: true },
+  { name: 'medium9-clans-close', size: 'medium', seed: 9, window: 'laptop', k: 35, turns: 16, on: 'at', between: [734, 874], clans: true },
+  { name: 'medium9-clans-edge', size: 'medium', seed: 9, window: 'phone', k: 6, turns: 16, on: 'at', between: [734, 874], clans: true },
+  { name: 'medium9-clans-flat', size: 'medium', seed: 9, window: 'phone', k: 5, turns: 16, on: 'at', between: [734, 874], clans: true },
+  { name: 'small2-clans-play', size: 'small', seed: 2, window: 'laptop', k: 18, turns: 16, on: 'at', between: [410, 503], clans: true },
+  { name: 'small2-clans-close', size: 'small', seed: 2, window: 'laptop', k: 35, turns: 16, on: 'at', at: 503, clans: true },
+  { name: 'medium8-clans-play', size: 'medium', seed: 8, window: 'laptop', k: 18, turns: 16, on: 'at', at: 401, clans: true },
+  { name: 'medium8-lean-play', size: 'medium', seed: 8, window: 'laptop', k: 18, turns: 16, on: 'at', at: 1368, clans: true },
+  { name: 'small9-lean-close', size: 'small', seed: 9, window: 'laptop', k: 35, turns: 4, on: 'at', at: 417, clans: true },
+  { name: 'clans-lineup-close', window: 'laptop', k: 35, stage: 'clans', states: true, on: 'at', between: [93, 170], clans: true },
+  { name: 'clans-lineup-play', window: 'laptop', k: 18, stage: 'clans', states: true, on: 'at', between: [93, 170], clans: true },
+  { name: 'clans-lineup-edge', window: 'phone', k: 6, stage: 'clans', states: true, on: 'at', between: [93, 170], clans: true },
 ];
 
 /**
@@ -221,6 +281,10 @@ async function setUp(view) {
   if (view.stage === 'lineup') {
     page = await open('', { size: view.window });
     await stage(page, LINEUP);
+  } else if (view.stage === 'clans') {
+    page = await open('', { size: view.window });
+    await stage(page, CLANS);
+    if (view.states) await page.eval(CLAN_STATES);
   } else if (view.lead || view.raise) {
     page = await open('', { size: view.window });
     await lead(page, { size: view.size, seed: view.seed, civ: view.lead });
@@ -340,6 +404,49 @@ async function units(view, out) {
   }
 }
 
+/** Shoots a clan view into `out` and prints each clan's probe beside its state; false if a clan is nearest another civ's
+ *  colour (none's, for a clan of no civ), or drawn as another kind than its state gives. On main, which has no probe,
+ *  prints '-' and passes. */
+async function clansView(view, out) {
+  const { page, asked } = await setUp(view);
+  try {
+    const png = await page.eval("(() => { game.map.drawNow(); return game.map.canvas.toDataURL('image/png'); })()");
+    writeFileSync(join(out, `${view.name}.png`), Buffer.from(png.split(',')[1], 'base64'));
+    const rows = await page.eval(`(() => {
+      const m = game.map;
+      if (typeof m.clanProbe !== 'function') return null;
+      const names = Object.fromEntries(Object.entries(m.byName).map(([k, x]) => [x, k]));
+      const probes = m.clanProbe(), flat = !m.stats.atlas;
+      return probes.map((p) => {
+        const c = m.model.v.clans[p.clan];
+        const expect = flat ? 'dot' : c.since <= 1 ? 'walk' : c.settled ? 'hearth' : 'tent';
+        return { ...p, id: p.clan, terrain: names[m.l.terrain[c.home]], starving: !!c.starving, since: c.since, settled: !!c.settled, expect };
+      });
+    })()`);
+    for (const e of page.errors()) throw new Error(`${view.name}: page error: ${e}`);
+    if (rows === null) {
+      console.log(`${view.name}  tile ${asked.tile}  -`);
+      return true;
+    }
+    let ok = true;
+    const kinds = {};
+    for (const r of rows) {
+      const own = String(r.nearest) === String(r.civ ?? 'none');
+      const kindOk = r.kind === r.expect;
+      if (!own || !kindOk) ok = false;
+      kinds[r.kind] = (kinds[r.kind] ?? 0) + 1;
+      const share = r.opaque ? ((100 * r.tinted) / r.opaque).toFixed(1) : '-';
+      const mean = r.mean ? r.mean.map((x) => Math.round(x)).join(',') : '-';
+      const verdict = !own ? 'NOT ITS OWN CIV' : kindOk ? 'ok' : `KIND NOT ITS STATE'S (${r.expect})`;
+      console.log(`${view.name}  clan ${r.id}  ${r.kind}  civ ${r.civ ?? 'none'}  on ${r.terrain}  starving ${r.starving}  since ${r.since}  settled ${r.settled}  opaque ${r.opaque}  tinted ${r.tinted}  share ${share}%  mean ${mean}  nearest ${r.nearest}  ${verdict}`);
+    }
+    console.log(`${view.name}  kinds: ${Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(', ')}`);
+    return ok;
+  } finally {
+    await page.close();
+  }
+}
+
 /** Compares two output folders: cameras must match; prints each view's share of differing pixels. */
 async function diff(a, b) {
   const { decode } = await import('./assets/png.mjs');
@@ -404,6 +511,18 @@ if (args.includes('--cull')) {
   }
   if (failed) {
     console.error('shots --units: a unit is drawn nearest another civ\'s colour');
+    process.exit(1);
+  }
+} else if (args.includes('--clans')) {
+  const out = resolve(args[args.indexOf('--clans') + 1]);
+  mkdirSync(out, { recursive: true });
+  let failed = false;
+  for (const view of VIEWS) {
+    if (!view.clans) continue;
+    if (!(await clansView(view, out))) failed = true;
+  }
+  if (failed) {
+    console.error('shots --clans: a clan is drawn nearest another civ\'s colour, or as another kind than its state gives');
     process.exit(1);
   }
 } else if (args.includes('--diff')) {

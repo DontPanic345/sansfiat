@@ -137,14 +137,14 @@ export function draw(ctx, model, view) {
   view.stats.labels = labels;
 }
 
-const hexRgb = (hex) => {
+export const hexRgb = (hex) => {
   const h = hex.replace('#', '');
   const full = h.length === 3 ? [...h].map((c) => c + c).join('') : h;
   const n = parseInt(full, 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 };
 /** A colour by chromaticity: each channel over the sum, so a shading that scales a colour keeps its hue. */
-const chroma = ([r, g, b]) => {
+export const chroma = ([r, g, b]) => {
   const t = r + g + b;
   return t ? [r / t, g / t, b / t] : [1 / 3, 1 / 3, 1 / 3];
 };
