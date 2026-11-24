@@ -20,8 +20,8 @@
 //                                                   On main, which has no probe, prints '-'.
 //   node www/shots.mjs --clans DIR                  each view with `clans` (the clan views): DIR/NAME.png, and per clan its kind,
 //                                                   civ, terrain, starving, since, settled, tinted pixels, mean, nearest (the
-//                                                   clans layer's probe), then each kind's count; exit 1 unless every clan is nearest
-//                                                   its own civ (or none) and of the kind its state gives. On main, prints '-'.
+//                                                   clans layer's probe), then each kind's count and least tinted pixels; exit 1 unless every clan is nearest
+//                                                   its own civ (or none), of the kind its state gives and, as a cell, at least CLAN_BAR[k] tinted pixels. On main, prints '-'.
 // A view with `turns` leads the first civ and ends that many turns before its camera is set; `lead: 'Gold'` leads that civ
 // instead and `raise: N` raises an army of N warriors after leading (play.mjs's raiseArmy); `stage: 'lineup'` stages the
 // lineup (LINEUP) and `stage: 'clans'` the clan lineup (CLANS) instead of a map; `states: true` then sets CLAN_STATES.
@@ -370,6 +370,9 @@ async function time(view) {
 /** The least tinted pixels a figure has, by the view's zoom: enough that the views show the civ's colour reading (relay/specs/443/views.md). */
 const TINT_BAR = { 35: 350, 18: 100, 6: 40, 5: 40 };
 
+/** The least tinted pixels a clan's cell has, by the view's zoom (relay/specs/444/views.md). A dot at the flat zoom is main's circle, whole. */
+const CLAN_BAR = { 35: 100, 18: 40 };
+
 /** Shoots a unit view into `out` and prints each unit's probe; false if a unit is nearest another civ's colour. On main,
  *  which has no probe, prints '-' and passes. */
 async function units(view, out) {
@@ -416,7 +419,7 @@ async function clansView(view, out) {
       const m = game.map;
       if (typeof m.clanProbe !== 'function') return null;
       const names = Object.fromEntries(Object.entries(m.byName).map(([k, x]) => [x, k]));
-      const probes = m.clanProbe(), flat = !m.stats.atlas;
+      const probes = m.clanProbe(), flat = !!m.stats.clansFlat;
       return probes.map((p) => {
         const c = m.model.v.clans[p.clan];
         const expect = flat ? 'dot' : c.since <= 1 ? 'walk' : c.settled ? 'hearth' : 'tent';
@@ -429,18 +432,24 @@ async function clansView(view, out) {
       return true;
     }
     let ok = true;
-    const kinds = {};
+    const kinds = {}, tints = {};
     for (const r of rows) {
       const own = String(r.nearest) === String(r.civ ?? 'none');
       const kindOk = r.kind === r.expect;
-      if (!own || !kindOk) ok = false;
+      const bar = r.kind === 'dot' ? 0 : CLAN_BAR[view.k] ?? 0;
+      const enough = r.tinted >= bar;
+      if (!own || !kindOk || !enough) ok = false;
+      const t = (tints[r.kind] ??= { min: Infinity, shares: [] });
+      t.min = Math.min(t.min, r.tinted);
+      if (r.opaque) t.shares.push((100 * r.tinted) / r.opaque);
       kinds[r.kind] = (kinds[r.kind] ?? 0) + 1;
       const share = r.opaque ? ((100 * r.tinted) / r.opaque).toFixed(1) : '-';
       const mean = r.mean ? r.mean.map((x) => Math.round(x)).join(',') : '-';
-      const verdict = !own ? 'NOT ITS OWN CIV' : kindOk ? 'ok' : `KIND NOT ITS STATE'S (${r.expect})`;
+      const verdict = !own ? 'NOT ITS OWN CIV' : !kindOk ? `KIND NOT ITS STATE'S (${r.expect})` : enough ? 'ok' : `BELOW THE BAR (${bar})`;
       console.log(`${view.name}  clan ${r.id}  ${r.kind}  civ ${r.civ ?? 'none'}  on ${r.terrain}  starving ${r.starving}  since ${r.since}  settled ${r.settled}  opaque ${r.opaque}  tinted ${r.tinted}  share ${share}%  mean ${mean}  nearest ${r.nearest}  ${verdict}`);
     }
     console.log(`${view.name}  kinds: ${Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(', ')}`);
+    for (const [k, t] of Object.entries(tints)) console.log(`${view.name}  ${k}: least tinted ${t.min}, share ${Math.min(...t.shares).toFixed(0)}–${Math.max(...t.shares).toFixed(0)}%${CLAN_BAR[view.k] && k !== 'dot' ? `, bar ${CLAN_BAR[view.k]}` : ''}`);
     return ok;
   } finally {
     await page.close();

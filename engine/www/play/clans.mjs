@@ -3,7 +3,7 @@
 // rule, not a list), its cloth nearest its own civ's colour (or none's, for a clan of no civ) with tinted pixels, the
 // starving clan's red edge round its cell, the shared home's four clans in four places, each anchored inside the hex, a
 // click on the shared home reaching each of its four clans, and at the flat zoom (the lineup on a phone at k 5, where the
-// terrain is flat) every clan a dot, with the cells back at k 6. Writes clans.png to --out.
+// terrain is flat) every clan a dot, with the cells back from k 14. Writes clans.png to --out.
 //   node www/play/clans.mjs [--out DIR]
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -38,14 +38,14 @@ const SNAP = `(() => {
   const cells = m.stats.clans.map((s) => {
     const c = v.clans[s.clan];
     return {
-      clan: s.clan, home: c.home, civ: s.civ, kind: s.kind, expect: m.stats.atlas ? kindOf(c) : 'dot', starving: s.starving,
+      clan: s.clan, home: c.home, civ: s.civ, kind: s.kind, expect: m.stats.clansFlat ? 'dot' : kindOf(c), starving: s.starving,
       since: c.since, settled: !!c.settled, x: s.x, y: s.y, w: s.w, h: s.h,
       // A cell's ground is at 56 of 112 across and 90 of 96 down: the anchor, read back to the tile it lands on.
       tile: m.tileAt((s.x + s.w / 2) / dpr, (s.y + (s.h * 90) / 96) / dpr),
     };
   });
   const probe = m.clanProbe().map((p) => ({ clan: p.clan, civ: p.civ, nearest: p.nearest, tinted: p.tinted }));
-  return { cells, probe, total: Object.keys(v.clans).length, atlas: m.stats.atlas };
+  return { cells, probe, total: Object.keys(v.clans).length, atlas: m.stats.atlas, flat: m.stats.clansFlat };
 })()`;
 
 // The red pixels (#ff2a2a within 24) in the ring round a clan's cell, with its starving edge on and off.
@@ -140,18 +140,25 @@ try {
   await page.close();
 }
 
-// The flat zoom: the lineup on a phone at k 5 (its laptop minK is above it), every clan a dot; at k 6 the cells are back.
+// The flat zoom: the lineup on a phone at k 5 (its laptop minK is above it), the terrain flat and every clan a dot. The
+// clans stay dots where the terrain has cells but its cell is under CLAN.from (k 6 to 13), and are cells from k 14.
 const flat = await open('', { size: 'phone' });
 try {
   await stage(flat, CLANS);
   await flat.eval(CLAN_STATES);
+  const dots = (s) => s.cells.length === s.total && s.cells.every((c) => c.kind === 'dot');
   await flat.eval(camera(5));
   const at5 = await flat.eval(SNAP);
-  need(!at5.atlas && at5.cells.length === at5.total && at5.cells.every((c) => c.kind === 'dot'),
-    `at the flat zoom (phone k 5) every clan is a dot (${at5.cells.length} of ${at5.total})`);
+  need(!at5.atlas && at5.flat && dots(at5), `at the flat zoom (phone k 5) every clan is a dot (${at5.cells.length} of ${at5.total})`);
   await flat.eval(camera(6));
   const at6 = await flat.eval(SNAP);
-  need(at6.atlas && at6.cells.length === at6.total && at6.cells.every((c) => c.kind !== 'dot'), 'at phone k 6 the clans are cells, not dots');
+  need(at6.atlas && at6.flat && dots(at6), 'at phone k 6 the terrain has cells and the clans are dots');
+  await flat.eval(camera(13));
+  const at13 = await flat.eval(SNAP);
+  need(at13.flat && dots(at13), 'at k 13 the clans are still dots');
+  await flat.eval(camera(14));
+  const at14 = await flat.eval(SNAP);
+  need(!at14.flat && at14.cells.length === at14.total && at14.cells.every((c) => c.kind !== 'dot'), 'at k 14 the clans are cells, not dots');
   for (const e of flat.errors()) {
     console.error(`clans: page error: ${e}`);
     failed = true;

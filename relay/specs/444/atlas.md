@@ -62,3 +62,13 @@ child's tunic take the colour, their skin and packs don't. Known for build-3:
 ## Whole check
 
 `engine/check.sh` whole, run once after the last edit: exit 0 (every script in `www/play/all.mjs` passes; `draw-atlas.mjs --check` passes).
+
+## Build-3: final hashes and recipes
+
+Build-3 judged the cells on the map beside main (`views.md`) and left every recipe as cut: the scales 0.43 (tent), 0.38 (hearth), 0.44 (walk),
+the ground points, the keep polygons, the cloth polygons and `{ op: 'grey', lo: 190 }`, and the floor 128. The atlas is the build-1 one:
+`atlas.png` sha256 `5407c34890bd0c3c9102603a596d17456a6140c332f5d7a0c7f48d89d63a3538`, `atlas.json` sha256
+`cb264c8ccba4605d688b48eed1cdfb40a6a53f44f4b2342022e172d5bb44c49b` (rechecked; `--check` passes). What the captures showed of the cuts: the tent's
+clipped second basket and the hearth's canvas-only mask (23% to 35% of its cell) do not hurt the read at k 18 or 35; the red rim at alpha 128 and up
+shows as a faint warm edge on a pale tent, hidden by the dark edge `clans.js` now draws under every cell. The look was fixed in `layers/clans.js`
+(the dark edge, `CLAN.from`, the walkers' height), not in the cuts.

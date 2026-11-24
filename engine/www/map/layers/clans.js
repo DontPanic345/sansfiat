@@ -1,6 +1,7 @@
 // Clans: each clan is drawn where it lives. Above the flat zoom it is its cell from the atlas (a tent that gathers, a hearth
 // when settled, walkers when it came to its home this turn), its cloth in its civ's colour (pale for a clan of no civ),
-// on the leaning disc of an unaligned clan; a starving clan is edged red. At the flat zoom each is a circle, main's, its
+// on the leaning disc of an unaligned clan, every cell edged dark and a starving clan's red. Where the terrain is flat or
+// its cell is under `CLAN.from` device px (k 13.6) each is a circle, main's, its
 // area by its people, in its civ's colour, a dark square when settled, a red ring when starving. Clans sharing a home
 // stand round its centre in a ring, drawn back to front. Every number of the clans is in `CLAN`.
 
@@ -13,6 +14,7 @@ export const name = 'clans';
 /** The fill of a clan of no civ. */
 export const UNALIGNED = '#d8d2c4';
 const STARVING = '#ff2a2a';
+const EDGE = 'rgba(24,14,4,0.9)';
 
 /** The clans' numbers, in world units unless a note says css px (`view.dpr` turns it into device px). Build-3 tunes them. */
 export const CLAN = {
@@ -23,7 +25,10 @@ export const CLAN = {
   ring: 0.42, // a clan on a shared home stands this far from the home's centre
   shared: 0.8, // and is at most this tall
   starving: 3.5, // the red edge of a starving clan, in css px
-  from: 12, // the cell's device height below which the clans are circles: the terrain's own flat threshold (terrain.js)
+  walkers: 1.75, // a lone clan of walkers is drawn this much taller than a tent of the same people: three figures read as people only from about 25 px
+  walkersShared: 1.3, // and one on a shared home this much, so it doesn't cover the others
+  edge: 1.3, // the dark edge every cell has, in css px, as main's circle has its stroke: a pale tent shows on grass by it
+  from: 28, // the terrain cell's device height below which the clans are circles: k 13.6 at 1 device px per css px (a 12 px tent is a brown speck)
 };
 
 /** The circles of main's flat zoom: a lone clan's radius at most 0.75, a shared home's clan at most 0.3, on a ring. */
@@ -95,7 +100,9 @@ function layout(model, view) {
         ay += CLAN.ring * Math.sin(a);
         h = Math.min(CLAN.shared, Math.max(CLAN.minPx / view.k, CLAN.per * people));
       }
-      items.push({ c, civ: model.clanCiv.get(c.id) ?? null, kind: kindOf(c), ax, ay, h });
+      const kind = kindOf(c);
+      if (kind === 'walk') h *= n === 1 ? CLAN.walkers : CLAN.walkersShared;
+      items.push({ c, civ: model.clanCiv.get(c.id) ?? null, kind, ax, ay, h });
     });
   }
   return items.sort((a, b) => a.ay - b.ay || a.c.id - b.c.id);
@@ -106,7 +113,8 @@ const clothOf = (model, civ) => model.v.civs[civ]?.color ?? UNALIGNED;
 
 export function draw(ctx, model, view) {
   view.stats.clans = [];
-  if (clansFlat(view)) {
+  view.stats.clansFlat = clansFlat(view);
+  if (view.stats.clansFlat) {
     const px = 1 / view.k;
     for (const d of flatDots(model, view)) {
       drawCircle(ctx, model, view, d.c, d.x, d.y, d.r, px);
@@ -173,6 +181,11 @@ function paint(ctx, model, view, { only = null, colour = null, outline = true } 
       const sw = Math.max(1, Math.round(CLAN.starving * dpr));
       const o = view.atlas.outline(cell, STARVING, hd, sw);
       ctx.drawImage(o, left - sw * sc, top - sw * sc, o.width * sc, o.height * sc);
+    }
+    if (outline) {
+      const ew = Math.max(1, Math.round(CLAN.edge * dpr));
+      const e = view.atlas.outline(cell, EDGE, hd, ew);
+      ctx.drawImage(e, left - ew * sc, top - ew * sc, e.width * sc, e.height * sc);
     }
     ctx.drawImage(img, left, top, w, h);
     const mask = view.atlas.shaded(`${cell}.mask`, colour ?? clothOf(model, it.civ), hd);
