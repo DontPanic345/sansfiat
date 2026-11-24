@@ -36,4 +36,3 @@ small2-delta-edge  tile 506  stats.ridges 111 culled, 111 unculled  stats.edges 
 small2-delta-flat  tile 506  stats.ridges 0 culled, 0 unculled  stats.edges 0 culled, 0 unculled  stats.woods 0 culled, 0 unculled  identical
 medium9-fields-close  tile 828  stats.ridges 68 culled, 293 unculled  stats.edges 448 culled, 3632 unculled  stats.woods 305 culled, 1206 unculled  identical
 small2-marsh-fields-close  tile 535  stats.ridges 38 culled, 111 unculled  stats.edges 459 culled, 1775 unculled  stats.woods 81 culled, 261 unculled  identical
-exit 0

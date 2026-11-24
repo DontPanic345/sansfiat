@@ -1193,4 +1193,3 @@ clans-lineup-edge  clan 27  dot  civ 11  on plains  starving false  since 5  set
 clans-lineup-edge  clan 28  dot  civ none  on plains  starving false  since 5  settled false  opaque 24  tinted 24  share 100.0%  mean 220,215,201  nearest none  ok
 clans-lineup-edge  kinds: dot 16
 clans-lineup-edge  dot: least tinted 16, share 100–100%
-exit 0

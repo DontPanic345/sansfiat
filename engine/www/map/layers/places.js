@@ -33,6 +33,7 @@ export const PLACE = {
     lone: 0.84, // its ground
   },
   reach: 2.5, // a place culls while its drawing is on the canvas: the cell reaches this far from its tile (the capital's 2.4 wide, 1.75 tall)
+  civ: 1.6, // and a settlement's and a capital's, inside it, an edge in its civ's colour, in css px: a palisade of brown logs reads as its civ's
   edge: 1.3, // the dark edge every place has, in css px, as the clans' cells have: the hall's roof shows against the ground and the ring by it
   from: 28, // the terrain cell's height in css px below which the places are main's marks: the clans' own zoom (CLAN.from)
 };
@@ -91,9 +92,14 @@ function paint(ctx, model, view, { only = null, colour = null, outline = true } 
     const top = ay - ((c.ay * img.height) / c.h) * sc;
     const w = img.width * sc, h = hd * sc;
     if (outline) {
-      const ew = Math.max(1, Math.round(PLACE.edge * dpr));
+      const owned = p.role !== 'town';
+      const cw = owned ? Math.max(1, Math.round(PLACE.civ * dpr)) : 0, ew = Math.max(1, Math.round(PLACE.edge * dpr)) + cw;
       const e = view.atlas.outline(cell, EDGE, hd, ew);
       ctx.drawImage(e, left - ew * sc, top - ew * sc, e.width * sc, e.height * sc);
+      if (owned) {
+        const o = view.atlas.outline(cell, colour ?? clothOf(model, p.civ), hd, cw);
+        ctx.drawImage(o, left - cw * sc, top - cw * sc, o.width * sc, o.height * sc);
+      }
     }
     ctx.drawImage(img, left, top, w, h);
     if (p.role !== 'town') {

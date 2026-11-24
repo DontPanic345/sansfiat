@@ -54,4 +54,3 @@ medium9-clans-close tile 734 left -130px: 0 px differ
 medium9-clans-close tile 734 right 130px: 0 px differ
 medium9-clans-close tile 734 top -130px: 0 px differ
 medium9-clans-close tile 734 bottom 130px: 0 px differ
-exit 0

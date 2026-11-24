@@ -10,7 +10,7 @@ export const name = 'units';
 /** The figures' numbers. Lengths are in `s`, the figure's scale in world units, unless a note says css px. */
 export const FIGURE = {
   s: 0.6, // the least scale: a figure at a far zoom is this many world units per cell unit
-  minPx: 6, // the figure's scale is never under this many css px, so it shows zoomed out
+  minPx: 7, // the figure's scale is never under this many css px, so it shows zoomed out
   h: 2.4, // the figure's height, in `s`
   feet: 0.5, // the feet, below the slot's point, in `s`: the slot's point is the figure's waist
   slotX: 0.8, // the slot's point of a lone unit, in `s` from the tile's centre (never more than `slotMax`)
@@ -22,6 +22,7 @@ export const FIGURE = {
   rise: 1.25, // a number that would meet an earlier one on its row stands one row higher, in `s`: a wide number never meets its neighbour's
   gapX: 0.4, // the least space between two numbers on a row, in `s`
   edge: 1.3, // the dark edge every figure has, in css px, as a clan's cell has: a tan figure shows on grass by it
+  civ: 2, // and inside it an edge in the civ's colour, in css px: a figure of tan hide reads as its civ by its rim, as the pre-art shield did
   selected: 3, // the white edge of the selected unit, in css px
   hungry: 3.5, // the red edge of a hungry unit, in css px
   labelX: 0.95, // the number's left edge from the slot's point, in `s` (as main's)
@@ -107,9 +108,11 @@ function paint(ctx, model, view, { only = null, colour = null, numbers = true, e
         ctx.drawImage(o, left - selectedPx * sc, top - selectedPx * sc, o.width * sc, o.height * sc);
       }
       if (edge) {
-        const ew = Math.max(1, Math.round(FIGURE.edge * dpr));
+        const cw = Math.max(1, Math.round(FIGURE.civ * dpr)), ew = Math.max(1, Math.round(FIGURE.edge * dpr)) + cw;
         const e = view.atlas.outline(cell, EDGE, hd, ew);
         ctx.drawImage(e, left - ew * sc, top - ew * sc, e.width * sc, e.height * sc);
+        const o = view.atlas.outline(cell, colour ?? v.civs[u.civ]?.color ?? '#ccc', hd, cw);
+        ctx.drawImage(o, left - cw * sc, top - cw * sc, o.width * sc, o.height * sc);
       }
       ctx.drawImage(img, left, top, w, h);
       const mask = view.atlas.shaded(`${cell}.mask`, colour ?? v.civs[u.civ]?.color ?? '#ccc', hd);

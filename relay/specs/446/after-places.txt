@@ -63,4 +63,3 @@ places-lineup-edge  tile 102  mark  civ 11  on plains  reads as a town false  cl
 places-lineup-edge  tile 97  mark  civ 12  on plains  reads as a town false  clans 9  opaque 0  tinted 0  share -%  mean -  nearest -  ok
 places-lineup-edge  tile 140  mark  civ 11  on plains  reads as a town true  clans 19,20,21  opaque 0  tinted 0  share -%  mean -  nearest -  ok
 places-lineup-edge  tile -1  digest 514f01f255b6d28f  places on screen 5  roles: mark 4
-exit 0

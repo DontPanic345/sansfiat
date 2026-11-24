@@ -45,4 +45,3 @@ small2-places-close  k 35  drawn 84  off their tile 0
 places-lineup-close  k 35  drawn 21  off their tile 0  
 places-lineup-play  k 18  drawn 21  off their tile 0  
 places-lineup-edge  k 6  drawn 16  off their tile 0  
-exit 0
