@@ -1,6 +1,6 @@
 // The source art: named regions of the studies in `docs/proposals/map-art/`, and the atlas cells cut
 // from them. `draw-atlas.mjs` reads these; the browser never does.
-import { CLAN, FRINGE, HEX_R, TREE, UNIT } from './placeholders.js';
+import { CLAN, FRINGE, HEX_R, PLACE, TREE, UNIT } from './placeholders.js';
 
 /** Source studies, by name: repo paths, outside the site. */
 export const FILES = { terrain: 'docs/proposals/map-art/terrain.png', actors: 'docs/proposals/map-art/actors.png' };
@@ -198,6 +198,34 @@ REGIONS['clan.walk'] = {
   key: 'actor', ground: [742, 534], scale: 0.44, floor: 128,
   note: 'the man, the woman and the child walking, a clan that came to its home: the donkey left out, its ground at its middle',
 };
+// The places: the study's third row, each group on transparent ground (key `actor`), its box with a 3 px margin as its
+// keep-polygon. Its ground point is the middle of the ground it stands on, at the front where the group is tall: the
+// palisade's ring would run past the cell's foot at its centre, so its ground is the ring's front middle.
+REGIONS['place.town'] = {
+  file: 'actors', rect: [110, 657, 305, 206], keep: [[110, 657], [415, 657], [415, 863], [110, 863]],
+  key: 'actor', ground: [262, 843], scale: 0.56, floor: 128,
+  note: 'the thatched hamlet: three huts on the ground, its ground point at (262, 843)',
+};
+REGIONS['place.settlement'] = {
+  file: 'actors', rect: [606, 592, 385, 302], keep: [[606, 592], [991, 592], [991, 894], [606, 894]],
+  key: 'actor', ground: [798, 870], scale: 0.4, floor: 128,
+  note: 'the palisade with its huts, smoke and flag: its ground at the ring\'s front, (798, 870)',
+};
+REGIONS['place.capital'] = {
+  file: 'actors', rect: [1145, 611, 456, 282], keep: [[1145, 611], [1601, 611], [1601, 893], [1145, 893]],
+  key: 'actor', ground: [1373, 866], scale: 0.37, floor: 128,
+  note: 'the civic hall on its mound with its houses: its ground point at (1373, 866)',
+};
+
+// The hall's pennant: the study's flag again (the unit flag's pixels, its whole pole) at a place's scale, planted on the
+// roof's right shoulder. The two banners on the hall's front are small at the map's zooms and Gold's vanish against the
+// thatch; the pennant is the capital's cloth in its civ's colour, and stands clear of the town diamond, which covers the
+// roof's peak.
+REGIONS['place.flag'] = {
+  file: 'actors', rect: [1357, 97, 110, 163], keep: [[1357, 97], [1467, 97], [1467, 260], [1357, 260]],
+  key: 'actor', ground: [1372, 106], scale: 0.3,
+  note: "the study's flag at 0.3, its pole's top at (1372, 106): the capital's pennant",
+};
 
 // The grounds the source lacks, as ramps between colours the source has: the tree's dark floor and leaf, the grass,
 // the bank's shaded and lit sand and the water. Each end is a source rectangle's mean.
@@ -343,3 +371,17 @@ for (const kind of ['tent', 'hearth', 'walk']) {
   CELLS[`clan.${kind}`] = { region: `clan.${kind}`, ops: [], anchor: CLAN_ANCHOR };
   CELLS[`clan.${kind}.mask`] = { region: `clan.${kind}`, cloth: { [`clan.${kind}`]: CLAN_CLOTH[kind] }, ops: [GREY], anchor: CLAN_ANCHOR };
 }
+
+// The places' cells, each standing on the ground with its middle at the anchor. A mask is its cell's spec with the cloth
+// and `GREY`: the palisade's flag (the pole, the smoke and the chevron's dark kept in the cloth, so the mark shows
+// through the colour), and the hall's two banners on its front (not the posts, the roof or the walls).
+const PLACE_ANCHOR = [PLACE.ax, PLACE.ay];
+const FLAG_PLACE = [[887.3, 655.3], [897.7, 654.3], [921, 653.3], [930.2, 650], [939.3, 651.7], [939.3, 685], [941.3, 686.7], [941.3, 695], [929.3, 695], [921, 696.7], [904.3, 698.3], [887.7, 696.7]];
+const BANNER_LEFT = [[1325.3, 695.7], [1345.3, 695.7], [1345.7, 726], [1344.3, 726.3], [1341, 729.7], [1337.3, 726.8], [1333.5, 730.2], [1329.3, 727.3], [1326.3, 730.7], [1325, 726]];
+const BANNER_RIGHT = [[1424.7, 697.3], [1435.3, 699.3], [1446, 696], [1446.7, 731], [1442.7, 731.8], [1440.2, 730.7], [1436, 734.7], [1431, 731.3], [1426.8, 733.7], [1424, 731]];
+CELLS['place.town'] = { region: 'place.town', ops: [], anchor: PLACE_ANCHOR };
+CELLS['place.settlement'] = { region: 'place.settlement', ops: [], anchor: PLACE_ANCHOR };
+CELLS['place.settlement.mask'] = { region: 'place.settlement', cloth: { 'place.settlement': [FLAG_PLACE] }, ops: [GREY], anchor: PLACE_ANCHOR };
+const HALL_FLAG = { region: 'place.flag', at: [112, 3] };
+CELLS['place.capital'] = { region: 'place.capital', over: [HALL_FLAG], ops: [], anchor: PLACE_ANCHOR };
+CELLS['place.capital.mask'] = { region: 'place.capital', over: [HALL_FLAG], cloth: { 'place.capital': [BANNER_LEFT, BANNER_RIGHT], 'place.flag': [FLAG_CLOTH] }, ops: [GREY], anchor: PLACE_ANCHOR };

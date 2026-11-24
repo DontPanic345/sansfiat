@@ -44,6 +44,8 @@ const UNITS = ['camp', 'scout'];
 export const UNIT = { w: 96, h: 96, ax: 48, ay: 92 };
 /** A clan cell: a group standing on the ground, its middle at the anchor (56, 90). */
 export const CLAN = { w: 112, h: 96, ax: 56, ay: 90 };
+/** A place cell: a town, a settlement or a capital standing on the ground, its ground's middle at the anchor. */
+export const PLACE = { w: 176, h: 128, ax: 88, ay: 118 };
 const CLANS = ['tent', 'hearth', 'walk'];
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
 /** A mountain piece's cell: 224 × 144, its ground point (the anchor) at (112, 128). */
@@ -144,6 +146,13 @@ export function layout() {
     put(`clan.${k}`, CLAN.w, CLAN.h, clanNote[k], { ax: CLAN.ax, ay: CLAN.ay });
     put(`clan.${k}.mask`, CLAN.w, CLAN.h, `clan.${k} mask: its cloth in grey (the civ's colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the clan`, { ax: CLAN.ax, ay: CLAN.ay });
   }
+  row();
+  const place = { ax: PLACE.ax, ay: PLACE.ay };
+  put('place.town', PLACE.w, PLACE.h, 'a town: a thatched hamlet of three huts on the ground, its middle at the anchor, transparent outside: cut from the actor study', place);
+  put('place.settlement', PLACE.w, PLACE.h, 'a settlement: a palisade round its huts, with smoke and a flag, on the ground, its middle at the anchor, transparent outside: cut from the actor study', place);
+  put('place.settlement.mask', PLACE.w, PLACE.h, 'place.settlement mask: its flag\'s cloth in grey (the civ\'s colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the settlement', place);
+  put('place.capital', PLACE.w, PLACE.h, 'a capital: a civic hall on its mound among its houses, on the ground, its middle at the anchor, transparent outside: cut from the actor study', place);
+  put('place.capital.mask', PLACE.w, PLACE.h, 'place.capital mask: its two banners\' cloth in grey (the civ\'s colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the capital', place);
   row();
   put('icon.capital', 64, 64, "capital: a house with a door, casing and white edge, transparent inside (the civ's colour shows through from the mask)");
   put('icon.capital.mask', 64, 64, "capital silhouette in opaque white: tinted in the civ's colour");
@@ -318,6 +327,58 @@ const reedPiece = (ctx, w, h, { ax, ay }) => {
   ctx.fill();
 };
 
+/** A place's placeholder standing on the ground at (w / 2, 0.9 h): a town's huts, a settlement's ring with its flag, a
+ *  capital's hall on a mound. A mask is only its cloth (the flag, the banners), in white. */
+const placePiece = (ctx, w, h, name) => {
+  const id = name.split('.')[1], mask = name.endsWith('.mask'), cx = w / 2, gy = h * 0.9;
+  const hut = (x, y, s, roof) => {
+    ctx.fillStyle = '#c9a66b';
+    ctx.fillRect(x - s, y - 0.5 * s, 2 * s, 0.5 * s);
+    ctx.fillStyle = roof;
+    ctx.beginPath();
+    ctx.moveTo(x - 1.2 * s, y - 0.5 * s);
+    ctx.lineTo(x, y - 1.2 * s);
+    ctx.lineTo(x + 1.2 * s, y - 0.5 * s);
+    ctx.closePath();
+    ctx.fill();
+  };
+  if (id === 'town') {
+    if (!mask) {
+      hut(cx - 0.3 * w, gy - 0.1 * h, 0.13 * w, '#e0c060');
+      hut(cx + 0.25 * w, gy - 0.12 * h, 0.12 * w, '#e0c060');
+      hut(cx - 0.02 * w, gy - 0.02 * h, 0.12 * w, '#e0c060');
+    }
+  } else if (id === 'settlement') {
+    if (mask) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cx + 0.27 * w, 0.14 * h, 0.2 * w, 0.14 * h);
+    } else {
+      ctx.strokeStyle = '#6b4a24';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.ellipse(cx, gy - 0.15 * h, 0.4 * w, 0.22 * h, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+      hut(cx - 0.05 * w, gy - 0.2 * h, 0.14 * w, '#e0c060');
+      ctx.fillStyle = '#6b4a24';
+      ctx.fillRect(cx + 0.25 * w, 0.1 * h, 0.03 * w, 0.4 * h);
+      ctx.fillStyle = '#f0e8d0';
+      ctx.fillRect(cx + 0.28 * w, 0.14 * h, 0.2 * w, 0.14 * h);
+    }
+  } else if (mask) {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx - 0.42 * w, 0.2 * h, 0.07 * w, 0.22 * h);
+    ctx.fillRect(cx + 0.36 * w, 0.2 * h, 0.07 * w, 0.22 * h);
+  } else {
+    ctx.fillStyle = '#b8a880';
+    ctx.beginPath();
+    ctx.ellipse(cx, gy, 0.46 * w, 0.14 * h, 0, 0, 2 * Math.PI);
+    ctx.fill();
+    hut(cx, gy - 0.3 * h, 0.2 * w, '#e0c060');
+    hut(cx - 0.36 * w, gy - 0.05 * h, 0.1 * w, '#e0c060');
+    hut(cx + 0.36 * w, gy - 0.05 * h, 0.1 * w, '#e0c060');
+  }
+};
+
 /** Draws cell `name` into `ctx`, filling (0, 0, w, h); the cell is clear before. */
 export function draw(name, ctx, w, h) {
   ctx.lineJoin = 'round';
@@ -400,6 +461,8 @@ export function draw(name, ctx, w, h) {
     }
   } else if (kind === 'clan') {
     clanShape(ctx, w, h, id, name.endsWith('.mask'));
+  } else if (kind === 'place') {
+    placePiece(ctx, w, h, name);
   } else if (name === 'icon.capital.mask') {
     house(ctx, w, h);
     ctx.fillStyle = '#fff';

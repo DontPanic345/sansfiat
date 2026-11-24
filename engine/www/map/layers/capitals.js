@@ -1,9 +1,12 @@
-// Capitals: a house in the civ's colour, at least 14 px wide so it shows zoomed out.
+// Capitals: a house in the civ's colour, at least 14 px wide so it shows zoomed out. At the flat zoom only: above it the
+// capital is its civic hall, drawn by places.js.
 import { tinted, icon } from './icon.js';
+import { placesFlat } from './places.js';
 
 export const name = 'capitals';
 
 export function draw(ctx, model, view) {
+  if (!placesFlat(view)) return;
   const px = 1 / view.k;
   for (const civ of Object.values(model.v.civs || {})) {
     if (!view.onScreen(civ.capital)) continue;

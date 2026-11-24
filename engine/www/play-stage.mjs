@@ -1,9 +1,9 @@
 // The staged games the page scripts play on: a map's text on a radius-R hex (`grid`), its plains with sea on the
 // rim (`plains`), its marks by letter (`marks`), and `stage`, which builds the game and waits for its main phase.
-// `LINEUP` is the unit lineup and `CLANS` the clan lineup. Shared by the scripts in www/play/; it lives here, not there,
-// because all.mjs runs every script in www/play/. shots.mjs keeps its own copies of LINEUP and CLANS (and of CLAN_STATES),
-// so it runs alone on a main worktree.
-//   import { grid, plains, marks, stage, LINEUP, CLANS, CLAN_STATES } from '../play-stage.mjs';
+// `LINEUP` is the unit lineup, `CLANS` the clan lineup and `PLACES` the place lineup. Shared by the scripts in www/play/; it
+// lives here, not there, because all.mjs runs every script in www/play/. shots-views.mjs keeps its own copies of LINEUP, CLANS,
+// PLACES (and of CLAN_STATES and PLACE_STATES), so the pair runs on a main worktree.
+//   import { grid, plains, marks, stage, LINEUP, CLANS, CLAN_STATES, PLACES, PLACE_STATES } from '../play-stage.mjs';
 
 const FRAMES = 'new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))';
 
@@ -103,6 +103,46 @@ export const CLAN_STATES = `(() => {
   const civOf = (qr) => Object.values(v.civs).find((c) => c.capital === at(...qr)).id;
   on(at(3, 2))[0].leaning = { [civOf([0, -5])]: 0.6 * m.model.rules.join };
   on(at(4, 0))[0].leaning = { [civOf([0, 5])]: 0.2 * m.model.rules.join };
+  m.dirty = true;
+  m.drawNow();
+  return 'set';
+})()`;
+
+/** The place lineup (#445), as proto/lineup.mjs has it: the unit lineup's shape with a ridge north of the wood, red's capital
+ *  (A) with three red clans on it, a blue signpost (S) with three blue clans, four clans of no civ on T (`PLACE_STATES` sets
+ *  the town on T). The first turn founds blue's settlement on S (tile 140), and red's capital (47) reads as a town. */
+const ridge8 = (q, r) => r === -2 && q >= 0 && q <= 2;
+export const PLACES = {
+  map: grid(8, (q, r) => (dist(q, r) === 8 ? '~' : ridge8(q, r) ? '^' : forest8(q, r) ? 'f' : '.')),
+  marks: marks(8, { A: [-4, 1], B: [0, -6], C: [-1, 6], S: [2, -1], c: [1, -1], T: [-2, 4], a: [-4, 2], s: [2, 0], t: [-1, 4] }),
+  civs: [{ mark: 'A' }, { mark: 'B' }, { mark: 'C' }],
+  people: 12,
+  lead: 0,
+  armies: [{ civ: 0, at: { mark: 'c' }, people: 4 }],
+  scouts: [{ civ: 0, at: { mark: 'c' }, pack: 0 }],
+  clans: [
+    { home: { mark: 'A' }, tiles: [{ mark: 'a' }], people: 6, civ: 0, market: 0 },
+    { home: { mark: 'A' }, tiles: [], people: 5, civ: 0, market: 0 },
+    { home: { mark: 'A' }, tiles: [], people: 4, civ: 0, market: 0 },
+    { home: { mark: 'S' }, tiles: [{ mark: 'S' }, { mark: 's' }], people: 6, civ: 1 },
+    { home: { mark: 'S' }, tiles: [], people: 5, civ: 1 },
+    { home: { mark: 'S' }, tiles: [], people: 4, civ: 1 },
+    { home: { mark: 'T' }, tiles: [{ mark: 'T' }, { mark: 't' }], people: 6 },
+    { home: { mark: 'T' }, tiles: [], people: 5 },
+    { home: { mark: 'T' }, tiles: [], people: 4 },
+    { home: { mark: 'T' }, tiles: [], people: 4 },
+  ],
+  signposts: [{ civ: 1, at: { mark: 'S' } }],
+  food: ['A', 'a', 'S', 's', 'T', 't'].map((m) => ({ at: { mark: m }, good: 1, amount: 40 })),
+};
+
+/** In the page: the town of no civ on T (the stage makes no market of no civ) is set on the drawn model, and every clan is
+ *  out of walking (`since` 5) and not starving, then a redraw. As shots-views.mjs's PLACE_STATES. */
+export const PLACE_STATES = `(() => {
+  const m = game.map, v = m.model.v, t = m.at(-2, 4);
+  const clans = Object.values(v.clans).filter((c) => c.home === t).map((c) => c.id);
+  v.towns.push({ tile: t, market: null, clans });
+  for (const c of Object.values(v.clans)) { c.starving = false; c.since = 5; }
   m.dirty = true;
   m.drawNow();
   return 'set';

@@ -1,5 +1,7 @@
-// Signposts and settlements: a signpost is a small post with a board in its civ's colour; a settlement is a
-// small house with a dark casing in its civ's colour, drawn smaller than the capital's. Plain shapes, no ring.
+// Signposts and settlements: a signpost is a small post with a board in its civ's colour, at every zoom; a settlement is a
+// small house with a dark casing in its civ's colour, drawn smaller than the capital's, at the flat zoom only (above it
+// places.js draws the settlement's palisade). Plain shapes, no ring.
+import { placesFlat } from './places.js';
 
 export const name = 'settle';
 
@@ -24,6 +26,7 @@ export function draw(ctx, model, view) {
     ctx.fill();
     ctx.stroke();
   }
+  if (!placesFlat(view)) return;
   for (const s of model.v.settlements ?? []) {
     if (!view.onScreen(s.tile)) continue;
     const x = view.px[s.tile], y = view.py[s.tile];

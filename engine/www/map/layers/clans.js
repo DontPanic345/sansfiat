@@ -7,6 +7,7 @@
 
 import { cellHeight, isFlat } from './terrain.js';
 import { disc } from './leanings.js';
+import { PLACE, yardTiles } from './places.js';
 import { chroma, hexRgb } from './units.js';
 
 export const name = 'clans';
@@ -87,12 +88,20 @@ export const kindOf = (c) => (c.since <= 1 ? 'walk' : c.settled ? 'hearth' : 'te
  *  a ring round the centre, in id order from the top, each at its ring point plus `CLAN.feet`. */
 function layout(model, view) {
   const items = [];
+  const yard = yardTiles(model, view);
   for (const [home, clans] of byHome(model, view)) {
     const n = clans.length;
+    const Y = PLACE.yard;
     clans.forEach((c, j) => {
       const people = Math.sqrt(c.people);
       let ax = view.px[home], ay = view.py[home] + CLAN.feet, h;
-      if (n === 1) {
+      if (yard.has(home)) {
+        // On a place's tile: rows in front of the place, the back row first, each spread across the yard.
+        const row = Math.floor(j / Y.perRow), m = Math.min(Y.perRow, n - row * Y.perRow), at = j - row * Y.perRow;
+        ay = view.py[home] + (n === 1 ? Y.lone : Y.y + row * Y.dy);
+        ax += m === 1 ? 0 : (at / (m - 1) - 0.5) * Y.span;
+        h = Math.min(n === 1 ? Y.hLone : Y.h, Math.max(CLAN.minPx / view.k, CLAN.per * people));
+      } else if (n === 1) {
         h = Math.max(CLAN.minPx / view.k, Math.min(CLAN.max, CLAN.per * people));
       } else {
         const a = -Math.PI / 2 + (2 * Math.PI * j) / n;

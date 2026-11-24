@@ -37,6 +37,7 @@ export function legendHtml(country) {
     [sw('background:#d8d2c4;clip-path:polygon(50% 0,100% 100%,0 100%);width:12px;height:12px;margin:1px 3px'), 'clan of no civ (pale cloth)'],
     [sw('background:#d64545;border:2px solid #fff;outline:2px solid #000;width:10px;height:10px;margin:2px 4px;clip-path:polygon(0 25%,50% 0,100% 25%,100% 100%,0 100%)'), 'capital'],
     [sw('background:#d64545;border:2px solid #222;width:10px;height:10px;margin:2px 4px;clip-path:polygon(0 35%,50% 0,100% 35%,100% 100%,0 100%)'), 'settlement'],
+    [sw('background:#c9a66b;border:2px solid #3a2c00;width:12px;height:9px;margin:2px 3px;clip-path:polygon(50% 0,100% 45%,100% 100%,0 100%,0 45%)'), 'town: a festival several clans live on'],
     [sw('background:#d64545;border:2px solid #222;width:6px;height:12px;margin:0 6px'), 'signpost'],
     [sw('background:transparent;border:3px solid #3b6fd6;box-shadow:0 0 0 1px #000;width:12px;height:12px;margin:1px 3px'), 'civ land (its claim)'],
     [sw('background:#3b6fd6;border:2px solid rgba(0,0,0,.75);border-radius:50%;width:12px;height:12px;margin:1px 3px;opacity:.85'), 'unaligned clan: a disc under it in the civ it leans to'],
