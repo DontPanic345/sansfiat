@@ -1,0 +1,68 @@
+{"turn":281,"line":"note meant: bring clan 429 onto my land did: claim the one tile in reach, 307, adds a clan surprised: store is 10 grain with levy at 0, 27 clans already mine and none pays","result":"noted"}
+{"turn":281,"line":"{\"type\":\"claim\",\"tiles\":[56,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,301,307]}","result":"ok"}
+{"turn":281,"line":"note meant: see why levy is 0 did: why on clan 98 surprised: pays no levy because it does not trade at the capital market","result":"noted"}
+{"turn":281,"line":"why 98","result":"ok"}
+{"turn":281,"line":"note meant: pull clan 10 too did: extend the claim by tile 301 neighbour, check orders surprised: nothing","result":"noted"}
+{"turn":281,"line":"view","result":"ok"}
+{"turn":281,"line":"note meant: bring clan 10 onto my land did: claim tile 300 as listed surprised: the claim line stays 44 tiles after 307 joined","result":"noted"}
+{"turn":281,"line":"{\"type\":\"claim\",\"tiles\":[56,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,300,301,307]}","result":"ok"}
+{"turn":281,"line":"note meant: use the army lever did: raise 2 warriors into a new army to see what an army does surprised: nothing","result":"noted"}
+{"turn":281,"line":"{\"type\":\"raise\",\"n\":2}","result":"ok"}
+{"turn":281,"line":"note meant: use the scout did: route scout to tile 192 to see what a route shows surprised: nothing","result":"noted"}
+{"turn":281,"line":"{\"type\":\"route\",\"unit\":456,\"from\":166,\"to\":192}","result":"ok"}
+{"turn":281,"line":"note meant: let turns pass and watch the levy did: end 5 surprised: nothing","result":"noted"}
+{"turn":286,"line":"end 5","result":"ok"}
+{"turn":286,"line":"note meant: take clan 401 did: claim tile 338 surprised: clans joined 3 already without any gift, the claim alone brings them","result":"noted"}
+{"turn":286,"line":"{\"type\":\"claim\",\"tiles\":[56,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,300,301,307,338]}","result":"ok"}
+{"turn":286,"line":"note meant: test the army lever did: move army 459 to 194 to see if it matters surprised: nothing","result":"noted"}
+{"turn":286,"line":"{\"type\":\"move\",\"unit\":459,\"to\":194}","result":"ok"}
+{"turn":286,"line":"note meant: use gift did: setGift 8 to see whether it reaches anybody surprised: gift reaches no clan at market","result":"noted"}
+{"turn":286,"line":"{\"type\":\"setGift\",\"food\":8}","result":"ok"}
+{"turn":286,"line":"note meant: pass time did: end 5 surprised: nothing","result":"noted"}
+{"turn":291,"line":"end 5","result":"ok"}
+{"turn":291,"line":"note meant: take clan 2 did: claim the tile in reach surprised: levy 13 a turn but gifts reach nobody; store is growing 45","result":"noted"}
+{"turn":291,"line":"{\"type\":\"claim\",\"tiles\":[56,57,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,300,301,307,338]}","result":"ok"}
+{"turn":291,"line":"note meant: watch starvation reports did: end 10 surprised: clans 475 and 485 starving and people leaving","result":"noted"}
+{"turn":301,"line":"end 10","result":"ok"}
+{"turn":301,"line":"note meant: understand Blue 0.0% did: why 454 showed its capital fell to Gold army at 297 surprised: Blue fell from 25% to 0 in 10 turns while I could do nothing about it","result":"noted"}
+{"turn":301,"line":"note meant: keep claiming did: claim tile in reach surprised: nothing","result":"noted"}
+{"turn":301,"line":"{\"type\":\"claim\",\"tiles\":[56,57,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,300,301,307,338,339]}","result":"ok"}
+{"turn":301,"line":"note meant: let the food go to use did: gift 20 to see if reach grows surprised: gift still reaches no clan","result":"noted"}
+{"turn":301,"line":"{\"type\":\"setGift\",\"food\":20}","result":"ok"}
+{"turn":311,"line":"end 10","result":"ok"}
+{"turn":311,"line":"note meant: keep claiming did: claim 38 surprised: nothing","result":"noted"}
+{"turn":311,"line":"{\"type\":\"claim\",\"tiles\":[38,56,57,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,300,301,307,338,339]}","result":"ok"}
+{"turn":311,"line":"note meant: try zone lever did: zone army 459 on 194 to hold the land surprised: nothing","result":"noted"}
+{"turn":311,"line":"{\"type\":\"zone\",\"unit\":459,\"tiles\":[194]}","result":"ok"}
+{"turn":311,"line":"note meant: pass time did: end 10 surprised: nothing","result":"noted"}
+{"turn":321,"line":"end 10","result":"ok"}
+{"turn":321,"line":"note meant: keep claiming did: claim the tile in reach surprised: Standing creeping up, store flat at 50","result":"noted"}
+{"turn":321,"line":"{\"type\":\"claim\",\"tiles\":[38,56,57,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,300,301,307,338,339,370,402]}","result":"ok"}
+{"turn":321,"line":"note meant: pass time did: end 10 surprised: nothing","result":"noted"}
+{"turn":331,"line":"end 10","result":"ok"}
+{"turn":331,"line":"note meant: keep claiming did: claim next tile surprised: store pinned near 49.6 and posts 50 each turn, gift never gives","result":"noted"}
+{"turn":331,"line":"{\"type\":\"claim\",\"tiles\":[38,56,57,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,300,301,307,338,339,370,402,403]}","result":"ok"}
+{"turn":331,"line":"note meant: pass time did: end 10 surprised: nothing","result":"noted"}
+{"turn":341,"line":"end 10","result":"ok"}
+{"turn":341,"line":"note meant: keep claiming did: claim next tile surprised: nothing","result":"noted"}
+{"turn":341,"line":"{\"type\":\"claim\",\"tiles\":[38,39,40,56,57,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,243,244,245,247,248,249,271,272,273,277,300,301,307,338,339,370,402,403]}","result":"ok"}
+{"turn":341,"line":"note meant: pass time did: end 10 surprised: nothing","result":"noted"}
+{"turn":351,"line":"end 10","result":"ok"}
+{"turn":351,"line":"note meant: keep claiming and look for pillage did: claim next surprised: nothing","result":"noted"}
+{"turn":351,"line":"{\"type\":\"claim\",\"tiles\":[38,39,40,56,57,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,251,271,272,273,277,300,301,307,338,339,370,402,403]}","result":"ok"}
+{"turn":361,"line":"end 10","result":"ok"}
+{"turn":361,"line":"note meant: claim did: claim next surprised: nothing","result":"noted"}
+{"turn":361,"line":"{\"type\":\"claim\",\"tiles\":[38,39,40,56,57,76,77,97,98,99,120,121,122,142,144,145,146,165,166,167,168,169,170,190,191,192,193,194,195,216,217,218,219,220,221,222,223,243,244,245,247,248,249,251,252,253,271,272,273,277,300,301,307,338,339,370,402,403]}","result":"ok"}
+{"turn":361,"line":"note meant: pass did: end 10 surprised: nothing","result":"noted"}
+{"turn":371,"line":"end 10","result":"ok"}
+{"turn":371,"line":"note meant: test disband did: disband army 459 to see where people go surprised: nothing","result":"noted"}
+{"turn":371,"line":"{\"type\":\"disband\",\"unit\":459}","result":"ok"}
+{"turn":371,"line":"note meant: finish did: end 10 surprised: nothing","result":"noted"}
+{"turn":381,"line":"end 10","result":"ok"}
+{"turn":381,"line":"note meant: reach 100 did: end 10 more surprised: nothing","result":"noted"}
+{"turn":391,"line":"end 10","result":"ok"}
+{"turn":391,"line":"note could not tell: gift: whether any gift ever reaches a clan; every clan listed traded at another market, so gave 0.0 for 110 turns","result":"noted"}
+{"turn":391,"line":"note could not tell: land: why tiles beyond the claim in reach cannot be seen, and how many tiles a claim can hold","result":"noted"}
+{"turn":391,"line":"note could not tell: army: what a raised army does for Standing; no rival was in reach and no pillage order ever appeared","result":"noted"}
+{"turn":391,"line":"note could not tell: scout: what a route to a tile 1 step away does; its route stayed built with 0 tiles to search","result":"noted"}
+{"turn":391,"line":"note could not tell: guard: no guard order ever appeared in the legal orders","result":"noted"}
