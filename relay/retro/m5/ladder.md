@@ -348,7 +348,7 @@ them in its own session.
 ## 7. Specs, briefs and steps.json against the builds
 
 - **The briefs held.** 45 builds and one block (N build-2), which was the brief's own stop rule
-  doing its job. No build re-cut its piece, and none reports loosening a bound (K's whole retuned `cases.rs` and `scout_errand.rs` for new picks, and its review read them).
+  doing its job. No build re-cut its piece, and none reports loosening a bound (K's whole retuned `cases.rs` and `scout_errand.rs` for new picks).
 - **The shapes held, with one exception.** P was proposed as Magnum and its spec re-cut it to
   Easel and Canvas. That was right for cost: a $1.15 easel under a $9.66 canvas, where a magnum
   would have run Opus for the whole.
