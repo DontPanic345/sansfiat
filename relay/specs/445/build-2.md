@@ -28,6 +28,8 @@ the top, the flat test, pre-scaled cells, the multiply, `stats`, and `probe`.
 - `export function probe(model, view)`, as `clans.js`'s: per entry above the flat zoom, the place alone (cell and mask) on
   two transparent canvases, once in its colour and once in `#000000`; its rectangle, `opaque`, `tinted`, `mean`, and
   `nearest` among the living civs' colours by `chroma` (or `null` for a town). `MapView.placeProbe()` calls it.
+- Only a civ that hasn't fallen (`!civ.fallen`, as `units.js` and `clans.js` read it) has a capital place: a fallen
+  civ's capital tile draws its town's hamlet if it reads as a town, else nothing. `capitals.js` at the flat zoom stays main's.
 - In `LAYERS`, `places` goes just before `clans`. Add it to the `civs` group in `GROUPS` so View → Civs turns it off
   with the capitals.
 
@@ -68,6 +70,10 @@ to `--out`. `all.mjs` runs every script in `www/play/`, so add it to nothing.
 
 ## 5. The callers
 
+- `play/goods.mjs` (line 49) and `play/exchange.mjs` (line 73) turn off a list of layers (`capitals`, `settle`, `clans`,
+  `towns` …) to read the terrain's and the flow's pixels round a tile near a capital at k 25 and up. `places` would still
+  draw there, over the flow and the source. Add `'places'` to both lists: the same claim, with the new layer off as the
+  old ones are.
 - `play/settle.mjs` checks the settlement is drawn where the signpost was; `play/towns.mjs` checks the town mark and its
   clans. Both must still pass. If one fails only because it reads main's house pixels above the flat zoom, change it to
   read `stats.places` (the same claim, measured the way the piece measures it) and say so in your summary.

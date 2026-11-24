@@ -55,7 +55,8 @@ settle, ring, units …`):
 Callers: only `map/view.js` draws these layers. Selection is by tile (`panels.js`'s `candidates`; `play/settle.mjs`
 clicks a settlement's tile and cycles to it), so the drawing can't move it. `play/towns.mjs` checks the town mark and
 the town clans' colours; `play/settle.mjs` checks the settlement is drawn where the signpost was (pixels differ by > 20);
-`play/views.mjs` checks the legend.
+`play/views.mjs` checks the legend. `play/goods.mjs` and `play/exchange.mjs` turn the marks' layers off by name to read the pixels near a
+capital (a source, the flow); `places` joins their lists.
 
 What the retro maps hold, leading the first civ and ending turns (`proto/places.mjs`, `proto/places.jsonl`,
 `proto/near.mjs`, `proto/near.jsonl`):
@@ -97,7 +98,7 @@ In world units (a hex has circumradius 1). Every number is in `PLACE`, a table a
 - **The cells.** All five are 176×128, anchor (88, 118): the middle of the ground the place stands on. Each group is
   scaled to fit about 168×120 (the hamlet at about 0.56, the palisade 0.40, the civic 0.37). A mask has its cell's size
   and anchor. They take one new row of the atlas (5 × 176 = 880 of its 1024 px).
-- **The role.** Per tile, the first that holds: a living civ's capital → `capital`; a settlement → `settlement`; a town
+- **The role.** Per tile, the first that holds: a capital of a civ that hasn't fallen (`civ.fallen` null) → `capital`; a settlement → `settlement`; a town
   → `town`. A capital or settlement that reads as a town keeps its own cell, and the town diamond still draws over it.
 - **The size.** Each role's cell is drawn `PLACE.w[role]` world units wide (start: town 1.6, settlement 1.8, capital
   2.0), its height in the cell's proportion, pre-scaled to the device pixel (`atlas.scaled` and `atlas.shaded`, as
@@ -160,6 +161,10 @@ belongs to one canvas. This is 443's and 444's shape, cut by area as theirs were
   is a crowded settlement that reads as crowded, so the clans stand in its yard, in front, and none is hidden.
 - **The civic hall is the capital's marker above the flat zoom.** Main's house is replaced, not drawn beside it: one mark
   per capital. The gold centre ring stays round it.
+- **A fallen civ's capital has no hall.** A fallen civ draws no units (`units.js`); its old capital is a town's hamlet
+  if it reads as a town, else nothing above the flat zoom. At the flat zoom `capitals.js` stays main's, unchanged.
+- **The places are in View → Civs.** `places` joins the `civs` group with `capitals` and `settle`, so a town's hamlet
+  goes with them while its diamond (`towns`, its own layer) stays.
 - **The flat zoom keeps main's marks, switching with the clans.** At a 12 px hex a palisade is a speck, and main's house
   reads. The places switch at the clans' zoom so the map changes register in one step.
 - **The town diamond, signposts, borders and centre rings stay main's at every zoom.** They are the labels and frontier
