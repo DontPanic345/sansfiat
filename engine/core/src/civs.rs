@@ -482,9 +482,9 @@ pub fn gift_reach(w: &World, civ: u32) -> usize {
 }
 
 /// The levy at market `mid`, a capital's or a settlement's: each clan there that is the civ's pays
-/// `CIV.levy` of what it brought (its basket, salt and obsidian with the food) into the store there (the civ's at its capital, the
-/// settlement's own), in id order until the store is at its cap (`CIV.store_cap`,
-/// `SETTLE.store_cap`); its harvest drops by the same share, so that growth, which `eat` reckons on
+/// `CIV.levy` of the food it brought into the store there (the civ's at its capital, the settlement's own), in
+/// id order until the store is at its cap (`CIV.store_cap`, `SETTLE.store_cap`), and `CIV.levy_goods` of the salt
+/// and obsidian it brings (`actors::keeps_back`) up to what the store holds of each (`actors::civ_holds`); its harvest drops by the same share, so that growth, which `eat` reckons on
 /// the harvest, sees less. (A share of only the harvest beyond need brings next to nothing: clans
 /// grow until their harvest just feeds them.) Called by `markets::trade` before the market clears.
 /// Nothing with `Config.army` off.
@@ -514,14 +514,18 @@ pub fn levy(w: &mut World, mid: u32) {
     for id in ids {
         let c = w.clans.get_mut(&id).unwrap();
         let total = total(&c.basket);
-        if total <= 0.0 || room <= 0.0 {
+        if total <= 0.0 && crate::market::wares(&c.basket) <= 0.0 {
             continue;
         }
-        let share = CIV.levy.min(room / total);
+        let share = if total > 0.0 { CIV.levy.min(room / total) } else { 0.0 };
         room -= share * total;
-        // Salt and obsidian go with the food, up to what the store holds of each.
+        // Salt and obsidian go at their own share of what it brings: not the salt and tools it keeps at home.
         let holds = crate::actors::civ_holds(cap);
-        let paid: Basket = std::array::from_fn(|g| (c.basket[g] * share).min((holds[g] - stored[g]).max(0.0)));
+        let back = crate::actors::keeps_back(&c.basket, c.people);
+        let paid: Basket = std::array::from_fn(|g| {
+            let part = if GOOD[g].eaten { share } else { CIV.levy_goods };
+            ((c.basket[g] - back[g]) * part).min((holds[g] - stored[g]).max(0.0))
+        });
         add(&mut stored, &paid);
         for (f, &p) in paid.iter().enumerate() {
             c.harvest[f] *= 1.0 - share;

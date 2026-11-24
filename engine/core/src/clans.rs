@@ -204,7 +204,7 @@ impl Reaped {
 /// What clan `id` with `people` and `store`, paying `routes`, would reap from each tile of `tiles` this
 /// turn with `yearly` walks and `fields` of their days on the field job (`fields::jobs`): their gathering
 /// labour divided over the tiles that `gathers` marks, each tile's take taking its foods in proportion to
-/// stock at `harvest_labour` a unit, up to `take_rate` of the stock; and each field tile's days
+/// stock at `harvest_labour` a unit (less by its tools, `actors::tool_edge`), up to `take_rate` of the stock; and each field tile's days
 /// (`fields::sow`, capped at the room `fields::room` leaves `id`) taking their grain. Then gathering and
 /// field grain together come to at most `surplus_target × people` less the store, by one factor on every
 /// tile. Fields count only once `fields::open`.
@@ -222,7 +222,8 @@ pub fn reap(
 ) -> Reaped {
     let budget = (CLAN.surplus_target * people - total(store)).max(0.0);
     let fields = if fields::open(w) { fields } else { 0.0 };
-    let mut reaped = reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget);
+    let edge = actors::tool_edge(store, people);
+    let mut reaped = reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget, edge);
     // A clan gathers a source's good only up to what it holds of it (`SOURCE.hold`).
     for (g, have) in store.iter().enumerate() {
         let held = reaped.dug[g].min((SOURCE.hold * people - have).max(0.0));
@@ -236,7 +237,7 @@ pub fn reap(
 }
 
 /// `reap` within `budget`: gathering and field grain together come to at most `budget`, by one factor
-/// on every tile.
+/// on every tile. Gathering labour counts `edge` times over (its tools).
 #[allow(clippy::too_many_arguments)]
 fn reap_within(
     w: &World,
@@ -248,6 +249,7 @@ fn reap_within(
     fields: f64,
     gathers: &[bool],
     budget: f64,
+    edge: f64,
 ) -> Reaped {
     // A starving clan leaves its sources: every day goes on food.
     let dig = !w.clans.get(&id).is_some_and(|c| c.starving);
@@ -261,7 +263,7 @@ fn reap_within(
             takes.push([0.0; N]);
             continue;
         }
-        let amount = (labour / CLAN.harvest_labour).min(CLAN.take_rate * held);
+        let amount = (labour * edge / CLAN.harvest_labour).min(CLAN.take_rate * held);
         total += amount;
         takes.push(stock.map(|s| amount * s / held));
     }
@@ -322,7 +324,7 @@ pub(crate) fn worth(
     let food = reaped.food();
     // What its sources would give, whatever it holds, reckoned in food (`SOURCE.worth`).
     let could = if w.config.goods {
-        reap_within(w, id, people, routes, territory, &yearly, 0.0, &gathers, 0.0).dug.iter().sum::<f64>()
+        reap_within(w, id, people, routes, territory, &yearly, 0.0, &gathers, 0.0, 1.0).dug.iter().sum::<f64>()
     } else {
         0.0
     };
@@ -346,7 +348,8 @@ pub(crate) fn could_reap(
     let (_, yearly) = walks(w, home, territory);
     let gathers = reckoned(w, id, territory);
     let fields = if fields::open(w) { fields } else { 0.0 };
-    let reaped = reap_within(w, id, people, routes, territory, &yearly, fields, &gathers, f64::INFINITY);
+    let edge = actors::tool_edge(store, people);
+    let reaped = reap_within(w, id, people, routes, territory, &yearly, fields, &gathers, f64::INFINITY, edge);
     let food = reaped.food();
     (nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) + SOURCE.worth * reaped.dug.iter().sum::<f64>())
         / people
@@ -443,6 +446,7 @@ pub fn harvest(w: &mut World) {
         let c = w.clans.get_mut(&id).unwrap();
         c.walk = yearly.iter().sum();
         c.harvest = food;
+        actors::wear_tools(&mut c.actor.store, people);
         c.basket = std::array::from_fn(|f| c.store[f] + food[f] + reaped.dug[f]);
         if exchange {
             // Each source's dig arrives in the clan's one place for its wares.

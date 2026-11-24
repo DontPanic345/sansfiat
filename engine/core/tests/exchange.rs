@@ -199,7 +199,7 @@ fn with_exchange_off_an_army_isnt_paid() {
 }
 
 #[test]
-fn the_levy_takes_salt_at_the_foods_share() {
+fn the_levy_takes_the_salt_and_obsidian_a_clan_brings_whatever_the_food_room() {
     let (mut w, ids, _) = led();
     let red = ids[0];
     let mid = w.civs[&red].market;
@@ -210,12 +210,40 @@ fn the_levy_takes_salt_at_the_foods_share() {
     c.basket = [0.0; N];
     c.basket[GRAIN] = 10.0;
     c.basket[SALT] = 4.0;
-    w.civs.get_mut(&red).unwrap().store = [0.0; N];
+    c.basket[OBSIDIAN] = 2.0;
+    let full = &mut w.civs.get_mut(&red).unwrap().store;
+    *full = [0.0; N];
+    full[GRAIN] = CIV.store_cap;
     engine::leaning::land(&mut w, false);
     engine::civs::levy(&mut w, mid);
     let store = &w.civs[&red].store;
-    assert!((store[GRAIN] - CIV.levy * 10.0).abs() < 1e-9);
-    assert!((store[SALT] - CIV.levy * 4.0).abs() < 1e-9);
+    assert_eq!(store[GRAIN], CIV.store_cap, "no room for food");
+    // It keeps back the salt its own spare food will use and its people's tools.
+    let mut basket = [0.0; N];
+    (basket[GRAIN], basket[SALT], basket[OBSIDIAN]) = (10.0, 4.0, 2.0);
+    let back = engine::actors::keeps_back(&basket, w.clans[&on].people);
+    assert!(back[SALT] > 0.0 && back[OBSIDIAN] > 0.0);
+    assert!((store[SALT] - CIV.levy_goods * (4.0 - back[SALT])).abs() < 1e-9);
+    assert!((store[OBSIDIAN] - CIV.levy_goods * (2.0 - back[OBSIDIAN])).abs() < 1e-9);
+}
+
+#[test]
+fn the_levy_stops_at_what_the_store_holds() {
+    let (mut w, ids, _) = led();
+    let red = ids[0];
+    let mid = w.civs[&red].market;
+    hold_land(&mut w, red, &[at_big(-4, 0)]);
+    let on = put(&mut w, &[at_big(-4, 0)], 4.0);
+    let c = w.clans.get_mut(&on).unwrap();
+    c.market = Some(mid);
+    c.basket = [0.0; N];
+    c.basket[SALT] = 100.0;
+    w.civs.get_mut(&red).unwrap().store = [0.0; N];
+    engine::leaning::land(&mut w, false);
+    engine::civs::levy(&mut w, mid);
+    let holds = engine::actors::civ_holds(CIV.store_cap)[SALT];
+    assert!((w.civs[&red].store[SALT] - holds).abs() < 1e-9);
+    assert!((w.clans[&on].basket[SALT] - (100.0 - holds)).abs() < 1e-9, "the rest stays with the clan");
 }
 
 /// The seven retro maps and how long the sweep plays each past the pick.
@@ -231,7 +259,8 @@ const MAPS: [(&str, u32, u32); 7] = [
 
 /// What armies do with exchange on the retro maps, a map a line: run with `cargo test --release --test exchange
 /// army_flow -- --ignored --nocapture`. Army-turns, those past their line home's reach, those paid, those whose
-/// line ends at a market, those that bought food there and the food, and the salt a civ's store held a turn.
+/// line ends at a market, those that bought food there and the food, the salt and obsidian a civ's store held a turn,
+/// and the festival-turns trading each and the food a unit bought there.
 #[test]
 #[ignore]
 fn army_flow() {
@@ -243,17 +272,18 @@ fn army_flow() {
                     let mut w = engine::stage::Stage::retro(size, seed).unwrap().into_world();
                     w.act(engine::Action::ChooseCiv { civ: None }).unwrap();
                     let (mut camps, mut past, mut paid, mut ends, mut bought, mut food) = (0, 0, 0, 0, 0, 0.0);
-                    let (mut civt, mut salt) = (0, 0.0);
+                    let (mut civt, mut salt, mut obsidian) = (0, 0.0, 0.0);
+                    let (mut pn, mut ps, mut bad) = ([0usize; 2], [0.0f64; 2], 0);
                     for _ in 0..turns {
                         let before: std::collections::BTreeMap<u32, f64> =
-                            w.units.values().map(|u| (u.id, u.store[SALT])).collect();
+                            w.units.values().map(|u| (u.id, u.store[SALT] + u.store[OBSIDIAN])).collect();
                         w.run(1);
                         for u in w.units.values().filter(|u| u.camp().is_some()) {
                             camps += 1;
                             if engine::units::past_reach(&w, u.id, u.home) {
                                 past += 1;
                             }
-                            if u.store[SALT] > before.get(&u.id).copied().unwrap_or(0.0) + 1e-9 {
+                            if u.store[SALT] + u.store[OBSIDIAN] > before.get(&u.id).copied().unwrap_or(0.0) + 1e-9 {
                                 paid += 1;
                             }
                             let end = u.routes.first().map(|r| r.to);
@@ -266,14 +296,33 @@ fn army_flow() {
                                 food += t.food;
                             }
                         }
+                        for m in w.markets.values() {
+                            let foods: Vec<f64> = m.goods.iter().filter(|&&f| GOOD[f].eaten).map(|&f| m.prices[f]).collect();
+                            let mean = foods.iter().sum::<f64>() / foods.len().max(1) as f64;
+                            if mean <= 1e-9 {
+                                continue;
+                            }
+                            for (k, g) in [SALT, OBSIDIAN].into_iter().enumerate() {
+                                let r = m.prices[g] / mean;
+                                if m.goods.contains(&g) && r.is_finite() {
+                                    pn[k] += 1;
+                                    ps[k] += r;
+                                } else if m.goods.contains(&g) {
+                                    bad += 1;
+                                }
+                            }
+                        }
                         for c in w.civs.values().filter(|c| !c.is_out()) {
                             civt += 1;
                             salt += c.store[SALT];
+                            obsidian += c.store[OBSIDIAN];
                         }
                     }
                     format!(
-                        "{size} {seed}: army-turns {camps}, past reach {past}, paid {paid}, line at a market {ends}, bought {bought} (food {food:.1}); mean store salt {:.2}",
-                        salt / civt.max(1) as f64
+                        "{size} {seed}: army-turns {camps}, past reach {past}, paid {paid}, line at a market {ends}, bought {bought} (food {food:.1}); mean store salt {:.2}, obsidian {:.2}; festival-turns trading salt {} at {:.2} food, obsidian {} at {:.2}, {} unpriced",
+                        salt / civt.max(1) as f64,
+                        obsidian / civt.max(1) as f64,
+                        pn[0], ps[0] / pn[0].max(1) as f64, pn[1], ps[1] / pn[1].max(1) as f64, bad
                     )
                 })
             })

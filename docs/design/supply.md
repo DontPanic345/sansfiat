@@ -33,7 +33,7 @@ Food is heavy and a line carries it a short way. A light good goes much further 
 labour, and a market near the army turns it back into food.
 
 - **Pay.** An army its line home can't feed is paid along that line in the goods its store
-  holds that buy food at the market nearest the army. A good is pay only while that market
+  holds that buy food at the nearest market that trades one of them. A good is pay only while that market
   gives more food for it than its own weight in food: nothing is named as pay, and what pays
   changes with what the market wants.
 - **The stall.** The army keeps a stall at that market. Its pay goes into the market's
@@ -84,4 +84,4 @@ first, so there's no reserve to set.
 - The ring is every tile from which a civ's line feeds an army with days to spare. It is the same for every army and scout of the civ, and a rival's held ground is past it. (#154)
 - A unit's line runs to the store of its civ, capital or settlement, that feeds it for the least labour, and draws on that store alone. A store that doesn't hold a turn of the unit's food is passed over while another does, and a line a rival cuts looks for another store. The ring is every store's ring together. (#354)
 - A scout's food is its pack, filled at a store of its civ: it never forages or draws on a line, so an errand is trips out and home between stores and a rival further than a pack there and back waits for a nearer store. (#337)
-- An army its line home can't feed is paid along that line, at each good's weight, in any good its store holds that buys more food at the friendly market nearest it than its own weight in food; it posts the pay in that market's clearing, the food waits at its stall there, and its line ends at the stall when that feeds it better than its store. A store keeps its armies' pay back from its keeping. (#356)
+- An army its line home can't feed is paid along that line, at each good's weight, in any good its store holds that buys more food than its own weight in food at the nearest friendly market that trades it; it posts the pay in that market's clearing, the food waits at its stall there, and its line ends at the stall when that feeds it better than its store. A store keeps its armies' pay back from its keeping. (#356)

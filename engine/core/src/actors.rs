@@ -130,8 +130,8 @@ pub fn spoil_keeping(store: &mut Basket, back: f64) -> f64 {
 
 /// What each good is worth to an actor at a market, against a food's 1 (`market::demand`), from what
 /// it has (`b`) and the people it feeds. Salt is worth what the food it will have left spoils by, a
-/// person, over `KEEPING.want_at`, less what the salt it holds already keeps, at most 1. Obsidian is
-/// worth nothing to a clan: only a civ raises warriors.
+/// person, over `KEEPING.want_at`, less what the salt it holds already keeps, at most 1. Obsidian is its
+/// tools: worth `TOOLS.want` with none, falling to 0 as it holds `TOOLS.each` a person.
 pub fn worths(b: &Basket, people: f64) -> Basket {
     let spare = (total(b) - people).max(0.0);
     let bare = (spare - keepers(b) * KEEPING.keeps).max(0.0);
@@ -139,30 +139,59 @@ pub fn worths(b: &Basket, people: f64) -> Basket {
     std::array::from_fn(|g| match GOOD[g].uses {
         Use::Food => 1.0,
         Use::Keeps => (loss / KEEPING.want_at).min(1.0),
-        Use::Arms => 0.0,
+        Use::Arms => TOOLS.want * (1.0 - tooled(b, people)),
     })
 }
 
+/// The share of `people` that the obsidian in `b` tools, 0 to 1 (`TOOLS.each` a person).
+pub fn tooled(b: &Basket, people: f64) -> f64 {
+    let tools: f64 = (0..N).filter(|&g| GOOD[g].uses == Use::Arms).map(|g| b[g]).sum();
+    if people <= 0.0 {
+        return 0.0;
+    }
+    (tools / (people * TOOLS.each)).clamp(0.0, 1.0)
+}
+
+/// What a clan's gathering labour is multiplied by with the tools in `b` (`TOOLS.gain` when fully tooled).
+pub fn tool_edge(b: &Basket, people: f64) -> f64 {
+    1.0 + (TOOLS.gain - 1.0) * tooled(b, people)
+}
+
 /// What an actor keeps at home of what it has (`b`) when it goes to market: the salt its own spare
-/// food will use this turn. Everything else that isn't eaten it brings.
+/// food will use this turn, and the obsidian that tools its people. Everything else that isn't eaten it
+/// brings.
 pub fn keeps_back(b: &Basket, people: f64) -> Basket {
     let mut need = (total(b) - people).max(0.0) / KEEPING.keeps;
+    let mut tools = people * TOOLS.each;
     std::array::from_fn(|g| {
-        if GOOD[g].uses != Use::Keeps {
-            return 0.0;
-        }
-        let kept = b[g].min(need);
-        need -= kept;
+        let want = match GOOD[g].uses {
+            Use::Keeps => &mut need,
+            Use::Arms => &mut tools,
+            Use::Food => return 0.0,
+        };
+        let kept = b[g].min(*want);
+        *want -= kept;
         kept
     })
 }
 
+/// Wears out `TOOLS.wear` of the tools in clan store `b` of `people`: the obsidian past what tools them
+/// doesn't wear.
+pub fn wear_tools(b: &mut Basket, people: f64) {
+    let mut tools = people * TOOLS.each;
+    for g in (0..N).filter(|&g| GOOD[g].uses == Use::Arms) {
+        let used = b[g].min(tools);
+        tools -= used;
+        b[g] -= used * TOOLS.wear;
+    }
+}
+
 /// The most a civ's store of food cap `cap` holds of each good that isn't eaten: the salt that keeps a
-/// full store for a turn, and `ARMS.hold` of obsidian. Infinite for a food: the cap counts food.
+/// full store for `KEEPING.civ_turns`, and `ARMS.hold` of obsidian. Infinite for a food: the cap counts food.
 pub fn civ_holds(cap: f64) -> Basket {
     std::array::from_fn(|g| match GOOD[g].uses {
         Use::Food => f64::INFINITY,
-        Use::Keeps => cap / KEEPING.keeps,
+        Use::Keeps => KEEPING.civ_turns * cap / KEEPING.keeps,
         Use::Arms => ARMS.hold,
     })
 }

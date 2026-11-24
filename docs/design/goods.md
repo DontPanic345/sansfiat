@@ -32,7 +32,8 @@ fields better warriors than one that has to trade for blades.
 
 - Obsidian in the store an army is raised from arms its warriors: an armed warrior is
   stronger in attack and defence. It is used up at the raising.
-- Clans have no use for it. A civ gets it by its levy and at its market.
+- In a clan's store it is tools: a tooled clan gathers more, and its tools wear out. A civ gets
+  it by its levy and at its market.
 
 ## The civ
 
@@ -52,10 +53,11 @@ fields better warriors than one that has to trade for blades.
 ## Decided
 
 - Salt and obsidian weigh a fifth of food and don't spoil; a store's cap and a pack count food only. (#355)
-- A small map has 12 salt sources and 5 obsidian, more by area. A holder gives a twentieth of its days to the source, a day giving a quarter unit, and stops at half a unit a person. (#355)
+- A small map has 12 salt sources and 5 obsidian, more by area. A holder gives a twentieth of its days to the source, a day giving three quarters of a unit of salt or a quarter of obsidian, and stops at half a unit a person. (#355, #356)
 - A unit of salt keeps 10 food for a turn at half its spoiling and is used up. (#355)
 - A warrior raised takes half a unit of obsidian from the store he is raised from and fights a quarter stronger; an army's armed share stays through its losses. (#355)
-- At a festival a clan brings all its obsidian and the salt its own store won't use; a good nobody there wants isn't traded. (#355)
-- A civ's store takes salt only to keep a full store and obsidian only for twenty warriors; past that the levy leaves them with the clan and the store wants none at its market. (#355)
+- At a festival a clan brings the obsidian past its own tools and the salt its own store won't use; a good nobody there wants isn't traded. (#355, #356)
+- A civ's levy takes all the salt and obsidian its clans bring, whatever room its store has for food, up to four turns of salt for a full store and obsidian for eighty warriors; past that the levy leaves them with the clan and the store wants none at its market. (#355, #356)
+- A tenth of a unit of obsidian tools a person, who gathers a fifth more; a tenth of a clan's tools wear out a turn, and a clan wants tools as it wants a food. (#356)
 - A starving clan gives none of its days to a source: digging cost a clan its food. (#355)
 - A good passes from one market to the next by a clan's festival, the levy into a store, and an army's pay from that store to the market its line ends at; clans don't walk to a second festival. (#356)

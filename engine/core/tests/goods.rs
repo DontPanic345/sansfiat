@@ -67,7 +67,8 @@ fn a_clan_wants_salt_by_its_spoiling_and_a_civ_wants_both() {
     assert!(some > 0.0 && more > some && more <= 1.0, "{some} {more}");
     // Salt it holds already covers the loss.
     assert_eq!(worths(&basket(12.0, 1.0, 0.0), 4.0)[SALT], 0.0);
-    assert_eq!(worths(&basket(12.0, 0.0, 0.0), 4.0)[OBSIDIAN], 0.0, "a clan has no use for obsidian");
+    assert_eq!(worths(&basket(12.0, 0.0, 0.0), 4.0)[OBSIDIAN], TOOLS.want, "a clan with no tools wants obsidian");
+    assert_eq!(worths(&basket(12.0, 0.0, 4.0 * TOOLS.each), 4.0)[OBSIDIAN], 0.0, "a tooled clan wants none");
     let civ = civ_worths(&[0.0; N], CIV.store_cap);
     assert_eq!(
         civ_worths(&basket(0.0, 0.0, ARMS.hold), CIV.store_cap)[OBSIDIAN],
@@ -78,18 +79,19 @@ fn a_clan_wants_salt_by_its_spoiling_and_a_civ_wants_both() {
 }
 
 #[test]
-fn a_festival_moves_salt_to_who_wants_it_and_obsidian_only_to_a_civ() {
+fn a_festival_moves_salt_and_obsidian_to_who_wants_them() {
     let holder = basket(1.0, 2.0, 2.0);
     let other = basket(3.0, 0.0, 0.0);
     let w = |b: &Basket, people: f64| worths(b, people);
-    // Two clans: the other's store would spoil, so it buys salt; nobody wants obsidian, so it stays.
+    // Two clans: the other's store would spoil, so it buys salt; the holder is tooled and the other isn't, so
+    // the holder's spare obsidian goes to it.
     let brought = [holder, other];
     let c = clear(&brought, &[w(&holder, 4.0), w(&other, 1.0)], &[1.0; N], &Params::default());
     assert!(c.cleared);
     assert!(c.after[1][SALT] > 0.1, "salt moved: {}", c.after[1][SALT]);
     assert!(c.after[0][GRAIN] > 1.0, "for food");
-    assert_eq!(c.after[0][OBSIDIAN], 2.0, "obsidian nobody wants is not traded");
-    assert!(!c.goods.contains(&OBSIDIAN));
+    assert!(c.goods.contains(&OBSIDIAN));
+    assert!(c.after[1][OBSIDIAN] > 0.0, "the other took tools: {}", c.after[1][OBSIDIAN]);
     // With a civ's store at the market the obsidian goes to it.
     let store = basket(5.0, 0.0, 0.0);
     let brought = [holder, other, store];
@@ -99,8 +101,7 @@ fn a_festival_moves_salt_to_who_wants_it_and_obsidian_only_to_a_civ() {
         &[1.0; N],
         &Params::default(),
     );
-    assert!(c.after[2][OBSIDIAN] > 1.9, "the civ took the obsidian: {}", c.after[2][OBSIDIAN]);
-    assert!(c.after[1][OBSIDIAN].abs() < 1e-9);
+    assert!(c.after[2][OBSIDIAN] > 0.1, "the civ took obsidian: {}", c.after[2][OBSIDIAN]);
     for g in 0..N {
         let (before, after): (f64, f64) = (brought.iter().map(|b| b[g]).sum(), c.after.iter().map(|b| b[g]).sum());
         assert!((before - after).abs() < 1e-9, "{} conserved", GOODS[g]);
@@ -122,6 +123,33 @@ fn sources_lie_on_their_ground_and_the_control_has_none() {
         .iter()
         .zip(&off.tiles)
         .all(|(a, b)| (a.terrain, a.fertility, a.river) == (b.terrain, b.fertility, b.river)));
+}
+
+#[test]
+fn obsidian_tools_a_clans_gathering_and_wears_out() {
+    let mut w = flat();
+    let id = put(&mut w, &[at(0, 0), at(1, 0)], 6.0);
+    for t in [at(0, 0), at(1, 0)] {
+        w.tiles[t].stock[GAME] = 1000.0;
+    }
+    let c = &w.clans[&id];
+    let (_, yearly) = engine::clans::walks(&w, c.home, &c.territory);
+    let gathers = vec![true; c.territory.len()];
+    let food = |store: &Basket| {
+        let c = &w.clans[&id];
+        // Sixty people who walk a route of most of their days: short of their target, so labour sets the take.
+        let routes = [engine::actors::Route { to: at(1, 0), path: vec![at(1, 0)], cost: 180.0 * DAY }];
+        let r = engine::clans::reap(&w, id, 60.0, store, &routes, &c.territory, &yearly, 0.0, &gathers);
+        total(&r.food())
+    };
+    let bare = food(&[0.0; N]);
+    let tooled = food(&basket(0.0, 0.0, 60.0 * TOOLS.each));
+    assert!(tooled > bare * 1.01 && tooled <= bare * TOOLS.gain + 1e-9, "{bare} {tooled}");
+    let mut store = basket(0.0, 0.0, 1.0);
+    actors::wear_tools(&mut store, 6.0);
+    assert!((store[OBSIDIAN] - (1.0 - 6.0 * TOOLS.each * TOOLS.wear)).abs() < 1e-9, "only its tools wear");
+    let back = actors::keeps_back(&basket(6.0, 0.0, 1.0), 6.0);
+    assert!((back[OBSIDIAN] - 6.0 * TOOLS.each).abs() < 1e-9, "it keeps its tools from the festival");
 }
 
 #[test]

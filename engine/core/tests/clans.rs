@@ -112,7 +112,7 @@ fn reaping_keeps_to_labour_stock_and_target_on_real_maps() {
                         .takes;
                 let food = total(&std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum()));
                 let labour = (pop * CLAN.work - c.trip()).max(0.0);
-                assert!(CLAN.harvest_labour * food <= labour + EPS);
+                assert!(CLAN.harvest_labour * food <= labour * engine::actors::tool_edge(&store, pop) + EPS);
                 assert!(food <= (CLAN.surplus_target * pop - total(&store)).max(0.0) + EPS);
                 for (&i, t) in c.territory.iter().zip(&takes) {
                     for (x, s) in t.iter().zip(&w.tiles[i].stock) {

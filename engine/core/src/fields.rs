@@ -124,8 +124,9 @@ pub fn jobs(
     let mut from = Vec::new();
     for (&k, days) in sk.iter().zip(parts.pop().unwrap()) {
         if let Some(g) = w.tiles[tiles[k]].source {
-            dug[g] += days * SOURCE.a_day;
-            from.push((tiles[k], g, days * SOURCE.a_day));
+            let got = days * if g == SALT { SOURCE.salt_a_day } else { SOURCE.a_day };
+            dug[g] += got;
+            from.push((tiles[k], g, got));
         }
     }
     let field = parts.pop().unwrap();

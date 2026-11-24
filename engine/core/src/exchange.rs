@@ -119,9 +119,10 @@ pub fn market_end(w: &World, u: &Unit) -> Option<(usize, f64)> {
 }
 
 /// What army `id`'s civ would pay it this turn, before the labour that carries it. An army is paid when its line
-/// home can't carry a turn of its food: for the nearest market that may end its line (`may_end`) within the reach
-/// of a line that carries a turn of its food, from the store its line home ends at. A ware is pay when that market
-/// traded it last turn and a unit of it buys more food there than its own weight in food; the best by that
+/// home can't carry a turn of its food: for the nearest market that may end its line (`may_end`), within the reach
+/// of a line that carries a turn of its food, where a ware its store holds is pay, from the store its line home
+/// ends at. A ware is pay when that market traded it last turn and a unit of it buys more food there than its own
+/// weight in food; the best by that
 /// measure goes first, until what the pack has room for, less what its stall and its wares already buy, is met.
 pub fn pay_plan(w: &World, id: u32) -> Option<PayPlan> {
     let u = w.units.get(&id)?;
@@ -137,18 +138,20 @@ pub fn pay_plan(w: &World, id: u32) -> Option<PayPlan> {
     let held = settle::store(w, u.civ, store)?;
     let reach = u.people * UNIT.labour * Actor::carry(Carrier::Warrior).load / eats / 2.0;
     let near = cost_map(w, &[u.home], reach, |i| line::may_cross(w, u.civ, i));
+    let pays = |m: &Market, g: usize| {
+        !GOOD[g].eaten && held[g] > 1e-9 && m.goods.contains(&g) && food_price(m, g) / GOOD[g].weight > 1.0
+    };
     let m = w
         .markets
         .values()
-        .filter(|m| may_end(w, u, m))
+        .filter(|m| may_end(w, u, m) && (0..N).any(|g| pays(m, g)))
         .filter_map(|m| near.get(&m.tile).map(|&c| (c, m)))
         .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.id.cmp(&b.1.id)))?
         .1;
     let room = (cap_of(u) - total(&u.store)).max(0.0);
     let mut want = room - stall_at(u, m.id) - worth_at(m, &u.store);
     let per_weight = |g: usize| food_price(m, g) / GOOD[g].weight;
-    let mut goods: Vec<usize> =
-        (0..N).filter(|&g| !GOOD[g].eaten && held[g] > 1e-9 && m.goods.contains(&g) && per_weight(g) > 1.0).collect();
+    let mut goods: Vec<usize> = (0..N).filter(|&g| pays(m, g)).collect();
     goods.sort_by(|&a, &b| per_weight(b).total_cmp(&per_weight(a)).then(a.cmp(&b)));
     let mut wares = [0.0; N];
     for g in goods {
