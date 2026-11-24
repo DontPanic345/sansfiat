@@ -15,8 +15,7 @@ const MAPS: [(&str, u32); 7] =
 #[test]
 #[ignore = "a report: run it with --ignored --nocapture"]
 fn festival_walk_by_brought() {
-    // Bins of what a clan brought (food). `trade` caps it at `MARKET.carry` a person, and nearly every clan
-    // brings that cap, so what a person brings is the same for all and what a clan brings is its people.
+    // Bins of what a clan's walkers carry (food): `CARRY.clan.load` each (`markets::load`).
     let edges = [0.0, 0.5, 1.0, 1.5, 2.0, f64::INFINITY];
     let names = ["under 0.5", "0.5 to 1", "1 to 1.5", "1.5 to 2", "2 and more"];
     // (clans, sum brought, sum brought a person, sum people, sum walkers, sum walk days, sum one-walker days)
@@ -25,14 +24,9 @@ fn festival_walk_by_brought() {
         let mut s = Stage::retro(size, seed).unwrap();
         s.act(Action::ChooseCiv { civ: None }).unwrap();
         s.turn(99).unwrap();
-        // What each clan brought the turn before: its basket as `go` reads it, capped as `trade` caps it.
-        let before: std::collections::BTreeMap<u32, (f64, f64)> = s
-            .world()
-            .clans
-            .values()
-            .map(|c| (c.id, (c.basket.iter().sum::<f64>().min(MARKET.carry * c.people), c.people)))
-            .collect();
         s.turn(1).unwrap();
+        let before: std::collections::BTreeMap<u32, (f64, f64)> =
+            s.world().clans.values().map(|c| (c.id, (c.walkers * CARRY.clan.load, c.people))).collect();
         let w = s.world();
         for c in w.clans.values() {
             let (Some(r), Some(&(brought, people))) = (c.routes.first(), before.get(&c.id)) else { continue };

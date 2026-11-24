@@ -1,9 +1,9 @@
 // The source art: named regions of the studies in `docs/proposals/map-art/`, and the atlas cells cut
 // from them. `draw-atlas.mjs` reads these; the browser never does.
-import { FRINGE, HEX_R, TREE } from './placeholders.js';
+import { FRINGE, HEX_R, TREE, UNIT } from './placeholders.js';
 
 /** Source studies, by name: repo paths, outside the site. */
-export const FILES = { terrain: 'docs/proposals/map-art/terrain.png' };
+export const FILES = { terrain: 'docs/proposals/map-art/terrain.png', actors: 'docs/proposals/map-art/actors.png' };
 
 /** A region: an explicit hex in a source file, in source px, and how it is cleaned. */
 export const REGIONS = {
@@ -163,6 +163,25 @@ const RUN = [[1040, 878], [1240, 878], [1240, 906], [1040, 906]];
 REGIONS['bank.left'] = { file: 'terrain', rect: [1040, 878, 200, 29], keep: RUN, key: 'bank', ground: [1102, 902], scale: BANK_SCALE, note: 'the shore bank, the level run\'s left part, turned to each edge' };
 REGIONS['bank.right'] = { ...REGIONS['bank.left'], ground: [1178, 902], note: 'the shore bank, the level run\'s right part, turned to each edge' };
 
+// The actors: the study's figures and banner on transparent ground (key `actor`). Each stands alone in its box, the
+// box with a margin of 3 px as its keep-polygon. A figure's ground point is its feet; the flag's is its pole's top,
+// so it hangs from the point it is set on.
+REGIONS['actor.camp'] = {
+  file: 'actors', rect: [580, 69, 135, 193], keep: [[580, 69], [715, 69], [715, 262], [580, 262]],
+  key: 'actor', ground: [645, 256], scale: 0.48,
+  note: "the round-shield spearman, standing: his feet at (645, 256), the spear's head at the box's top",
+};
+REGIONS['actor.scout'] = {
+  file: 'actors', rect: [190, 104, 117, 155], keep: [[190, 104], [307, 104], [307, 259], [190, 259]],
+  key: 'actor', ground: [246, 253], scale: 0.6,
+  note: "the walker with a pack and a staff, standing: his feet at (246, 253), the staff's top at about (294, 149)",
+};
+REGIONS['actor.flag'] = {
+  file: 'actors', rect: [1357, 97, 110, 163], keep: [[1357, 97], [1467, 97], [1467, 260], [1357, 260]],
+  key: 'actor', ground: [1372, 106], scale: 0.2,
+  note: "the study's flag, its pole's top at (1372, 106): the cloth hangs to the right of the pole, the pole runs down past it",
+};
+
 // The grounds the source lacks, as ramps between colours the source has: the tree's dark floor and leaf, the grass,
 // the bank's shaded and lit sand and the water. Each end is a source rectangle's mean.
 const RAMP = {
@@ -263,3 +282,26 @@ for (const kind of FRINGE) {
     for (let v = 0; v < 2; v++) CELLS[`fringe.${kind}.${d}.${v}`] = { from: `terrain.${kind}.${v}`, fringe: { dir: d, variant: v } };
   }
 }
+
+// The unit figures: the study's round-shield spearman (the camp) and walker (the scout), each standing 88 px tall with
+// its feet at the anchor (48, 92), and the study's flag cut small, its pole's top on the spear's shaft below the head
+// (the camp) or on the staff's top (the scout). A mask is its figure's spec with `cloth` and the `grey` op: the flag's
+// cloth, and for the camp the round shield's face (an ellipse in the study, 31 by 34 px about (675.5, 193.5)).
+const UNIT_ANCHOR = [UNIT.ax, UNIT.ay];
+const FLAG_CLOTH = [[1380, 132], [1394, 133], [1427, 132], [1429, 126], [1438, 124], [1451, 124], [1454, 130], [1454, 180], [1450, 184], [1446, 188], [1428, 191], [1421, 195], [1397, 195], [1380, 191]];
+const SHIELD_FACE = [[706.5, 193.5], [705.4, 202.3], [702.3, 210.5], [697.4, 217.5], [691, 222.9], [683.5, 226.3], [675.5, 227.5], [667.5, 226.3], [660, 222.9], [653.6, 217.5], [648.7, 210.5], [645.6, 202.3], [644.5, 193.5], [645.6, 184.7], [648.7, 176.5], [653.6, 169.5], [660, 164.1], [667.5, 160.7], [675.5, 159.5], [683.5, 160.7], [691, 164.1], [697.4, 169.5], [702.3, 176.5], [705.4, 184.7]];
+// The tunic: the study's ochre cloth, a polygon round the body (the skin, hair, boots, pack and gloves lie outside it), less the
+// outline's darkest pixels. Points are read off a 6x crop of each figure: its origin plus the crop's px over 6.
+const crop6 = (ox, oy, pts) => pts.map(([x, y]) => [ox + x / 6, oy + y / 6]);
+const lit = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b >= 60;
+const CAMP_TUNIC = { poly: crop6(580, 69, [[150, 560], [230, 490], [330, 480], [430, 540], [420, 640], [370, 700], [360, 930], [240, 930], [190, 880], [190, 780], [140, 770], [140, 590]]), where: lit };
+const SCOUT_BODY = { poly: crop6(190, 104, [[200, 340], [250, 290], [320, 285], [335, 360], [435, 360], [455, 335], [500, 325], [545, 420], [495, 475], [490, 580], [310, 580], [305, 430], [175, 420]]), where: lit };
+const SCOUT_SHORTS = { poly: crop6(190, 104, [[190, 590], [500, 590], [505, 710], [300, 715], [185, 690]]), where: lit };
+// The cloth's grey runs from this up to white: high, so the civ's colour stays bright under the art's shading.
+const GREY = { op: 'grey', lo: 190 };
+const CAMP_FLAG = { region: 'actor.flag', at: [25, 34] };
+const SCOUT_FLAG = { region: 'actor.flag', at: [75.5, 30] };
+CELLS['unit.camp'] = { region: 'actor.camp', over: [CAMP_FLAG], ops: [], anchor: UNIT_ANCHOR };
+CELLS['unit.camp.mask'] = { region: 'actor.camp', over: [CAMP_FLAG], cloth: { 'actor.camp': [SHIELD_FACE, CAMP_TUNIC], 'actor.flag': [FLAG_CLOTH] }, ops: [GREY], anchor: UNIT_ANCHOR };
+CELLS['unit.scout'] = { region: 'actor.scout', over: [SCOUT_FLAG], ops: [], anchor: UNIT_ANCHOR };
+CELLS['unit.scout.mask'] = { region: 'actor.scout', over: [SCOUT_FLAG], cloth: { 'actor.scout': [SCOUT_BODY, SCOUT_SHORTS], 'actor.flag': [FLAG_CLOTH] }, ops: [GREY], anchor: UNIT_ANCHOR };

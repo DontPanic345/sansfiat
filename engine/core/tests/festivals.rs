@@ -1,6 +1,7 @@
 mod common;
 
 use common::*;
+use engine::actors::{Actor, Carrier, Route};
 use engine::clans::{surplus, Clan};
 use engine::data::*;
 use engine::markets::{fade, form, people, trade};
@@ -94,7 +95,7 @@ fn a_festival_one_clan_keeps_coming_to_stays_and_an_empty_one_fades() {
 }
 
 #[test]
-fn a_clan_brings_at_most_carry_times_its_people_and_trade_conserves() {
+fn a_clan_at_its_festival_brings_it_all_one_on_a_route_its_loads_and_trade_conserves() {
     let mut w = flat();
     let mid = open(&mut w, at(0, 0));
     let baskets =
@@ -114,11 +115,26 @@ fn a_clan_brings_at_most_carry_times_its_people_and_trade_conserves() {
     for f in 0..N {
         assert!((after[f] - before[f]).abs() < 1e-9);
     }
-    // Most of each basket stayed: a clan of 4 brought at most 0.8, so it holds at least the rest.
+    // They live on the festival's tile and walk nothing: each brings all it has.
     let m = &w.markets[&mid];
-    assert!(m.volume <= MARKET.carry * 12.0 + 1e-9, "volume {}", m.volume);
+    assert!(m.volume > Actor::carry(Carrier::Clan).load, "volume {}", m.volume);
     assert_eq!(m.traders, 3);
     assert!((m.activity - (MARKET.fade * 2.0 * MARKET.min_attendance + (1.0 - MARKET.fade) * 3.0)).abs() < 1e-9);
+    // The same clans a long walk away each bring one load: a walker's 2 food.
+    let volume = m.volume;
+    for (id, b) in ids.iter().zip(baskets) {
+        let c = w.clans.get_mut(id).unwrap();
+        c.basket = b;
+        c.walkers = 1.0;
+        c.routes = vec![Route { to: at(0, 0), path: vec![at(0, 0)], cost: 20.0 * DAY }];
+    }
+    let before = w.clans.clone();
+    trade(&mut w);
+    for id in &ids {
+        let moved: f64 = (0..N).map(|g| (w.clans[id].basket[g] - before[id].basket[g]).abs()).sum();
+        assert!(moved <= 2.0 * Actor::carry(Carrier::Clan).load + 1e-9, "clan {id} moved {moved}");
+    }
+    assert!(w.markets[&mid].volume < volume, "{} against {volume} at the door", w.markets[&mid].volume);
 }
 
 #[test]

@@ -6,9 +6,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::actors::{keeps_back, walk_cost, Actor, Carrier};
+use crate::actors::{walk_cost, Actor, Carrier};
 use crate::civs;
-use crate::clans::Clan;
 use crate::data::*;
 use crate::land::cost_map;
 use crate::lots::{self, Lots};
@@ -282,27 +281,6 @@ pub fn pass_lots(w: &mut World, mid: u32, owners: &[Owner], kept: &[Basket], bro
             Owner::Civ(id) => w.civs.get_mut(&id).unwrap().actor.lots = new,
         }
     }
-}
-
-/// What clan `c` brings to a festival, and what it keeps at home. It brings its salt and obsidian (less the salt
-/// its own store will use, `actors::keeps_back`), and its food scaled evenly down to what `MARKET.carry ×
-/// people` of weight leaves (`GOOD`'s weights).
-pub fn bring(c: &Clan) -> (Basket, Basket) {
-    let back = keeps_back(&c.basket, c.people);
-    let light: f64 = (0..N).filter(|&g| !GOOD[g].eaten).map(|g| (c.basket[g] - back[g]) * GOOD[g].weight).sum();
-    let total = total(&c.basket);
-    let most = (MARKET.carry * c.people - light).max(0.0);
-    let share = if total > most { most / total } else { 1.0 };
-    let part = |g: usize| {
-        if GOOD[g].eaten {
-            share
-        } else if c.basket[g] > 0.0 {
-            1.0 - back[g] / c.basket[g]
-        } else {
-            0.0
-        }
-    };
-    (std::array::from_fn(|g| c.basket[g] * part(g)), std::array::from_fn(|g| c.basket[g] - c.basket[g] * part(g)))
 }
 
 /// The unit's last trade, for a unit that traded at all.

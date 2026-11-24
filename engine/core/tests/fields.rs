@@ -317,6 +317,10 @@ fn on_real_maps_with_fields_off_reap_is_the_old_reap() {
             ..Config::default()
         });
         w.run(60);
+        // The old reap knew no children's days.
+        for c in w.clans.values_mut() {
+            c.nursing = 0.0;
+        }
         for c in w.clans.values() {
             let (_, yearly) = engine::clans::walks(&w, c.home, &c.territory);
             for (pop, store) in [(c.people, c.store), (2.0, [0.0; N])] {

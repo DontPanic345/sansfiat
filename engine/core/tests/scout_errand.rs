@@ -10,7 +10,7 @@
 //! (`relay/specs/153/feeding.md`).
 
 use engine::data::{FOREST, HILLS};
-use engine::land::steps;
+use engine::land::{passable, path, steps};
 use engine::stage::Stage;
 use engine::units;
 use engine::{Action, EventKind, Order};
@@ -67,9 +67,11 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
         .min_by_key(|c| (steps(w, cap, c.capital), c.id))
         .map(|c| c.capital)
         .unwrap();
-    // A forest or hills tile seven steps out, or the nearest to seven where the pick has none there.
+    // A forest or hills tile seven steps out that the capital has a path to, or the nearest to seven
+    // where the pick has none there.
     let lead = (0..w.tiles.len())
         .filter(|&i| matches!(w.tiles[i].terrain, FOREST | HILLS) && steps(w, i, cap) > 0)
+        .filter(|&i| path(w, cap, i, |t| passable(w, t)).is_some())
         .min_by_key(|&i| (steps(w, i, cap).abs_diff(7), i))
         .unwrap();
     let id = units::scout(w, me).unwrap().id;
@@ -83,7 +85,7 @@ fn errand(size: &str, seed: u32, kind: Kind, refill: bool) -> Result {
         Kind::Idle => None,
     };
     if let Some(order) = order {
-        stage.act(Action::Order { civ: me, order }).unwrap();
+        stage.act(Action::Order { civ: me, order }).unwrap_or_else(|e| panic!("{size} {seed} {}: {e}", kind.name()));
     }
     let (mut hungry, mut off) = (0, 0);
     for _ in 0..TURNS {

@@ -4,7 +4,7 @@
 
 use engine::actors::{walk_cost, Route};
 use engine::clans::{self, harvest, new_clan, reap, walks, Reaped};
-use engine::data::{Config, CLAN, FIELD, GRAIN, MAP, TENDING};
+use engine::data::{Config, CLAN, FIELD, FISH, GRAIN, MAP, TENDING};
 use engine::events::EventKind;
 use engine::fields;
 use engine::hex::Hex;
@@ -14,7 +14,7 @@ use engine::land::neighbours;
 use engine::land::{passable, path};
 use engine::map::index;
 use engine::markets::form_and_fade;
-use engine::markets::{by_market, festival_costs, go, in_reach, raise, walkers};
+use engine::markets::{by_market, festival_costs, go, in_reach, load_to, raise, route};
 use engine::reach::Scratch;
 use engine::stage::Stage;
 use engine::towns::towns;
@@ -260,7 +260,8 @@ fn clans_on_one_home_read_one_festival_search_and_walk_the_land_path() {
         assert_eq!(w.clans[&id].market, Some(mid), "clan {id} goes to the festival");
         let r = &w.clans[&id].routes[0];
         assert_eq!((r.to, &r.path), (fest, &want.0), "clan {id} walks the route land::path gives");
-        assert_eq!(r.cost, walk_cost(want.1, 1.0) * walkers(&w.clans[&id]));
+        let walkers = load_to(&w, &w.clans[&id], mid, want.1).walkers;
+        assert_eq!((r.cost, w.clans[&id].walkers), (walk_cost(want.1, 1.0) * walkers, walkers));
     }
 }
 
@@ -387,7 +388,12 @@ fn farmer_by_festival(people: f64, carried: f64) -> (World, u32, usize, usize) {
     let c = w.clans.get_mut(&id).unwrap();
     c.fields = FIELD.farmer;
     c.basket[GRAIN] = carried;
+    c.harvest[GRAIN] = carried;
     c.market = Some(m);
+    // Fish is cheap at the festival: grain brought there trades for it.
+    let fm = w.markets.get_mut(&m).unwrap();
+    fm.prices[FISH] = 0.2;
+    fm.goods = vec![GRAIN, FISH];
     send(&mut w, id);
     (w, id, home, fest)
 }
@@ -397,8 +403,9 @@ fn send(w: &mut World, id: u32) {
     let c = &w.clans[&id];
     let m = c.market.unwrap();
     let f = festival_costs(w, &mut Scratch::new(w), c.home).into_iter().find(|f| f.market == m).unwrap();
-    let route = Route { to: w.markets[&m].tile, path: f.path, cost: walk_cost(f.cost, 1.0) * walkers(c) };
-    w.clans.get_mut(&id).unwrap().routes = vec![route];
+    let (route, walkers) = route(w, c, m, f.path, f.cost);
+    let c = w.clans.get_mut(&id).unwrap();
+    (c.routes, c.walkers) = (vec![route], walkers);
 }
 
 fn chosen(w: &World, id: u32) -> usize {
@@ -408,20 +415,26 @@ fn chosen(w: &World, id: u32) -> usize {
 }
 
 #[test]
-fn a_farmer_steps_toward_its_festival_when_its_surplus_makes_the_walk_dear() {
-    let (w, id, home, fest) = farmer_by_festival(150.0, 30.0);
+fn a_farmer_steps_toward_its_festival_when_its_surplus_trades_for_more_from_nearer() {
+    let (w, id, home, fest) = farmer_by_festival(150.0, 200.0);
     assert!(!w.clans[&id].routes.is_empty(), "it walks to the festival");
     let to = chosen(&w, id);
-    assert_ne!(to, home, "a dear walk moves its home");
+    assert_ne!(to, home, "a load worth more nearer moves its home");
     assert_eq!(engine::land::steps(&w, to, fest), 1, "one tile nearer, onto a tile another clan holds");
     assert_eq!(w.tiles[to].claim, Some(*w.clans.keys().next().unwrap()));
     let (cheap, id, home, _) = farmer_by_festival(150.0, 0.0);
     assert_eq!(chosen(&cheap, id), home, "a cheap walk keeps it home");
+    // Where its grain buys nothing the walk is one walker's from either home, and it stays.
+    let (mut idle, id, home, _) = farmer_by_festival(150.0, 200.0);
+    let m = idle.clans[&id].market.unwrap();
+    idle.markets.get_mut(&m).unwrap().goods = vec![GRAIN];
+    send(&mut idle, id);
+    assert_eq!(chosen(&idle, id), home, "a load that trades for nothing keeps it home");
 }
 
 #[test]
 fn a_farmer_steps_a_tile_a_turn_at_most_and_claims_no_held_tile() {
-    let (mut w, id, home, fest) = farmer_by_festival(150.0, 30.0);
+    let (mut w, id, home, fest) = farmer_by_festival(150.0, 200.0);
     let held = index(RADIUS, Hex { q: 0, r: 0 }).unwrap();
     let mut at = home;
     for _ in 0..4 {
@@ -446,7 +459,7 @@ fn a_farmer_steps_a_tile_a_turn_at_most_and_claims_no_held_tile() {
 
 #[test]
 fn the_civs_own_clan_stays_and_towns_off_never_lands_on_a_held_tile() {
-    let (mut w, id, home, _) = farmer_by_festival(150.0, 30.0);
+    let (mut w, id, home, _) = farmer_by_festival(150.0, 200.0);
     let held = index(RADIUS, Hex { q: 0, r: 0 }).unwrap();
     w.config.towns = false;
     let c = w.clans[&id].clone();

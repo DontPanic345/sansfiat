@@ -1,0 +1,36 @@
+[
+  {
+    "id": "build-1",
+    "title": "The unit figures and their masks in the atlas",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 2 (keys, sizes, anchors, the over/cloth/grey rules and their asserts are exact; the first cuts and the cloth polygons are read by eye, though they need only read as a spearman and a walker with a banner, from source boxes the spec measured), New 1 (sprite regions with keep polygons are the trees' pattern; a second region drawn over, a cloth polygon and a grey op adapt cut.mjs's sprite path and ops), Miss 1 (--check's recut, the new asserts, play/art.mjs and the compare with main), Reach 1 (the atlas every map draw reads; only units.js reads the four cells). An easel at 5: Haiku high, as 439 to 442's atlas easels ran. About 7 files, 250 lines plus the PNG: cut.mjs, sources.js, placeholders.js, draw-atlas.mjs, atlas.png/json, engine/CLAUDE.md, atlas.md, cells.png and two protos."
+  },
+  {
+    "id": "build-2",
+    "title": "The figures on the map, the unit views and the checks",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 0 (the slot, height, order, multiply tint, outlines, probe, the 13 views and their setups are the spec's word for word, each setup run on main in proto/scenes.mjs and proto/lineup.mjs; FIGURE starts at numbers that run), New 1 (shaded and outline follow atlas.scaled and tinted; the views follow 442's turns option; play/units.mjs follows play/woods.mjs), Miss 1 (play/units.mjs checks the lineup's figures, colours, stack cycle and numbers; all.mjs keeps army, select, camp and scout), Reach 2 (the units layer draws every frame, and atlas.js serves every layer). Haiku high at 4, as 442's map easel. About 9 files, 450 lines: atlas.js, layers/units.js, map/view.js, shots.mjs, play-stage.mjs, play/units.mjs, engine/CLAUDE.md, easel.md. Kept apart from build-1 by area (atlas, then map) as 442 did. It waits on 13 views shot once, three of them raising an army. Spec-review: the stack check is two number boxes apart (stats.labels gains box), and nearest is by chromaticity (review.md)."
+  },
+  {
+    "id": "build-3",
+    "title": "The units on the map, judged beside main",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 9,
+    "why": "Open 4 (camp and scout told apart, each civ told apart on plains and in a wood at three zooms, the edges and numbers as readable as main's, a figure that fits its hex beside the capital: all judged by eye, with a tinted-pixel bar the build sets), New 1 (the cells and drawing are the easels'; a tunic in the cloth or a closer stack adapts them), Miss 3 (only captures on the retro maps and the lineup show a banner lost in a wood or a Gold that reads as ochre), Reach 1 (sources.js and FIGURE, drawn every frame, no rule). A canvas at 9: Sonnet high, as 440's to 442's. About 6 files and 12 committed PNGs, 200 lines: sources.js, maybe cut.mjs, atlas.png/json, layers/units.js, maybe shots.mjs and play/units.mjs, views.md, shots/."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved and the unit views' digests match, repeats the atlas build for identical bytes, runs --units and play/units.mjs, shoots both trees and diffs the cameras, reads the pairs for two shapes, three colours on plains and in a wood, the edges and the stack's numbers, checks selection, a stack's cycle, Move to… and zoom on the page, and puts the captures in the PR."
+  }
+]

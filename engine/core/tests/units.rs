@@ -698,16 +698,18 @@ fn on_a_real_map_the_ai_armies_on_their_own_land_are_fed_by_their_line() {
     for id in ids {
         armed(&mut w, id);
     }
-    w.run(100);
     // The planner sends an army abroad on its pack and home when it runs low, so only an army
-    // standing on its own land within its line's reach is read: its line feeds it there.
+    // standing on its own land within its line's reach is read, each turn: its line feeds it there.
     let mut read = 0;
-    for u in w.units.values().filter(|u| {
-        u.camp().is_some() && civs::tile_civ(&w, u.tile()) == Some(u.civ) && !units::past_reach(&w, u.id, u.tile())
-    }) {
-        assert!(u.people > 0.0, "civ {}'s army has {} warriors", u.civ, u.people);
-        assert!(!units::cut_off(&w, u.id), "civ {}'s army is fed by its line", u.civ);
-        read += 1;
+    for _ in 0..100 {
+        w.run(1);
+        for u in w.units.values().filter(|u| {
+            u.camp().is_some() && civs::tile_civ(&w, u.tile()) == Some(u.civ) && !units::past_reach(&w, u.id, u.tile())
+        }) {
+            assert!(u.people > 0.0, "civ {}'s army has {} warriors", u.civ, u.people);
+            assert!(!units::cut_off(&w, u.id), "civ {}'s army is fed by its line (turn {})", u.civ, w.turn);
+            read += 1;
+        }
     }
     assert!(read > 0, "an army stands on its own land");
 }

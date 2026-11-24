@@ -41,10 +41,12 @@ pub(crate) fn total_settling(maps: &[MapJudged]) -> TotalSettling {
     t
 }
 
-/// `settled clans/clans (people/people)` at +100 and +200.
+/// `settled clans/clans (people/people)` at +100 and +200, the changes, births a person a turn and the
+/// people crowding killed.
 fn row(c: &SettledCiv) -> String {
+    let (settled, gathering) = c.growth();
     format!(
-        "+100 {}/{} clans ({:.0}/{:.0} people), +200 {}/{} clans ({:.0}/{:.0} people), settles {} back {}",
+        "+100 {}/{} clans ({:.0}/{:.0} people), +200 {}/{} clans ({:.0}/{:.0} people), settles {} back {}, born a person a turn settled {:.4} gathering {:.4}, crowding killed {:.1} ({:.4} a person a turn)",
         c.settled_100,
         c.clans_100,
         c.settled_people_100,
@@ -54,7 +56,11 @@ fn row(c: &SettledCiv) -> String {
         c.settled_people_200,
         c.people_200,
         c.settles,
-        c.goes_back
+        c.goes_back,
+        settled,
+        gathering,
+        c.crowded,
+        c.crowded_share()
     )
 }
 

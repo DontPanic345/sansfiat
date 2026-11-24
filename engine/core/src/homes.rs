@@ -5,12 +5,12 @@
 
 use std::collections::BTreeMap;
 
-use crate::actors::{self, walk_cost, Route};
+use crate::actors::{self, Route};
 use crate::clans::{self, Clan};
 use crate::data::*;
 use crate::fields;
 use crate::land::{neighbours, passable, steps};
-use crate::markets::{festival_costs, walkers, Festival};
+use crate::markets::{festival_costs, load_to, route, Festival};
 use crate::reach::Scratch;
 use crate::world::World;
 
@@ -63,16 +63,17 @@ impl Prices {
         self.homes[to] += 1;
     }
 
-    /// Clan `c`'s festival route if it lived on `home`: its market's route priced from there as `go`
-    /// prices it, nothing when the festival stands on `home`, and its current routes when the festival is
-    /// out of the search's reach or it has none.
-    fn routes(&mut self, w: &World, c: &Clan, home: usize) -> Vec<Route> {
-        let Some(m) = c.market.and_then(|m| w.markets.get(&m)) else { return c.routes.clone() };
+    /// Clan `c`'s festival route if it lived on `home`, and the food its load there would gain in trade
+    /// (`markets::load_to`): its market's route priced from there as `go` prices it, nothing when the
+    /// festival stands on `home`, and its current routes and no gain when the festival is out of the
+    /// search's reach or it has none.
+    fn routes(&mut self, w: &World, c: &Clan, home: usize) -> (Vec<Route>, f64) {
+        let Some(m) = c.market.and_then(|m| w.markets.get(&m)) else { return (c.routes.clone(), 0.0) };
         let scratch = &mut self.scratch;
         let found = self.found.entry(home).or_insert_with(|| festival_costs(w, scratch, home));
         match found.iter().find(|f| f.market == m.id) {
-            Some(f) => vec![Route { to: m.tile, path: f.path.clone(), cost: walk_cost(f.cost, 1.0) * walkers(c) }],
-            None => c.routes.clone(),
+            Some(f) => (vec![route(w, c, m.id, f.path.clone(), f.cost).0], load_to(w, c, m.id, f.cost).gain),
+            None => (c.routes.clone(), 0.0),
         }
     }
 }
@@ -92,7 +93,8 @@ pub struct Step {
 /// hold), so a town's clans leave it only when that feeds them better; elsewhere it steps as the move
 /// step has it. Each step is valued from its home by what its labour could reap (`clans::could_reap`):
 /// the territory with the new home in it, less the tiles another clan holds other than the home, trimmed
-/// to the radius, and the festival route priced from there. A step is taken when it feeds the clan
+/// to the radius, and the festival route priced from there, with what the clan's load at its festival
+/// would gain in trade from there (`markets::load_to`). A step is taken when it feeds the clan
 /// better than staying by `TOWN.margin`, the better of the two if both do. `None` when the rule does not apply (towns off, fields closed, neither
 /// a farmer nor on a shared home): the move step's own home step then runs.
 pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Option<Step> {
@@ -102,8 +104,8 @@ pub fn step(w: &World, prices: &mut Prices, c: &Clan, changed: &[usize]) -> Opti
         return None;
     }
     let value = |prices: &mut Prices, home: usize, territory: &[usize]| {
-        let routes = prices.routes(w, c, home);
-        clans::could_reap(w, c.id, c.people, &c.store, &routes, home, territory, c.fields)
+        let (routes, gain) = prices.routes(w, c, home);
+        clans::could_reap(w, c.id, c.people, &c.store, &routes, home, territory, c.fields) + gain / c.people
     };
     // The territory from `home`: the changed territory with `home` in it, less the tiles another clan
     // holds other than the home, trimmed to the radius.

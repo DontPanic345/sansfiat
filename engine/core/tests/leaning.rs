@@ -206,7 +206,7 @@ fn trade_leaning_comes_only_at_the_civs_market_on_a_turn_it_posted() {
         w.config = Config { gifts: false, ..w.config };
         let other = open(&mut w, at_big(0, 5));
         let at = if own_market { mid } else { other };
-        let a = visitor(&mut w, at, at_big(-5, 1), 6.0, [6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        let a = visitor(&mut w, at, at_big(-5, 1), 6.0, [12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         w.civs.get_mut(&civ).unwrap().keep = Some(keep);
         trade(&mut w);
         (w.clans[&a].leaning.get(&civ).copied().unwrap_or(0.0), w.civs[&civ].posted)

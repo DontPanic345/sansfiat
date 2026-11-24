@@ -142,7 +142,8 @@ fn the_food_it_buys_waits_at_its_stall_and_its_line_brings_it() {
     assert!(bought > 1.0, "it bought food at the festival: {bought}");
     engine::units::step(&mut w);
     let u = &w.units[&id];
-    assert!(engine::exchange::stall_at(u, mid) < bought * 0.5, "its line took the food from the stall");
+    let ate = u.people * UNIT.food;
+    assert!(engine::exchange::stall_at(u, mid) < bought - ate, "its line took a turn's food from the stall");
     assert!(w.notes[&id].iter().any(|n| n.text.contains("its line brings food")));
     assert_eq!(u.routes.first().map(|r| r.to), Some(at), "its line ended at the festival this turn");
     assert_eq!(u.hungry, 0, "and it ate");
