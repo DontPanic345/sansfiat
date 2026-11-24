@@ -1,8 +1,9 @@
 // Units: each army (camp) and scout is its figure, the cell's drawing from the atlas, with its cloth (the mask) in its
-// civ's colour, multiplied in so the figure's shading shows through. Units on a tile stand side by side, and a click
-// cycles them (as now). A hungry one is edged red, the selected one white. Each unit's people sit beside its figure:
-// one decimal under ten, whole above, and an army's archers split off as "6+2" with a small bow. Every number draws after
-// every figure, so no figure covers one. A fallen civ draws nothing. Every number of the figures is in FIGURE.
+// civ's colour, multiplied in so the figure's shading shows through. Units on a tile stand side by side, every figure's
+// middle within the tile's hex, and a click cycles them (as now). A hungry one is edged red, the selected one white. A lone
+// unit's people sit beside its figure; a stack's sit over each figure, one row higher each: one decimal under ten, whole
+// above, and an army's archers split off as "6+2" with a small bow. Every number draws after every figure, so no figure
+// covers one. A fallen civ draws nothing. Every number of the figures is in FIGURE.
 
 export const name = 'units';
 
@@ -12,10 +13,15 @@ export const FIGURE = {
   minPx: 6, // the figure's scale is never under this many css px, so it shows zoomed out
   h: 2.4, // the figure's height, in `s`
   feet: 0.5, // the feet, below the slot's point, in `s`: the slot's point is the figure's waist
-  slotX: 0.8, // the slot's point (the first unit on a tile), in `s` from the tile's centre
+  slotX: 0.8, // the slot's point of a lone unit, in `s` from the tile's centre (never more than `slotMax`)
+  slotMax: 0.6, // a lone unit's slot is at most this many world units right of the tile's centre, so its middle is in the hex
   slotY: 0.55, // the slot's point, in `s` below the tile's centre: the feet (slotY + feet = 1.05 s, 0.63 world units) stand in the hex
-  gap: 2.9, // the least distance from one unit's slot to the next on a tile, in `s`: a figure, its number, a margin, the next figure
-  pad: 0.4, // the margin after a number, in `s`: a wider number ("4.0+2.0") pushes the next unit on, so numbers never meet
+  step: 2.6, // the distance from one figure's middle to the next in a stack, in `s`: far enough that two numbers stand side by side
+  span: 1.6, // and the stack's figures stand within this many world units: the outer ones' middles are inside the hex (half-width 0.87)
+  lift: 0.55, // a stack's number: its middle this far over the figure's top, in `s`
+  rise: 1.25, // a number that would meet an earlier one on its row stands one row higher, in `s`: a wide number never meets its neighbour's
+  gapX: 0.4, // the least space between two numbers on a row, in `s`
+  edge: 1.3, // the dark edge every figure has, in css px, as a clan's cell has: a tan figure shows on grass by it
   selected: 3, // the white edge of the selected unit, in css px
   hungry: 3.5, // the red edge of a hungry unit, in css px
   labelX: 0.95, // the number's left edge from the slot's point, in `s` (as main's)
@@ -24,10 +30,12 @@ export const FIGURE = {
   bowX: 0.4, // an archers' bow: its centre from the slot's point, in `s` (over the figure's right shoulder, clear of the number before it)
   bowY: -1.55,
   bowR: 0.45, // the bow's radius, in `s`
+  reach: 4, // a tile's units cull while their drawing is on the canvas: a stack's figures and numbers reach this far from its tile, in `s`
 };
 
 const HUNGRY = '#ff2a2a';
 const SELECTED = '#ffffff';
+const EDGE = 'rgba(24,14,4,0.9)';
 
 /** An army's people as the figure's number: its warriors, and its archers split off ("6+2") when it has any. */
 export function countLabel(u) {
@@ -54,7 +62,7 @@ const toCanvas = (view, x, y) => [((x - view.cx) * view.k + view.w / 2) * view.d
 /** The units of the map: their figures on the context, then their numbers. Returns the figures' rectangles in canvas px
  *  (`stats.units`) and the numbers' boxes (`stats.labels`). `only` draws one unit, `colour` replaces every civ's colour,
  *  `numbers: false` leaves the numbers out (the probe draws figures alone). */
-function paint(ctx, model, view, { only = null, colour = null, numbers = true } = {}) {
+function paint(ctx, model, view, { only = null, colour = null, numbers = true, edge = true } = {}) {
   const { v } = model;
   const { k, dpr } = view;
   const s = Math.max(FIGURE.s, FIGURE.minPx / k);
@@ -63,16 +71,24 @@ function paint(ctx, model, view, { only = null, colour = null, numbers = true } 
   const sc = H / hd; // world units per px of that canvas
   const hungryPx = Math.max(1, Math.round(FIGURE.hungry * dpr));
   const selectedPx = Math.max(1, Math.round(FIGURE.selected * dpr));
+  const reach = FIGURE.reach * s; // how far a stack's drawing reaches from its tile, in world units
   const units = [], places = [];
   for (const [tile, list] of model.stacks) {
-    if (!view.onScreen(tile)) continue;
-    let off = 0; // the next slot's distance from the first, in world units
-    for (const u of list) {
-      if (v.civs[u.civ]?.fallen) continue;
-      const here = off;
-      off += Math.max(FIGURE.gap * s, (FIGURE.labelX + FIGURE.pad) * s + measure(countLabel(u), s * FIGURE.font).width);
+    if (!view.onScreen(tile, reach)) continue;
+    const live = list.filter((u) => !v.civs[u.civ]?.fallen);
+    const n = live.length;
+    const step = n > 1 ? Math.min(FIGURE.step * s, FIGURE.span / (n - 1)) : 0;
+    const rows = []; // each figure's number's row in a stack: the first row where it keeps clear of the numbers there
+    const xs = live.map((_, i) => view.px[tile] + (i - (n - 1) / 2) * step);
+    const ws = n > 1 ? live.map((u) => measure(countLabel(u), s * FIGURE.font).width) : [];
+    live.forEach((_, i) => {
+      let r = 0;
+      while (rows.some((rj, j) => rj === r && Math.abs(xs[i] - xs[j]) < (ws[i] + ws[j]) / 2 + FIGURE.gapX * s)) r++;
+      rows.push(r);
+    });
+    for (const [i, u] of live.entries()) {
       if (only != null && u.id !== only) continue;
-      const x = view.px[tile] + here + FIGURE.slotX * s;
+      const x = view.px[tile] + (n > 1 ? xs[i] - view.px[tile] : Math.min(FIGURE.slotX * s, FIGURE.slotMax));
       const y = view.py[tile] + FIGURE.slotY * s;
       const cell = `unit.${u.kind}`;
       const c = view.atlas.cell(cell);
@@ -90,27 +106,33 @@ function paint(ctx, model, view, { only = null, colour = null, numbers = true } 
         const o = view.atlas.outline(cell, SELECTED, hd, selectedPx);
         ctx.drawImage(o, left - selectedPx * sc, top - selectedPx * sc, o.width * sc, o.height * sc);
       }
+      if (edge) {
+        const ew = Math.max(1, Math.round(FIGURE.edge * dpr));
+        const e = view.atlas.outline(cell, EDGE, hd, ew);
+        ctx.drawImage(e, left - ew * sc, top - ew * sc, e.width * sc, e.height * sc);
+      }
       ctx.drawImage(img, left, top, w, h);
       const mask = view.atlas.shaded(`${cell}.mask`, colour ?? v.civs[u.civ]?.color ?? '#ccc', hd);
       ctx.drawImage(mask, left, top, w, h);
       const [dx, dy] = toCanvas(view, left, top);
       units.push({ unit: u.id, civ: u.civ, kind: u.kind, x: dx, y: dy, w: w * k * dpr, h: h * k * dpr, selected, hungry });
-      places.push({ u, x, y });
+      places.push({ u, x, y, top, row: rows[i], n });
     }
   }
   const labels = [];
   if (numbers) {
-    for (const { u, x, y } of places) {
+    for (const { u, x, y, top, row, n } of places) {
       const label = countLabel(u);
-      const tx = x + FIGURE.labelX * s, ty = y + FIGURE.labelY * s;
+      // A lone unit's number stands beside its figure; a stack's stands over it, a row higher for each figure.
+      const tx = n > 1 ? x : x + FIGURE.labelX * s, ty = n > 1 ? top - (FIGURE.lift + row * FIGURE.rise) * s : y + FIGURE.labelY * s;
       ctx.font = `bold ${s * FIGURE.font}px system-ui, sans-serif`;
-      ctx.textAlign = 'left';
+      ctx.textAlign = n > 1 ? 'center' : 'left';
       ctx.textBaseline = 'middle';
       ctx.lineWidth = Math.max(1.5 / k, 0.05);
       ctx.strokeStyle = '#fff';
       ctx.fillStyle = '#000';
       const { width, asc, desc } = measure(label, s * FIGURE.font);
-      const [bx, by] = toCanvas(view, tx, ty - asc);
+      const [bx, by] = toCanvas(view, n > 1 ? tx - width / 2 : tx, ty - asc);
       const box = { x: bx, y: by, w: width * k * dpr, h: (asc + desc) * k * dpr };
       labels.push({ unit: u.id, label, box });
       ctx.strokeText(label, tx, ty);
@@ -169,7 +191,7 @@ export function probe(model, view) {
       const g = c.getContext('2d');
       view.setWorld(g);
       g.translate(-x0 / s, -y0 / s); // the unit's rectangle at the canvas's origin
-      paint(g, model, view, { only: rec.unit, colour, numbers: false });
+      paint(g, model, view, { only: rec.unit, colour, numbers: false, edge: false });
       return g;
     });
     const A = ga.getImageData(0, 0, w, h).data;

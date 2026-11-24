@@ -10,7 +10,7 @@ export function draw(ctx, model, view) {
     ctx.lineWidth = trailW + extra;
     ctx.beginPath();
     for (const i of model.v.trails) {
-      if (!view.onScreen(i)) continue;
+      if (!view.onCanvas(i)) continue;
       ctx.moveTo(view.px[i] - 0.45, view.py[i] + 0.22);
       ctx.lineTo(view.px[i] + 0.45, view.py[i] - 0.22);
     }
@@ -29,7 +29,7 @@ export function draw(ctx, model, view) {
   ctx.globalAlpha = 0.45;
   ctx.beginPath();
   for (const [i, done, need] of view.work) {
-    if (!view.onScreen(i) || need <= 0) continue;
+    if (!view.onCanvas(i) || need <= 0) continue;
     const len = 0.9 * Math.min(1, done / need);
     ctx.moveTo(view.px[i] - 0.45, view.py[i] + 0.22);
     ctx.lineTo(view.px[i] - 0.45 + len, view.py[i] + 0.22 - len * (0.44 / 0.9));

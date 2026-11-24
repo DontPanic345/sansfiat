@@ -542,11 +542,18 @@ export class MapView {
     this.nvis = c;
   }
 
-  /** Whether tile `i` is within 80 px of the canvas. */
-  onScreen(i) {
-    if (this.noCull) return true;
+  /** Whether tile `i` is within 80 px of the canvas, or within `reach` world units (and a few px) if that is more: a layer
+   *  whose drawing reaches `reach` from its tile passes it, so what it draws is culled only when none of it is on the canvas. */
+  onScreen(i, reach = 0) {
+    return this.noCull || this.onCanvas(i, reach);
+  }
+
+  /** `onScreen` as the canvas has it, whether or not `noCull` is set: a layer that strokes its tiles as one path (the trails)
+   *  culls by it, since a path with off-canvas pieces in it can anti-alias an on-canvas stroke differently. */
+  onCanvas(i, reach = 0) {
+    const m = Math.max(80, reach * this.k + 4);
     const x = (this.px[i] - this.cx) * this.k + this.w / 2, y = (this.py[i] - this.cy) * this.k + this.h / 2;
-    return x > -80 && x < this.w + 80 && y > -80 && y < this.h + 80;
+    return x > -m && x < this.w + m && y > -m && y < this.h + m;
   }
 
   hexAt(ctx, i, r = 1) {

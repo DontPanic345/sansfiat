@@ -10,6 +10,8 @@ import { chroma, hexRgb } from './units.js';
 
 export const name = 'places';
 
+const EDGE = 'rgba(24,14,4,0.9)';
+
 /** The places' numbers, in world units unless a note says css px (`view.dpr` turns it into device px). Build-3 tunes them. */
 export const PLACE = {
   w: {
@@ -24,11 +26,14 @@ export const PLACE = {
     y: 0.66, // the back row's ground
     dy: 0.3, // each row further forward
     perRow: 5, // clans to a row
-    span: 1.3, // a row's width, its clans spread evenly across it
+    span: 1.3, // a row's width at most, its clans spread evenly across it
+    margin: 0.06, // and each clan's middle at least this far inside the hex's edge: a lower row is narrower, so every clan's middle is on its own tile
     h: 0.58, // a clan's cell is at most this tall in a crowd (a lone clan's: `hLone`)
     hLone: 0.85, // a lone clan on a place's tile, at most this tall
     lone: 0.84, // its ground
   },
+  reach: 2.5, // a place culls while its drawing is on the canvas: the cell reaches this far from its tile (the capital's 2.4 wide, 1.75 tall)
+  edge: 1.3, // the dark edge every place has, in css px, as the clans' cells have: the hall's roof shows against the ground and the ring by it
   from: 28, // the terrain cell's height in css px below which the places are main's marks: the clans' own zoom (CLAN.from)
 };
 
@@ -59,7 +64,7 @@ export function placesOn(model, view) {
   const add = (tile, role, civ) => {
     if (tile == null || seen.has(tile)) return;
     seen.add(tile);
-    if (view.onScreen(tile)) out.push({ tile, role, civ });
+    if (view.onScreen(tile, PLACE.reach)) out.push({ tile, role, civ });
   };
   for (const c of Object.values(v.civs ?? {})) if (!c.fallen) add(c.capital, 'capital', c.id);
   for (const s of v.settlements ?? []) add(s.tile, 'settlement', s.civ);
@@ -69,7 +74,7 @@ export function placesOn(model, view) {
 
 /** The places drawn above the flat zoom, each `{tile, role, civ, x, y, w, h}` in canvas px. `only` draws one tile's place,
  *  `colour` replaces every cloth's colour. Returns the cells' rectangles (`records`). */
-function paint(ctx, model, view, { only = null, colour = null } = {}) {
+function paint(ctx, model, view, { only = null, colour = null, outline = true } = {}) {
   const { dpr, k } = view;
   const records = [];
   for (const p of placesOn(model, view)) {
@@ -85,6 +90,11 @@ function paint(ctx, model, view, { only = null, colour = null } = {}) {
     const left = ax - ((c.ax * img.width) / c.w) * sc;
     const top = ay - ((c.ay * img.height) / c.h) * sc;
     const w = img.width * sc, h = hd * sc;
+    if (outline) {
+      const ew = Math.max(1, Math.round(PLACE.edge * dpr));
+      const e = view.atlas.outline(cell, EDGE, hd, ew);
+      ctx.drawImage(e, left - ew * sc, top - ew * sc, e.width * sc, e.height * sc);
+    }
     ctx.drawImage(img, left, top, w, h);
     if (p.role !== 'town') {
       const mask = view.atlas.shaded(`${cell}.mask`, colour ?? clothOf(model, p.civ), hd);
@@ -147,7 +157,7 @@ export function probe(model, view) {
       const g = c.getContext('2d');
       view.setWorld(g);
       g.translate(-x0 / s, -y0 / s); // the place's rectangle at the canvas's origin
-      paint(g, model, view, { only: rec.tile, colour });
+      paint(g, model, view, { only: rec.tile, colour, outline: false });
       return g;
     });
     const A = ga.getImageData(0, 0, w, h).data;
