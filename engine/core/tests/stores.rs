@@ -238,3 +238,52 @@ fn the_planner_marches_on_a_rival_once_a_store_is_in_reach_of_it() {
     assert!(decide(true), "Blue's land is inside the settlement's ring");
     assert!(!decide(false), "and outside the capital's");
 }
+
+/// The notes an army wrote that name its line's store, newest last.
+fn supply_notes(w: &World, army: u32) -> Vec<String> {
+    w.notes.get(&army).map_or(Vec::new(), |l| {
+        l.iter().filter(|n| n.text.starts_with("its line brings food from")).map(|n| n.text.clone()).collect()
+    })
+}
+
+#[test]
+fn a_camp_says_which_store_its_line_draws_on_and_why_the_others_lost() {
+    // The capital's tile is marsh, dear to enter: the army four steps out walks three plain steps to the
+    // settlement and past the marsh to the capital, so the settlement wins, and the note gives both lines' days.
+    let (mut stage, red, _, _) = stage();
+    let capital = stage.world().civs[&red].capital;
+    stage.world_mut().tiles[capital].terrain = engine::data::MARSH;
+    let army = stage.army(red, tile(-4, 0), 3.0);
+    stage.world_mut().player = Some(red);
+    let half = units::pack_cap(3.0) / 2.0;
+    stage.world_mut().units.get_mut(&army).unwrap().actor.store = [half, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    stage.turn(1).unwrap();
+    let w = stage.into_world();
+    assert_eq!(units::store_of(&w, army), Some(tile(-1, 0)), "the settlement is the line's store");
+    let notes = supply_notes(&w, army);
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert!(
+        notes[0].starts_with("its line brings food from its settlement at (-1, 0), 8.0 days: the least labour of the stores that hold a turn of its food (other stores: its capital 10.7 days)"),
+        "{}",
+        notes[0]
+    );
+}
+
+#[test]
+fn a_camp_says_when_the_store_it_would_draw_on_holds_under_a_turn() {
+    // The capital's store is empty of food, under a turn of the army's: the note says so, and the line
+    // draws on the settlement.
+    let (mut stage, red, _, t) = stage();
+    stage.world_mut().civs.get_mut(&red).unwrap().store = [0.0; 7];
+    let army = stage.army(red, tile(-4, 0), 3.0);
+    stage.world_mut().player = Some(red);
+    let half = units::pack_cap(3.0) / 2.0;
+    stage.world_mut().units.get_mut(&army).unwrap().actor.store = [half, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    stage.turn(1).unwrap();
+    let w = stage.into_world();
+    assert_eq!(units::store_of(&w, army), Some(t));
+    let notes = supply_notes(&w, army);
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert!(notes[0].contains("(other stores: its capital "), "{}", notes[0]);
+    assert!(notes[0].ends_with("days, under a turn of its food)"), "{}", notes[0]);
+}

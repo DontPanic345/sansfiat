@@ -132,8 +132,38 @@ try {
   const row = await page.eval("[...document.querySelectorAll('#detail .listrow button')].length");
   if (row > 0) {
     await page.eval("[...document.querySelectorAll('#detail .listrow button')][0].click()");
-    need(/^clan:\d+$/.test(await page.eval('document.body.dataset.selected')), 'a leaning clan’s row selects the clan');
+    need(/^clan:\d+$/.test(await page.eval("document.body.dataset.selected")), `a leaning clan’s row selects the clan (${await page.eval("document.body.dataset.selected")}, ${row} rows)`);
   }
+  await page.select(cap, 'civ');
+  // Claim stays on across a turn: P after End turn still claims, and the selection stays the civ.
+  await page.key('p');
+  need((await page.eval("document.body.dataset.painting")) === 'claim', 'Claim is on before the turn ends');
+  await page.button('End turn');
+  await page.eval(frames);
+  await page.key('p');
+  const second = await page.eval(`(() => { const m = game.map, c = game.view().civs[${civ}];
+    const out = new Set();
+    for (const t of c.claim) for (let d = 0; d < 6; d++) { const j = m.nb[t * 6 + d]; if (j >= 0 && m.land[j] && !c.claim.includes(j)) out.add(j); }
+    return [...out].sort((a, b) => a - b)[0]; })()`);
+  need(second != null, 'the claim has a second free neighbour');
+  const c1 = await claimed();
+  await page.click(second);
+  await page.eval(frames);
+  need((await claimed()) === c1 + 1 && (await page.data()).selected === `civ:${civ}`, `P after a turn still claims, and the civ stays selected (${c1} → ${await claimed()}, selected=${(await page.data()).selected})`);
+
+  // A click on a clan selects it; the civ's chip selects the civ again, and its title names the click.
+  const home = await page.eval(`(Object.values(game.view().clans).find((k) => k.civ == null) ?? Object.values(game.view().clans)[0]).home`);
+  await page.key('Escape'); // the claim stays armed until Escape, so a click on the clan would paint it
+  for (let n = 0; n < 8 && !String((await page.data()).selected).startsWith('clan:'); n++) {
+    await page.click(home);
+    await page.eval(frames);
+  }
+  need(String((await page.data()).selected).startsWith('clan:'), `a click on a clan's home selects the clan (${(await page.data()).selected})`);
+  await page.eval(`document.querySelector('button.chip[data-civ="${civ}"]').click()`);
+  await page.eval(frames);
+  need((await page.data()).selected === `civ:${civ}`, 'the chip selects the civ again');
+  const chipTip = await page.eval(`document.querySelector('button.chip[data-civ="${civ}"]').title`);
+  need(/click to select your civ/.test(chipTip), `the chip's title names the click (${chipTip})`);
   await page.shot(join(out, 'civ-leaning.png'), 1);
   for (const e of page.errors()) fail(`page error: ${e}`);
 } catch (e) {

@@ -218,3 +218,30 @@ fn the_planner_posts_a_signpost_a_clan_can_reach_clear_of_every_seat() {
     let next = engine::units::signpost_plan(&w, red).expect("another site");
     assert!(steps(&w, t, next) >= SETTLE.spacing);
 }
+
+#[test]
+fn a_signpost_that_draws_nobody_says_why() {
+    let (mut w, red, blue) = staged();
+    let post = tile(-2, 0);
+    rich(&mut w, post);
+    w.order(red, Order::Signpost { tile: post }).unwrap();
+    assert!(settle::worth(&w, post) > SETTLE.fed);
+    assert_eq!(settle::idle(&w, post), None, "a free tile that feeds a daughter in full draws her");
+    let mother = clan(&mut w, red, tile(-3, 0), CLAN.split_at);
+    let drawn = |w: &mut World| {
+        (1..=40)
+            .filter(|&seed| {
+                w.rng = seed;
+                settle::draw(w, Some(red), mother, tile(-3, 0), CLAN.split_at, &[0.0; 7], 0.0).is_some()
+            })
+            .count()
+    };
+    assert!(drawn(&mut w) > 0, "the signpost draws the clan before a clan gathers it");
+    // A clan of Blue's claims the tile: it gathers the tile, so a newcomer gets nothing from it.
+    let gatherer = clan(&mut w, blue, tile(5, 0), CLAN.split_at);
+    w.tiles[post].claim = Some(gatherer);
+    let why = settle::idle(&w, post).expect("a gathered tile draws nobody");
+    assert!(why.starts_with(&format!("clan {gatherer} gathers this tile")), "{why}");
+    assert!(why.ends_with("remove it and post on a free site"), "{why}");
+    assert_eq!(drawn(&mut w), 0, "draw passes over the tile for a clan of the civ");
+}

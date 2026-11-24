@@ -37,8 +37,8 @@ pub use ai::{ai, claim_plan, outweighs, plan, post, signpost_plan, signpost_site
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
 pub use line::{
-    cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, ring_capital, route, store_of,
-    turns,
+    cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, ring_capital, route, store_choice,
+    store_line, store_of, turns,
 };
 pub use scout::{doing_text, pack_turns, shut, store_walk, Doing, ScoutState};
 pub use search::{route_plan, search_view, Plan, SearchView};
@@ -258,6 +258,7 @@ impl From<UnitFlat> for Unit {
                 still: f.still,
                 bows: f.bows,
                 armed: f.armed,
+                supply_store: None,
             }),
             UnitKind::Scout => UnitState::Scout(ScoutState {
                 dest: f.dest,
@@ -304,6 +305,7 @@ fn scout_camp_fields() -> CampState {
         still: 0,
         bows: false,
         armed: 0.0,
+        supply_store: None,
     }
 }
 

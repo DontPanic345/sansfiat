@@ -42,9 +42,10 @@ export function syncArm(h) {
   markStart(h);
 }
 
-/** Arms (or disarms, if it is armed already) a map click: 'move', 'start' or 'to'. */
+/** Arms a map click: 'move', 'start' or 'to'. A press arms and never disarms: a second press of the same button
+ *  leaves it armed, and Escape disarms (as a click off the map and a finished order do). */
 export function arm(kind, h) {
-  routing.arm = routing.arm === kind ? null : kind;
+  routing.arm = kind;
   syncArm(h);
   h.panelDraw();
 }

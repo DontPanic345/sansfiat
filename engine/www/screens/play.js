@@ -528,7 +528,7 @@ function panelDraw() {
     run: order,
     arm: (kind) => arm(kind, host()),
     armed: routing.arm,
-    paint: (mode) => setPainting(painting === mode ? null : mode),
+    paint: (mode) => setPainting(mode),
     painting,
     select,
     pick: pickGood,
@@ -654,8 +654,8 @@ function keys(e) {
       else endTurn();
       break;
     case 'h': case 'H': $('v-country').click(); break;
-    case 'p': case 'P': setPainting(painting === 'paint' || painting === 'claim' ? null : 'paint'); break;
-    case 'u': case 'U': setPainting(painting === 'unpaint' || painting === 'unclaim' ? null : 'unpaint'); break;
+    case 'p': case 'P': setPainting('paint'); break;
+    case 'u': case 'U': setPainting('unpaint'); break;
     default: return;
   }
   e.preventDefault();

@@ -180,6 +180,26 @@ pub fn worth(w: &World, tile: usize) -> f64 {
     site_value(w, 0, tile, CLAN.split_at / 2.0, &[0.0; N])
 }
 
+/// Why a signpost on `tile` draws nobody, or `None` while it can draw a clan: a clan lives on the tile
+/// (`draw` skips it), a clan gathers it (a newcomer gets nothing from it), or its ground would feed a
+/// daughter under `SETTLE.fed`.
+pub fn idle(w: &World, tile: usize) -> Option<String> {
+    let worth = worth(w, tile);
+    let lives = w.clans.values().find(|k| k.home == tile);
+    if lives.is_none() && worth > SETTLE.fed {
+        return None;
+    }
+    let why = match (lives, w.tiles[tile].claim) {
+        (Some(k), _) => format!("clan {} lives on it", k.id),
+        (None, Some(id)) => format!("clan {id} gathers this tile, so it feeds a newcomer nothing"),
+        (None, None) => format!("its ground would feed a daughter only {:.0}%", worth * 100.0),
+    };
+    Some(format!(
+        "{why}; a clan goes only where it is fed at least {:.0}%: remove it and post on a free site",
+        SETTLE.fed * 100.0
+    ))
+}
+
 /// The chance a clan of `people` at `home` goes to a signpost whose walk costs `cost` days and whose
 /// tile would feed it `worth`: `SETTLE.draw × min(worth, 1) × exp(−cost / SETTLE.walk)`.
 pub fn chance(cost: f64, worth: f64) -> f64 {
