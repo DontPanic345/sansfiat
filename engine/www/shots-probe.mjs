@@ -189,15 +189,16 @@ async function pan(view, dir, cameras) {
       const ms = [];
       for (let j = 0; j < P.N; j++) {
         m.panBy(P.dx, P.dy);
-        const t0 = performance.now(); m.drawNow(); ms.push(performance.now() - t0);
+        const t0 = performance.now(); m.drawNow(); ms.push(performance.now() - t0); (m.__d ??= []).push(m.stats.terrainMs.toFixed(1) + "/" + m.stats.overlayMs.toFixed(1));
       }
-      return { ms, terrainMs: m.stats.terrainMs, overlayMs: m.stats.overlayMs, cx: m.cx, cy: m.cy, k: m.k, dx: P.dx, dy: P.dy, exact: P.exact,
+      return { d: m.__d, ms, terrainMs: m.stats.terrainMs, overlayMs: m.stats.overlayMs, cx: m.cx, cy: m.cy, k: m.k, dx: P.dx, dy: P.dy, exact: P.exact,
         landed: m.cx === P.ex && m.cy === P.ey, png: ${dir ? "m.canvas.toDataURL('image/png')" : 'null'} };
     })()`);
     for (const e of page.errors()) throw new Error(`${view.name}: page error: ${e}`);
     const s = [...r.ms].sort((a, b) => a - b);
     const median = (s[r.ms.length / 2 - 1] + s[r.ms.length / 2]) / 2;
     const slowest = s[s.length - 1];
+    if (process.env.PANMS) console.log(r.ms.map((x) => x.toFixed(1)).join(" "), "\n", r.d.join(" "));
     const camera = r.landed && r.cx === asked.cx && r.cy === asked.cy && r.k === asked.k ? 'on the view camera' : `OFF the view camera (${r.cx} ${r.cy} k ${r.k} vs ${asked.cx} ${asked.cy} k ${asked.k})`;
     console.log(`${view.name}  k ${view.k}  pan ${r.ms.length} frames: median ${median.toFixed(1)}  slowest ${slowest.toFixed(1)}  last terrainMs ${r.terrainMs.toFixed(1)} overlayMs ${r.overlayMs.toFixed(1)}  drag ${r.dx},${r.dy}  ${camera}`);
     cameras[view.name] = { cx: r.cx, cy: r.cy, k: r.k, drag: [r.dx, r.dy], steps: STEPS, landed: r.landed };

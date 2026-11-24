@@ -38,6 +38,7 @@ import * as overlay from './layers/overlay.js';
 
 import { CORNER, EDGE_DIR } from './geom.js';
 import { attach as attachInput } from './input.js';
+import * as pan from './pan.js';
 
 /** The layers, bottom to top. */
 export const LAYERS = [terrain, edges, woods, ridges, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, flow, places, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
@@ -86,6 +87,9 @@ export class MapView {
     this.selected = -1;
     this.selectedUnit = -1;
     this.highlight = null;
+    this.full = true; // the static layer needs a full redraw, not a pan's shift (map/pan.js)
+    this.strip = null; // while a pan's strip is drawn: its rectangle in device px, which the static layers cull to
+    this.kept = null;
     this.dirty = true;
     this.frame = 0;
     this.anim = null;
@@ -348,9 +352,17 @@ export class MapView {
     this.k = Math.max(this.minK, Math.min(MAX_K, this.k));
   }
 
-  viewChanged() {
+  /** The static layer is out of date: a full redraw, unless a pan did it (`pan`: the layer can shift). */
+  get dirty() { return this._dirty; }
+  set dirty(on) {
+    this._dirty = on;
+    if (on) this.full = true;
+  }
+
+  viewChanged(pan = false) {
     this.clampView();
-    this.dirty = true;
+    if (pan) this._dirty = true;
+    else this.dirty = true;
     this.requestDraw();
     this.opts.onView?.();
   }
@@ -359,7 +371,7 @@ export class MapView {
     this.anim = null;
     this.cx -= dx / this.k;
     this.cy -= dy / this.k;
-    this.viewChanged();
+    this.viewChanged(true);
   }
 
   /** Zooms by `f` about the screen point (x, y) (css px in the canvas), default the centre. */
@@ -471,7 +483,9 @@ export class MapView {
     this.collectVisible();
     if (this.dirty) {
       const t0 = performance.now();
-      this.drawStatic();
+      if (!pan.shifted(this)) this.drawStatic();
+      this.collectVisible();
+      pan.keep(this);
       this.stats.terrainMs = performance.now() - t0;
       this.dirty = false;
     }
@@ -511,10 +525,15 @@ export class MapView {
     ctx.setTransform(s, 0, 0, s, (this.w / 2 - this.cx * this.k) * this.dpr, (this.h / 2 - this.cy * this.k) * this.dpr);
   }
 
+  /** The canvas's rectangle in device px, or the strip being drawn: [x0, y0, x1, y1]. */
+  box() {
+    return this.strip || [0, 0, this.canvas.width, this.canvas.height];
+  }
+
   collectVisible() {
-    const m = 1.3;
-    const x0 = this.cx - this.w / 2 / this.k - m, x1 = this.cx + this.w / 2 / this.k + m;
-    const y0 = this.cy - this.h / 2 / this.k - m, y1 = this.cy + this.h / 2 / this.k + m;
+    const m = 1.3, [bx0, by0, bx1, by1] = this.box(), s = this.k * this.dpr;
+    const x0 = this.cx + (bx0 - this.w * this.dpr / 2) / s - m, x1 = this.cx + (bx1 - this.w * this.dpr / 2) / s + m;
+    const y0 = this.cy + (by0 - this.h * this.dpr / 2) / s - m, y1 = this.cy + (by1 - this.h * this.dpr / 2) / s + m;
     let c = 0;
     for (let i = 0; i < this.n; i++) {
       const x = this.px[i], y = this.py[i];
