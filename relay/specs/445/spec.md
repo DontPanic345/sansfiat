@@ -95,7 +95,7 @@ four maps above hold every role, crowded towns, and places beside units, forests
 In world units (a hex has circumradius 1). Every number is in `PLACE`, a table at the top of
 `www/map/layers/places.js`, a note beside each. Build-2 starts it at the values below; build-3 tunes it.
 
-- **The cells.** All five are 176×128, anchor (88, 118): the middle of the ground the place stands on. Each group is
+- **The cells.** All five are 176×128, anchor (88, 118): the ground the place stands on. Build-1 puts a tall group's ground point at the front of its foot (the palisade at (798, 870), the hall at (1373, 866)), since its middle would run past the cell; see `atlas.md`. Each group is
   scaled to fit about 168×120 (the hamlet at about 0.56, the palisade 0.40, the civic 0.37). A mask has its cell's size
   and anchor. They take one new row of the atlas (5 × 176 = 880 of its 1024 px).
 - **The role.** Per tile, the first that holds: a capital of a civ that hasn't fallen (`civ.fallen` null) → `capital`; a settlement → `settlement`; a town
