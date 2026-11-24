@@ -26,8 +26,8 @@ Fix, text only:
 - The legal line becomes the order with the current claim's tile ids filled in, then what it does:
   `{"type":"claim","tiles":[56,76,…,<tile>, ...]}  sets your land to exactly the tiles you list, with your capital and
   settlements: these are your 43 tiles; a tile you leave out is dropped, and a clan whose home is on it is no longer
-  yours`. The ids are `c.claim` less the roots (`settle::roots`), which `check` adds back, so the list can be
-  copied as it stands. The clause on clans is shown only when one of the civ's clans lives on its land (it always
+  yours`. The ids are `c.claim` as the land line prints them (it holds the roots too, and `check`
+  dedups them), so the list can be copied as it stands and holds every id of the land line, as the test checks. The clause on clans is shown only when one of the civ's clans lives on its land (it always
   does on the real maps; the build may show it always).
 - When the reach has a claim (`engine::outlook::reach(w, me).claim`, a `ClaimTo` with `tiles`), a second line gives
   that claim as a whole order ready to send, the current claim's ids plus the reach's tiles, and names what it adds:
@@ -54,8 +54,9 @@ within `SETTLE.plan_range`, and none was left; the legal line already says "none
 
 Fix, a reading in core used by both front ends (no rule, no digest change):
 
-- `settle::idle(w, tile) -> Option<String>` (or a name the build likes): `None` while `settle::worth(w, tile) >
-  SETTLE.fed`; else why it draws nobody: when `w.tiles[tile].claim` is a clan, "clan N gathers this tile, so it
+- `settle::idle(w, tile) -> Option<String>` (or a name the build likes): `None` while no clan's home is on the
+  tile and `settle::worth(w, tile) > SETTLE.fed`; else why it draws nobody: when a clan's home is on it (`draw`
+  skips such a tile), "clan N lives on it"; when `w.tiles[tile].claim` is a clan, "clan N gathers this tile, so it
   feeds a newcomer nothing"; else "its ground would feed a daughter only N%"; both end "a clan goes only where it
   is fed at least 90%: remove it and post on a free site".
 - The text view's signpost line (`view.rs` `settle_lines`) adds it after the worth; the wasm view's `signposts`
@@ -106,8 +107,9 @@ Fix, a note (notes are `#[serde(skip)]` and write nothing a digest reads, so no 
   For each of `stores(w, unit)` it gives the line's days (`walk_cost` of `line_among` with that one end; `None`
   when no path), and whether the store holds a turn of the unit's food. It reuses `line_among`, so it can't drift
   from the choice.
-- In `camp.rs`, when the camp is supplying and either supplying starts or the store it draws on (`store_of`)
-  differs from the last note's, the note names the store and why: `its line brings food from its settlement at (6,
+- In `camp.rs`, when the camp is supplying and either supplying starts or the store it draws on differs from
+  the last note's (read the change from the end of `line_now`, the line the step already computes, or one
+  `store_of` call; call `store_choice`, which walks a path per store, only when the note is written), the note names the store and why: `its line brings food from its settlement at (6,
   -2), 6.0 days: the least labour of its stores (your capital 8.0 days)`. Each other store is shown with its days,
   as `holds under a turn of its food`, or as `cut off`. The build may keep the store it last named in a
   `#[serde(skip)]` field, or compare against the last note's text. It must not write a note every turn.
@@ -210,6 +212,12 @@ Tests (each fails on main, passes here):
   selects your civ in one touch. The chip's tooltip says so, and `live.mjs` lists the chips. Putting the civ first in
   the capital's cycle would break "your unit first", which `civ.mjs` relies on.
 
+## Where the text view grows
+
+`cli/src/view.rs` is 580 lines and items 1 and 3 add about 40. Build-1 first moves `claim_lines` and `settle_lines`
+(with the helpers they need, shared as `pub(crate)`) into a new `cli/src/view_land.rs`, and puts the new claim
+order lines there, so `view.rs` stays under 600. The move is text only: the view is the same before and after it.
+
 ## Unsettled
 
 Nothing. Every build has an exact done: each named test fails on main (stash the fix, or for a new function,
@@ -227,6 +235,10 @@ claim order there. The spec ran it by hand on main, with the land line's 43 ids 
 44, clan 429 joined, Standing 21.5% to 22.3%. Build-1 writes a short log of a small-2 session (led as civ 1, the
 view at the pick and after `end 30`, the claim line, the reach order sent, a signpost posted and its line, an army
 raised and its line and `why`) to `relay/specs/350/view.md`, so the review reads the words a player meets.
+
+Spec-review re-ran item 1 on main (release build, small 2 led as civ 1, raise, then the claim of the land line's
+43 ids plus 307): accepted, land 43 to 44, "Clan 429 joins Red", Standing 21.5% to 22.3%. The pick's output (two
+views) is 79 lines, so a reach line in each stays under the test's 90.
 
 ## For the review
 

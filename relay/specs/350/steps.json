@@ -6,7 +6,7 @@
     "model": "haiku",
     "effort": "high",
     "points": 4,
-    "why": "Open 0 (every line's words, the reading and the test are the spec's; the reach order was run by hand on main), New 1 (readings and notes in existing patterns; an in-crate test module as game_judge.rs has), Miss 1 (the tests it writes, each checked to fail on main; save pins catch a digest move), Reach 2 (the camp step that runs every turn writes the new note). Haiku high at 4. Five small items in one area (core readings and the text view), plus three lines on the page's signpost panel. About 9 files, 250 lines: view.rs (~40), view_goods.rs (~15), settle.rs (~20), line.rs (~20), camp.rs (~15), web/src/lib.rs (~3), panels-land.js (~5), tests in play.rs, settle.rs, stores.rs and view.rs (~130), view.md."
+    "why": "Open 0 (every line's words, the reading and the test are the spec's; the reach order was run by hand on main), New 1 (readings and notes in existing patterns; an in-crate test module as game_judge.rs has), Miss 1 (the tests it writes, each checked to fail on main; save pins catch a digest move), Reach 2 (the camp step that runs every turn writes the new note). Haiku high at 4. Five small items in one area (core readings and the text view), plus three lines on the page's signpost panel. About 11 files, 250 lines beside ~65 moved: view.rs split into view_land.rs (claim and settle lines; view.rs is 580) first, view.rs/view_land.rs (~40), CLAUDE.md (1), view_goods.rs (~15), settle.rs (~20), line.rs (~20), camp.rs (~15), web/src/lib.rs (~3), panels-land.js (~5), tests in play.rs, settle.rs, stores.rs and view.rs (~130), view.md."
   },
   {
     "id": "build-2",

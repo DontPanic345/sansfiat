@@ -6,7 +6,7 @@ rule: undo it. Don't touch `www/screens/`, `www/bar.js` or `www/play/camp.mjs` a
 
 ## Code
 
-- `cli/src/view.rs`: `legal` (the claim arm, ~484), `claim_lines`, `settle_lines`, `unit_line` (~357) and
+- `cli/src/view.rs` (and the new `cli/src/view_land.rs`): `legal` (the claim arm, ~484), `claim_lines`, `settle_lines`, `unit_line` (~357) and
   `draws_on`.
 - `cli/src/view_goods.rs`.
 - `core/src/outlook.rs`: `reach`, `ClaimTo`.
@@ -22,8 +22,11 @@ rule: undo it. Don't touch `www/screens/`, `www/bar.js` or `www/play/camp.mjs` a
 
 ## Build
 
-1. **The claim order.** Do this as spec item 1 says. The legal line carries the current claim's ids, without the
-   roots, ready to copy. It says the order sets the land to exactly the listed tiles, and that a tile left out is
+0. **Make room.** `view.rs` is 580 lines. Move `claim_lines` and `settle_lines` into a new `cli/src/view_land.rs`
+   (spec, "Where the text view grows"); the new claim order lines go there too. The move changes no text: run
+   `cargo test -p sansfiat` after it, before you add anything. Name the module in `engine/CLAUDE.md`.
+1. **The claim order.** Do this as spec item 1 says. The legal line carries the current claim's ids as the land
+   line prints them (roots included; `claim::check` dedups them), ready to copy. It says the order sets the land to exactly the listed tiles, and that a tile left out is
    dropped, with the clans whose homes are on it. When `outlook::reach(w, me).claim` is some, a second line gives
    the whole order (the claim's ids plus the reach's tiles) and names what it adds and the clan it brings.
    - Test in `cli/tests/play.rs`, small 2 civ 1 at the pick. Every id in the `land:` line is in the claim line. Find
@@ -32,7 +35,7 @@ rule: undo it. Don't touch `www/screens/`, `www/bar.js` or `www/play/camp.mjs` a
    - The spec sent that order by hand on main (43 ids plus 307): accepted, Standing 21.5% to 22.3%.
 2. **The idle signpost.** A reading in `settle.rs` (spec item 2) is `None` while the tile feeds above
    `SETTLE.fed`. Otherwise it says why the signpost draws nobody, naming the clan that gathers the tile when one
-   does. Show it in `settle_lines`, in a `signposts[].idle` field in `web/src/lib.rs`, and on the signposted tile's
+   does, or the clan whose home is on it (`draw` skips such a tile). Show it in `settle_lines`, in a `signposts[].idle` field in `web/src/lib.rs`, and on the signposted tile's
    panel in `panels-land.js`. If `www/check.mjs` lists view keys, add the field there.
    - Test in `core/tests/settle.rs`: free and rich, then a clan's claim on the tile. The reading names the clan, and
      `settle::draw` for a clan of the civ returns `None`.
@@ -43,7 +46,9 @@ rule: undo it. Don't touch `www/screens/`, `www/bar.js` or `www/play/camp.mjs` a
 4. **Why that store.** `line.rs` gains a reading of each store's line days (or `None`) and whether it holds a turn
    of the unit's food. It is built on `line_among`, so it can't disagree with `store_of`. In `camp.rs`, when
    supplying starts or the store drawn on changes, write the note naming the store and its days, and each other
-   store's days or why it was passed over (under a turn of food, cut off). Never write it every turn.
+   store's days or why it was passed over (under a turn of food, cut off). Never write it every turn, and don't
+   walk every store's path every turn: read a change of store from `line_now`'s end (or one `store_of`), and call
+   the new reading only when the note is written.
    - Two tests in `stores.rs`, as the spec says. One makes the capital's tile dear to enter, so the settlement wins
      and the note names both with their days. In the other, the capital holds under a turn.
 5. **Salt.** It is already met on main: the store line uses `max(0.0)`. Add a guard: a store with `-0.0` and
@@ -62,6 +67,6 @@ rule: undo it. Don't touch `www/screens/`, `www/bar.js` or `www/play/camp.mjs` a
 - The tests for items 1 to 4 fail on main and pass here, and item 5's guard passes.
 - `engine/check.sh` passes whole, with the save pins and `SAVE_VERSION` unchanged.
 - `view.md` exists.
-- `engine/CLAUDE.md` needs no change unless you add a module. Keep it under 8 KB.
+- `engine/CLAUDE.md` names `view_land.rs`. Keep it under 8 KB.
 
-About 9 files and 250 lines with tests.
+About 11 files and 250 lines with tests, beside the ~65 lines moved into `view_land.rs`.
