@@ -1,0 +1,280 @@
+=== pan-main
+small2-close  k 35  pan 12 frames: median 9.9  slowest 44.4  last terrainMs 3.1 overlayMs 5.9  drag -8,-4  on the view camera
+medium9-places-close  k 35  pan 12 frames: median 8.3  slowest 37.9  last terrainMs 1.8 overlayMs 4.7  drag 12,6  on the view camera
+large8-places-close  k 35  pan 12 frames: median 8.0  slowest 51.9  last terrainMs 2.0 overlayMs 4.9  drag -24,-12  on the view camera
+medium9-clans-close  k 35  pan 12 frames: median 7.5  slowest 34.1  last terrainMs 1.8 overlayMs 5.0  drag 24,12  on the view camera
+lineup-close  k 35  pan 12 frames: median 4.5  slowest 17.4  last terrainMs 1.1 overlayMs 2.0  drag 20,10  on the view camera
+small2-play  k 18  pan 12 frames: median 15.2  slowest 49.7  last terrainMs 5.6 overlayMs 6.7  drag 10,5  on the view camera
+medium9-play  k 18  pan 12 frames: median 24.8  slowest 57.8  last terrainMs 16.4 overlayMs 3.2  drag -18,-9  on the view camera
+large8-play  k 18  pan 12 frames: median 27.0  slowest 64.0  last terrainMs 20.6 overlayMs 4.7  drag 18,9  on the view camera
+medium9-woods-play  k 18  pan 12 frames: median 23.2  slowest 57.5  last terrainMs 17.6 overlayMs 3.2  drag -10,-5  on the view camera
+medium9-places-play  k 18  pan 12 frames: median 14.0  slowest 49.0  last terrainMs 6.2 overlayMs 7.7  drag -22,-11  on the view camera
+large8-places-play  k 18  pan 12 frames: median 17.8  slowest 51.5  last terrainMs 6.9 overlayMs 9.1  drag -22,-11  on the view camera
+medium9-units-play  k 18  pan 12 frames: median 15.4  slowest 52.8  last terrainMs 5.4 overlayMs 7.5  drag 24,12  on the view camera
+medium9-clans-play  k 18  pan 12 frames: median 15.7  slowest 50.5  last terrainMs 6.8 overlayMs 8.4  drag 16,8  on the view camera
+medium9-woods-near  k 12  pan 12 frames: median 20.4  slowest 49.1  last terrainMs 12.9 overlayMs 4.8  drag 24,12  OFF the view camera (-0.8660254037844375 -1.5 k 12 vs -0.8660254037844386 -1.5 k 12)
+medium9-woods-far  k 11  pan 12 frames: median 18.0  slowest 44.6  last terrainMs 11.8 overlayMs 3.7  drag 4,2  on the view camera
+small2-edge  k 6  pan 12 frames: median 9.1  slowest 12.5  last terrainMs 3.2 overlayMs 5.0  drag 14,7  OFF the view camera (0.8660254037844402 -1.5000000000000002 k 6 vs 0.8660254037844386 -1.5 k 6)
+medium9-woods-edge  k 6  pan 12 frames: median 12.8  slowest 15.1  last terrainMs 11.4 overlayMs 3.7  drag 20,10  OFF the view camera (-0.8660254037844437 -1.4999999999999993 k 6 vs -0.8660254037844386 -1.5 k 6)
+medium9-units-edge  k 6  pan 12 frames: median 15.0  slowest 22.4  last terrainMs 10.1 overlayMs 2.1  drag 20,10  on the view camera
+medium9-places-edge  k 6  pan 12 frames: median 17.0  slowest 74.1  last terrainMs 11.3 overlayMs 3.1  drag 6,3  on the view camera
+small2-flat  k 5  pan 12 frames: median 4.0  slowest 4.5  last terrainMs 0.8 overlayMs 2.7  drag -12,-6  OFF the view camera (0.8660254037844326 -1.5000000000000038 k 5 vs 0.8660254037844386 -1.5 k 5)
+medium9-units-flat  k 5  pan 12 frames: median 6.8  slowest 8.4  last terrainMs 1.7 overlayMs 4.0  drag 16,8  on the view camera
+=== pan-br
+small2-close  k 35  pan 12 frames: median 5.0  slowest 40.5  last terrainMs 1.6 overlayMs 3.6  drag -8,-4  on the view camera
+medium9-places-close  k 35  pan 12 frames: median 3.6  slowest 31.5  last terrainMs 0.8 overlayMs 2.2  drag 12,6  on the view camera
+large8-places-close  k 35  pan 12 frames: median 5.7  slowest 50.4  last terrainMs 1.5 overlayMs 2.8  drag -24,-12  on the view camera
+medium9-clans-close  k 35  pan 12 frames: median 3.6  slowest 30.5  last terrainMs 1.3 overlayMs 2.2  drag 24,12  on the view camera
+lineup-close  k 35  pan 12 frames: median 3.4  slowest 16.7  last terrainMs 0.3 overlayMs 2.8  drag 20,10  on the view camera
+small2-play  k 18  pan 12 frames: median 4.7  slowest 39.6  last terrainMs 0.5 overlayMs 3.5  drag 10,5  on the view camera
+medium9-play  k 18  pan 12 frames: median 6.0  slowest 37.9  last terrainMs 1.0 overlayMs 3.5  drag -18,-9  on the view camera
+large8-play  k 18  pan 12 frames: median 8.4  slowest 41.0  last terrainMs 1.6 overlayMs 4.6  drag 18,9  on the view camera
+medium9-woods-play  k 18  pan 12 frames: median 6.5  slowest 37.7  last terrainMs 1.0 overlayMs 3.3  drag -10,-5  on the view camera
+medium9-places-play  k 18  pan 12 frames: median 4.6  slowest 38.4  last terrainMs 1.2 overlayMs 4.0  drag -22,-11  on the view camera
+large8-places-play  k 18  pan 12 frames: median 5.5  slowest 36.0  last terrainMs 1.5 overlayMs 3.2  drag -22,-11  on the view camera
+medium9-units-play  k 18  pan 12 frames: median 5.1  slowest 39.5  last terrainMs 1.4 overlayMs 2.9  drag 24,12  on the view camera
+medium9-clans-play  k 18  pan 12 frames: median 4.8  slowest 40.1  last terrainMs 1.0 overlayMs 2.8  drag 16,8  on the view camera
+medium9-woods-near  k 12  pan 12 frames: median 5.3  slowest 34.2  last terrainMs 1.0 overlayMs 3.0  drag 24,12  OFF the view camera (-0.8660254037844375 -1.5 k 12 vs -0.8660254037844386 -1.5 k 12)
+medium9-woods-far  k 11  pan 12 frames: median 3.8  slowest 30.7  last terrainMs 0.6 overlayMs 2.9  drag 4,2  on the view camera
+small2-edge  k 6  pan 12 frames: median 2.4  slowest 3.3  last terrainMs 0.3 overlayMs 1.2  drag 14,7  OFF the view camera (0.8660254037844402 -1.5000000000000002 k 6 vs 0.8660254037844386 -1.5 k 6)
+medium9-woods-edge  k 6  pan 12 frames: median 4.0  slowest 4.6  last terrainMs 0.7 overlayMs 2.1  drag 20,10  OFF the view camera (-0.8660254037844437 -1.4999999999999993 k 6 vs -0.8660254037844386 -1.5 k 6)
+medium9-units-edge  k 6  pan 12 frames: median 3.4  slowest 5.1  last terrainMs 0.5 overlayMs 1.4  drag 20,10  on the view camera
+medium9-places-edge  k 6  pan 12 frames: median 3.4  slowest 63.1  last terrainMs 0.8 overlayMs 1.2  drag 6,3  on the view camera
+small2-flat  k 5  pan 12 frames: median 1.8  slowest 2.9  last terrainMs 0.0 overlayMs 1.3  drag -12,-6  OFF the view camera (0.8660254037844326 -1.5000000000000038 k 5 vs 0.8660254037844386 -1.5 k 5)
+medium9-units-flat  k 5  pan 12 frames: median 1.8  slowest 2.3  last terrainMs 0.1 overlayMs 1.0  drag 16,8  on the view camera
+=== pan-br2
+small2-close  k 35  pan 12 frames: median 4.4  slowest 39.5  last terrainMs 1.6 overlayMs 1.6  drag -8,-4  on the view camera
+medium9-places-close  k 35  pan 12 frames: median 4.0  slowest 32.8  last terrainMs 1.1 overlayMs 2.2  drag 12,6  on the view camera
+large8-places-close  k 35  pan 12 frames: median 4.9  slowest 49.5  last terrainMs 1.8 overlayMs 3.9  drag -24,-12  on the view camera
+medium9-clans-close  k 35  pan 12 frames: median 4.3  slowest 33.4  last terrainMs 1.0 overlayMs 2.4  drag 24,12  on the view camera
+lineup-close  k 35  pan 12 frames: median 4.0  slowest 20.8  last terrainMs 0.5 overlayMs 1.0  drag 20,10  on the view camera
+small2-play  k 18  pan 12 frames: median 5.1  slowest 40.1  last terrainMs 0.6 overlayMs 1.5  drag 10,5  on the view camera
+medium9-play  k 18  pan 12 frames: median 5.6  slowest 40.7  last terrainMs 1.2 overlayMs 1.7  drag -18,-9  on the view camera
+large8-play  k 18  pan 12 frames: median 7.2  slowest 42.9  last terrainMs 1.8 overlayMs 3.2  drag 18,9  on the view camera
+medium9-woods-play  k 18  pan 12 frames: median 6.0  slowest 38.3  last terrainMs 1.0 overlayMs 1.7  drag -10,-5  on the view camera
+medium9-places-play  k 18  pan 12 frames: median 5.5  slowest 42.8  last terrainMs 1.9 overlayMs 3.3  drag -22,-11  on the view camera
+large8-places-play  k 18  pan 12 frames: median 6.0  slowest 38.6  last terrainMs 1.6 overlayMs 2.5  drag -22,-11  on the view camera
+medium9-units-play  k 18  pan 12 frames: median 4.5  slowest 41.0  last terrainMs 0.9 overlayMs 2.6  drag 24,12  on the view camera
+medium9-clans-play  k 18  pan 12 frames: median 6.5  slowest 39.2  last terrainMs 1.2 overlayMs 2.5  drag 16,8  on the view camera
+medium9-woods-near  k 12  pan 12 frames: median 4.8  slowest 34.0  last terrainMs 1.2 overlayMs 1.1  drag 24,12  OFF the view camera (-0.8660254037844375 -1.5 k 12 vs -0.8660254037844386 -1.5 k 12)
+medium9-woods-far  k 11  pan 12 frames: median 4.0  slowest 35.0  last terrainMs 0.8 overlayMs 1.0  drag 4,2  on the view camera
+small2-edge  k 6  pan 12 frames: median 2.5  slowest 4.8  last terrainMs 0.3 overlayMs 1.3  drag 14,7  OFF the view camera (0.8660254037844402 -1.5000000000000002 k 6 vs 0.8660254037844386 -1.5 k 6)
+medium9-woods-edge  k 6  pan 12 frames: median 3.6  slowest 6.9  last terrainMs 0.9 overlayMs 2.3  drag 20,10  OFF the view camera (-0.8660254037844437 -1.4999999999999993 k 6 vs -0.8660254037844386 -1.5 k 6)
+medium9-units-edge  k 6  pan 12 frames: median 4.0  slowest 10.9  last terrainMs 0.5 overlayMs 1.1  drag 20,10  on the view camera
+medium9-places-edge  k 6  pan 12 frames: median 4.8  slowest 61.4  last terrainMs 1.0 overlayMs 1.0  drag 6,3  on the view camera
+small2-flat  k 5  pan 12 frames: median 2.0  slowest 3.6  last terrainMs 0.1 overlayMs 1.2  drag -12,-6  OFF the view camera (0.8660254037844326 -1.5000000000000038 k 5 vs 0.8660254037844386 -1.5 k 5)
+medium9-units-flat  k 5  pan 12 frames: median 2.1  slowest 5.1  last terrainMs 0.1 overlayMs 1.2  drag 16,8  on the view camera
+=== time-main
+small2-close  tile 440  terrainMs 10.3 2.7 2.8 2.7 2.7  median 2.7  overlayMs 6.3 7.1 7.4 8.0 7.7  median 7.4  frame median 10.4  stats.woods 152
+medium9-places-close  tile -1  terrainMs 9.5 2.3 1.9 1.9 1.9  median 1.9  overlayMs 4.3 4.9 4.9 4.8 5.3  median 4.9  frame median 7.2  stats.woods 284
+large8-places-close  tile -1  terrainMs 2.4 2.1 1.9 2.1 2.2  median 2.1  overlayMs 4.2 5.0 5.6 4.8 4.9  median 4.9  frame median 7.1  stats.woods 116
+medium9-clans-close  tile -1  terrainMs 11.7 1.8 1.9 1.8 1.9  median 1.9  overlayMs 4.1 4.7 4.7 4.6 4.7  median 4.7  frame median 6.6  stats.woods 279
+lineup-close  tile -1  terrainMs 1.3 1.2 1.1 1.5 1.2  median 1.2  overlayMs 2.1 3.5 3.8 4.7 3.6  median 3.6  frame median 4.8  stats.woods 75
+small2-play  tile 440  terrainMs 13.8 6.2 6.2 7.2 5.6  median 6.2  overlayMs 7.9 9.2 9.7 10.5 9.4  median 9.4  frame median 15.9  stats.woods 265
+medium9-play  tile 924  terrainMs 18.9 19.1 19.9 18.6 18.4  median 18.9  overlayMs 4.2 4.3 3.5 3.9 3.3  median 3.9  frame median 23.1  stats.woods 870
+large8-play  tile 1680  terrainMs 21.6 30.9 23.4 20.6 18.6  median 21.6  overlayMs 7.3 10.2 5.9 39.5 5.1  median 7.3  frame median 29.3  stats.woods 479
+medium9-woods-play  tile 827  terrainMs 18.9 20.1 20.7 19.3 19.3  median 19.3  overlayMs 4.6 4.9 5.0 4.6 4.5  median 4.6  frame median 23.9  stats.woods 918
+medium9-places-play  tile -1  terrainMs 13.2 6.8 6.7 6.5 6.7  median 6.7  overlayMs 7.6 8.3 8.5 8.3 8.9  median 8.3  frame median 15.2  stats.woods 640
+large8-places-play  tile 2524  terrainMs 7.0 6.7 6.6 7.2 7.1  median 7.0  overlayMs 10.0 9.5 11.4 10.4 13.9  median 10.4  frame median 17.6  stats.woods 270
+medium9-units-play  tile -1  terrainMs 5.5 5.1 5.1 6.0 5.2  median 5.2  overlayMs 6.8 7.6 7.8 12.3 8.0  median 7.8  frame median 12.9  stats.woods 590
+medium9-clans-play  tile -1  terrainMs 8.4 7.1 7.6 7.2 7.0  median 7.2  overlayMs 7.5 8.2 9.0 8.3 8.9  median 8.3  frame median 15.9  stats.woods 750
+medium9-woods-near  tile 827  terrainMs 15.2 15.4 15.7 14.4 14.3  median 15.2  overlayMs 6.2 5.5 5.2 5.2 6.0  median 5.5  frame median 20.9  stats.woods 1231
+medium9-woods-far  tile 827  terrainMs 13.5 13.9 14.3 13.5 13.2  median 13.5  overlayMs 5.6 4.3 4.4 4.2 4.7  median 4.4  frame median 18.2  stats.woods 0
+small2-edge  tile 440  terrainMs 5.1 3.9 3.7 3.8 3.3  median 3.8  overlayMs 5.4 5.4 5.4 5.2 5.5  median 5.4  frame median 9.1  stats.woods 0
+medium9-woods-edge  tile 827  terrainMs 12.9 12.7 12.9 12.0 11.9  median 12.7  overlayMs 3.9 3.4 4.1 3.0 3.5  median 3.5  frame median 16.1  stats.woods 0
+medium9-units-edge  tile -1  terrainMs 12.0 9.8 9.8 9.8 9.7  median 9.8  overlayMs 2.2 1.9 2.1 2.0 2.5  median 2.1  frame median 11.9  stats.woods 0
+medium9-places-edge  tile -1  terrainMs 17.0 11.0 11.0 11.1 17.2  median 11.1  overlayMs 3.7 3.6 3.5 4.7 3.6  median 3.6  frame median 15.8  stats.woods 0
+small2-flat  tile 440  terrainMs 1.7 1.1 1.4 0.8 0.8  median 1.1  overlayMs 3.8 3.9 3.2 2.9 3.6  median 3.6  frame median 4.6  stats.woods 0
+medium9-units-flat  tile -1  terrainMs 1.8 1.6 1.7 1.7 1.7  median 1.7  overlayMs 3.9 4.3 4.1 4.4 4.0  median 4.1  frame median 5.8  stats.woods 0
+=== time-br
+small2-close  tile 440  terrainMs 11.7 3.0 2.8 3.0 3.5  median 3.0  overlayMs 6.4 7.8 7.3 7.8 8.9  median 7.8  frame median 10.8  stats.woods 152
+medium9-places-close  tile -1  terrainMs 8.2 2.2 1.9 1.9 1.9  median 1.9  overlayMs 4.5 4.7 4.7 4.8 5.4  median 4.7  frame median 6.9  stats.woods 284
+large8-places-close  tile -1  terrainMs 2.6 2.2 2.1 2.3 2.1  median 2.2  overlayMs 4.5 4.8 5.4 5.0 4.9  median 4.9  frame median 7.1  stats.woods 116
+medium9-clans-close  tile -1  terrainMs 12.1 1.9 1.9 2.0 1.9  median 1.9  overlayMs 4.2 4.8 4.6 4.9 4.6  median 4.6  frame median 6.7  stats.woods 279
+lineup-close  tile -1  terrainMs 2.0 1.9 1.7 1.2 1.4  median 1.7  overlayMs 3.1 5.0 4.0 3.8 3.5  median 3.8  frame median 5.1  stats.woods 75
+small2-play  tile 440  terrainMs 13.5 6.1 6.7 6.5 6.5  median 6.5  overlayMs 8.2 10.0 9.6 10.5 9.4  median 9.6  frame median 16.3  stats.woods 265
+medium9-play  tile 924  terrainMs 19.8 19.8 24.6 18.5 18.5  median 19.8  overlayMs 4.8 4.4 3.6 4.3 4.1  median 4.3  frame median 24.2  stats.woods 870
+large8-play  tile 1680  terrainMs 22.1 23.6 22.6 21.3 20.3  median 22.1  overlayMs 7.4 7.8 8.4 42.4 5.3  median 7.8  frame median 31.0  stats.woods 479
+medium9-woods-play  tile 827  terrainMs 19.2 20.9 20.3 19.4 19.2  median 19.4  overlayMs 5.2 4.2 4.0 4.4 3.6  median 4.2  frame median 24.3  stats.woods 918
+medium9-places-play  tile -1  terrainMs 7.8 6.6 6.4 6.4 6.4  median 6.4  overlayMs 7.5 8.2 8.4 8.2 8.9  median 8.2  frame median 14.8  stats.woods 640
+large8-places-play  tile 2524  terrainMs 7.1 6.7 6.9 7.2 7.0  median 7.0  overlayMs 8.6 9.4 10.2 10.7 9.3  median 9.4  frame median 16.3  stats.woods 270
+medium9-units-play  tile -1  terrainMs 9.6 5.3 5.2 5.3 5.2  median 5.3  overlayMs 9.3 7.9 8.0 7.8 8.3  median 8.0  frame median 13.2  stats.woods 590
+medium9-clans-play  tile -1  terrainMs 8.3 6.9 6.9 6.9 6.8  median 6.9  overlayMs 7.7 8.4 9.4 8.4 9.0  median 8.4  frame median 15.8  stats.woods 750
+medium9-woods-near  tile 827  terrainMs 17.5 17.1 22.6 15.7 14.5  median 17.1  overlayMs 7.3 5.3 5.4 5.5 6.1  median 5.5  frame median 22.4  stats.woods 1231
+medium9-woods-far  tile 827  terrainMs 13.7 14.3 13.9 13.8 13.2  median 13.8  overlayMs 5.4 4.2 4.2 4.2 4.8  median 4.2  frame median 18.1  stats.woods 0
+small2-edge  tile 440  terrainMs 4.3 3.8 3.6 3.8 3.5  median 3.8  overlayMs 5.1 5.6 5.4 5.3 5.6  median 5.4  frame median 9.1  stats.woods 0
+medium9-woods-edge  tile 827  terrainMs 13.1 12.7 13.0 12.2 12.1  median 12.7  overlayMs 3.9 3.6 3.6 3.6 5.3  median 3.6  frame median 16.6  stats.woods 0
+medium9-units-edge  tile -1  terrainMs 11.3 10.1 10.8 10.1 10.1  median 10.1  overlayMs 2.3 2.6 2.4 2.7 2.3  median 2.4  frame median 12.8  stats.woods 0
+medium9-places-edge  tile -1  terrainMs 11.2 11.3 11.5 11.2 11.6  median 11.3  overlayMs 3.6 3.7 3.5 3.7 3.5  median 3.6  frame median 15.0  stats.woods 0
+small2-flat  tile 440  terrainMs 1.8 0.9 1.0 0.8 0.8  median 0.9  overlayMs 4.0 3.8 3.1 2.9 3.6  median 3.6  frame median 4.4  stats.woods 0
+medium9-units-flat  tile -1  terrainMs 2.6 1.7 1.7 1.6 1.7  median 1.7  overlayMs 3.9 4.1 4.2 4.5 4.2  median 4.2  frame median 5.9  stats.woods 0
+=== shift-main
+small2-close  k 35  shift -96,-48 device px  overlap 841824  differ 425 (0.050%)  by more than 40 0 (0.000%)
+medium9-places-close  k 35  shift 144,72 device px  overlap 487344  differ 529 (0.109%)  by more than 40 0 (0.000%)
+large8-places-close  k 35  shift -288,-144 device px  overlap 354144  differ 502 (0.142%)  by more than 40 0 (0.000%)
+medium9-clans-close  k 35  shift 288,144 device px  overlap 354144  differ 52250 (14.754%)  by more than 40 246 (0.069%)
+lineup-close  k 35  shift 240,120 device px  overlap 664560  differ 36 (0.005%)  by more than 40 0 (0.000%)
+small2-play  k 18  shift 120,60 device px  overlap 810840  differ 17 (0.002%)  by more than 40 0 (0.000%)
+medium9-play  k 18  shift -216,-108 device px  overlap 692664  differ 130 (0.019%)  by more than 40 0 (0.000%)
+large8-play  k 18  shift 216,108 device px  overlap 692664  differ 1649 (0.238%)  by more than 40 9 (0.001%)
+medium9-woods-play  k 18  shift -120,-60 device px  overlap 810840  differ 24882 (3.069%)  by more than 40 4845 (0.598%)
+medium9-places-play  k 18  shift -264,-132 device px  overlap 374904  differ 185 (0.049%)  by more than 40 0 (0.000%)
+large8-places-play  k 18  shift -264,-132 device px  overlap 374904  differ 58886 (15.707%)  by more than 40 11345 (3.026%)
+medium9-units-play  k 18  shift 288,144 device px  overlap 354144  differ 188 (0.053%)  by more than 40 0 (0.000%)
+medium9-clans-play  k 18  shift 192,96 device px  overlap 440640  differ 5605 (1.272%)  by more than 40 901 (0.204%)
+medium9-woods-near  k 12  shift 288,144 device px  overlap 610080  differ 246 (0.040%)  by more than 40 0 (0.000%)
+medium9-woods-far  k 11  shift 48,24 device px  overlap 905520  differ 22257 (2.458%)  by more than 40 552 (0.061%)
+small2-edge  k 6  shift 168,84 device px  overlap 155844  differ 90 (0.058%)  by more than 40 0 (0.000%)
+medium9-woods-edge  k 6  shift 240,120 device px  overlap 99900  differ 14 (0.014%)  by more than 40 0 (0.000%)
+medium9-units-edge  k 6  shift 240,120 device px  overlap 48600  differ 208 (0.428%)  by more than 40 6 (0.012%)
+medium9-places-edge  k 6  shift 72,36 device px  overlap 129744  differ 153 (0.118%)  by more than 40 0 (0.000%)
+small2-flat  k 5  shift -144,-72 device px  overlap 175644  differ 1057 (0.602%)  by more than 40 0 (0.000%)
+medium9-units-flat  k 5  shift 192,96 device px  overlap 68904  differ 5581 (8.100%)  by more than 40 1038 (1.506%)
+=== pandiff
+large8-places-close  differ 0.216%  by more than 40 0.000%
+large8-places-play  differ 12.864%  by more than 40 2.371%
+large8-play  differ 0.513%  by more than 40 0.000%
+lineup-close  differ 0.125%  by more than 40 0.000%
+medium9-clans-close  differ 9.748%  by more than 40 0.057%
+medium9-clans-play  differ 1.020%  by more than 40 0.135%
+medium9-places-close  differ 1.605%  by more than 40 0.011%
+medium9-places-edge  differ 0.352%  by more than 40 0.003%
+medium9-places-play  differ 0.231%  by more than 40 0.001%
+medium9-play  differ 0.176%  by more than 40 0.000%
+medium9-units-edge  differ 2.534%  by more than 40 0.140%
+medium9-units-flat  differ 4.376%  by more than 40 0.578%
+medium9-units-play  differ 0.277%  by more than 40 0.000%
+medium9-woods-edge  differ 0.296%  by more than 40 0.002%
+medium9-woods-far  differ 2.147%  by more than 40 0.051%
+medium9-woods-near  differ 0.069%  by more than 40 0.000%
+medium9-woods-play  differ 2.637%  by more than 40 0.487%
+small2-close  differ 0.106%  by more than 40 0.000%
+small2-edge  differ 0.138%  by more than 40 0.000%
+small2-flat  differ 0.639%  by more than 40 0.021%
+small2-play  differ 0.033%  by more than 40 0.000%
+=== diff
+small2-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-edge  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+small2-flat  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+small3-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small6-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium8-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+large8-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-fork-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-fork-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-bend-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-bend-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-blob-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+large8-bend-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+large8-fork-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-edge-bottom  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-edge-right  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-fork-edge  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+small9-fork-flat  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+small2-neck-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-delta-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-delta-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small6-bay-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-pond-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-lake-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium8-strait-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-neck-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+large8-delta-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+large8-pond-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-neck-edge  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+small2-neck-flat  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+medium9-woods-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-woods-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-woods-near  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-woods-far  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-woods-edge  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+medium9-woods-flat  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+small2-lone-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-lone-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small9-river-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-delta-near  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-delta-far  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-delta-edge  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+small2-delta-flat  0% differ  (0 of 306540 pixels; 390×786 vs 390×786)
+medium9-fields-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+small2-marsh-fields-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-units-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-stack-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-wood-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+medium9-gold-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-gold-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium8-units-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-camps-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+small2-camps-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-units-edge  0% differ  (0 of 173160 pixels; 390×444 vs 390×444)
+medium9-units-flat  0% differ  (0 of 173160 pixels; 390×444 vs 390×444)
+lineup-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+lineup-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+lineup-edge  0% differ  (0 of 315120 pixels; 390×808 vs 390×808)
+lineup-selected  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+small2-camps-selected  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-clans-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-clans-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-clans-edge  0% differ  (0 of 173160 pixels; 390×444 vs 390×444)
+medium9-clans-flat  0% differ  (0 of 173160 pixels; 390×444 vs 390×444)
+small2-clans-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+small2-clans-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium8-clans-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium8-lean-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+small9-lean-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+clans-lineup-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+clans-lineup-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+clans-lineup-edge  0% differ  (0 of 315120 pixels; 390×808 vs 390×808)
+medium9-places-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-places-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+medium9-places-edge  0% differ  (0 of 173160 pixels; 390×444 vs 390×444)
+medium9-places-flat  0% differ  (0 of 173160 pixels; 390×444 vs 390×444)
+small2-places-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+large8-places-close  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+large8-places-play  0% differ  (0 of 641280 pixels; 1280×501 vs 1280×501)
+places-lineup-close  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+places-lineup-play  0% differ  (0 of 971520 pixels; 1280×759 vs 1280×759)
+places-lineup-edge  0% differ  (0 of 315120 pixels; 390×808 vs 390×808)
+=== cull
+small9-fork-close  tile 469  stats.ridges 76 culled, 133 unculled  stats.edges 784 culled, 1774 unculled  stats.woods 67 culled, 243 unculled  DIFFER
+small9-fork-play  tile 469  stats.ridges 125 culled, 133 unculled  stats.edges 1504 culled, 1774 unculled  stats.woods 231 culled, 243 unculled  identical
+small2-bend-close  tile 377  stats.ridges 53 culled, 111 unculled  stats.edges 747 culled, 1775 unculled  stats.woods 158 culled, 275 unculled  DIFFER
+small2-bend-play  tile 377  stats.ridges 98 culled, 111 unculled  stats.edges 1590 culled, 1775 unculled  stats.woods 267 culled, 275 unculled  identical
+medium9-blob-play  tile 777  stats.ridges 229 culled, 293 unculled  stats.edges 2356 culled, 3632 unculled  stats.woods 907 culled, 1236 unculled  identical
+large8-bend-play  tile 1937  stats.ridges 211 culled, 574 unculled  stats.edges 2524 culled, 6952 unculled  stats.woods 528 culled, 1124 unculled  identical
+large8-fork-play  tile 1953  stats.ridges 312 culled, 574 unculled  stats.edges 2337 culled, 6952 unculled  stats.woods 465 culled, 1124 unculled  identical
+small9-edge-bottom  tile 474  stats.ridges 73 culled, 133 unculled  stats.edges 948 culled, 1774 unculled  stats.woods 122 culled, 243 unculled  identical
+small9-edge-right  tile 474  stats.ridges 88 culled, 133 unculled  stats.edges 566 culled, 1774 unculled  stats.woods 76 culled, 243 unculled  identical
+small9-fork-edge  tile 469  stats.ridges 133 culled, 133 unculled  stats.edges 1774 culled, 1774 unculled  stats.woods 0 culled, 0 unculled  identical
+small9-fork-flat  tile 469  stats.ridges 0 culled, 0 unculled  stats.edges 0 culled, 0 unculled  stats.woods 0 culled, 0 unculled  identical
+small2-neck-close  tile 402  stats.ridges 85 culled, 111 unculled  stats.edges 695 culled, 1775 unculled  stats.woods 106 culled, 275 unculled  identical
+small2-delta-close  tile 506  stats.ridges 52 culled, 111 unculled  stats.edges 683 culled, 1775 unculled  stats.woods 164 culled, 275 unculled  DIFFER
+small2-delta-play  tile 506  stats.ridges 98 culled, 111 unculled  stats.edges 1590 culled, 1775 unculled  stats.woods 267 culled, 275 unculled  identical
+small6-bay-close  tile 376  stats.ridges 59 culled, 91 unculled  stats.edges 722 culled, 1723 unculled  stats.woods 225 culled, 344 unculled  DIFFER
+small9-pond-close  tile 341  stats.ridges 91 culled, 133 unculled  stats.edges 774 culled, 1774 unculled  stats.woods 54 culled, 243 unculled  DIFFER
+small9-lake-play  tile 377  stats.ridges 133 culled, 133 unculled  stats.edges 1625 culled, 1774 unculled  stats.woods 201 culled, 243 unculled  identical
+medium8-strait-close  tile 875  stats.ridges 52 culled, 231 unculled  stats.edges 799 culled, 3515 unculled  stats.woods 84 culled, 498 unculled  DIFFER
+medium9-neck-play  tile 1004  stats.ridges 214 culled, 293 unculled  stats.edges 2347 culled, 3632 unculled  stats.woods 1024 culled, 1236 unculled  identical
+large8-delta-play  tile 2639  stats.ridges 235 culled, 574 unculled  stats.edges 1925 culled, 6952 unculled  stats.woods 419 culled, 1124 unculled  identical
+large8-pond-play  tile 1289  stats.ridges 139 culled, 574 unculled  stats.edges 2443 culled, 6952 unculled  stats.woods 371 culled, 1124 unculled  identical
+small2-neck-edge  tile 402  stats.ridges 111 culled, 111 unculled  stats.edges 1775 culled, 1775 unculled  stats.woods 0 culled, 0 unculled  identical
+small2-neck-flat  tile 402  stats.ridges 0 culled, 0 unculled  stats.edges 0 culled, 0 unculled  stats.woods 0 culled, 0 unculled  identical
+medium9-woods-close  tile 827  stats.ridges 105 culled, 293 unculled  stats.edges 718 culled, 3632 unculled  stats.woods 348 culled, 1236 unculled  identical
+medium9-woods-play  tile 827  stats.ridges 252 culled, 293 unculled  stats.edges 2438 culled, 3632 unculled  stats.woods 918 culled, 1236 unculled  identical
+medium9-woods-near  tile 827  stats.ridges 293 culled, 293 unculled  stats.edges 3434 culled, 3632 unculled  stats.woods 1231 culled, 1236 unculled  identical
+medium9-woods-far  tile 827  stats.ridges 293 culled, 293 unculled  stats.edges 3570 culled, 3632 unculled  stats.woods 0 culled, 0 unculled  identical
+medium9-woods-edge  tile 827  stats.ridges 287 culled, 293 unculled  stats.edges 3497 culled, 3632 unculled  stats.woods 0 culled, 0 unculled  identical
+medium9-woods-flat  tile 827  stats.ridges 0 culled, 0 unculled  stats.edges 0 culled, 0 unculled  stats.woods 0 culled, 0 unculled  identical
+small2-lone-close  tile 439  stats.ridges 70 culled, 111 unculled  stats.edges 718 culled, 1775 unculled  stats.woods 143 culled, 275 unculled  DIFFER
+small2-lone-play  tile 439  stats.ridges 111 culled, 111 unculled  stats.edges 1612 culled, 1775 unculled  stats.woods 259 culled, 275 unculled  identical
+small9-river-close  tile 258  stats.ridges 72 culled, 133 unculled  stats.edges 756 culled, 1774 unculled  stats.woods 128 culled, 243 unculled  DIFFER
+small2-delta-near  tile 506  stats.ridges 111 culled, 111 unculled  stats.edges 1775 culled, 1775 unculled  stats.woods 275 culled, 275 unculled  identical
+small2-delta-far  tile 506  stats.ridges 111 culled, 111 unculled  stats.edges 1775 culled, 1775 unculled  stats.woods 0 culled, 0 unculled  identical
+small2-delta-edge  tile 506  stats.ridges 111 culled, 111 unculled  stats.edges 1775 culled, 1775 unculled  stats.woods 0 culled, 0 unculled  identical
+small2-delta-flat  tile 506  stats.ridges 0 culled, 0 unculled  stats.edges 0 culled, 0 unculled  stats.woods 0 culled, 0 unculled  identical
+medium9-fields-close  tile 828  stats.ridges 68 culled, 293 unculled  stats.edges 448 culled, 3632 unculled  stats.woods 305 culled, 1206 unculled  DIFFER
+small2-marsh-fields-close  tile 535  stats.ridges 38 culled, 111 unculled  stats.edges 459 culled, 1775 unculled  stats.woods 81 culled, 261 unculled  DIFFER
+shots --cull: a mountain view draws differently with culling off

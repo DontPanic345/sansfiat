@@ -1,0 +1,23 @@
+== pan-preart: node www/shots-probe.mjs --pan
+small2-close  k 35  pan 12 frames: median 6.7  slowest 46.4  last terrainMs 1.3 overlayMs 5.0  drag -8,-4  on the view camera
+medium9-places-close  k 35  pan 12 frames: median 4.0  slowest 40.6  last terrainMs 0.7 overlayMs 2.2  drag 12,6  on the view camera
+large8-places-close  k 35  pan 12 frames: median 4.8  slowest 62.9  last terrainMs 0.8 overlayMs 2.7  drag -24,-12  on the view camera
+medium9-clans-close  k 35  pan 12 frames: median 4.0  slowest 38.0  last terrainMs 0.7 overlayMs 2.1  drag 24,12  on the view camera
+lineup-close  k 35  pan 12 frames: median 5.3  slowest 19.4  last terrainMs 0.9 overlayMs 4.4  drag 20,10  on the view camera
+small2-play  k 18  pan 12 frames: median 9.1  slowest 46.5  last terrainMs 3.1 overlayMs 5.2  drag 10,5  on the view camera
+medium9-play  k 18  pan 12 frames: median 13.4  slowest 46.3  last terrainMs 5.8 overlayMs 5.6  drag -18,-9  on the view camera
+large8-play  k 18  pan 12 frames: median 17.2  slowest 68.8  last terrainMs 7.3 overlayMs 8.2  drag 18,9  on the view camera
+medium9-woods-play  k 18  pan 12 frames: median 12.8  slowest 46.2  last terrainMs 6.2 overlayMs 5.8  drag -10,-5  on the view camera
+medium9-places-play  k 18  pan 12 frames: median 7.0  slowest 50.9  last terrainMs 3.8 overlayMs 3.3  drag -22,-11  on the view camera
+large8-places-play  k 18  pan 12 frames: median 9.8  slowest 66.9  last terrainMs 5.7 overlayMs 6.9  drag -22,-11  on the view camera
+medium9-units-play  k 18  pan 12 frames: median 8.0  slowest 51.4  last terrainMs 3.0 overlayMs 3.2  drag 24,12  on the view camera
+medium9-clans-play  k 18  pan 12 frames: median 8.0  slowest 50.4  last terrainMs 4.0 overlayMs 3.4  drag 16,8  on the view camera
+medium9-woods-near  k 12  pan 12 frames: median 8.0  slowest 42.8  last terrainMs 2.2 overlayMs 5.2  drag 24,12  OFF the view camera (-0.8660254037844375 -1.5 k 12 vs -0.8660254037844386 -1.5 k 12)
+medium9-woods-far  k 11  pan 12 frames: median 8.8  slowest 40.9  last terrainMs 2.2 overlayMs 5.8  drag 4,2  on the view camera
+small2-edge  k 6  pan 12 frames: median 3.8  slowest 4.4  last terrainMs 1.3 overlayMs 2.4  drag 14,7  OFF the view camera (0.8660254037844402 -1.5000000000000002 k 6 vs 0.8660254037844386 -1.5 k 6)
+medium9-woods-edge  k 6  pan 12 frames: median 5.0  slowest 6.2  last terrainMs 2.1 overlayMs 4.1  drag 20,10  OFF the view camera (-0.8660254037844437 -1.4999999999999993 k 6 vs -0.8660254037844386 -1.5 k 6)
+medium9-units-edge  k 6  pan 12 frames: median 5.5  slowest 6.9  last terrainMs 1.7 overlayMs 3.1  drag 20,10  on the view camera
+medium9-places-edge  k 6  pan 12 frames: median 6.0  slowest 65.4  last terrainMs 2.3 overlayMs 3.7  drag 6,3  on the view camera
+small2-flat  k 5  pan 12 frames: median 3.8  slowest 4.6  last terrainMs 0.7 overlayMs 2.8  drag -12,-6  OFF the view camera (0.8660254037844326 -1.5000000000000038 k 5 vs 0.8660254037844386 -1.5 k 5)
+medium9-units-flat  k 5  pan 12 frames: median 6.1  slowest 7.1  last terrainMs 1.7 overlayMs 4.1  drag 16,8  on the view camera
+exit 0

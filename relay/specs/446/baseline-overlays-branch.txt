@@ -1,0 +1,20 @@
+== overlays-branch: node www/shots-probe.mjs --overlays /tmp/t446/ov-branch
+medium9-play fertility: 20.3% of pixels move by > 48
+medium9-play country: 1.0% of pixels move by > 48
+medium9-play hidden-costs: 7.9% of pixels move by > 48
+medium9-play territories: 12.9% of pixels move by > 48
+medium9-play worn: 0.0% of pixels move by > 48
+medium9-play festival-routes: 1.3% of pixels move by > 48
+medium9-places-close fertility: 27.0% of pixels move by > 48
+medium9-places-close country: 1.5% of pixels move by > 48
+medium9-places-close hidden-costs: 11.7% of pixels move by > 48
+medium9-places-close territories: 13.7% of pixels move by > 48
+medium9-places-close worn: 0.0% of pixels move by > 48
+medium9-places-close festival-routes: 1.5% of pixels move by > 48
+small2-edge fertility: 3.9% of pixels move by > 48
+small2-edge country: 0.7% of pixels move by > 48
+small2-edge hidden-costs: 0.3% of pixels move by > 48
+small2-edge territories: 4.1% of pixels move by > 48
+small2-edge worn: 0.0% of pixels move by > 48
+small2-edge festival-routes: 1.5% of pixels move by > 48
+exit 0

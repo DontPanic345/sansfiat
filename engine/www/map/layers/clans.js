@@ -29,8 +29,12 @@ export const CLAN = {
   walkers: 1.75, // a lone clan of walkers is drawn this much taller than a tent of the same people: three figures read as people only from about 25 px
   walkersShared: 1.3, // and one on a shared home this much, so it doesn't cover the others
   edge: 1.3, // the dark edge every cell has, in css px, as main's circle has its stroke: a pale tent shows on grass by it
+  reach: 3.5, // a home's clans cull while their drawing is on the canvas: a ring or a yard and the tallest walkers reach this far from the tile
   from: 28, // the terrain cell's height in css px below which the clans are circles: k 13.6 on any screen (a 12 px tent is a brown speck)
 };
+
+/** The hex's half-width over its vertical sides (a tile's circumradius is 1). */
+const HEX_HALF = Math.sqrt(3) / 2;
 
 /** The circles of main's flat zoom: a lone clan's radius at most 0.75, a shared home's clan at most 0.3, on a ring. */
 const SHARED_MAX = 0.3;
@@ -49,7 +53,7 @@ const toCanvas = (view, x, y) => [((x - view.cx) * view.k + view.w / 2) * view.d
 function byHome(model, view) {
   const homes = new Map();
   for (const c of Object.values(model.v.clans)) {
-    if (!view.onScreen(c.home)) continue;
+    if (!view.onScreen(c.home, CLAN.reach)) continue;
     if (!homes.has(c.home)) homes.set(c.home, []);
     homes.get(c.home).push(c);
   }
@@ -94,12 +98,12 @@ function layout(model, view) {
     const Y = PLACE.yard;
     clans.forEach((c, j) => {
       const people = Math.sqrt(c.people);
-      let ax = view.px[home], ay = view.py[home] + CLAN.feet, h;
+      let ax = view.px[home], ay = view.py[home] + CLAN.feet, h, spread = 0; // `spread`: a yard row's x offset, as a share of the row's width
       if (yard.has(home)) {
         // On a place's tile: rows in front of the place, the back row first, each spread across the yard.
         const row = Math.floor(j / Y.perRow), m = Math.min(Y.perRow, n - row * Y.perRow), at = j - row * Y.perRow;
         ay = view.py[home] + (n === 1 ? Y.lone : Y.y + row * Y.dy);
-        ax += m === 1 ? 0 : (at / (m - 1) - 0.5) * Y.span;
+        spread = m === 1 ? 0 : at / (m - 1) - 0.5;
         h = Math.min(n === 1 ? Y.hLone : Y.h, Math.max(CLAN.minPx / view.k, CLAN.per * people));
       } else if (n === 1) {
         h = Math.max(CLAN.minPx / view.k, Math.min(CLAN.max, CLAN.per * people));
@@ -111,6 +115,13 @@ function layout(model, view) {
       }
       const kind = kindOf(c);
       if (kind === 'walk') h *= n === 1 ? CLAN.walkers : CLAN.walkersShared;
+      if (spread) {
+        // The row spreads as wide as keeps each clan's middle inside the hex at its height: lower rows are narrower.
+        const cell = view.atlas.cell(`clan.${kind}`);
+        const mid = (ay - view.py[home] - h * (cell.ay / cell.h - 0.5)); // the cell's middle below the tile's centre
+        const half = Math.min(Y.span / 2, (mid <= 0.5 ? HEX_HALF : HEX_HALF * 2 * (1 - mid)) - Y.margin);
+        ax += 2 * spread * Math.max(half, 0);
+      }
       items.push({ c, civ: model.clanCiv.get(c.id) ?? null, kind, ax, ay, h });
     });
   }
@@ -135,7 +146,7 @@ export function draw(ctx, model, view) {
   }
   // Each leaning disc first, so each clan's cell stands on it.
   for (const c of Object.values(model.v.clans)) {
-    if (!view.onScreen(c.home)) continue;
+    if (!view.onScreen(c.home, CLAN.reach)) continue;
     const tint = model.tintOf(c);
     if (tint) disc(ctx, view, c, tint);
   }

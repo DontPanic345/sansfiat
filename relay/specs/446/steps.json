@@ -1,0 +1,36 @@
+[
+  {
+    "id": "build-1",
+    "title": "The harness and the baseline",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 1 (six probe modes, the verify set and the pop cases are the spec's; four ran as protos on main in the spec step, and spec-review ran --shift's measure and --time on the rest of the set; whether setUp is exported or moved is the one choice), New 1 (shots.mjs's modes and the protos are the pattern), Miss 1 (the baseline must reproduce hits.txt, pop.txt and review.txt, --pan's last frame on main must match --out's byte for byte, and --diff against main must read 0%), Reach 1 (onScreen honours noCull; shots.mjs splits). An easel at 4: Haiku high. It waits on the verify set shot, panned and timed on three trees (21 views each, about 5 s a view a mode). About 6 files, 450 lines: shots-probe.mjs (new, about 320), shots.mjs (export and --time verify), shots-views.mjs (VERIFY, POPS), map/view.js (one line), engine/CLAUDE.md, baseline.md with its raw .txt files."
+  },
+  {
+    "id": "build-2",
+    "title": "The pan under the bar",
+    "part": "easel",
+    "model": "sonnet",
+    "effort": "medium",
+    "points": 8,
+    "why": "Open 2 (the bar and the proof are exact: every verify view's median pan frame within max(1.5x pre-art, 8) ms and its slowest within main's median, fresh shots byte-identical to main's, panned frames within main's own --shift; the method is a search: a self-copying layer with clipped strips, or a wider layer drawn ahead in slices), New 3 (nothing here keeps the static layer across frames; spec-review measured that culling and cheaper draws can't reach the bar, review.txt), Miss 1 (--diff at 0%, --pan against --shift, --cull and a new play check that every full-redraw trigger still redraws), Reach 2 (the static layer every pan draws). Re-scored from 6: the spec's cheap ways save under 1.5 ms of the 5 to 8 needed at k 6 to 12. An easel at 8: Sonnet medium; settled to an exact done here rather than left to the canvas, so the canvas judges on a map that pans within the bar. About 10 files, 350 lines: map/pan.js (new, about 120), view.js, the static layers' strip culling (edges, woods, ridges, terrain, rivers and the rest that read vis or the canvas), play/pan.mjs (new), engine/CLAUDE.md, frame.md and frame.txt."
+  },
+  {
+    "id": "build-3",
+    "title": "The illustrated map, fixed and judged beside the pre-art page",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 10,
+    "why": "Open 4 (a stack and a crowd kept in their hex, each layer's cull reach, and every unit, place and clan reading in its civ's colour at four zooms as well as on the pre-art page, the scout's banner at k 5: judged by eye with --hits, --pop and --units as floors), New 1 (the layers' tables and the atlas tool are the easels' and #443-#445's), Miss 3 (only the captures on the retro maps show a smudged figure or a buried overlay), Reach 2 (units, clans, places and the cull every frame draws). A canvas at 10: Sonnet high, as #440-#445's. About 8 files and 18 committed PNGs, 250 lines: layers/units.js, clans.js, places.js, centres.js and the onScreen callers, view.js, maybe sources.js and the atlas, views.md, shots/."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is judged by eye on identical views of three trees, and main may move under the piece (gameplay PRs land beside the art track), so Opus medium. It checks no Rust moved, runs every shots check and the controls, pans the verify set against the pre-art page and checks panned frames against main's, reads the triples at each zoom, clicks stacked units, a crowded town's clan, a capital and a settlement on the page, drags the map at three zooms looking for seams, pans a stack across the edge, and puts the captures and tables in the PR."
+  }
+]

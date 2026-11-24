@@ -1,0 +1,9 @@
+# proto/pop-tail.mjs on main (ab15ef9), with view.onScreen made to return true under noCull (a scratch edit, not kept):
+# the tile put at css x or y just past each canvas edge, the frame drawn with culling on and off, the pixels that differ.
+# A non-zero count is a pop: something that should show at the edge appears only once its tile is within onScreen's 80 px.
+lineup-close tile 126 (Red's army and scout stacked) left -90px: 500 px differ
+lineup-close tile 126 left -130px: 20 px differ
+lineup-close tile 126 right/top/bottom 90 and 130px: 0
+places-lineup-close tile 47 (Red's capital, a town of 3) every side 90 and 130px: 0
+large8-places-close tile 2787 (the town of 8) right 90px: 13 px differ
+large8-places-close tile 2787 every other side and offset: 0

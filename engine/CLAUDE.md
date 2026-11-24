@@ -9,17 +9,19 @@ cargo run -p sansfiat -- map | run | sweep | play | story | judge | replay | ben
 cargo run -p sansfiat -- sweep --judge [--json] [--floor] [--solo]   # the retro maps beside their controls, and the led games: a report
 cargo run -p sansfiat -- play --game g.json [--seed N --size NAME [--civ K]]   # a line at a time; g.lines.jsonl records it
 cargo run -p sansfiat -- judge g.json [--json]   # a played game beside the same map on the AI
-cargo run -p sansfiat -- judge --compare a.json b.json [--all]   # two sweep reports: each metric's change against its noise floor
+cargo run -p sansfiat -- judge --compare a.json b.json [--all]   # two sweep reports: each change against its noise floor
 cargo run -p sansfiat -- bench --size large 8 --after 50   # ms a turn past the pick
 node www/play.mjs "?size=small&seed=2&run=1" --shot pick.png   # the page in headless Chrome
 node www/play/all.mjs                        # every touch-point script; check.sh runs it
-node www/play/units.mjs                      # the lineup's units: six figures, probe colours, a stack's cycle and numbers
-node www/play/places.mjs                     # the place lineup: roles, cloth, the clans on them
-node www/assets/draw-atlas.mjs [--check]     # atlas.png and atlas.json from placeholders.js and sources.js (--check: no Chrome)
-node www/shots.mjs --out DIR                 # the map's fixed views, as canvases; --diff A B compares two folders
-node www/shots.mjs --cull DIR                # each view with an `on` with the edge, woods and ridge layers' culling on and off: identical, or exit 1
-node www/shots.mjs --time NAME,…             # five static redraws of each view: stats.terrainMs and the median
-node www/shots.mjs --units|--clans|--places DIR  # those views (shots-views.mjs): exit 1 unless each probe is its civ's, state's or tile's
+node www/play/pan.mjs                        # a pan matches a redraw; other changes redraw
+node www/play/units.mjs                      # the lineup's units: figures, probe colours, a stack's cycle
+node www/play/places.mjs                     # the place lineup: roles, cloth, clans
+node www/assets/draw-atlas.mjs [--check]     # atlas.png and .json from placeholders.js and sources.js (--check: no Chrome)
+node www/shots.mjs --out DIR                 # the map's fixed views (--only NAME,…); --diff A B compares two folders
+node www/shots.mjs --cull DIR                # views with an `on`, culling on and off: identical, or exit 1
+node www/shots.mjs --time NAME,…|verify      # five static redraws: terrainMs, the median, the frame median
+node www/shots.mjs --units|--clans|--places DIR  # those views: exit 1 unless each probe is right
+node www/shots-probe.mjs --hits|--pop|--overlays|--layers|--pan|--shift  # the map probes; --hits, --pop exit 1
 ```
 
 `cargo test` runs optimised: whole pre-games are too slow otherwise.
@@ -36,7 +38,7 @@ node www/shots.mjs --units|--clans|--places DIR  # those views (shots-views.mjs)
 | `cli/src/` | The `sansfiat` binary, one module per command: `main.rs` (USAGE), `sweep*.rs` (the sweep and its judges; `sweep_trade.rs` the exchange-off control), `view_goods.rs` (a store's lots as chains, a pack's wares), `game_judge.rs` (a played file's judge), `view.rs` (the text view), `view_land.rs` (its land: the claim and its orders, the signposts and settlements), `story.rs` (stories of war). |
 | `web/src/` | The wasm `Sim` the page drives: `lib.rs` (`layout`, `view`, `act`, the orders; `Sim.stage` builds one, `Sim.stage_test` a test) and `stage_test.rs`. |
 | `www/` | The page: `main.js` (the router), `app.js`, `model.js` (the view model), `panel.js` and `panels.js` (a selection's shape and buttons), `save.js`, `check.mjs` (data checks under Node), `check-map.mjs` (the map's pieces: ridges, shores, fringes, woods), `play.mjs` (headless Chrome; `play/live.mjs` holds one page across shell calls), `shots.mjs` (the fixed map views). `assets/` is the atlas: `placeholders.js` (each cell's drawing, `layout()`), `sources.js` (the regions and the cells cut from them), `cut.mjs` (hex, fill and sprite regions; ops `mirror`, `ramp`, `grey`; keys `ground`, `bank`, `tree`, `tuft`, `actor`; a cell's `over` sprites and `cloth` polygons, `{ poly, where }` for a colour test; `grey` takes `lo`; a sprite's `floor`; derived fringes; `flat`), `png.mjs`, `draw-atlas.mjs`. The wood cells are `tree.big.<v>` (80×100, anchor 40,95), `tree.small.<v>` (48×64, anchor 24,60) and `reed.<v>` (48×60, anchor 24,56): each one's ground point is its anchor. The actor study's `unit.<kind>` (96×96, anchor 48,92), `clan.<kind>` (112×96, anchor 56,90) and `place.<kind>` (176×128, anchor 88,118) cells: an owned one has a `.mask`, its cloth in grey, multiplied by the civ's colour. |
-| `www/map/` | `view.js` (`MapView`), `input.js` (its pointer input), and `layers/`, a file per layer. `woods.js` makes the wood pieces (a tree or a reed on each lattice slot, the rule and `WOODS`'s numbers; pure), which `layers/woods.js` draws. `ridges.js` makes the mountain pieces (a peak per tile, a ridge per shared edge; pure), which `layers/ridges.js` draws. `edges.js` makes the shore and fringe pieces (a bank per land–water edge and per shore vertex, a fringe per land edge that bleeds; pure), which `layers/edges.js` draws. |
+| `www/map/` | `view.js` (`MapView`), `pan.js` (a pan's shifted layer), `input.js` (its pointer input), and `layers/`, a file per layer. `woods.js` makes the wood pieces (a tree or reed per lattice slot; pure), which `layers/woods.js` draws. `ridges.js` makes the mountain pieces (a peak per tile, a ridge per shared edge; pure), which `layers/ridges.js` draws. `edges.js` makes the shore and fringe pieces (a bank per land–water edge and per shore vertex, a fringe per land edge that bleeds; pure), which `layers/edges.js` draws. |
 | `www/screens/` | One file a screen: `pick.js`, `play.js`, `orders.js`, `start.js`, `end.js`, `tests.js` (the Tests screen). |
 | `www/play/` | One script per touch point of `docs/design/page.md`, each exiting non-zero when its touch point is missing; each stages its world through `../play-stage.mjs`; `all.mjs` runs them. |
 

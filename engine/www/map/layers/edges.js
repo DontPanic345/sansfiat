@@ -30,7 +30,7 @@ export function draw(ctx, model, view) {
   const H = cellHeight(view); // the terrain cell's drawn height, in device px
   if (isFlat(H, view)) return;
   const { atlas, dpr, k } = view;
-  const W = view.canvas.width, Hc = view.canvas.height;
+  const [X0, Y0, X1, Y1] = view.box();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   // Each key's image at the terrain's scale, and its anchor scaled to match, read once per draw.
   const placed = new Map();
@@ -49,7 +49,7 @@ export function draw(ctx, model, view) {
     const { img, h, ax, ay } = place(piece.key);
     const x = Math.round(((piece.x - view.cx) * k + view.w / 2) * dpr - ax);
     const y = Math.round(((piece.y - view.cy) * k + view.h / 2) * dpr - ay);
-    if (!view.noCull && (x + img.width <= 0 || y + h <= 0 || x >= W || y >= Hc)) continue;
+    if (!view.noCull && (x + img.width <= X0 || y + h <= Y0 || x >= X1 || y >= Y1)) continue;
     ctx.drawImage(img, x, y);
     view.stats.edges++;
   }
