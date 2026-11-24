@@ -1,0 +1,27 @@
+[
+  {
+    "id": "build-1",
+    "title": "Sprite regions, the mountain keys, the ridge layer, the views and the culling check",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 4,
+    "why": "Open 1 (every done is exact: the proto peak matched to the pixel, the pieces' rules and order, culled equals unculled, the plains views unchanged with the mountains taken out, the view tiles named), New 1 (the sprite cut ports proto/peak.mjs; the layer adapts terrain.js's anchored draw; the piece builder is a short pure function the spec states rule by rule), Miss 1 (the CI checks it writes in check.mjs and play/ridges.mjs), Reach 1 (a static layer, redrawn when the view moves, not each turn; the atlas layout grows after the icons). An easel with an exact done at 4: Haiku high, as 439's easel ran. About 12 files, 650 lines: assets/cut.mjs, sources.js, placeholders.js, atlas.png/json, map/ridges.js, map/layers/ridges.js, map/layers/terrain.js, map/view.js (three lines), shots.mjs, check.mjs, play/ridges.mjs, play/all.mjs, engine/CLAUDE.md, easel.md. Spec-review kept the scores: it moved small9-edge-right to k 35 (at k 18 the pan clamp keeps every small-9 mountain on screen), made shots.mjs throw on a clamped camera, fixed where the layer caches its pieces (a WeakMap on view.nb, so view.js, at 605 lines, takes only the import, the entry and noCull) and the flat fill's fallback; all settle rather than add work."
+  },
+  {
+    "id": "build-2",
+    "title": "The mountain ranges on the map, judged beside main",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 9,
+    "why": "Open 4 (which source pieces make ridges, peaks and lone peaks, their sizes and anchors, whether caps and forks need pieces of their own: judged by eye), New 1 (the regions and layer are the easel's; adding a piece by class adapts ridgePieces), Miss 3 (only the captures on the retro maps catch a range that reads as beads), Reach 1 (sources.js and the ridge pieces, drawn every static redraw, but no rule). A canvas at 9: Sonnet high. About 5 files and 10 committed PNGs, 150 lines: assets/sources.js, cut.mjs (keys), atlas.png/json, maybe map/ridges.js and play/ridges.mjs, views.md, shots/."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is ranges judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved, repeats the atlas build for identical bytes, runs --cull, shoots views on a main worktree and the branch and diffs the cameras, reads the pairs for bends, a fork and the bottom and right edges (k 18 and k 35), checks selection beside a peak, and puts the captures in the PR."
+  }
+]

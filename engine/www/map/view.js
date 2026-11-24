@@ -3,6 +3,9 @@
 // toggle changes; the others, which a turn changes, are drawn over it, in `LAYERS`' order. World units: a
 // hex has circumradius 1, so tile (q, r) is centred at (sqrt3 (q + r/2), 1.5 r).
 import * as terrain from './layers/terrain.js';
+import * as edges from './layers/edges.js';
+import * as woods from './layers/woods.js';
+import * as ridges from './layers/ridges.js';
 import * as fertility from './layers/fertility.js';
 import * as floodplains from './layers/floodplains.js';
 import * as rivers from './layers/rivers.js';
@@ -32,9 +35,10 @@ import * as routes from './layers/routes.js';
 import * as overlay from './layers/overlay.js';
 
 import { CORNER, EDGE_DIR } from './geom.js';
+import { attach as attachInput } from './input.js';
 
 /** The layers, bottom to top. */
-export const LAYERS = [terrain, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
+export const LAYERS = [terrain, edges, woods, ridges, fertility, floodplains, rivers, country, passes, hiddenCosts, fields, territories, worn, trails, hearths, sources, festivalRoutes, festivals, land, held, lines, clans, leanings, centres, capitals, towns, settle, ring, units, routes, overlay];
 /** The layers a View or Debug toggle leaves off. */
 const OFF = new Set(['territories', 'fertility', 'country', 'hidden-costs', 'worn', 'festival-routes']);
 /** A toggle that switches several layers together. */
@@ -73,6 +77,7 @@ export class MapView {
     this.work = []; // [tile, labour, need]: trails under way
     this.focusMarket = null; // the selected festival's id: its walkers' routes are drawn bright
     this.cx = 0; this.cy = 0; this.k = 8;
+    this.noCull = false; // the edge, woods and ridge layers draw every piece, not only those on the canvas (shots.mjs --cull checks it)
     this.w = 1; this.h = 1; this.dpr = 1;
     this.n = 0;
     this.selected = -1;
@@ -81,7 +86,7 @@ export class MapView {
     this.dirty = true;
     this.frame = 0;
     this.anim = null;
-    this.stats = { terrainMs: 0, overlayMs: 0, atlas: false, cells: 0 };
+    this.stats = { terrainMs: 0, overlayMs: 0, atlas: false, cells: 0, units: [], labels: [] };
     this.pointers = new Map();
     this.drag = null;
     this.attach();
@@ -117,6 +122,8 @@ export class MapView {
     this.claim = new Int32Array(n);
     this.worn = new Float64Array(n);
     this.model = null;
+    this.woodsKey = ''; // the field tiles on forest and marsh the woods layer draws (layers/woods.js `stale`), as a key
+    this.woodsFields = [];
     this.selected = -1;
     this.highlight = null;
     this.dirty = true;
@@ -156,6 +163,7 @@ export class MapView {
       ? v.end.centres.map((id) => v.markets[id]?.tile).filter((t) => t != null)
       : v.summary.centres.map((id) => v.clans[id]?.home).filter((t) => t != null);
     this.shapes = null;
+    if (LAYERS.some((l) => l.static && l.stale?.(model, this))) this.dirty = true;
   }
 
   /** Adds to `path` the edges of tile `i` that face a neighbour `same` is false for. */
@@ -268,6 +276,12 @@ export class MapView {
   setRouteStart(mark) {
     this.routeStart = mark;
     this.requestDraw();
+  }
+
+  /** The units layer's probe (layers/units.js `probe`): each unit on the map, with the pixels its civ's colour tints. */
+  unitProbe() {
+    this.drawNow();
+    return units.probe(this.model, this);
   }
 
   setSelection(i, unit = -1) {
@@ -413,91 +427,7 @@ export class MapView {
   // ---- input -----------------------------------------------------------------------------
 
   attach() {
-    const c = this.canvas;
-    c.style.touchAction = 'none';
-    c.addEventListener('pointerdown', (e) => {
-      c.setPointerCapture(e.pointerId);
-      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      this.opts.onHoverEnd();
-      this.drag = { moved: 0, pinch: this.pointers.size > 1 ? this.pinchState() : null, button: e.button };
-      if (this.painting && e.button === 0 && this.pointers.size === 1) {
-        const rect = c.getBoundingClientRect();
-        const i = this.tileAt(e.clientX - rect.left, e.clientY - rect.top);
-        this.drag.paint = i;
-        if (i >= 0) this.opts.onPaint?.(i);
-      }
-    });
-    c.addEventListener('pointermove', (e) => {
-      const p = this.pointers.get(e.pointerId);
-      const rect = c.getBoundingClientRect();
-      if (!p) {
-        const i = this.tileAt(e.clientX - rect.left, e.clientY - rect.top);
-        this.opts.onHover(i, e.clientX, e.clientY);
-        return;
-      }
-      const dx = e.clientX - p.x, dy = e.clientY - p.y;
-      p.x = e.clientX;
-      p.y = e.clientY;
-      if (this.pointers.size >= 2) {
-        const st = this.pinchState();
-        if (this.drag.pinch) {
-          this.zoomBy(st.d / this.drag.pinch.d, st.x - rect.left, st.y - rect.top);
-          this.panBy(st.x - this.drag.pinch.x, st.y - this.drag.pinch.y);
-        }
-        this.drag.pinch = st;
-        this.drag.moved += 100;
-        return;
-      }
-      if (this.drag.paint !== undefined) {
-        const i = this.tileAt(e.clientX - rect.left, e.clientY - rect.top);
-        if (i >= 0 && i !== this.drag.paint) this.opts.onPaint?.(i);
-        this.drag.paint = i;
-        return;
-      }
-      this.drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (this.drag.moved > 4) {
-        this.opts.onHoverEnd();
-        this.panBy(dx, dy);
-      }
-    });
-    const up = (e) => {
-      const was = this.pointers.delete(e.pointerId);
-      if (!was || !this.drag) return;
-      if (this.pointers.size === 0) {
-        if (this.drag.moved <= 4 && e.type === 'pointerup' && this.drag.paint === undefined) {
-          const rect = c.getBoundingClientRect();
-          const i = this.tileAt(e.clientX - rect.left, e.clientY - rect.top);
-          // Left picks, right commands; other buttons do neither.
-          if (this.drag.button === 0) this.opts.onPick(i);
-          else if (this.drag.button === 2) this.opts.onCommand?.(i);
-        }
-        this.drag = null;
-      } else {
-        this.drag.pinch = null;
-      }
-    };
-    c.addEventListener('contextmenu', (e) => e.preventDefault());
-    c.addEventListener('pointerup', up);
-    c.addEventListener('pointercancel', up);
-    c.addEventListener('pointerleave', (e) => {
-      if (!this.pointers.has(e.pointerId)) this.opts.onHoverEnd();
-    });
-    c.addEventListener(
-      'wheel',
-      (e) => {
-        e.preventDefault();
-        this.opts.onHoverEnd();
-        const rect = c.getBoundingClientRect();
-        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
-        this.zoomBy(Math.exp(-e.deltaY * unit * 0.0015), e.clientX - rect.left, e.clientY - rect.top);
-      },
-      { passive: false },
-    );
-  }
-
-  pinchState() {
-    const [a, b] = [...this.pointers.values()];
-    return { d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    attachInput(this);
   }
 
   // ---- drawing ---------------------------------------------------------------------------

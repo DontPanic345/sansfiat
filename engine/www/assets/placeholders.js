@@ -16,23 +16,97 @@ export const TERRAIN_COLOR = {
 export const WIDTH = 1024;
 /** The circumradius of a terrain cell's hex, in cell pixels (the cell is 2 × this tall). */
 export const HEX_R = 74;
+/** A terrain cell's size, in cell pixels: the hex sits centred in it. */
+export const TERRAIN_CELL = { w: 128, h: 148 };
+/** A fringe's strip along a hex edge: its depth from the edge, in cell px, before the noise. */
+export const DEPTH = 16;
+/** The strip's depth varies by up to this many px either way, along the edge (`noise`). */
+export const AMP = 6;
+/** The strip's mask falls from 1 to 0 over this many px past its depth. */
+export const FEATHER = 4;
+/** The strip's mask tapers to 0 over this many px at each end of the edge, so it stops short of the corners. */
+export const TAPER = 12;
+/** The bank's shore cells: an edge piece is 112 px square, a corner piece 48 px (its anchor is the vertex). */
+export const SHORE = { edge: { w: 112, h: 112, ax: 56, ay: 56 }, corner: { w: 48, h: 48, ax: 24, ay: 24 } };
+/** The kinds that bleed a fringe into a neighbour of a lower kind, highest first: a shared land edge draws the higher. */
+export const FRINGE = ['desert', 'marsh', 'forest', 'hills', 'mountain', 'coast'];
+/** The wood and marsh pieces: a cell's size, and its ground point (the anchor), in cell px. Build-2 draws them at a slot. */
+export const TREE = {
+  big: { w: 80, h: 100, ax: 40, ay: 95 },
+  small: { w: 48, h: 64, ax: 24, ay: 60 },
+  reed: { w: 48, h: 60, ax: 24, ay: 56 },
+};
 /** How many world units (a hex has circumradius 1) a 64 px icon cell spans. */
 export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth': 1.6, 'icon.pass': 1, 'icon.town': 1.1 };
 
 const UNITS = ['camp', 'scout'];
+/** A unit cell: a figure 96 px square, standing with its feet at the anchor (48, 92), which is the tile's ground. */
+export const UNIT = { w: 96, h: 96, ax: 48, ay: 92 };
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
+/** A mountain piece's cell: 224 × 144, its ground point (the anchor) at (112, 128). */
+const MOUNTAIN = { w: 224, h: 144, ax: 112, ay: 128 };
+
+// The fringe geometry, in a terrain cell: a pointy-top hex of circumradius HEX_R, its apothem A, and edge d
+// facing the screen angle 60 d (EDGE_DIR's order: E, SE, SW, W, NW, NE).
+const APOTHEM = (HEX_R * Math.sqrt(3)) / 2;
+const EDGE_NORMAL = [0, 1, 2, 3, 4, 5].map((d) => [Math.cos((Math.PI / 3) * d), Math.sin((Math.PI / 3) * d)]);
+
+/** A point's place for edge `d` of a terrain cell: `s` its depth in px inward from the edge, `t` its place along it
+ *  (0 at the middle), or null when it is outside the hex or past the strip's reach (`DEPTH + AMP + FEATHER`). */
+function stripAt(d, x, y) {
+  const px = x - TERRAIN_CELL.w / 2, py = y - TERRAIN_CELL.h / 2;
+  const u = px / APOTHEM, v = py / HEX_R;
+  if (Math.abs(u) > 1 || Math.abs(v) + Math.abs(u) / 2 > 1) return null;
+  const [nx, ny] = EDGE_NORMAL[d];
+  const s = APOTHEM - (px * nx + py * ny);
+  const t = -px * ny + py * nx;
+  if (s < 0 || s > DEPTH + AMP + FEATHER || Math.abs(t) > HEX_R / 2) return null;
+  return { s, t };
+}
+
+/** The fringe mask of edge `d`, variant `v`, at cell px (x, y) of a terrain cell: 1 inside the strip, 0 outside. */
+export function fringeMask(d, v, x, y) {
+  const p = stripAt(d, x, y);
+  if (!p) return 0;
+  // A smooth noise along the edge: two or three sines, phased by the edge and the variant, so the strip is ragged.
+  const ph = 2.1 * d + 3.7 * v;
+  const n = (Math.sin(p.t * 0.118 + ph) + 0.5 * Math.sin(p.t * 0.33 + 1.7 * ph + 1) + 0.25 * Math.sin(p.t * 0.9 + 2.3 * ph + 2)) / 1.75;
+  const depth = DEPTH + AMP * n;
+  const feather = Math.min(1, Math.max(0, 1 - (p.s - depth) / FEATHER));
+  const taper = Math.min(1, (HEX_R / 2 - Math.abs(p.t)) / TAPER);
+  return feather * taper;
+}
+
+const boxes = new Map();
+/** The rectangle of a terrain cell that holds every pixel of edge `d`'s fringe: `{ x, y, w, h }`, whole px. */
+export function fringeBox(d) {
+  if (!boxes.has(d)) {
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    for (let y = 0; y < TERRAIN_CELL.h; y++) {
+      for (let x = 0; x < TERRAIN_CELL.w; x++) {
+        if (!stripAt(d, x + 0.5, y + 0.5)) continue;
+        x0 = Math.min(x0, x);
+        y0 = Math.min(y0, y);
+        x1 = Math.max(x1, x);
+        y1 = Math.max(y1, y);
+      }
+    }
+    boxes.set(d, { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 });
+  }
+  return boxes.get(d);
+}
 
 /** Every cell with its place in the sheet, its size and a note: `{width, height, cells}`. */
 export function layout() {
   const cells = {};
   let x = 0, y = 0, rowH = 0;
-  const put = (name, w, h, note) => {
+  const put = (name, w, h, note, anchor) => {
     if (x + w > WIDTH) {
       x = 0;
       y += rowH;
       rowH = 0;
     }
-    cells[name] = { x, y, w, h, note };
+    cells[name] = { x, y, w, h, note, ...anchor };
     x += w;
     rowH = Math.max(rowH, h);
   };
@@ -49,12 +123,13 @@ export function layout() {
   }
   row();
   put('overlay.floodplain', 128, 148, hexNote('floodplain wash, translucent, drawn over the tile'));
-  put('overlay.desert-dots', 128, 148, hexNote('desert stipple, translucent, drawn over a desert tile'));
+  put('overlay.desert-dots', 128, 148, hexNote('desert stipple, translucent (no longer drawn: the desert ground is sand)'));
   put('overlay.fields', 128, 148, hexNote('field furrows: three short dark ochre strokes in the lower half, translucent, drawn over a tile with fields'));
   row();
   for (const u of UNITS) {
-    put(`unit.${u}`, 64, 64, `${u} figure: dark casing and edge, transparent inside (the civ's colour shows through from the mask)`);
-    put(`unit.${u}.mask`, 64, 64, `${u} silhouette in opaque white: tinted in the civ's colour and drawn under the figure`);
+    const at = { ax: UNIT.ax, ay: UNIT.ay };
+    put(`unit.${u}`, UNIT.w, UNIT.h, `${u} figure, standing, its feet at the anchor, transparent outside: cut from the actor study`, at);
+    put(`unit.${u}.mask`, UNIT.w, UNIT.h, `${u} mask: its cloth in grey (the civ's colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the figure`, at);
   }
   row();
   put('icon.capital', 64, 64, "capital: a house with a door, casing and white edge, transparent inside (the civ's colour shows through from the mask)");
@@ -64,6 +139,40 @@ export function layout() {
   put('icon.hearth', 64, 64, 'hearth: a small yellow square with a dark edge');
   put('icon.pass', 64, 64, 'pass: a pale dot with a dark edge');
   put('icon.town', 64, 64, 'town: a white diamond with a dark casing, at the top of a festival tile that several clans live on');
+  row();
+  const piece = (name, note) => put(name, MOUNTAIN.w, MOUNTAIN.h, note, { ax: MOUNTAIN.ax, ay: MOUNTAIN.ay });
+  for (let v = 0; v < 2; v++) piece(`mountain.lone.${v}`, `a lone mountain's peak, variant ${v}: its ground point at the anchor, transparent outside`);
+  for (let v = 0; v < 3; v++) piece(`mountain.peak.${v}`, `a mountain's peak in a range, variant ${v}: its ground point at the anchor, transparent outside`);
+  for (const dir of ['e', 'se', 'sw']) {
+    for (let v = 0; v < 2; v++) piece(`mountain.ridge.${dir}.${v}`, `the ridge across a shared edge in direction ${dir}, variant ${v}: its midpoint at the anchor, transparent outside`);
+  }
+  row();
+  for (let d = 0; d < 6; d++) {
+    for (let v = 0; v < 2; v++) {
+      put(`shore.edge.${d}.${v}`, SHORE.edge.w, SHORE.edge.h, `the bank across hex edge ${d} (EDGE_DIR order), variant ${v}, on the land side: its midpoint at the anchor, transparent outside`, { ax: SHORE.edge.ax, ay: SHORE.edge.ay });
+    }
+  }
+  row();
+  for (let c = 0; c < 6; c++) put(`shore.in.${c}`, SHORE.corner.w, SHORE.corner.h, `the bank at hex vertex ${c}, where water pokes into land: the bank fanned round the vertex, transparent outside`, { ax: SHORE.corner.ax, ay: SHORE.corner.ay });
+  row();
+  for (let c = 0; c < 6; c++) put(`shore.out.${c}`, SHORE.corner.w, SHORE.corner.h, `the bank at hex vertex ${c}, where land pokes into water: the bank of its two edges mitred at the vertex, transparent outside`, { ax: SHORE.corner.ax, ay: SHORE.corner.ay });
+  row();
+  for (const kind of FRINGE) {
+    for (let d = 0; d < 6; d++) {
+      const b = fringeBox(d);
+      for (let v = 0; v < 2; v++) {
+        put(`fringe.${kind}.${d}.${v}`, b.w, b.h, `${kind} along hex edge ${d}, variant ${v}: a ragged strip inside the tile, cut from its ${kind} cell, the hex centre at the anchor, transparent outside`, { ax: TERRAIN_CELL.w / 2 - b.x, ay: TERRAIN_CELL.h / 2 - b.y });
+      }
+    }
+    row();
+  }
+  // The wood and the marsh: a tree stands on its trunk's foot, a reed clump on its base; each cell's ground point is its anchor.
+  const at = (t) => ({ ax: TREE[t].ax, ay: TREE[t].ay });
+  for (let v = 0; v < 3; v++) put(`tree.big.${v}`, TREE.big.w, TREE.big.h, `a full tree in a wood, variant ${v}: its trunk's foot is the ground point, at the anchor, transparent outside`, at('big'));
+  row();
+  for (let v = 0; v < 3; v++) put(`tree.small.${v}`, TREE.small.w, TREE.small.h, `a sapling or small tree at a wood's margin, variant ${v}: its trunk's foot is the ground point, at the anchor, transparent outside`, at('small'));
+  row();
+  for (let v = 0; v < 3; v++) put(`reed.${v}`, TREE.reed.w, TREE.reed.h, `a reed clump on a marsh, variant ${v}: its base is the ground point, at the anchor, transparent outside`, at('reed'));
   row();
   return { width: WIDTH, height: y, cells };
 }
@@ -111,11 +220,74 @@ const ring = (ctx, w, h, r, colour, line, casing) => {
   }
 };
 
+/**
+ * A mountain piece, standing on its anchor (the ground point): a peak is a tall triangle, a ridge two low
+ * triangles along its direction (e: east, se: down to the right, sw: down to the left).
+ */
+const mountainPiece = (ctx, [, kind, dir]) => {
+  const ax = MOUNTAIN.ax, ay = MOUNTAIN.ay;
+  const triangles = [];
+  if (kind === 'ridge') {
+    const [ux, uy] = { e: [1, 0], se: [0.5, Math.sqrt(3) / 2], sw: [-0.5, Math.sqrt(3) / 2] }[dir];
+    for (const s of [-1, 1]) {
+      const bx = ax + s * 60 * ux, by = ay + s * 60 * uy;
+      triangles.push([[bx, by], [ax, ay], [(bx + ax) / 2, (by + ay) / 2 - 50]]);
+    }
+  } else {
+    triangles.push([[ax - 55, ay], [ax + 55, ay], [ax, ay - 90]]);
+  }
+  for (const tri of triangles) {
+    ctx.beginPath();
+    tri.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.fillStyle = TERRAIN_COLOR.mountain;
+    ctx.fill();
+    ctx.strokeStyle = '#3c3a46';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+};
+
+/** A tree placeholder standing on its anchor: a dark green cone on a brown trunk. */
+const treePiece = (ctx, w, h, { ax, ay }) => {
+  const trunkW = 0.1 * w, base = ay - 0.22 * h;
+  ctx.fillStyle = '#5e4128';
+  ctx.fillRect(ax - trunkW / 2, base, trunkW, ay - base);
+  ctx.beginPath();
+  ctx.moveTo(ax, 0.08 * h);
+  ctx.lineTo(ax + 0.4 * w, base);
+  ctx.lineTo(ax - 0.4 * w, base);
+  ctx.closePath();
+  ctx.fillStyle = '#2f6b3a';
+  ctx.fill();
+  ctx.strokeStyle = '#1d3d24';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+};
+
+/** A reed placeholder standing on its anchor: a few upright straw strokes on a dark green base. */
+const reedPiece = (ctx, w, h, { ax, ay }) => {
+  ctx.strokeStyle = '#8c9a3a';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (const [dx, lean, len] of [[-0.3, -0.05, 0.85], [-0.1, 0.04, 1], [0.08, -0.03, 0.9], [0.28, 0.06, 0.7]]) {
+    const x = ax + dx * w;
+    ctx.moveTo(x, ay);
+    ctx.lineTo(x + lean * w, ay - len * h * 0.9);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#3d5a2a';
+  ctx.beginPath();
+  ctx.ellipse(ax, ay - 1, 0.42 * w, 0.06 * h, 0, 0, 2 * Math.PI);
+  ctx.fill();
+};
+
 /** Draws cell `name` into `ctx`, filling (0, 0, w, h); the cell is clear before. */
 export function draw(name, ctx, w, h) {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   const [kind, id] = name.split('.');
+  if (kind === 'shore' || kind === 'fringe') return; // cut from the source: no placeholder
   if (kind === 'terrain') {
     ctx.fillStyle = TERRAIN_COLOR[id];
     hexPath(ctx, w, h, HEX_R * 1.0);
@@ -146,6 +318,8 @@ export function draw(name, ctx, w, h) {
       }
       ctx.stroke();
     }
+  } else if (kind === 'mountain') {
+    mountainPiece(ctx, name.split('.'));
   } else if (name === 'overlay.floodplain') {
     ctx.fillStyle = 'rgba(96,235,70,0.42)';
     hexPath(ctx, w, h, HEX_R * 1.02);
@@ -171,6 +345,10 @@ export function draw(name, ctx, w, h) {
       const ax = next(), ay = next();
       if (Math.abs(ax) * 2 + Math.abs(ay) * 1.6 < 1.3) ctx.fillRect(w / 2 + ax * 1.4 * HEX_R - 3, h / 2 + ay * 1.4 * HEX_R - 3, 6, 6);
     }
+  } else if (kind === 'tree') {
+    treePiece(ctx, w, h, TREE[id]);
+  } else if (kind === 'reed') {
+    reedPiece(ctx, w, h, TREE.reed);
   } else if (kind === 'unit') {
     shield(ctx, w, h);
     if (name.endsWith('.mask')) {
