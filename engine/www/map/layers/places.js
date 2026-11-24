@@ -13,11 +13,22 @@ export const name = 'places';
 /** The places' numbers, in world units unless a note says css px (`view.dpr` turns it into device px). Build-3 tunes them. */
 export const PLACE = {
   w: {
-    town: 1.6, // a town's cell is this many world units wide: the hamlet of thatched huts
-    settlement: 1.8, // a settlement's, the palisade with its flag
-    capital: 2.0, // a capital's, the civic hall on its mound
+    town: 1.9, // a town's cell is this many world units wide: the hamlet of thatched huts
+    settlement: 1.9, // a settlement's, the palisade with its flag
+    capital: 2.4, // a capital's, the civic hall on its mound
   },
-  feet: 0.3, // the cell's anchor (its ground) sits this far below the tile's centre: the place rises into the hex's upper half
+  feet: 0.2, // the cell's anchor (its ground) sits this far below the tile's centre: the place rises into the hex's upper half
+  yard: {
+    // The clans living on a place's tile stand in its yard, in front of it, in rows from the back: so every clan shows and the
+    // place above them does too. Each clan's ground is `y + row * dy` below the tile's centre.
+    y: 0.66, // the back row's ground
+    dy: 0.3, // each row further forward
+    perRow: 5, // clans to a row
+    span: 1.3, // a row's width, its clans spread evenly across it
+    h: 0.58, // a clan's cell is at most this tall in a crowd (a lone clan's: `hLone`)
+    hLone: 0.85, // a lone clan on a place's tile, at most this tall
+    lone: 0.84, // its ground
+  },
   from: 28, // the terrain cell's height in css px below which the places are main's marks: the clans' own zoom (CLAN.from)
 };
 
@@ -29,6 +40,12 @@ export const placesFlat = (view) => {
 
 /** World to canvas (device) px, as the map's transform maps it. */
 const toCanvas = (view, x, y) => [((x - view.cx) * view.k + view.w / 2) * view.dpr, ((y - view.cy) * view.k + view.h / 2) * view.dpr];
+
+/** The tiles whose place is drawn above the flat zoom, so the clans on them stand in its yard: a set. */
+export function yardTiles(model, view) {
+  if (!view.on.places || placesFlat(view)) return new Set();
+  return new Set(placesOn(model, view).map((p) => p.tile));
+}
 
 /** The cloth colour of a place's civ; a town has none. */
 const clothOf = (model, civ) => model.v.civs[civ]?.color ?? '#ccc';

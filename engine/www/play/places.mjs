@@ -2,7 +2,7 @@
 // (PLACE_STATES), the camera between tiles 47 and 140 at k 35 on a laptop. Checks each place on screen is the role its tile
 // holds by the rule (a living capital, else a settlement, else a town: not a list), a capital's and a settlement's cloth
 // nearest its own civ's colour with tinted pixels and a town's none, every clan on a place's tile drawn after the place (the
-// clans layer follows places in LAYERS), a click on the settlement's tile reaching the settlement and each of its clans, and
+// clans layer follows places in LAYERS) and standing in its yard (PLACE.yard: its foot below the tile's centre), a click on the settlement's tile reaching the settlement and each of its clans, and
 // at the flat zoom (a phone at k 5) every place a mark, with each capital's and settlement's house drawn in its civ's colour
 // at its tile. Writes places.png to --out.
 //   node www/play/places.mjs [--out DIR]
@@ -38,7 +38,8 @@ const SNAP = `(() => {
   const rule = (tile) => (capOf.has(tile) ? 'capital' : setOf.has(tile) ? 'settlement' : townSet.has(tile) ? 'town' : null);
   const expected = [...new Set([...capOf.keys(), ...setOf.keys(), ...townSet])].filter((t) => m.onScreen(t)).map((t) => ({ tile: t, role: rule(t) }));
   const probes = m.placeProbe().map((p) => ({ tile: p.tile, role: p.role, civ: p.civ, nearest: p.nearest, tinted: p.tinted }));
-  const clans = m.stats.clans.map((s) => ({ clan: s.clan, home: v.clans[s.clan].home }));
+  const centre = (t) => ((m.py[t] - m.cy) * m.k + m.h / 2) * m.dpr; // a tile's centre row, in canvas px
+  const clans = m.stats.clans.map((s) => ({ clan: s.clan, home: v.clans[s.clan].home, bottom: s.y + s.h, row: centre(v.clans[s.clan].home) }));
   const layers = Object.keys(m.on);
   return {
     places: m.stats.places.map((p) => ({ tile: p.tile, role: p.role, civ: p.civ })),
@@ -80,6 +81,8 @@ try {
   const onPlaces = snap.clans.filter((c) => placeTiles.has(c.home));
   need(snap.order && onPlaces.length > 0 && snap.clans.length > 0 && !snap.flat,
     `the clans layer follows the places layer, and every clan on a place's tile is drawn (${onPlaces.length} clans on ${[...placeTiles].join(', ')})`);
+  const behind = onPlaces.filter((c) => !(c.bottom > c.row));
+  need(onPlaces.length > 0 && behind.length === 0, `every clan on a place's tile stands in its yard, its foot below the tile's centre (${onPlaces.length} clans${behind.length ? `; behind: ${behind.map((c) => c.clan).join(', ')}` : ''})`);
   const drawn = new Set(snap.clans.map((c) => c.clan));
   const missing = (await page.eval('Object.values(game.map.model.v.clans).map((c) => ({ id: c.id, home: c.home }))')).filter((c) => placeTiles.has(c.home) && !drawn.has(c.id));
   need(missing.length === 0, `every clan on a place's tile is in stats.clans (${missing.map((c) => c.id).join(', ') || 'none missing'})`);

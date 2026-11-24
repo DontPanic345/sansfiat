@@ -217,6 +217,16 @@ REGIONS['place.capital'] = {
   note: 'the civic hall on its mound with its houses: its ground point at (1373, 866)',
 };
 
+// The hall's pennant: the study's flag again (the unit flag's pixels, its whole pole) at a place's scale, planted on the
+// roof's right shoulder. The two banners on the hall's front are small at the map's zooms and Gold's vanish against the
+// thatch; the pennant is the capital's cloth in its civ's colour, and stands clear of the town diamond, which covers the
+// roof's peak.
+REGIONS['place.flag'] = {
+  file: 'actors', rect: [1357, 97, 110, 163], keep: [[1357, 97], [1467, 97], [1467, 260], [1357, 260]],
+  key: 'actor', ground: [1372, 106], scale: 0.3,
+  note: "the study's flag at 0.3, its pole's top at (1372, 106): the capital's pennant",
+};
+
 // The grounds the source lacks, as ramps between colours the source has: the tree's dark floor and leaf, the grass,
 // the bank's shaded and lit sand and the water. Each end is a source rectangle's mean.
 const RAMP = {
@@ -372,5 +382,6 @@ const BANNER_RIGHT = [[1424.7, 697.3], [1435.3, 699.3], [1446, 696], [1446.7, 73
 CELLS['place.town'] = { region: 'place.town', ops: [], anchor: PLACE_ANCHOR };
 CELLS['place.settlement'] = { region: 'place.settlement', ops: [], anchor: PLACE_ANCHOR };
 CELLS['place.settlement.mask'] = { region: 'place.settlement', cloth: { 'place.settlement': [FLAG_PLACE] }, ops: [GREY], anchor: PLACE_ANCHOR };
-CELLS['place.capital'] = { region: 'place.capital', ops: [], anchor: PLACE_ANCHOR };
-CELLS['place.capital.mask'] = { region: 'place.capital', cloth: { 'place.capital': [BANNER_LEFT, BANNER_RIGHT] }, ops: [GREY], anchor: PLACE_ANCHOR };
+const HALL_FLAG = { region: 'place.flag', at: [112, 3] };
+CELLS['place.capital'] = { region: 'place.capital', over: [HALL_FLAG], ops: [], anchor: PLACE_ANCHOR };
+CELLS['place.capital.mask'] = { region: 'place.capital', over: [HALL_FLAG], cloth: { 'place.capital': [BANNER_LEFT, BANNER_RIGHT], 'place.flag': [FLAG_CLOTH] }, ops: [GREY], anchor: PLACE_ANCHOR };

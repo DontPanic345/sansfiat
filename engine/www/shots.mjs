@@ -12,12 +12,12 @@
 //   node www/shots.mjs --cull DIR                   each view with an `on` (mountain, shore and wood) twice in one page, the
 //                                                   second with the edge, woods and ridge layers' culling off: DIR/NAME.png
 //                                                   and DIR/NAME-nocull.png; exit 1 unless the two are byte-identical
-//   node www/shots.mjs --time NAME,…                for each named view, five static redraws: each one's stats.terrainMs and
+//   node www/shots.mjs --time NAME,…                for each named view, five redraws: each one's stats.terrainMs and stats.overlayMs (the layers over the terrain, the places among them)
 //                                                   the median; stats.woods where the branch has it (main prints -)
 //   node www/shots.mjs --places DIR                 each view with `places` (the place views): DIR/NAME.png, and per place its tile,
 //                                                   role, civ, whether it reads as a town, its clans, opaque, tinted, mean and nearest
 //                                                   (the places layer's probe), then each view's digest and the count of each role; exit 1
-//                                                   unless every capital and settlement is nearest its own civ and every role is its tile's.
+//                                                   unless every capital and settlement is nearest its own civ and has at least PLACE_BAR[k] tinted pixels, and every role is its tile's.
 //                                                   On main, which has no probe, prints '-'.
 //   node www/shots.mjs --units DIR                  each view with `units` (the unit views): DIR/NAME.png, and per unit its kind,
 //                                                   civ, terrain, opaque and tinted pixels, mean colour and nearest civ (the
@@ -225,10 +225,11 @@ async function cull(view, out) {
 async function time(view) {
   const { page, asked } = await setUp(view);
   try {
-    const r = await page.eval('(() => { const m = game.map, ms = []; for (let i = 0; i < 5; i++) { m.dirty = true; m.drawNow(); ms.push(m.stats.terrainMs); } return { ms, woods: m.stats.woods ?? null }; })()');
+    const r = await page.eval('(() => { const m = game.map, ms = [], ov = []; for (let i = 0; i < 5; i++) { m.dirty = true; m.drawNow(); ms.push(m.stats.terrainMs); ov.push(m.stats.overlayMs); } return { ms, ov, woods: m.stats.woods ?? null }; })()');
     for (const e of page.errors()) throw new Error(`${view.name}: page error: ${e}`);
     const median = [...r.ms].sort((a, b) => a - b)[2];
-    console.log(`${view.name}  tile ${asked.tile}  terrainMs ${r.ms.map((x) => x.toFixed(1)).join(' ')}  median ${median.toFixed(1)}  stats.woods ${r.woods ?? '-'}`);
+    const over = [...r.ov].sort((a, b) => a - b)[2];
+    console.log(`${view.name}  tile ${asked.tile}  terrainMs ${r.ms.map((x) => x.toFixed(1)).join(' ')}  median ${median.toFixed(1)}  overlayMs ${r.ov.map((x) => x.toFixed(1)).join(' ')}  median ${over.toFixed(1)}  stats.woods ${r.woods ?? '-'}`);
   } finally {
     await page.close();
   }
@@ -239,6 +240,10 @@ const TINT_BAR = { 35: 350, 18: 100, 6: 40, 5: 40 };
 
 /** The least tinted pixels a clan's cell has, by the view's zoom (relay/specs/444/views.md). A dot at the flat zoom is main's circle, whole. */
 const CLAN_BAR = { 35: 100, 18: 40 };
+
+/** The least tinted pixels an owned place has (a capital or settlement, drawn as its cell), by the view's zoom: enough that the
+ *  flag or banners' colour shows (relay/specs/445/views.md). A town has none; a mark at the flat zoom is main's house. */
+const PLACE_BAR = { 35: 80, 18: 30 };
 
 /** Shoots a unit view into `out` and prints each unit's probe; false if a unit is nearest another civ's colour. On main,
  *  which has no probe, prints '-' and passes. */
@@ -306,21 +311,29 @@ async function places(view, out) {
       return true;
     }
     let ok = true;
-    const roles = {};
+    const roles = {}, tints = {};
     for (const r of res.rows) {
       // A mark (the flat zoom) is the capital's or settlement's house: its role is the tile's, with no cloth to measure.
       const mark = r.role === 'mark';
       const roleOk = mark ? r.wantRole === 'capital' || r.wantRole === 'settlement' : r.role === r.wantRole;
       const own = mark || (r.role === 'town' ? r.nearest == null : String(r.nearest) === String(r.civ));
-      const cloth = mark || (r.role === 'town' ? r.tinted === 0 : r.tinted > 0);
+      const bar = r.role === 'town' || mark ? 0 : PLACE_BAR[view.k] ?? 0;
+      const cloth = mark || (r.role === 'town' ? r.tinted === 0 : r.tinted > 0 && r.tinted >= bar);
       const fine = roleOk && own && cloth;
       if (!fine) ok = false;
       roles[mark ? 'mark' : r.role] = (roles[mark ? 'mark' : r.role] ?? 0) + 1;
+      if (!mark && r.role !== 'town' && r.opaque) {
+        const t = (tints[r.role] ??= { min: Infinity, shares: [] });
+        t.min = Math.min(t.min, r.tinted);
+        t.shares.push((100 * r.tinted) / r.opaque);
+      }
       const mean = r.mean ? r.mean.map((x) => Math.round(x)).join(',') : '-';
-      const verdict = !roleOk ? `ROLE NOT ITS TILE'S (${r.wantRole ?? 'none'})` : !own ? 'NOT ITS OWN CIV' : !cloth ? 'NO CLOTH AS ITS ROLE GIVES' : 'ok';
-      console.log(`${view.name}  tile ${r.tile}  ${r.role}  civ ${r.civ ?? 'none'}  on ${r.terrain}  reads as a town ${r.reads}  clans ${r.clans.join(',') || '-'}  opaque ${r.opaque}  tinted ${r.tinted}  mean ${mean}  nearest ${r.nearest ?? '-'}  ${verdict}`);
+      const verdict = !roleOk ? `ROLE NOT ITS TILE'S (${r.wantRole ?? 'none'})` : !own ? 'NOT ITS OWN CIV' : !cloth ? (r.tinted && r.role !== 'town' ? `BELOW THE BAR (${bar})` : 'NO CLOTH AS ITS ROLE GIVES') : 'ok';
+      const share = r.opaque ? ((100 * r.tinted) / r.opaque).toFixed(1) : '-';
+      console.log(`${view.name}  tile ${r.tile}  ${r.role}  civ ${r.civ ?? 'none'}  on ${r.terrain}  reads as a town ${r.reads}  clans ${r.clans.join(',') || '-'}  opaque ${r.opaque}  tinted ${r.tinted}  share ${share}%  mean ${mean}  nearest ${r.nearest ?? '-'}  ${verdict}`);
     }
     console.log(`${view.name}  tile ${asked.tile}  digest ${res.digest}  places on screen ${res.onScreen}  roles: ${Object.entries(roles).map(([k, n]) => `${k} ${n}`).join(', ') || 'none'}`);
+    for (const [role, t] of Object.entries(tints)) console.log(`${view.name}  ${role}: least tinted ${t.min}, share ${Math.min(...t.shares).toFixed(1)}–${Math.max(...t.shares).toFixed(1)}%`);
     return ok;
   } finally {
     await page.close();

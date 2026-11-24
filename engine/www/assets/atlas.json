@@ -479,7 +479,7 @@
    "ay": 118,
    "note": "a capital: a civic hall on its mound among its houses, on the ground, its middle at the anchor, transparent outside: cut from the actor study. Cut from place.capital: the civic hall on its mound with its houses: its ground point at (1373, 866)",
    "src": "place.capital",
-   "flat": "#a0774c"
+   "flat": "#a2794e"
   },
   "place.capital.mask": {
    "x": 704,
@@ -490,7 +490,7 @@
    "ay": 118,
    "note": "place.capital mask: its two banners' cloth in grey (the civ's colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the capital. Cut from place.capital (grey): the civic hall on its mound with its houses: its ground point at (1373, 866)",
    "src": "place.capital",
-   "flat": "#ececec"
+   "flat": "#ededed"
   },
   "icon.capital": {
    "x": 0,
