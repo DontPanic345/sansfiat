@@ -1,9 +1,9 @@
 # #446 build-3 (canvas): the illustrated map, fixed and judged beside the pre-art page
 
 Read `relay/specs/446/spec.md` first: the question and its bars, the controls, the decisions, the verify set and "For the
-review". Build-1 left the harness (`www/shots-probe.mjs`: `--hits`, `--pop`, `--overlays`, `--layers`; `--time verify`; the
+review". Build-1 left the harness (`www/shots-probe.mjs`: `--hits`, `--pop`, `--overlays`, `--layers`, `--pan`, `--shift`; `--time verify`; the
 `VERIFY` set and the `POPS` cases in `shots-views.mjs`; `onScreen` honouring `noCull`) and the baseline
-(`relay/specs/446/baseline.md`). Build-2 brought the frame under the bar with no pixel moved (`relay/specs/446/frame.md`).
+(`relay/specs/446/baseline.md`). Build-2 made a pan shift the static layer and brought it under the bar, fresh frames unmoved (`relay/specs/446/frame.md`).
 Your job is what the player sees and clicks. Don't change Rust: nothing under `engine/core`, `engine/cli` or `engine/web`.
 Keep selection, zoom and the flat switch as main has them (`tileAt`, the click cycle, `MAX_K`, `minK`, `CLAN.from`,
 `PLACE.from`): the fixes are in the drawing.
@@ -37,13 +37,13 @@ unless the captures show it fails; then make the smallest change that works and 
 
 - `--out` on the verify set on all three trees (`proto/control.sh`), `--diff` branch against main and against pre-art:
   cameras and digests match. Read the triples by eye; say per view what pre-art, main and the branch show.
-- `--time verify` on the branch and pre-art after your changes: every view within the bar still.
+- `--pan` on the branch and pre-art after your changes: every view within the bar still; `--time verify` no slower than main's. A static layer you change draws a pan's strips as build-2's do.
 - `--hits` and `--pop` before (`baseline.md`) and after.
 - `node www/play/all.mjs` passes.
 
 ## Evidence
 
-- `relay/specs/446/views.md`: per verify view, what each tree shows; the `--hits`, `--pop`, `--time`, `--units`,
+- `relay/specs/446/views.md`: per verify view, what each tree shows; the `--hits`, `--pop`, `--pan`, `--units`,
   `--clans`, `--places` and `--overlays` tables before and after; every change to a layer's table, the atlas or the easel,
   and why.
 - `relay/specs/446/shots/`: `<view>-preart.png`, `<view>-main.png` and `<view>-branch.png` for `medium9-play`,

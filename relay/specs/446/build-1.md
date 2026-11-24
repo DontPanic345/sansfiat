@@ -32,7 +32,19 @@ copies `shots*.mjs`).
   `small2-edge`): `DIR/<view>-<layer>.png`, and the share of pixels it moves by more than 48 in a channel.
 - `node www/shots-probe.mjs --layers [NAME,…]`: `layers-tail.mjs`'s per-static-layer median ms (the verify set by default).
 - `--time` in `shots.mjs` takes `verify` as a name for the whole verify set, and prints each view's median frame
-  (terrain + overlay) as a third number.
+  (terrain + overlay) as a third number. It is the full redraw: what a zoom costs.
+- `node www/shots-probe.mjs --pan [DIR] [NAME,…]` (the verify set by default): the frame a player makes most. Per view,
+  set the camera twelve steps back along a drag of whole css px (say (24, 12) a step, reversed where a step would clamp
+  at the map's rim), draw once, then `game.map.panBy(dx, dy)` and `drawNow()` twelve times, timing each `drawNow` whole
+  with `performance.now()`. Print the median and the slowest frame, and `stats.terrainMs`/`overlayMs` of the last. With
+  `DIR`, write the last frame's canvas as `DIR/<view>.png` and its camera in `DIR/pan.json`. Check on main that the last
+  frame's camera is the view's (`--out`'s `views.json`) and its PNG is `--out`'s byte for byte; if the drag's float sums
+  miss the camera, start the drag from a camera that lands on it exactly. On main and pre-art the pan frame is
+  terrain + overlay; build-2 makes the branch's cheaper, and its proof compares the branch's last frames with main's.
+- `node www/shots-probe.mjs --shift [NAME,…]`: main's own shift noise, the floor build-2's cache is held to. Per view,
+  draw the static layer at the start of `--pan`'s drag and at its end (each a full redraw, `dirty` set), shift the first
+  by the drag's device px, and print the pixels in the overlap that differ, and those that differ by more than 40 in a
+  channel. Spec-review's numbers are in `review.txt`.
 
 ## 2. `www/shots-views.mjs` and `view.js`
 
@@ -47,9 +59,11 @@ branch, `/tmp/main` and `/tmp/preart`:
 
 - `--out` on the verify set; `--diff` branch against main (0% on every view: you changed no drawing) and branch against
   pre-art (cameras and digests match: the table of shares that differ).
-- `--time verify` on all three: each view's median terrain, overlay and frame ms, the ratio to pre-art, and the bar
-  (`max(1.5 × pre-art, 8)`), marking each view over it. Run it twice on the branch and say how far the two runs differ, so
-  build-2 knows the noise.
+- `--pan` on all three, with `DIR` on main: each view's median and slowest pan frame, the ratio to pre-art, and the bar
+  (`max(1.5 × pre-art, 8)`), marking each view over it. Run it twice on the branch and say how far the two runs differ,
+  so build-2 knows the noise.
+- `--time verify` on all three: each view's median terrain, overlay and frame ms, the full redraw.
+- `--shift` on main over the verify set.
 - `--layers` on main and pre-art.
 - `--hits` and `--pop` on the branch (which draws as main). The spec's `hits.txt` and `pop.txt` misses must show; if a
   number differs, say why.
@@ -61,9 +75,10 @@ Each table in `baseline.md`, each command's raw output in a `.txt` beside it.
 
 ## 4. Checks
 
-`engine/CLAUDE.md` is 8,086 bytes against `check.sh`'s 8,192. Name `shots-probe.mjs` and its four modes by folding them into
+`engine/CLAUDE.md` is 8,086 bytes against `check.sh`'s 8,192. Name `shots-probe.mjs` and its six modes by folding them into
 the existing `--units|--clans|--places` line, and tighten a line of your own `shots` rows to pay for it. Run
 `engine/check.sh` whole once before you finish.
 
-Build-2 and build-3 rely on: `--time verify` with the frame column; `--hits` and `--pop` exiting 1 on any miss; `--layers`;
+Build-2 and build-3 rely on: `--pan` (its PNGs remade on `/tmp/main` by whoever compares) and `--shift`, with their
+numbers in `baseline.md` as the before; `--time verify` with the frame column; `--hits` and `--pop` exiting 1 on any miss; `--layers`;
 `control.sh` making both controls; `baseline.md`'s tables as the before.

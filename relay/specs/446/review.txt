@@ -1,0 +1,41 @@
+# #446 spec-review, 2026-11-24, this runner. Main ab15ef9, pre-art 0fd7835's www on main's wasm (proto/control.sh).
+
+## --time on the verify views the spec step didn't time (median ms: T terrain, O overlay; frame = T + O)
+view                  pre-art T  O   frame | main T  O    frame | ratio | bar max(1.5x,8)
+medium9-places-close  0.6  3.2  3.8        | 1.8  4.8   6.6     | 1.7   | 8
+large8-places-close   0.8  3.6  4.4        | 2.4  5.5   7.9     | 1.8   | 8
+medium9-clans-close   0.7  3.2  3.9        | 1.9  4.6   6.5     | 1.7   | 8
+lineup-close          1.0  3.3  4.3        | 1.2  3.7   4.9     | 1.1   | 8
+large8-places-play    4.5  5.7  10.2       | 7.2  10.4  17.6    | 1.7   | 15.3  over
+medium9-units-play    2.7  4.0  6.7        | 5.3  8.0   13.3    | 2.0   | 10.1  over
+medium9-clans-play    3.9  4.1  8.0        | 7.0  8.5   15.5    | 1.9   | 12.0  over
+medium9-woods-near    2.4  5.7  8.1        | 15.6 6.1   21.7    | 2.7   | 12.2  over
+medium9-woods-far     2.7  5.7  8.4        | 13.6 4.4   18.0    | 2.1   | 12.6  over
+medium9-woods-edge    3.5  4.8  8.3        | 12.9 3.5   16.4    | 2.0   | 12.5  over
+medium9-units-edge    1.8  3.1  4.9        | 10.8 2.5   13.3    | 2.7   | 8     over
+medium9-places-edge   2.3  4.0  6.3        | 12.0 3.8   15.8    | 2.5   | 8     over
+medium9-units-flat    1.6  4.2  5.8        | 1.7  4.4   6.1     | 1.1   | 8
+
+## Static layers alone (layers-tail.mjs), median ms
+main     medium9-units-edge k 6: terrain 1.6 edges 7.7 ridges 0.4
+main     medium9-places-edge k 6: terrain 2.9 edges 8.6 ridges 0.4
+main     medium9-woods-edge k 6: terrain 2.7 edges 9.1 ridges 0.4
+main     medium9-woods-near k 12: terrain 2.5 edges 9.3 woods 1.6 ridges 0.4
+main     medium9-woods-far k 11: terrain 3.6 edges 9.7 ridges 0.5
+main     large8-places-play k 18: terrain 3.8 edges 2.9 woods 0.5
+pre-art  medium9-units-edge 1.8, medium9-places-edge 3.8, medium9-woods-near 4.8 (terrain only)
+
+## Where edges.js's time goes (main): pieces drawn of the map's, and the cost of each part
+view                total  drawn  edges ms  drawImage loop, canvases  same, ImageBitmaps  layer with no draws  mean piece px
+medium9-units-edge  3632   2764   7.3       7.3                       6.8                 0.3                  39
+medium9-woods-near  3632   3434   8.5       8.0                       7.8                 0.4                  167
+medium9-play        3632   2321   7.6       7.5                       7.0                 0.6                  366
+large8-play         6952   2450   8.3       7.6                       6.8                 0.8                  349
+small2-play         1775   1639   2.5
+
+The cost is the drawImage call, about 2.7 us each whatever the piece's size. At k 6 to 12 on medium 9, 76 to 95% of the
+pieces are on screen, so culling by tile, caching positions or ImageBitmaps save at most the 0.3-0.8 ms of the loop
+and 0.5 ms of the bitmaps, where medium9-units-edge needs about 5 ms cut and medium9-places-edge about 8. A full redraw
+can't reach the bar with the same draw calls. What can: fewer redraws. A pan moves the camera by whole css px
+(panBy's mouse deltas), so a static layer shifted by whole device px draws the same pixels as main's full redraw at the
+new camera (round(a + n) = round(a) + n), and only the strips the pan uncovers need drawing.
