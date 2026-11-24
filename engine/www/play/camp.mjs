@@ -135,7 +135,13 @@ async function panelChecks(page) {
   need((await page.eval("document.body.dataset.armed")) === '', 'Escape disarms Move to…');
   await page.button('Move to…');
   await page.button('Move to…');
-  need((await page.eval("document.body.dataset.armed")) === '', 'a second press of Move to… disarms it');
+  need((await page.eval("document.body.dataset.armed")) === 'move', 'a second press of Move to… stays armed');
+  const next = await page.eval(`(() => { const m = game.map, t = game.view().units[${camp}].tile;
+    return [...Array(6).keys()].map((d) => m.nb[t * 6 + d]).find((j) => j >= 0 && game.layout().terrain[j] && game.view().civs[${civ}].land.includes(j)); })()`);
+  need(next != null, 'the camp has a free neighbour to march to');
+  await page.click(next);
+  await page.eval(frames);
+  need((await page.eval(`game.view().units[${camp}].dest`)) === next, 'Move to… pressed twice, then a click on a neighbour, sets dest');
 
   // Painting: P and drag paint a zone, U unpaints.
   const nb = await page.eval(`(() => { const m = game.map, t = game.view().units[${camp}].tile, v = game.view();

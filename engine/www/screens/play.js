@@ -7,6 +7,7 @@ import { build } from '../model.js';
 import { Feed } from '../feed.js';
 import { f2, hex, keyOf, tileOf, alive, candidates, describe, subjectOf, tileKind, marketOn, clanRole, unitOrder } from '../panels.js';
 import * as panel from '../panel.js';
+import { flowOf } from '../panels-goods.js';
 import { app } from '../app.js';
 import { autosave } from '../save.js';
 import { legendHtml } from '../legend.js';
@@ -38,6 +39,7 @@ let country = false; // View → Hidden country: the closed-country outlines, th
 /** 'paint', 'unpaint' (a camp's zone), 'claim', 'unclaim' (the player's civ's claim) or null: what a
  *  left press and drag on the map do. */
 let painting = null;
+let good = null; // {store, name}: the store's good whose chains the map shows (a click on its ware row), or null
 
 /** Builds the map, the feed, the pick and the bar, once, before the first screen shows. */
 export function init() {
@@ -217,6 +219,8 @@ function routes() {
   view.setFocus(selected?.kind === 'clan' ? selected.id : selected?.kind === 'tile' ? view.clanAt(selected.tile) : null);
   // A selected festival: its walkers' routes are drawn bright.
   view.setFocusMarket(selected?.kind === 'festival' ? selected.id : null);
+  // The picked good's chains into its store.
+  view.setFlow(flowOf(ctx()));
   const camp = selected?.kind === 'unit' ? v.units[selected.id] : null;
   if (camp?.kind === 'scout') {
     // A scout draws no line: its walk to its store is drawn where an army's line is.
@@ -237,6 +241,19 @@ function routes() {
   } else {
     view.setPlan(null);
   }
+}
+
+/** Picks the store's good `pick` ({store, name}) to show its chains, or clears the pick when it is the one picked. */
+function pickGood(pick) {
+  setGood(good && good.store === pick.store && good.name === pick.name ? null : pick);
+}
+
+/** Sets the picked good (`{store, name}`, or null), and redraws what shows it: the map's flow and the panel's marks. */
+function setGood(next) {
+  good = next;
+  document.body.dataset.good = good ? `${good.store}:${good.name}` : '';
+  if (v) routes();
+  panelDraw();
 }
 
 /** Gives the engine an order; shows why not in #error. Writes the autosave after one that goes through. */
@@ -446,6 +463,7 @@ function showFeed(on) {
 /** Selects `sel` (or nothing). Selecting a subject marks the alerts about it seen. `fromFeed` keeps the
  *  feed's own highlight of the item clicked. */
 function select(sel, { fromFeed = false } = {}) {
+  if (good && keyOf(sel) !== keyOf(selected)) setGood(null);
   const unit = sel?.kind === 'unit' ? sel.id : null;
   // Picking another thing forgets a route being set; the same unit keeps its start.
   if (unit !== routing.unit) resetRouting(unit);
@@ -510,9 +528,10 @@ function panelDraw() {
     run: order,
     arm: (kind) => arm(kind, host()),
     armed: routing.arm,
-    paint: (mode) => setPainting(painting === mode ? null : mode),
+    paint: (mode) => setPainting(mode),
     painting,
     select,
+    pick: pickGood,
     centre: (i) => view.centreOn(i, { minK: 12, smooth: true }),
     redraw: panelDraw,
   });
@@ -614,6 +633,7 @@ function keys(e) {
     if (routing.arm) disarm(host());
     else if (painting) setPainting(null);
     else if (routing.start != null) clearStart(host());
+    else if (good) setGood(null);
     else select(null);
     return;
   }
@@ -634,8 +654,8 @@ function keys(e) {
       else endTurn();
       break;
     case 'h': case 'H': $('v-country').click(); break;
-    case 'p': case 'P': setPainting(painting === 'paint' || painting === 'claim' ? null : 'paint'); break;
-    case 'u': case 'U': setPainting(painting === 'unpaint' || painting === 'unclaim' ? null : 'unpaint'); break;
+    case 'p': case 'P': setPainting('paint'); break;
+    case 'u': case 'U': setPainting('unpaint'); break;
     default: return;
   }
   e.preventDefault();
@@ -755,5 +775,5 @@ function placeTip() {
 /** The ctx the selection panel and the tooltips read the world through. */
 function ctx() {
   const { TERRAIN, GOODS, RULES } = app.data;
-  return { v, model, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome, painting, country };
+  return { v, model, layout, terrain: TERRAIN, goods: GOODS, rules: RULES, sim, view, routing, outcome, painting, country, good };
 }

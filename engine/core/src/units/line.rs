@@ -1,6 +1,6 @@
 //! The army's paths: what a camp may walk, the cheapest path, and the line to a store of its civ
-//! (the capital or a settlement), which is what the camp's food is carried along and whether rival
-//! ground cuts it. `walk` and `turns` are
+//! (the capital or a settlement) or a market (`exchange.rs`), which is what the camp's food is carried
+//! along and whether rival ground cuts it. `walk` and `turns` are
 //! the walking the camp's labour pays for.
 
 use std::cmp::Reverse;
@@ -11,6 +11,7 @@ use crate::actors::{stride, walk_cost, Actor, Carrier};
 use crate::civs;
 use crate::claim;
 use crate::data::*;
+use crate::exchange;
 use crate::land::{grid, neighbours, passable, path, step_cost};
 use crate::market::total;
 use crate::settle;
@@ -62,23 +63,78 @@ pub(super) fn line_by(w: &World, unit: u32, hold: bool) -> Option<(Vec<usize>, f
     line_at(w, unit, w.units.get(&unit)?.home, hold)
 }
 
-/// The line from `from` (`line_by`'s body, for any tile the unit could stand on): to the store of
-/// its civ, capital or settlement, that the cheapest path reaches, among those holding a turn of the
-/// unit's food; with none so stocked, among them all. Ties go to the capital, then the older
-/// settlement.
+/// The line from `from` (`line_by`'s body, for any tile the unit could stand on): to the store of its civ,
+/// capital or settlement, that the cheapest path reaches, among those holding a turn of the unit's food; with
+/// none so stocked, among them all. Ties go to the capital, then the older settlement. The market where its stall
+/// holds food (`exchange::market_end`) ends it instead when the food that line brings a turn, up to a turn of the
+/// unit's eating, is more than the store's line brings, or as much on a cheaper path.
 fn line_at(w: &World, unit: u32, from: usize, hold: bool) -> Option<(Vec<usize>, f64, f64)> {
+    let store = line_among(w, unit, from, hold, &stores(w, unit));
+    let u = w.units.get(&unit)?;
+    let Some((end, food)) = exchange::market_end(w, u) else { return store };
+    let eats = u.people * UNIT.food;
+    let feeds = |held: f64, carry: f64| held.min(carry).min(eats);
+    let mut best = store.map(|(tiles, cost, carry)| {
+        let end = tiles.last().copied().unwrap_or(from);
+        let held = settle::store(w, u.civ, end).map_or(0.0, total);
+        (feeds(held, carry), tiles, cost, carry)
+    });
+    if let Some((tiles, cost, carry)) = line_among(w, unit, from, hold, &[(end, true)]) {
+        let fed = feeds(food, carry);
+        if best.as_ref().is_none_or(|b| fed > b.0 + EPS || (fed + EPS >= b.0 && cost < b.2)) {
+            best = Some((fed, tiles, cost, carry));
+        }
+    }
+    best.map(|(_, tiles, cost, carry)| (tiles, cost, carry))
+}
+
+/// Unit `unit`'s civ's stores, by tile, each with whether it holds a turn of the unit's food.
+fn stores(w: &World, unit: u32) -> Vec<(usize, bool)> {
+    let Some(u) = w.units.get(&unit) else { return Vec::new() };
+    let eats = u.people * UNIT.food;
+    settle::roots(w, u.civ)
+        .into_iter()
+        .map(|s| (s, settle::store(w, u.civ, s).is_some_and(|s| total(s) + EPS >= eats)))
+        .collect()
+}
+
+/// The line to a store of its civ alone, as `line` reads it: the line its pay comes along (`exchange::pay`).
+pub fn store_line(w: &World, unit: u32) -> Option<(Vec<usize>, f64, f64)> {
+    line_among(w, unit, w.units.get(&unit)?.home, true, &stores(w, unit))
+}
+
+/// Each store of unit `unit`'s civ, with the days its line runs to that store alone (`None` when cut
+/// off) and whether it holds a turn of the unit's food: the choice `store_line` makes, read store by
+/// store, through `line_among` so it can't disagree with it.
+pub fn store_choice(w: &World, unit: u32) -> Vec<(usize, Option<f64>, bool)> {
+    let Some(u) = w.units.get(&unit) else { return Vec::new() };
+    stores(w, unit)
+        .into_iter()
+        .map(|(s, stocked)| {
+            let days = line_among(w, unit, u.home, true, &[(s, stocked)]).map(|(_, cost, _)| cost);
+            (s, days, stocked)
+        })
+        .collect()
+}
+
+/// Whether a line of civ `civ` may cross tile `i`, reading held ground: walkable, and no rival's.
+pub fn may_cross(w: &World, civ: u32, i: usize) -> bool {
+    walkable(w, i) && civs::holder(w, i).is_none_or(|c| c == civ)
+}
+
+/// The line from `from` to the cheapest of `ends` that holds a turn of the unit's food (the flag), or with none
+/// so stocked, of them all.
+fn line_among(w: &World, unit: u32, from: usize, hold: bool, ends: &[(usize, bool)]) -> Option<(Vec<usize>, f64, f64)> {
     let u = w.units.get(&unit)?;
     w.civs.get(&u.civ).filter(|c| !c.is_out())?;
     let civ_of = |i| if hold { civs::holder(w, i) } else { civs::tile_civ(w, i) };
-    let eats = u.people * UNIT.food;
     let mut best: Option<(bool, f64, Vec<usize>)> = None;
-    for store in settle::roots(w, u.civ) {
-        let stocked = settle::store(w, u.civ, store).is_some_and(|s| total(s) + EPS >= eats);
+    for &(end, stocked) in ends {
         if best.as_ref().is_some_and(|b| b.0 && !stocked) {
             continue;
         }
         let Some((tiles, cost)) =
-            path(w, from, store, |i| walkable(w, i) && (i == store || civ_of(i).is_none_or(|c| c == u.civ)))
+            path(w, from, end, |i| walkable(w, i) && (i == end || civ_of(i).is_none_or(|c| c == u.civ)))
         else {
             continue;
         };
@@ -93,9 +149,9 @@ fn line_at(w: &World, unit: u32, from: usize, hold: bool) -> Option<(Vec<usize>,
     Some((tiles, cost, carry))
 }
 
-/// The store unit `unit`'s line ends at, by its tile: where it stands when the line is empty.
+/// The store unit `unit`'s line home ends at, by its tile: where it stands when the line is empty.
 pub fn store_of(w: &World, unit: u32) -> Option<usize> {
-    let (tiles, _, _) = line(w, unit)?;
+    let (tiles, _, _) = store_line(w, unit)?;
     tiles.last().copied().or_else(|| w.units.get(&unit).map(|u| u.home))
 }
 

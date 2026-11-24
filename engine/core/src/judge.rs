@@ -162,6 +162,8 @@ pub struct Watch {
     settling: crate::judge_settling::Settling,
     /// Salt and obsidian (`judge_goods`).
     goods: crate::judge_goods::Goods,
+    /// Who trades with whom (`judge_trade`).
+    trade: crate::judge_trade::Trade,
 }
 
 impl Watch {
@@ -202,6 +204,7 @@ impl Watch {
             settle: crate::judge_settle::Settle::pick(w),
             settling: crate::judge_settling::Settling::pick(w),
             goods: crate::judge_goods::Goods::pick(w),
+            trade: crate::judge_trade::Trade::pick(w),
         }
     }
 
@@ -279,6 +282,7 @@ impl Watch {
         self.settle.turn(w);
         self.settling.turn(w);
         self.goods.turn(w);
+        self.trade.turn(w);
 
         let now = self.turns();
         let mut festival = BTreeMap::new();
@@ -443,6 +447,7 @@ impl Watch {
             settle: self.settle.scores(),
             settling: self.settling.scores(),
             goods: self.goods.scores(),
+            trade: self.trade.scores(),
             end: self.end_scores(w),
         }
     }

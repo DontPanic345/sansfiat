@@ -9,7 +9,8 @@
 // cap}]}} (opens a count in the row, with Go and Cancel). A button the kind can't take is left out of the shape.
 //
 // A list row selects its `select`, or centres the map on its tile `centre`. `hooks`: {check(action) -> reason or '',
-// run(action), arm(kind), armed, paint(mode), painting, select(sel), centre(tile)}.
+// run(action), arm(kind), armed, paint(mode), painting, select(sel), centre(tile), pick({store, name})}.
+// A number row with `pick` is a button that picks that good (`picked` marks it); an action with `why` is greyed with it.
 
 const TAG = (tag, props = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -63,9 +64,12 @@ export function render(slot, shape, hooks) {
       TAG(
         'div',
         { class: 'numbers' },
-        shape.numbers.map((n) =>
-          TAG('span', { class: 'num', title: n.tip || null }, TAG('span', { class: 'dim', text: n.label }), ' ', TAG('b', { text: String(n.value) })),
-        ),
+        shape.numbers.map((n) => {
+          const label = [TAG('span', { class: 'dim', text: n.label }), ' ', TAG('b', { text: String(n.value) })];
+          // A row that picks (a store's ware): a button, its state marked.
+          if (!n.pick) return TAG('span', { class: 'num', title: n.tip || null }, ...label);
+          return TAG('button', { type: 'button', class: `num pick${n.picked ? ' picked' : ''}`, title: n.tip || null, 'aria-pressed': String(!!n.picked), onclick: () => hooks.pick(n.pick) }, ...label);
+        }),
       ),
     );
   }
@@ -104,7 +108,7 @@ export function render(slot, shape, hooks) {
     } else if (b.paint) {
       row.append(TAG('button', { type: 'button', text: b.label, 'aria-pressed': String(hooks.painting === b.paint), onclick: () => hooks.paint(b.paint) }));
     } else if (b.action) {
-      const why = hooks.check(JSON.stringify(b.action));
+      const why = b.why ?? hooks.check(JSON.stringify(b.action));
       if (why) refused.push(`${b.label}: ${why}`);
       row.append(TAG('button', { type: 'button', text: b.label, disabled: why !== '', title: why || null, onclick: () => hooks.run(b.action) }));
     } else if (b.stepper) {

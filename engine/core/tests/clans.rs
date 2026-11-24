@@ -1,7 +1,9 @@
 mod common;
 
 use common::{at, check_territories, flat, out, put, steps, total};
-use engine::clans::{adjust, eat, growth, harvest, nutrition, reap, site_value, surplus, value, walks};
+use engine::clans::{
+    adjust, child_days, crowding, eat, growth, harvest, nutrition, reap, site_value, surplus, value, walks,
+};
 use engine::data::*;
 use engine::land::neighbours;
 use engine::map::{landmasses, Country};
@@ -112,7 +114,7 @@ fn reaping_keeps_to_labour_stock_and_target_on_real_maps() {
                         .takes;
                 let food = total(&std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum()));
                 let labour = (pop * CLAN.work - c.trip()).max(0.0);
-                assert!(CLAN.harvest_labour * food <= labour + EPS);
+                assert!(CLAN.harvest_labour * food <= labour * engine::actors::tool_edge(&store, pop) + EPS);
                 assert!(food <= (CLAN.surplus_target * pop - total(&store)).max(0.0) + EPS);
                 for (&i, t) in c.territory.iter().zip(&takes) {
                     for (x, s) in t.iter().zip(&w.tiles[i].stock) {
@@ -212,7 +214,7 @@ fn a_clan_grows_on_its_harvest_beyond_need() {
         let c = &w.clans[&1];
         let s = surplus(&b, P);
         assert!((s - CLAN.excess_value * extra * P / 10.0).abs() < EPS);
-        let want = P * (1.0 + growth(6) * (s / (CLAN.grow_full * P)).min(1.0));
+        let want = P * (1.0 + growth(false) * (s / (CLAN.grow_full * P)).min(1.0));
         assert!(c.fed && (c.people - want).abs() < EPS, "{extra}: {} vs {want}", c.people);
         assert!(c.people > P);
     }
@@ -326,7 +328,7 @@ fn a_big_clan_divides_its_land() {
     c.harvest = c.basket;
     c.since = 5;
     let s = surplus(&c.harvest, CLAN.split_at);
-    let pop = CLAN.split_at * (1.0 + growth(6) * (s / (CLAN.grow_full * CLAN.split_at)).min(1.0));
+    let pop = CLAN.split_at * (1.0 + growth(false) * (s / (CLAN.grow_full * CLAN.split_at)).min(1.0));
     let store: f64 = 3.0 * (10.0 - CLAN.diet_share * CLAN.split_at) * (1.0 - GOOD[GRAIN].spoil);
     eat(&mut w);
     assert_eq!(w.clans.len(), 2);
@@ -354,7 +356,8 @@ fn a_starving_clan_sends_a_daughter_only_where_she_would_be_fed() {
         let id = put(&mut w, &[o], 9.0);
         // 70% fed: starving, but still at least `hungry_split` after shrinking.
         w.clans.get_mut(&id).unwrap().basket = [3.6, 2.7, 0.0, 0.0, 0.0, 0.0, 0.0];
-        let pop = 9.0 * (1.0 - CLAN.starve * (1.0 - 0.7 / CLAN.stable_at));
+        // Nine on one tile are a little crowded.
+        let pop = 9.0 * (1.0 - CLAN.starve * (1.0 - 0.7 / CLAN.stable_at)) * (1.0 - crowding(9.0));
         assert!(pop >= CLAN.hungry_split);
         eat(&mut w);
         let total_pop: f64 = w.clans.values().map(|c| c.people).sum();
@@ -379,4 +382,60 @@ fn clans_spread() {
     let mut w = World::new(Config { seed: 1, radius: 16, army: true, gifts: true, zone: true, ..Config::default() });
     w.run(300);
     assert!(w.clans.len() > 10, "{} clans", w.clans.len());
+}
+
+/// A clan of `P` on `home` in a flat world, fed with a surplus that grows it at the full rate.
+fn grower(w: &mut World, home: usize, settled: bool) -> u32 {
+    let id = put(w, &[home], P);
+    let c = w.clans.get_mut(&id).unwrap();
+    c.basket = per([10.0, 10.0, 10.0, 0.0, 0.0, 0.0, 0.0]);
+    c.harvest = c.basket;
+    c.settled = settled;
+    id
+}
+
+#[test]
+fn a_settled_clan_grows_faster_than_a_gathering_one_and_a_gathering_child_costs_more_days() {
+    let mut w = flat();
+    let (g, s) = (grower(&mut w, at(0, 0), false), grower(&mut w, at(0, 3), true));
+    eat(&mut w);
+    assert!(growth(false) < growth(true));
+    for (id, settled) in [(g, false), (s, true)] {
+        let c = &w.clans[&id];
+        assert!(c.fed && (c.born - P * growth(settled)).abs() < EPS && (c.people - P - c.born).abs() < EPS);
+        assert!((c.nursing - c.born * child_days(settled)).abs() < EPS, "a child costs days");
+    }
+    assert!(child_days(false) > child_days(true), "a gathering clan carries its children on its walks");
+}
+
+#[test]
+fn a_childs_days_come_out_of_the_next_harvest_as_a_routes_do() {
+    let mut w = flat();
+    let tiles = [at(0, 0), out(0, 1), out(1, 1)];
+    let id = put(&mut w, &tiles, P);
+    let c = &w.clans[&id];
+    let (_, yearly) = walks(&w, c.home, &c.territory);
+    let all = |nursing: f64| -> f64 {
+        let (work, _, _, _, _) =
+            engine::fields::jobs(&w, P, &[], &c.territory, &yearly, 0.0, &[true; 3], false, nursing);
+        work.iter().sum()
+    };
+    let days = 2.0 * DAY;
+    assert!((all(0.0) - all(days) - days).abs() < EPS, "{} {}", all(0.0), all(days));
+}
+
+#[test]
+fn crowding_kills_a_share_rising_with_the_people_on_the_home_tile_and_a_lone_clan_none() {
+    let mut w = flat();
+    let lone = grower(&mut w, at(0, 3), false);
+    let town: Vec<u32> = (0..10).map(|_| grower(&mut w, at(0, 0), true)).collect();
+    let few: Vec<u32> = (0..4).map(|_| grower(&mut w, out(3, 3), true)).collect();
+    eat(&mut w);
+    assert_eq!(w.clans[&lone].crowded, 0.0, "a lone clan loses none");
+    let share = |id: u32| w.clans[&id].crowded / P;
+    assert!((share(town[0]) - crowding(10.0 * P)).abs() < EPS && (share(few[0]) - crowding(4.0 * P)).abs() < EPS);
+    assert!(share(town[0]) > share(few[0]) && share(few[0]) > 0.0);
+    // Fed or not, and it is not starving.
+    let c = &w.clans[&town[0]];
+    assert!(c.fed && !c.starving && (c.people - (P + c.born - c.crowded)).abs() < EPS);
 }

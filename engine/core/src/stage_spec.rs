@@ -3,7 +3,8 @@
 
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::data::{GOODS, N};
+use crate::data::{GOODS, N, OBSIDIAN, SALT};
+use crate::lots::Lots;
 use crate::stage::Stage;
 use crate::units;
 
@@ -118,9 +119,9 @@ pub struct ScoutSpec {
     pub dest: Option<TileRef>,
 }
 
-/// A civ's store set to `food` grain when the stage is built (its other goods are dropped). With
-/// `every_turn`, the stage's hand keeps it at `food` before every turn: the runner reads that, not
-/// `from_spec`.
+/// A civ's store set to `food` grain when the stage is built (its other goods are dropped), with `salt` and
+/// `obsidian` (each dug at the stage's first source of it, so its lots have a source). With `every_turn`, the
+/// stage's hand keeps it at `food` before every turn: the runner reads that, not `from_spec`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoreSpec {
@@ -128,6 +129,10 @@ pub struct StoreSpec {
     pub food: f64,
     #[serde(default)]
     pub every_turn: bool,
+    #[serde(default)]
+    pub salt: f64,
+    #[serde(default)]
+    pub obsidian: f64,
 }
 
 /// A stage's data form: one JSON object builds the same stage in the CLI, the tests and the page.
@@ -295,6 +300,14 @@ impl Stage {
             let c = stage.world.civs.get_mut(&civ).expect("the civ");
             c.actor.store = [0.0; N];
             c.actor.store[1] = st.food;
+            c.actor.lots = Lots::default();
+            for (g, amount) in [(SALT, st.salt), (OBSIDIAN, st.obsidian)] {
+                let source = stage.world.tiles.iter().position(|t| t.source == Some(g));
+                if let (true, Some(source)) = (amount > 0.0, source) {
+                    c.actor.store[g] = amount;
+                    c.actor.lots.mix(g, 0.0, amount, &Lots::dug(g, source));
+                }
+            }
         }
         Ok(stage)
     }

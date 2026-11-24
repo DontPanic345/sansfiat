@@ -44,6 +44,11 @@ export function build(sim, layout, rules) {
   const walkers = new Map(Object.values(v.markets).map((m) => [m.id, m.clans]));
   const mine = v.player != null ? Object.values(v.units).filter((u) => u.civ === v.player) : [];
 
+  // Each store (the capital of a civ, or a settlement) by its tile, with its lots (`lots.rs`).
+  const lotsAt = new Map();
+  for (const c of civs) if (c.capital != null) lotsAt.set(c.capital, c.lots ?? []);
+  for (const s of v.settlements ?? []) lotsAt.set(s.tile, s.lots ?? []);
+
   const claimOf = new Map(v.claims);
   // Each tile a clan works as fields this turn: its clan, field days and grain.
   const fieldOf = new Map();
@@ -61,6 +66,17 @@ export function build(sim, layout, rules) {
     leader,
     walkers,
     mine,
+    /** Good `g` (an index into `goods()`) in the store at tile `i`, as its chains: one per lot, `{share, path}`,
+     *  where `path` is the tiles it went through, from its source, through the tile of each market it changed
+     *  hands at, to the store. Empty for no store at `i` or no lot of `g`. */
+    chainsOf(i, g) {
+      return (lotsAt.get(i) ?? [])
+        .filter((l) => l.good === g)
+        .map((l) => ({
+          share: l.share,
+          path: [l.source, ...l.markets.map((m) => v.markets[m]?.tile).filter((t) => t != null), i],
+        }));
+    },
     /** The clan whose territory holds tile `i`, or null. */
     clanAt: (i) => claimOf.get(i) || null,
     /** The field work on tile `i` this turn, `{clan, days, grain}`, or null. */

@@ -20,6 +20,10 @@ pub(crate) fn digest(args: &[String]) -> Result<(), String> {
             state = true;
             continue;
         }
+        if flag == "--no-exchange" {
+            config.exchange = false;
+            continue;
+        }
         if flag == "--game" {
             game = Some(it.next().ok_or(format!("--game needs a file\n{USAGE}"))?.clone());
             continue;

@@ -6,6 +6,7 @@
 // `start` opens the page (QUERY defaults to "?size=small&seed=2&run=1"), writes its port to D/port (D defaults to
 // /tmp/sansfiat-live) and stays up until `stop`. A Relay session starts it with run_in_background. Commands:
 //   look | lead NAME|watch | click T | right T | drag T1 T2 | key NAME | button LABEL | tip T|SELECTOR
+//   (a bar's chip is a button by its civ's name: `button NAME` selects that civ, as its chip does)
 //   stepper LABEL N [OPTION] [go] | end [N] | shot NAME [SCALE] | save FILE | load FILE | stop
 // A tile T is `q,r` as the panel and tooltip write it, a tile index (the text view's), or `@x,y[,SCALE]` in a screenshot's
 // pixels (SCALE is that shot's, 0.5 by default). After each command it prints the turn, the Standing, the panel, the feed
@@ -142,7 +143,9 @@ async function serve(query) {
       const t = label.join(' ');
       // A fold's heading (the legend's) is pressed as a button is.
       const fold = await page.eval(`(() => { const s = [...document.querySelectorAll('summary')].find((s) => s.offsetParent && s.textContent.trim().replace(/^[▶▼]\\s*/, '') === ${JSON.stringify(t)}); if (s) s.click(); return !!s; })()`);
-      if (!fold) await page.button(t);
+      // A bar's chip is named by its civ, and a click on it selects the civ.
+      const chip = fold ? false : await page.eval(`(() => { const c = [...document.querySelectorAll('#chips .chip')].find((c) => c.offsetParent && c.querySelector('b')?.textContent === ${JSON.stringify(t)}); if (c) c.click(); return !!c; })()`);
+      if (!fold && !chip) await page.button(t);
     },
     stepper: async ([label, n = '1', ...rest]) => {
       const go = rest[rest.length - 1] === 'go';

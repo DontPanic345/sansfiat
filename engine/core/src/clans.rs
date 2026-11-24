@@ -15,6 +15,7 @@ use crate::events::{Event, EventKind};
 use crate::fields;
 use crate::homes;
 use crate::land::{neighbours, passable};
+use crate::lots::Lots;
 use crate::map::{self, Country};
 use crate::market::{sum, total, Basket};
 use crate::rng::{rand, rand_index};
@@ -38,6 +39,10 @@ pub struct Clan {
     pub since: u32,
     /// What its walks inside its territory cost this turn.
     pub walk: f64,
+    /// The people who walk its festival route this turn (`markets::Load`): its route's cost is the walk
+    /// there and back times them.
+    #[serde(default)]
+    pub walkers: f64,
     /// The civ it belongs to, once founding has made civs; its daughters belong too.
     pub civ: Option<u32>,
     /// How far an unaligned clan leans towards each civ (civ id to leaning); empty once it
@@ -65,12 +70,20 @@ pub struct Clan {
     /// reads it next turn, to leave the other clans their share of the ground.
     #[serde(default)]
     pub sown: Vec<(usize, f64)>,
-    /// Whether it has settled (`settling.rs`): a reading no rule reads.
+    /// Whether it has settled (`settling.rs`): its growth reads it (`growth`).
     #[serde(default, skip_serializing_if = "crate::towns::is_false")]
     pub settled: bool,
     /// Turns in a row its field share has stood past the line that would change `settled`.
     #[serde(default, skip_serializing_if = "crate::settling::is_zero")]
     pub settle_run: u32,
+    /// The days this turn's children cost it, out of its next harvest's labour (`CLAN.child_days`).
+    #[serde(default, skip_serializing_if = "crate::settling::is_none")]
+    pub nursing: f64,
+    /// People born to it, and people it lost to crowding, this turn (`eat`): the judge's readings.
+    #[serde(skip)]
+    pub born: f64,
+    #[serde(skip)]
+    pub crowded: f64,
 }
 
 impl Deref for Clan {
@@ -141,6 +154,7 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         hungry: 0,
         since: 0,
         walk: 0.0,
+        walkers: 0.0,
         civ: None,
         leaning: BTreeMap::new(),
         gifts: BTreeMap::new(),
@@ -151,6 +165,9 @@ pub fn new_clan(id: u32, home: usize, people: f64) -> Clan {
         sown: Vec::new(),
         settled: false,
         settle_run: 0,
+        nursing: 0.0,
+        born: 0.0,
+        crowded: 0.0,
     }
 }
 
@@ -176,6 +193,8 @@ pub struct Reaped {
     /// What its source job gathered, by good. `reap` caps it at what the clan holds (`SOURCE.hold`);
     /// `reap_within` gives what the days would.
     pub dug: Basket,
+    /// Where `dug` was dug: (tile, good, amount), after `reap`'s cap.
+    pub dug_at: Vec<(usize, usize, f64)>,
     /// Gathered food per tile, taken from its stock: what `harvest` takes and what `wear` sees.
     pub takes: Vec<Basket>,
     /// Field grain per tile, drawn from no stock.
@@ -187,7 +206,7 @@ pub struct Reaped {
 impl Reaped {
     /// Nothing reaped from `n` tiles.
     pub fn empty(n: usize) -> Reaped {
-        Reaped { dug: [0.0; N], takes: vec![[0.0; N]; n], grain: vec![0.0; n], days: vec![0.0; n] }
+        Reaped { dug: [0.0; N], dug_at: Vec::new(), takes: vec![[0.0; N]; n], grain: vec![0.0; n], days: vec![0.0; n] }
     }
 
     /// The whole harvest: gathered food and field grain.
@@ -201,7 +220,7 @@ impl Reaped {
 /// What clan `id` with `people` and `store`, paying `routes`, would reap from each tile of `tiles` this
 /// turn with `yearly` walks and `fields` of their days on the field job (`fields::jobs`): their gathering
 /// labour divided over the tiles that `gathers` marks, each tile's take taking its foods in proportion to
-/// stock at `harvest_labour` a unit, up to `take_rate` of the stock; and each field tile's days
+/// stock at `harvest_labour` a unit (less by its tools, `actors::tool_edge`), up to `take_rate` of the stock; and each field tile's days
 /// (`fields::sow`, capped at the room `fields::room` leaves `id`) taking their grain. Then gathering and
 /// field grain together come to at most `surplus_target × people` less the store, by one factor on every
 /// tile. Fields count only once `fields::open`.
@@ -219,16 +238,22 @@ pub fn reap(
 ) -> Reaped {
     let budget = (CLAN.surplus_target * people - total(store)).max(0.0);
     let fields = if fields::open(w) { fields } else { 0.0 };
-    let mut reaped = reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget);
+    let edge = actors::tool_edge(store, people);
+    let mut reaped = reap_within(w, id, people, routes, tiles, yearly, fields, gathers, budget, edge);
     // A clan gathers a source's good only up to what it holds of it (`SOURCE.hold`).
-    for g in 0..N {
-        reaped.dug[g] = reaped.dug[g].min((SOURCE.hold * people - store[g]).max(0.0));
+    for (g, have) in store.iter().enumerate() {
+        let held = reaped.dug[g].min((SOURCE.hold * people - have).max(0.0));
+        let scale = if reaped.dug[g] > 0.0 { held / reaped.dug[g] } else { 0.0 };
+        for d in reaped.dug_at.iter_mut().filter(|d| d.1 == g) {
+            d.2 *= scale;
+        }
+        reaped.dug[g] = held;
     }
     reaped
 }
 
 /// `reap` within `budget`: gathering and field grain together come to at most `budget`, by one factor
-/// on every tile.
+/// on every tile. Gathering labour counts `edge` times over (its tools).
 #[allow(clippy::too_many_arguments)]
 fn reap_within(
     w: &World,
@@ -240,10 +265,12 @@ fn reap_within(
     fields: f64,
     gathers: &[bool],
     budget: f64,
+    edge: f64,
 ) -> Reaped {
     // A starving clan leaves its sources: every day goes on food.
     let dig = !w.clans.get(&id).is_some_and(|c| c.starving);
-    let (work, field, fk, dug) = fields::jobs(w, people, routes, tiles, yearly, fields, gathers, dig);
+    let nursing = w.clans.get(&id).map_or(0.0, |c| c.nursing);
+    let (work, field, fk, dug, dug_at) = fields::jobs(w, people, routes, tiles, yearly, fields, gathers, dig, nursing);
     let mut takes: Vec<Basket> = Vec::with_capacity(tiles.len());
     let mut total = 0.0;
     for (&t, &labour) in tiles.iter().zip(&work) {
@@ -253,7 +280,7 @@ fn reap_within(
             takes.push([0.0; N]);
             continue;
         }
-        let amount = (labour / CLAN.harvest_labour).min(CLAN.take_rate * held);
+        let amount = (labour * edge / CLAN.harvest_labour).min(CLAN.take_rate * held);
         total += amount;
         takes.push(stock.map(|s| amount * s / held));
     }
@@ -275,7 +302,7 @@ fn reap_within(
             *g *= scale;
         }
     }
-    Reaped { dug, takes, grain, days }
+    Reaped { dug, dug_at, takes, grain, days }
 }
 
 /// Whether `territory` would harvest the clan's whole target this turn (`reap` scaled down to
@@ -314,7 +341,7 @@ pub(crate) fn worth(
     let food = reaped.food();
     // What its sources would give, whatever it holds, reckoned in food (`SOURCE.worth`).
     let could = if w.config.goods {
-        reap_within(w, id, people, routes, territory, &yearly, 0.0, &gathers, 0.0).dug.iter().sum::<f64>()
+        reap_within(w, id, people, routes, territory, &yearly, 0.0, &gathers, 0.0, 1.0).dug.iter().sum::<f64>()
     } else {
         0.0
     };
@@ -338,7 +365,8 @@ pub(crate) fn could_reap(
     let (_, yearly) = walks(w, home, territory);
     let gathers = reckoned(w, id, territory);
     let fields = if fields::open(w) { fields } else { 0.0 };
-    let reaped = reap_within(w, id, people, routes, territory, &yearly, fields, &gathers, f64::INFINITY);
+    let edge = actors::tool_edge(store, people);
+    let reaped = reap_within(w, id, people, routes, territory, &yearly, fields, &gathers, f64::INFINITY, edge);
     let food = reaped.food();
     (nutrition(&std::array::from_fn(|f| store[f] + food[f]), people) + SOURCE.worth * reaped.dug.iter().sum::<f64>())
         / people
@@ -429,12 +457,22 @@ pub fn harvest(w: &mut World) {
         }
         let c = &w.clans[&id];
         let (routes, home, people) = (c.routes.clone(), c.home, c.people);
+        let exchange = w.config.exchange;
         actors::add_traffic(w, home, people, &walks, &routes);
         let food = reaped.food();
         let c = w.clans.get_mut(&id).unwrap();
         c.walk = yearly.iter().sum();
         c.harvest = food;
+        actors::wear_tools(&mut c.actor.store, people);
         c.basket = std::array::from_fn(|f| c.store[f] + food[f] + reaped.dug[f]);
+        if exchange {
+            // Each source's dig arrives in the clan's one place for its wares.
+            let mut held = c.store;
+            for &(tile, g, amount) in &reaped.dug_at {
+                c.actor.lots.mix(g, held[g], amount, &Lots::dug(g, tile));
+                held[g] += amount;
+            }
+        }
         c.store = [0.0; N];
         c.sown = sown;
     }
@@ -451,6 +489,12 @@ pub fn surplus(harvest: &Basket, people: f64) -> f64 {
 pub fn eat(w: &mut World) {
     let mut dead = Vec::new();
     let mut starving = Vec::new();
+    let mut crowds = Vec::new();
+    // The people living on each home tile, before anyone grows or dies this turn.
+    let mut crowd: BTreeMap<usize, f64> = BTreeMap::new();
+    for c in w.clans.values() {
+        *crowd.entry(c.home).or_default() += c.people;
+    }
     for c in w.clans.values_mut() {
         let was_starving = c.starving;
         let need = c.people;
@@ -468,15 +512,26 @@ pub fn eat(w: &mut World) {
         }
         c.hungry = if c.starving { c.hungry + 1 } else { 0 };
         c.since += 1;
+        c.born = 0.0;
         if c.fed {
             let full = (surplus(&c.harvest, need) / (CLAN.grow_full * need)).min(1.0);
-            c.people *= 1.0 + growth(c.since) * full;
+            c.born = c.people * growth(c.settled) * full;
         } else if c.starving {
             c.people *= 1.0 - CLAN.starve * (1.0 - c.fed_ratio / CLAN.stable_at);
         }
+        let crowded = crowding(crowd[&c.home]);
+        c.crowded = c.people * crowded;
+        if crowded >= 0.005 {
+            crowds.push((c.id, crowded, crowd[&c.home]));
+        }
+        c.people += c.born - c.crowded;
+        c.nursing = c.born * child_days(c.settled);
         if c.people < 1.0 {
             dead.push(c.id);
         }
+    }
+    for (id, share, people) in crowds {
+        w.note(id, format!("loses {:.1}% of its people to crowding: {people:.0} live on its home tile", share * 100.0));
     }
     for (id, home, fed, short) in starving {
         w.emit(Event::new(EventKind::ClanStarving, home).clan(id));
@@ -511,9 +566,28 @@ pub(crate) fn free(w: &mut World, id: u32, tiles: &[usize]) {
     }
 }
 
-/// The most a fed clan grows a turn, from just moved to settled over `settle_turns`.
-pub fn growth(since: u32) -> f64 {
-    CLAN.growth.0 + (CLAN.growth.1 - CLAN.growth.0) * (since as f64 / CLAN.settle_turns as f64).min(1.0)
+/// The most a fed clan grows a turn, a share of its people: less for a gathering clan than a settled one.
+pub fn growth(settled: bool) -> f64 {
+    if settled {
+        CLAN.growth.1
+    } else {
+        CLAN.growth.0
+    }
+}
+
+/// The days a child costs a clan in its next harvest (`CLAN.child_days`): more for a gathering clan.
+pub fn child_days(settled: bool) -> f64 {
+    if settled {
+        CLAN.child_days.1
+    } else {
+        CLAN.child_days.0
+    }
+}
+
+/// The share of its people a clan loses to crowding this turn, with `people` living on its home tile.
+pub fn crowding(people: f64) -> f64 {
+    let r = (people - CLAN.split_at).max(0.0) / CLAN.crowd_at;
+    (CLAN.crowd_rate * r * r).min(CLAN.crowd_most)
 }
 
 /// Tiles within `steps` steps of home over passable land, held by nobody and not a home, in tile order.

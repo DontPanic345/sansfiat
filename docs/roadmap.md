@@ -67,6 +67,12 @@ drafted.
 Then beer, from grain: a good that isn't eaten, which draws clans to a feast and feeds people
 put to a work. Vision: `design/goods.md`.
 
+Jobs and trade: a clan's days split into named jobs (gathering, fields, digging, trading),
+each a share of its people with a place, the shares following what each job returns a day.
+Trading is a route between two markets that carries the clan's spare wares out and what it
+values more back, and produces nothing; a clan that trades with all its people is a trader.
+Its route is cut as a line is. Vision: `design/clans.md`, `design/actors.md`.
+
 Technology as drift (`design/technology.md`): knacks that grow by practice, luck and contact,
 so an advantage leaks and lagging is a strategy. The camel is one: a knack that turns up
 among clans at a desert's edge and spreads. You play: a civ that lags on purpose and

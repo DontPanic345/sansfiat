@@ -1,6 +1,7 @@
 //! Settling in the judge: the settled clans and their people at +100 and +200, by civ and unaligned, and
 //! over every turn past the pick how often a clan settles and goes back (`ClanSettled`, `ClanGathers`),
-//! with the clan-turns they are read against and the clans that changed more than once. The world is
+//! with the clan-turns they are read against and the clans that changed more than once; and the people
+//! born to settled and to gathering clans a person a turn, and the people crowding killed. The world is
 //! only read.
 
 use std::collections::BTreeMap;
@@ -28,6 +29,14 @@ pub struct SettledCiv {
     pub goes_back: u32,
     /// Clan-turns past the pick, the changes' denominator.
     pub clan_turns: u32,
+    /// Over the turns past the pick, the people born (`Clan.born`) to settled and to gathering clans,
+    /// beside their person-turns (people before the turn's births and crowding deaths).
+    pub settled_born: f64,
+    pub settled_person_turns: f64,
+    pub gathering_born: f64,
+    pub gathering_person_turns: f64,
+    /// People lost to crowding (`Clan.crowded`) over the turns past the pick: not starving.
+    pub crowded: f64,
 }
 
 impl SettledCiv {
@@ -43,6 +52,27 @@ impl SettledCiv {
         self.settles += o.settles;
         self.goes_back += o.goes_back;
         self.clan_turns += o.clan_turns;
+        self.settled_born += o.settled_born;
+        self.settled_person_turns += o.settled_person_turns;
+        self.gathering_born += o.gathering_born;
+        self.gathering_person_turns += o.gathering_person_turns;
+        self.crowded += o.crowded;
+    }
+
+    /// People born a person a turn, to settled and to gathering clans.
+    pub fn growth(&self) -> (f64, f64) {
+        let per = |b: f64, p: f64| if p > 0.0 { b / p } else { 0.0 };
+        (per(self.settled_born, self.settled_person_turns), per(self.gathering_born, self.gathering_person_turns))
+    }
+
+    /// People lost to crowding a person a turn.
+    pub fn crowded_share(&self) -> f64 {
+        let p = self.settled_person_turns + self.gathering_person_turns;
+        if p > 0.0 {
+            self.crowded / p
+        } else {
+            0.0
+        }
     }
 
     /// Changes either way per 100 clan-turns.
@@ -97,6 +127,15 @@ impl Settling {
         for c in w.clans.values() {
             let f = self.by.entry(c.civ).or_default();
             f.clan_turns += 1;
+            let before = c.people - c.born + c.crowded;
+            if c.settled {
+                f.settled_born += c.born;
+                f.settled_person_turns += before;
+            } else {
+                f.gathering_born += c.born;
+                f.gathering_person_turns += before;
+            }
+            f.crowded += c.crowded;
             let (s, p) = (c.settled as u32, if c.settled { c.people } else { 0.0 });
             if now == 100 {
                 f.settled_100 += s;

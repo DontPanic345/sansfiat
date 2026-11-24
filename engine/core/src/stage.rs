@@ -407,6 +407,7 @@ pub fn open_market(w: &mut World, tile: usize) -> u32 {
         town: false,
         wares: 0.0,
         ware: [0.0; N],
+        cleared: Vec::new(),
     };
     w.markets.insert(id, m);
     id

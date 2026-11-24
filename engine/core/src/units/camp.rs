@@ -7,12 +7,13 @@ use std::collections::BTreeMap;
 
 use super::forage::Ladder;
 use super::line::{cut_by, cut_by_rival, cut_off, cutter, line, route, walkable};
-use super::{disband, name_of, rival_of, room, surrender, Unit, EPS};
+use super::{disband, name_of, rival_of, room, store_choice, surrender, Unit, EPS};
 use crate::actors::{connected, divide, stride, Route, Walks};
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::neighbours;
 use crate::market::total;
+use crate::settle;
 use crate::world::World;
 
 /// A camp's own state: its orders, its zone (`held` and `guard` are the tiles its warriors hold),
@@ -47,6 +48,8 @@ pub struct CampState {
     pub bows: bool,
     /// The share of its people armed with obsidian (`ARMS`): set at each raising, kept through losses.
     pub armed: f64,
+    /// The store its line drew on the last turn it supplied, so the note says when it changes (a reading).
+    pub(crate) supply_store: Option<usize>,
 }
 
 impl CampState {
@@ -70,6 +73,7 @@ impl CampState {
             still: 0,
             bows: false,
             armed: 0.0,
+            supply_store: None,
         }
     }
 }
@@ -86,7 +90,13 @@ pub(crate) fn cs_mut(w: &mut World, id: u32) -> &mut CampState {
 /// One camp's march. Returns the labour the march left.
 pub(super) fn camp_march(w: &mut World, id: u32, rivals: &BTreeMap<usize, Vec<u32>>) -> f64 {
     let people = w.units[&id].people;
-    w.units.get_mut(&id).unwrap().spoil();
+    let exchange = w.config.exchange;
+    let u = w.units.get_mut(&id).unwrap();
+    // With exchange on, an army's wares are its pay: they keep none of its food.
+    crate::actors::spoil_keeping(&mut u.actor.store, if exchange { f64::INFINITY } else { 0.0 });
+    if let Some(s) = u.stall.as_mut() {
+        crate::actors::spoil(&mut s.food);
+    }
     // Making bows takes the turn's labour: no march (`bows` is cleared at the turn's end).
     if cs(w, id).bows {
         let c = cs_mut(w, id);
@@ -228,6 +238,14 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
         }
     }
 
+    // With no stall stocked to feed it a turn, its pay comes first.
+    let pays = w.config.exchange && (cs(w, id).auto_supply || cs(w, id).resupply);
+    let eats = people * UNIT.food;
+    if pays && crate::exchange::market_end(w, &w.units[&id]).is_none_or(|(_, food)| food + EPS < eats) {
+        let used = crate::exchange::pay(w, id, ladder.left);
+        ladder.spend(used);
+    }
+
     // The line, and whether it can feed the camp; cut by an army when it could without held ground.
     let line_now = line(w, id);
     let cut = cut_off(w, id);
@@ -303,6 +321,11 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
     if cs(w, id).auto_supply {
         brought += ladder.supply(w, id, room(&w.units[&id]));
     }
+    // More pay comes on the labour left.
+    if pays {
+        let used = crate::exchange::pay(w, id, ladder.left);
+        ladder.spend(used);
+    }
 
     {
         let a = &mut w.civs.get_mut(&civ).unwrap().army;
@@ -332,14 +355,28 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
         let verb = if pillaged > 0.0 { "pillages" } else { "forages" };
         w.note(id, format!("{verb} at {at}"));
     }
+    // The store the line ends at, read off the line the step computed: the note names it when supplying
+    // starts and when the store changes, and walks the stores only then.
+    let drawn = line_now.as_ref().and_then(|(p, _, _)| {
+        let end = p.last().copied().unwrap_or(tile);
+        settle::store(w, civ, end).map(|_| end)
+    });
+    let drawn = if now_supplying { drawn } else { None };
     if now_supplying && !was_supplying {
         w.emit(Event::new(EventKind::CampResupplied, tile).civ(civ).unit(id));
-        w.note(id, "its line brings food to the camp".to_string());
+    }
+    if now_supplying && (!was_supplying || drawn != cs(w, id).supply_store) {
+        let text = match drawn {
+            Some(s) => supply_note(w, id, s),
+            None => "its line brings food to the camp".to_string(),
+        };
+        w.note(id, text);
     }
     {
         let c = cs_mut(w, id);
         c.foraging = now_foraging;
         c.supplying = now_supplying;
+        c.supply_store = drawn;
     }
 
     // Eating, from the pack in proportion to what it holds.
@@ -376,6 +413,34 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
         w.civs.get_mut(&civ).unwrap().army.starved += 1;
         disband(w, id, Some(1), true);
     }
+}
+
+/// The note a camp's line writes when it draws on store `s`: the store and its days, and each other store
+/// with its days, or why it was passed over (under a turn of food, cut off).
+fn supply_note(w: &World, id: u32, s: usize) -> String {
+    let civ = w.units[&id].civ;
+    let choice = store_choice(w, id);
+    let holds = choice.iter().find(|c| c.0 == s).is_some_and(|c| c.2);
+    let why = if holds {
+        "the least labour of the stores that hold a turn of its food"
+    } else {
+        "no store holds a turn of its food: the least labour"
+    };
+    let days = choice.iter().find(|c| c.0 == s).and_then(|c| c.1).map_or(String::new(), |d| format!(", {d:.1} days"));
+    let others: Vec<String> = choice
+        .iter()
+        .filter(|c| c.0 != s)
+        .map(|&(o, days, holds)| {
+            let name = settle::store_name(w, civ, o);
+            match (days, holds) {
+                (None, _) => format!("{name} cut off"),
+                (Some(d), true) => format!("{name} {d:.1} days"),
+                (Some(d), false) => format!("{name} {d:.1} days, under a turn of its food"),
+            }
+        })
+        .collect();
+    let rest = if others.is_empty() { String::new() } else { format!(" (other stores: {})", others.join(", ")) };
+    format!("its line brings food from {}{days}: {why}{rest}", settle::store_name(w, civ, s))
 }
 
 /// The zone `tiles` (the painted ones; the camp's own may be left out) with the camp's tile, sorted.

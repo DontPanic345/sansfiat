@@ -155,9 +155,8 @@ pub struct Carry {
 /// Who carries, one `Carry` each (`actors::Carrier`).
 pub struct CarryRules {
     /// A clan's people on a festival route. A load of 2 food is about nine days' eating (a person eats a
-    /// food a turn of `CLAN.work`, 4.67 days), "some days' food" (`labour.md`). A clan brings at most
-    /// `MARKET.carry` × people, 0.2 a person, so a load of 3 or more sends every clan with one walker and
-    /// changes nothing, and 1 collapses the festivals (`walk.md`).
+    /// food a turn of `CLAN.work`, 4.67 days), "some days' food" (`labour.md`). A clan brings its surplus a
+    /// load at a time while each load's trade pays its walker's days (`markets::load`).
     pub clan: Carry,
     /// A warrior on a line, and in a pack: the pack's share of a warrior holds this many turns of its food
     /// (`UNIT.food` a turn). A line's food is labour over its cost at this load (`Carry.load`).

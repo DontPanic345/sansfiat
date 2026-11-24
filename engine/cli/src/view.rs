@@ -8,6 +8,8 @@ use engine::over::{self, Why};
 use engine::units::{self, Unit, UnitKind};
 use engine::{civs, claim, fields, markets, settle, stats, towns, Action, Clan, Event, Order, Phase, World, GOODS};
 
+use crate::view_land::{claim_lines, claim_orders, settle_lines};
+
 /// The largest clans the view names.
 const CLANS_NAMED: usize = 5;
 /// The unaligned clans in reach it names, the strongest leaning first.
@@ -28,12 +30,12 @@ fn fields_text(w: &World, k: &Clan) -> String {
 }
 
 /// A tile as the view names it: its id and its hex.
-fn tile(w: &World, i: usize) -> String {
+pub(crate) fn tile(w: &World, i: usize) -> String {
     format!("{i} {}", w.at(i))
 }
 
 /// Tiles as the view names them, comma-separated; `none` for an empty list.
-fn tiles(w: &World, list: &[usize]) -> String {
+pub(crate) fn tiles(w: &World, list: &[usize]) -> String {
     if list.is_empty() {
         return "none".to_string();
     }
@@ -100,8 +102,8 @@ pub(crate) fn text(w: &World, since: usize) -> String {
     }
 
     let c = &w.civs[&me];
-    let stock: Vec<String> = GOODS.iter().zip(c.store.iter()).map(|(f, v)| format!("{f} {:.1}", v.max(0.0))).collect();
-    out += &format!("store {:.1} food: {}\n", total(&c.store), stock.join(", "));
+    out += &format!("store {:.1} food: {}\n", total(&c.store), crate::view_goods::stock(&c.store));
+    out += &crate::view_goods::store_chains(w, me, &c.store, &c.actor.lots);
     out += &sources(w, me);
     let set = match c.keep {
         Some(k) => format!("set to {k:.1}"),
@@ -236,72 +238,15 @@ fn town_lines(w: &World, me: u32) -> String {
     out
 }
 
-/// The led civ's land: its claim's size and tiles, what holds it, its posture, and what it does to
-/// the clans whose homes are on it.
-fn claim_lines(w: &World, me: u32) -> String {
-    let c = &w.civs[&me];
-    let posture = [(c.pressed, "pressed"), (c.besieged, "besieged")]
-        .iter()
-        .filter(|(on, _)| *on)
-        .map(|(_, name)| format!(", {name}"))
-        .collect::<String>();
-    let names: Vec<String> = c.claim.iter().map(|&t| tile(w, t)).collect();
-    let mut out = format!(
-        "land: {} tiles, your claim{posture}: {}\n  nobody stands on it: a rival army that ends its turn on a tile takes it, \
-         with any tiles that cuts off from your capital and settlements, unless an army of yours holds that tile\n",
-        c.claim.len(),
-        names.join(" ")
-    );
-    if let Some(n) = w.notes.get(&me).and_then(|l| l.iter().rev().find(|n| n.text.starts_with("the claim "))) {
-        out += &format!("  last claim order, turn {}: {}\n", n.turn, n.text);
-    }
-    out
-}
-
-/// The led civ's signposts and settlements, and the rivals' settlements: a signpost's tile, age and
-/// worth; a settlement's store, the clans living on it and coming to its market, and its land.
-fn settle_lines(w: &World, me: u32) -> String {
-    let mut out = String::new();
-    for s in &w.civs[&me].signposts {
-        out += &format!(
-            "signpost at {}: posted {} turn(s) ago, the tile would feed a daughter {:.0}% of her need; your clans that \
-             divide or move on may go there, and the first to settle founds a settlement\n",
-            tile(w, s.tile),
-            w.turn - s.turn,
-            settle::worth(w, s.tile) * 100.0
-        );
-    }
-    for p in settle::panels(w) {
-        if p.civ != me {
-            let name = w.civs.get(&p.civ).map_or("a rival", |c| c.name.as_str());
-            out += &format!("{name}'s settlement at {}: store {:.0}\n", tile(w, p.tile), total(&p.store));
-            continue;
-        }
-        let people: f64 = p.clans.iter().map(|id| w.clans[id].people).sum();
-        out += &format!(
-            "settlement at {} (market {}), founded turn {}: store {:.1} of {:.0} (levy {:.1} this turn), {} clan(s) of {:.0} \
-             people live here, {} come to its market, land {} tile(s): {}\n  your claim holds where it joins it; a rival \
-             army that ends its turn on it takes it with its store, unless an army of yours is there\n",
-            tile(w, p.tile),
-            p.market,
-            p.founded,
-            total(&p.store),
-            p.cap,
-            p.levied,
-            p.clans.len(),
-            people,
-            p.traders.len(),
-            p.land.len(),
-            tiles(w, &p.land)
-        );
-    }
-    out
-}
-
-/// What a unit draws on: the store its line ends at, or that it has no line.
+/// What a unit draws on: the store its line ends at, and the line's days when it has one, or that it
+/// has no line.
 fn draws_on(w: &World, u: &Unit) -> String {
-    match units::store_of(w, u.id) {
-        Some(at) => format!("draws on {}", settle::store_name(w, u.civ, at)),
+    match units::store_line(w, u.id) {
+        Some((path, cost, _)) => {
+            let at = path.last().copied().unwrap_or(u.home);
+            let days = if path.is_empty() { String::new() } else { format!(", {cost:.1} days") };
+            format!("draws on {}{days}", settle::store_name(w, u.civ, at))
+        }
         None => "draws on no store".to_string(),
     }
 }
@@ -352,7 +297,13 @@ fn unit_line(w: &World, u: &Unit) -> String {
             let feeds = if need > 0.0 { pack / need } else { 0.0 };
             let line = match units::line(w, u.id) {
                 None => "no line".to_string(),
-                Some((_, _, carry)) if carry.is_infinite() => "at its store, no limit".to_string(),
+                Some((path, _, carry)) if carry.is_infinite() => {
+                    let end = path.last().copied().unwrap_or(u.home);
+                    match settle::store(w, u.civ, end) {
+                        Some(_) => format!("at {}, no limit", settle::store_name(w, u.civ, end)),
+                        None => format!("at the market at {}, no limit", tile(w, end)),
+                    }
+                }
                 Some((_, cost, carry)) => format!("line {cost:.1} days, carries {carry:.1} food a turn"),
             };
             let cut = if units::cut_off(w, u.id) { ", cut off" } else { "" };
@@ -369,11 +320,12 @@ fn unit_line(w: &World, u: &Unit) -> String {
                 _ => cut_at,
             };
             let draws = draws_on(w, u);
+            let wares = crate::view_goods::pack_wares(u);
             let bows = if cs.bows { ", making bows" } else { "" };
             let bows = format!("{bows}, {:.0}% armed with obsidian", cs.armed * 100.0);
             let dest = cs.dest.map_or("none".to_string(), |t| tile(w, t));
             format!(
-                "  army {} at {}: {:.1} warriors, {:.1} archers, pack {pack:.1} of {:.1} ({feeds:.1} turns), entrenched {} turns{bows}, dest {dest}, {line}, {draws}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",
+                "  army {} at {}: {:.1} warriors, {:.1} archers, pack {pack:.1} of {:.1} ({feeds:.1} turns){wares}, entrenched {} turns{bows}, dest {dest}, {line}, {draws}{cut}{cut_at}, hungry {} turns, zone {}, held {}\n",
                 u.id,
                 tile(w, u.tile()),
                 cs.stack[Fighter::Warriors.index()],
@@ -477,11 +429,8 @@ fn legal(w: &World, me: u32) -> String {
         }
     }
     let claimed = w.civs[&me].claim.clone();
-    if ok(Order::Claim { tiles: claimed.clone() }) {
-        out += &format!(
-            "  {{\"type\":\"claim\",\"tiles\":[<tile>, ...]}}  paints your claim (now {} tiles); joined to your capital or a settlement\n",
-            claimed.len()
-        );
+    if ok(Order::Claim { tiles: claimed }) {
+        out += &claim_orders(w, me);
     }
     if settle::open(w) {
         let posts = &w.civs[&me].signposts;
@@ -572,4 +521,53 @@ fn legal(w: &World, me: u32) -> String {
     }
     out += "  end [N]: end N turns (1 by default)\n";
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use engine::clans::new_clan;
+    use engine::hex::Hex;
+    use engine::homes;
+    use engine::map::index;
+    use engine::stage::Stage;
+    use engine::{settle, Order};
+
+    use super::text;
+
+    const RADIUS: i32 = 9;
+
+    fn tile(q: i32, r: i32) -> usize {
+        index(RADIUS, Hex { q, r }).unwrap()
+    }
+
+    /// Red leads, with a settlement on (−1, 0) and an army of 3 on it: the stores of `stores.rs`.
+    #[test]
+    fn an_army_on_a_settlement_names_it_and_not_its_store() {
+        let mut stage = Stage::flat(RADIUS);
+        let ids = stage.civs(&[tile(-6, 0), tile(6, 0)], 5.0);
+        let red = ids[0];
+        stage.lead(red).unwrap();
+        let w = stage.world_mut();
+        w.clans.clear();
+        for t in &mut w.tiles {
+            t.claim = None;
+        }
+        let t = tile(-1, 0);
+        w.order(red, Order::Signpost { tile: t }).unwrap();
+        let id = w.next_id;
+        w.next_id += 1;
+        let mut c = new_clan(id, t, 4.0);
+        c.civ = Some(red);
+        homes::claim_land(w, id, &[t]);
+        w.clans.insert(id, c);
+        settle::step(w);
+        let sid = settle::at(w, t).expect("a settlement").id;
+        w.settlements.get_mut(&sid).unwrap().store = [40.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let army = stage.army(red, t, 3.0);
+        let view = text(stage.world(), 0);
+        let line = view.lines().find(|l| l.starts_with(&format!("  army {army} "))).expect("the army's line");
+        assert!(line.contains("at its settlement at (-1, 0), no limit"), "{line}");
+        assert!(!line.contains("at its store"), "{line}");
+        assert!(line.contains("draws on its settlement at (-1, 0)"), "{line}");
+    }
 }

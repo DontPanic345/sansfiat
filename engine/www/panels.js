@@ -7,6 +7,7 @@
 // goods, rules, sim, view (MapView), routing, outcome, painting}.
 
 import { festivalShape, settlementShape, tileShape } from './panels-land.js';
+import { wareRows } from './panels-goods.js';
 
 export const f2 = (x) => (Math.round(x * 100) / 100).toString();
 const ZONES = ['', 'valley', 'sealed valley', 'neck'];
@@ -137,18 +138,6 @@ export const foodOf = (ctx, store) => sum(store.slice(0, ctx.rules.foods));
 /** Every good a store holds, food first then salt and obsidian, as "name amount". */
 export const heldGoods = (ctx, store) => ctx.goods.map((g, f) => (store[f] > 0.005 ? `${g} ${f2(store[f])}` : null)).filter(Boolean);
 
-/** A number row for each of salt and obsidian in `store`: with `always`, a row for each even at 0; else only when held. */
-export function wareRows(ctx, store, always, what) {
-  return ctx.goods
-    .map((g, f) => ({ g, f }))
-    .filter(({ f }) => f >= ctx.rules.foods && (always || store[f] > 0.005))
-    .map(({ g, f }) => ({
-      label: `${g[0].toUpperCase()}${g.slice(1)}`,
-      value: f2(store[f]),
-      tip: f === ctx.rules.foods ? `Salt in ${what}: it keeps the food there from spoiling, and is used up doing it` : `Obsidian in ${what}: a warrior raised from the store takes ${ctx.rules.arms.each} of it for a blade`,
-    }));
-}
-
 /** The latest reasons the subject has (`Sim.notes`), newest first, for the panel's Why list. */
 export function reasonsOf(ctx, id) {
   if (id == null) return [];
@@ -240,7 +229,8 @@ function campShape(ctx, u) {
       : []),
     { label: 'Pack', value: `${f2(pack(u))} of ${f2(u.pack_cap)}, ${plural(Math.round(u.food_turns), 'turn')} of food`, tip: 'Food it carries, and the turns that lasts' },
     { label: 'Line', value: line, tip: 'Its line home: steps, the days it costs, and the food a turn it carries with all its labour' },
-    { label: 'Draws on', value: u.draws_on ? (u.draws_on.label === 'capital' ? 'its capital' : `its settlement at (${hex(ctx, u.draws_on.tile)})`) : 'none', tip: 'The store its line ends at: the one that feeds it cheapest' },
+    { label: 'Draws on', value: u.draws_on ? (u.draws_on.label === 'capital' ? 'its capital' : `its settlement at (${hex(ctx, u.draws_on.tile)})`) : 'none', tip: 'The store its line home ends at: its pay comes from here, and its food when no market feeds it cheaper' },
+    ...(u.buys_at ? [{ label: 'Buys at', value: `the festival at (${hex(ctx, u.buys_at.tile)}), ${f2(u.buys_at.food)} food waiting`, tip: 'Its line ends at this market: it buys food there with the wares its civ sends it' }] : []),
   ];
   if (u.kind === 'camp') {
     const guard = u.guard.length ? u.guard.reduce((a, b) => a + b, 0) / u.guard.length : 0;
@@ -442,7 +432,7 @@ function civShape(ctx, c) {
       value: `${f2(foodOf(ctx, c.store))} of ${rules.store_cap}`,
       tip: `${stored.join(', ') || 'Empty'}${c.lost > 0.005 ? `; lost ${f2(c.lost)} last turn` : ''}`,
     },
-    ...wareRows(ctx, c.store, true, 'its store'),
+    ...wareRows(ctx, c.store, true, 'its store', c.capital),
     {
       label: 'Last turn',
       value: `kept ${f2(c.keep)} · posted ${f2(c.posted)}`,

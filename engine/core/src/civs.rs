@@ -7,11 +7,12 @@ use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::actors::{walk_cost, Actor, Route};
+use crate::actors::Actor;
 use crate::claim;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::{cost_map, is_hearth, passable, path, steps};
+use crate::lots::Lots;
 use crate::market::{add, take, total, Basket};
 use crate::markets::reach;
 use crate::units::{self, Counters};
@@ -141,6 +142,8 @@ struct CivFlat {
     fallen: Option<(u32, u32)>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     signposts: Vec<crate::settle::Signpost>,
+    #[serde(default, skip_serializing_if = "Lots::is_empty")]
+    lots: Lots,
 }
 
 impl From<Civ> for CivFlat {
@@ -168,6 +171,7 @@ impl From<Civ> for CivFlat {
             besieged: c.besieged,
             fallen: c.fallen,
             signposts: c.signposts,
+            lots: c.actor.lots,
         }
     }
 }
@@ -181,7 +185,7 @@ impl From<CivFlat> for Civ {
             market: f.market,
             capital: f.capital,
             founded: f.founded,
-            actor: Actor { store: f.store, ..Actor::new(f.capital, 0.0) },
+            actor: Actor { store: f.store, lots: f.lots, ..Actor::new(f.capital, 0.0) },
             lost: f.lost,
             clan: f.clan,
             army: f.army,
@@ -221,10 +225,11 @@ fn switch_to_capitals(w: &mut World) {
         let Some((_, mid)) = best else { continue };
         let to = w.markets[&mid].tile;
         let Some((path, cost)) = path(w, c.home, to, |i| passable(w, i)) else { continue };
-        let walkers = crate::markets::walkers(c);
+        let (route, walkers) = crate::markets::route(w, c, mid, path, cost);
         let c = w.clans.get_mut(&id).unwrap();
         c.market = Some(mid);
-        c.routes = vec![Route { to, path, cost: walk_cost(cost, 1.0) * walkers }];
+        c.walkers = walkers;
+        c.routes = vec![route];
     }
     // Last turn's traders, as the clans now stand, so the next choice sees who switched.
     for m in w.markets.values_mut() {
@@ -478,9 +483,9 @@ pub fn gift_reach(w: &World, civ: u32) -> usize {
 }
 
 /// The levy at market `mid`, a capital's or a settlement's: each clan there that is the civ's pays
-/// `CIV.levy` of what it brought (its basket, salt and obsidian with the food) into the store there (the civ's at its capital, the
-/// settlement's own), in id order until the store is at its cap (`CIV.store_cap`,
-/// `SETTLE.store_cap`); its harvest drops by the same share, so that growth, which `eat` reckons on
+/// `CIV.levy` of the food it brought into the store there (the civ's at its capital, the settlement's own), in
+/// id order until the store is at its cap (`CIV.store_cap`, `SETTLE.store_cap`), and `CIV.levy_goods` of the salt
+/// and obsidian it brings (`actors::keeps_back`) up to what the store holds of each (`actors::civ_holds`); its harvest drops by the same share, so that growth, which `eat` reckons on
 /// the harvest, sees less. (A share of only the harvest beyond need brings next to nothing: clans
 /// grow until their harvest just feeds them.) Called by `markets::trade` before the market clears.
 /// Nothing with `Config.army` off.
@@ -510,27 +515,40 @@ pub fn levy(w: &mut World, mid: u32) {
     for id in ids {
         let c = w.clans.get_mut(&id).unwrap();
         let total = total(&c.basket);
-        if total <= 0.0 || room <= 0.0 {
+        if total <= 0.0 && crate::market::wares(&c.basket) <= 0.0 {
             continue;
         }
-        let share = CIV.levy.min(room / total);
+        let share = if total > 0.0 { CIV.levy.min(room / total) } else { 0.0 };
         room -= share * total;
-        // Salt and obsidian go with the food, up to what the store holds of each.
+        // Salt and obsidian go at their own share of what it brings: not the salt and tools it keeps at home.
         let holds = crate::actors::civ_holds(cap);
-        let paid: Basket = std::array::from_fn(|g| (c.basket[g] * share).min((holds[g] - stored[g]).max(0.0)));
+        let back = crate::actors::keeps_back(&c.basket, c.people);
+        let paid: Basket = std::array::from_fn(|g| {
+            let part = if GOOD[g].eaten { share } else { CIV.levy_goods };
+            ((c.basket[g] - back[g]) * part).min((holds[g] - stored[g]).max(0.0))
+        });
         add(&mut stored, &paid);
         for (f, &p) in paid.iter().enumerate() {
             c.harvest[f] *= 1.0 - share;
             c.basket[f] -= p;
         }
         let sum = crate::market::total(&paid);
+        let lots = if w.config.exchange { Some(w.clans[&id].lots.clone()) } else { None };
         match settlement {
             Some(s) => {
-                add(&mut w.settlements.get_mut(&s).unwrap().store, &paid);
+                let seat = w.settlements.get_mut(&s).unwrap();
+                if let Some(lots) = &lots {
+                    seat.lots.arrive(&seat.store, &paid, lots);
+                }
+                add(&mut seat.store, &paid);
                 *w.settle_levied.entry(s).or_insert(0.0) += sum;
             }
             None => {
                 let civ_state = w.civs.get_mut(&civ).unwrap();
+                if let Some(lots) = &lots {
+                    let held = civ_state.store;
+                    civ_state.actor.lots.arrive(&held, &paid, lots);
+                }
                 add(&mut civ_state.store, &paid);
                 civ_state.levied += sum;
             }
@@ -561,8 +579,9 @@ pub fn upkeep(w: &mut World) {
     crate::settle::upkeep(w);
     let ids: Vec<u32> = alive(w).map(|c| c.id).collect();
     for id in ids {
+        let back = crate::exchange::pay_back(w, id, w.civs[&id].capital);
         let civ = w.civs.get_mut(&id).unwrap();
-        civ.spoil();
+        crate::actors::spoil_keeping(&mut civ.store, back);
         let total = total(&civ.store);
         let mut lost = 0.0;
         if total > CIV.store_cap {

@@ -16,7 +16,7 @@ mod ai;
 mod camp;
 pub mod fight;
 mod forage;
-mod line;
+pub(crate) mod line;
 mod muster;
 mod paths;
 mod scout;
@@ -30,14 +30,15 @@ use serde::{Deserialize, Serialize};
 use crate::actors::{Actor, Carrier};
 use crate::claim;
 use crate::data::*;
+use crate::exchange::{Stall, UnitTrade};
 use crate::world::World;
 
 pub use ai::{ai, claim_plan, outweighs, plan, post, signpost_plan, signpost_sites, Decision, Give};
 pub use camp::{zone_cap, CampState};
 pub(crate) use camp::{zone_of, zone_ok};
 pub use line::{
-    cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, ring_capital, route, store_of,
-    turns,
+    cut_at, cut_by_rival, cut_off, line, line_from, past_reach, path_between, ring, ring_capital, route, store_choice,
+    store_line, store_of, turns,
 };
 pub use scout::{doing_text, pack_turns, shut, store_walk, Doing, ScoutState};
 pub use search::{route_plan, search_view, Plan, SearchView};
@@ -120,6 +121,10 @@ pub struct Unit {
     /// Hungry turns in a row.
     pub hungry: u32,
     pub state: UnitState,
+    /// What its pack did at a market's clearing last turn, if it joined one (`exchange.rs`).
+    pub traded: Option<UnitTrade>,
+    /// The food it bought at a market that its line hasn't brought yet (`exchange.rs`).
+    pub stall: Option<Stall>,
 }
 
 /// What a unit is, and the state only that kind has.
@@ -178,6 +183,10 @@ struct UnitFlat {
     homing: bool,
     #[serde(default)]
     back: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    traded: Option<UnitTrade>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    stall: Option<Stall>,
 }
 
 impl From<Unit> for UnitFlat {
@@ -221,6 +230,8 @@ impl From<Unit> for UnitFlat {
             armed: camp.armed,
             homing: scout.homing,
             back: scout.back,
+            traded: u.traded,
+            stall: u.stall,
         }
     }
 }
@@ -247,6 +258,7 @@ impl From<UnitFlat> for Unit {
                 still: f.still,
                 bows: f.bows,
                 armed: f.armed,
+                supply_store: None,
             }),
             UnitKind::Scout => UnitState::Scout(ScoutState {
                 dest: f.dest,
@@ -259,7 +271,16 @@ impl From<UnitFlat> for Unit {
                 doing: Doing::Idle,
             }),
         };
-        Unit { id: f.id, civ: f.civ, actor: f.actor, banked: f.banked, hungry: f.hungry, state }
+        Unit {
+            id: f.id,
+            civ: f.civ,
+            actor: f.actor,
+            banked: f.banked,
+            hungry: f.hungry,
+            state,
+            traded: f.traded,
+            stall: f.stall,
+        }
     }
 }
 
@@ -284,6 +305,7 @@ fn scout_camp_fields() -> CampState {
         still: 0,
         bows: false,
         armed: 0.0,
+        supply_store: None,
     }
 }
 

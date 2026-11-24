@@ -220,3 +220,58 @@ fn judge_prints_the_claim_lines_for_the_led_civ() {
         "{out}"
     );
 }
+
+/// The tile ids in the land line: its numeric words, after the colon.
+fn land_ids(view: &str) -> Vec<usize> {
+    let land = view.lines().rev().find(|l| l.starts_with("land: ")).expect("a land line");
+    let names = land.rsplit_once(": ").expect("the land line names its tiles").1;
+    names.split(' ').filter_map(|w| w.parse().ok()).collect()
+}
+
+/// The ids in the first `[...]` of a line of the legal list.
+fn order_ids(line: &str) -> Vec<usize> {
+    let list = line.split('[').nth(1).and_then(|r| r.split(']').next()).expect("an order's tiles");
+    list.split(',').map(|n| n.parse().unwrap()).collect()
+}
+
+/// The led civ's Standing in the last view of `view`: its share, as `civ 1 Red 21.5%, rank 2 you`.
+fn standing(view: &str) -> f64 {
+    let line = view.lines().rev().find(|l| l.starts_with("  civ ") && l.contains(" you")).unwrap();
+    let share = line.split_whitespace().find(|w| w.ends_with("%,") || w.ends_with('%')).unwrap();
+    share.trim_end_matches(',').trim_end_matches('%').parse().unwrap()
+}
+
+#[test]
+fn the_claim_order_names_every_tile_of_the_land_and_the_reach_order_is_accepted() {
+    let (_dir, game) = game_in("claim-order");
+    let made = sansfiat(&["play", "--game", &game, "--seed", "2", "--size", "small", "--civ", "1"], RAISE);
+    let claim = made.lines().find(|l| l.contains(r#"{"type":"claim","tiles":["#) && !l.contains("the claim in reach"));
+    let claim = claim.unwrap_or_else(|| panic!("no claim order in:\n{made}"));
+    assert!(claim.contains("a tile you leave out is dropped"), "{claim}");
+    let mine = order_ids(claim);
+    let land = land_ids(&made);
+    assert_eq!(land.len(), mine.len(), "the order lists the land's tiles: {claim}\n{made}");
+    assert!(land.iter().all(|t| mine.contains(t)), "every id of the land line is in the claim line");
+
+    let reach =
+        made.lines().find(|l| l.contains("the claim in reach")).unwrap_or_else(|| panic!("no reach order:\n{made}"));
+    let adds = reach.split(": adds ").nth(1).unwrap();
+    let new_tiles: Vec<usize> = order_ids(reach).into_iter().filter(|t| !land.contains(t)).collect();
+    assert!(adds.starts_with("1 tile,"), "{reach}");
+    assert_eq!(new_tiles.len(), 1, "{reach}");
+    let clan: u32 =
+        reach.split("brings clan ").nth(1).and_then(|r| r.split_whitespace().next()).unwrap().parse().unwrap();
+
+    let before = standing(&made);
+    let order = reach.split("}  ").next().unwrap().trim_start().to_string() + "}";
+    let out = sansfiat(&["play", "--game", &game], &format!("{order}\n"));
+    assert!(out.contains("clan ") && !out.contains("refused"), "the order is accepted:\n{out}");
+    assert!(out.to_lowercase().contains(&format!("clan {clan} joins")), "the clan joins the civ:\n{out}");
+    let mut grown = land.clone();
+    grown.extend(&new_tiles);
+    grown.sort_unstable();
+    let mut after = land_ids(&out);
+    after.sort_unstable();
+    assert_eq!(after, grown, "the land grows by exactly the reach's tiles");
+    assert!(standing(&out) > before, "Standing grows with the clan: {before} to {}", standing(&out));
+}

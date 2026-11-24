@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::data::{GOOD, N};
+use crate::data::{GOOD, N, PRICE_SPAN};
 
 pub type Basket = [f64; N];
 
@@ -146,7 +146,7 @@ pub fn clear(baskets: &[Basket], worths: &[Basket], start: &Basket, p: &Params) 
         }
         let mean = libm::exp(goods.iter().map(|&g| libm::log(prices[g])).sum::<f64>() / goods.len() as f64);
         for &g in &goods {
-            prices[g] /= mean;
+            prices[g] = (prices[g] / mean).clamp(1.0 / PRICE_SPAN, PRICE_SPAN);
         }
         if worst < p.tolerance {
             break;

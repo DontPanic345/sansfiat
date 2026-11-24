@@ -14,6 +14,7 @@ use crate::clans::site_value;
 use crate::data::*;
 use crate::events::{Event, EventKind};
 use crate::land::{cost_map, passable, steps};
+use crate::lots::Lots;
 use crate::market::{total, Basket};
 use crate::rng::rand;
 use crate::world::World;
@@ -39,6 +40,9 @@ pub struct Settlement {
     pub store: Basket,
     /// Goods cut by the cap last turn.
     pub lost: f64,
+    /// Where the wares in its store came from (`lots.rs`).
+    #[serde(default, skip_serializing_if = "Lots::is_empty")]
+    pub lots: Lots,
 }
 
 /// Whether civs post signposts: `Config.signposts`.
@@ -176,6 +180,26 @@ pub fn worth(w: &World, tile: usize) -> f64 {
     site_value(w, 0, tile, CLAN.split_at / 2.0, &[0.0; N])
 }
 
+/// Why a signpost on `tile` draws nobody, or `None` while it can draw a clan: a clan lives on the tile
+/// (`draw` skips it), a clan gathers it (a newcomer gets nothing from it), or its ground would feed a
+/// daughter under `SETTLE.fed`.
+pub fn idle(w: &World, tile: usize) -> Option<String> {
+    let worth = worth(w, tile);
+    let lives = w.clans.values().find(|k| k.home == tile);
+    if lives.is_none() && worth > SETTLE.fed {
+        return None;
+    }
+    let why = match (lives, w.tiles[tile].claim) {
+        (Some(k), _) => format!("clan {} lives on it", k.id),
+        (None, Some(id)) => format!("clan {id} gathers this tile, so it feeds a newcomer nothing"),
+        (None, None) => format!("its ground would feed a daughter only {:.0}%", worth * 100.0),
+    };
+    Some(format!(
+        "{why}; a clan goes only where it is fed at least {:.0}%: remove it and post on a free site",
+        SETTLE.fed * 100.0
+    ))
+}
+
 /// The chance a clan of `people` at `home` goes to a signpost whose walk costs `cost` days and whose
 /// tile would feed it `worth`: `SETTLE.draw × min(worth, 1) × exp(−cost / SETTLE.walk)`.
 pub fn chance(cost: f64, worth: f64) -> f64 {
@@ -256,7 +280,10 @@ pub fn found(w: &mut World, civ: u32, tile: usize, clan: u32) -> u32 {
     let market = market.unwrap_or_else(|| crate::markets::raise(w, tile));
     let id = w.next_id;
     w.next_id += 1;
-    w.settlements.insert(id, Settlement { id, civ, tile, market, founded: w.turn, store: [0.0; N], lost: 0.0 });
+    w.settlements.insert(
+        id,
+        Settlement { id, civ, tile, market, founded: w.turn, store: [0.0; N], lost: 0.0, lots: Lots::default() },
+    );
     w.civs.get_mut(&civ).unwrap().signposts.retain(|s| s.tile != tile);
     if claim::may_claim(w, civ) {
         claim::join(w, civ, tile);
@@ -310,8 +337,9 @@ pub fn fallen(w: &mut World, civ: u32) {
 /// The civs' part of the `civs` step for settlements: each store spoils and what is over
 /// `SETTLE.store_cap` is lost.
 pub fn upkeep(w: &mut World) {
-    for s in w.settlements.values_mut() {
-        crate::actors::spoil(&mut s.store);
+    let backs: Vec<f64> = w.settlements.values().map(|s| crate::exchange::pay_back(w, s.civ, s.tile)).collect();
+    for (s, back) in w.settlements.values_mut().zip(backs) {
+        crate::actors::spoil_keeping(&mut s.store, back);
         let all = total(&s.store);
         s.lost = (all - SETTLE.store_cap).max(0.0);
         if s.lost > 0.0 {
@@ -339,6 +367,8 @@ pub struct Panel {
     pub traders: Vec<u32>,
     /// Its land: the tiles of its civ's claim nearer it than the capital or another settlement.
     pub land: Vec<usize>,
+    /// Where the wares in its store came from (`lots.rs`).
+    pub lots: Lots,
 }
 
 /// Each settlement's panel, in id order.
@@ -367,6 +397,7 @@ pub fn panels(w: &World) -> Vec<Panel> {
             clans: w.clans.values().filter(|k| k.home == s.tile).map(|k| k.id).collect(),
             traders: w.clans.values().filter(|k| k.market == Some(s.market)).map(|k| k.id).collect(),
             land: near.remove(&s.id).unwrap_or_default(),
+            lots: s.lots.clone(),
         })
         .collect()
 }

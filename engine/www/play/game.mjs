@@ -1,10 +1,10 @@
 // A played game on the page (spec, Left unsettled): leads a civ on a small map and plays 30 turns with only
-// the page's buttons, keys and clicks. On the way it changes the gift, raises a scout, paints a claim, moves
-// the camp with Move to… and paints its zone, follows an alert, reloads the page at turn 15 and Continues,
+// the page's buttons, keys and clicks. On the way it raises a warrior and a scout, paints a claim, moves
+// the camp with Move to…, follows an alert, reloads the page at turn 15 and Continues,
 // and at the end saves to a file. The page's `game.digest()` must match `sansfiat digest --game FILE`, and
 // `sansfiat judge FILE` reads the save. The script reads the page (game.view()) to choose its targets; every
 // change to the game goes through the page's controls. It prints what the panel said at each step.
-//   node www/play/game.mjs [--seed 9] [--out DIR] [--no-cli]
+//   node www/play/game.mjs [--seed 2] [--out DIR] [--no-cli]
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,7 +17,7 @@ const flag = (name, dflt) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : dflt;
 };
-const SEED = Number(flag('--seed', '9'));
+const SEED = Number(flag('--seed', '2'));
 const out = resolve(flag('--out', mkdtempSync(join(tmpdir(), 'play-game-'))));
 const cli = !args.includes('--no-cli');
 mkdirSync(out, { recursive: true });
@@ -37,7 +37,7 @@ const frames = 'new Promise((r) => requestAnimationFrame(() => requestAnimationF
 const page = await open('');
 try {
   await lead(page, { seed: SEED });
-  await raiseArmy(page);
+  await raiseArmy(page, { warriors: 1 });
   const turn = async () => Number(await page.eval('game.view().turn'));
   const me = Number(await page.eval('game.view().player'));
   const t0 = await turn();
@@ -68,11 +68,6 @@ try {
   need((await page.data()).selected === civ, `Lead selects the civ (turn ${t0})`);
   await say('led');
 
-  // The gift: Gift +1 on the civ's panel.
-  const gift0 = await page.eval(`game.view().civs[${me}].gift`);
-  await page.button('Gift +1');
-  need((await page.eval(`game.view().civs[${me}].gift`)) === gift0 + 1, `Gift +1 raises the gift (${gift0} → ${gift0 + 1})`);
-
   // A scout, through Raise…'s stepper.
   const scouts = () => page.eval(`Object.values(game.view().units).filter((u) => u.civ === ${me} && u.kind === 'scout').length`);
   const g0 = await scouts();
@@ -96,7 +91,7 @@ try {
 
   await endTurnsTo(5);
 
-  // The camp: select it on its tile, Move to… a tile past its line's reach, then paint its zone there.
+  // The camp: select it on its tile and Move to… a tile past its line's reach.
   const camp = await page.eval(`Object.values(game.view().units).find((u) => u.civ === ${me} && u.kind === 'camp').id`);
   const campTile = () => page.eval(`game.view().units[${camp}].tile`);
   await page.select(await campTile(), 'unit');
@@ -136,15 +131,6 @@ try {
     await page.click(dest);
     await page.eval(frames);
   }
-  const ring = await page.eval(`(() => { const m = game.map, out = []; for (let d = 0; d < 6; d++) { const j = m.nb[${dest} * 6 + d]; if (j >= 0 && m.land[j]) out.push(j); } return out.slice(0, 2); })()`);
-  await page.key('p');
-  for (const t of ring) await page.click(t);
-  await say('painting the zone');
-  await page.key('Escape');
-  const zone = await page.eval(`game.view().units[${camp}].territory.length`);
-  need(zone > 1, `P and clicks paint the camp's zone (${zone} tiles)`);
-  await page.key('Escape');
-
   // Turn 15: reload the page and Continue.
   await endTurnsTo(15);
   const mid = { turn: await turn(), digest: await page.eval('game.digest()') };
