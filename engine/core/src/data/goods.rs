@@ -94,8 +94,10 @@ pub struct SourceRules {
     pub obsidian: usize,
     /// The share of its days a clan gives the gathering of a source it holds: a job in its split.
     pub share: f64,
-    /// Units of the good a day of work at a source gives.
+    /// Units of obsidian a day of work at its source gives.
     pub a_day: f64,
+    /// Units of salt a day of work at a pan gives.
+    pub salt_a_day: f64,
     /// A clan gathers a source's good only while it holds less than this of it a person.
     pub hold: f64,
     /// What a clan reckons a unit of a source's good at, in food, when it weighs holding the tile.
@@ -104,8 +106,10 @@ pub struct SourceRules {
 
 /// Twelve salt pans and five obsidian hills on a small map: salt is common along the shore and obsidian
 /// rare, so most civs trade for obsidian or go without. A twentieth of a holder's days gives a clan of eight
-/// about 0.45 of the good a turn: the share a holder can give without starving more than the control (0.1 did).
-pub const SOURCE: SourceRules = SourceRules { salt: 12, obsidian: 5, share: 0.05, a_day: 0.25, hold: 0.5, worth: 0.5 };
+/// about 0.45 of obsidian a turn: the share a holder can give without starving more than the control (0.1 did).
+/// A pan gives three times that: enough salt reaches a civ's store to pay an army abroad.
+pub const SOURCE: SourceRules =
+    SourceRules { salt: 12, obsidian: 5, share: 0.05, a_day: 0.25, salt_a_day: 0.75, hold: 0.5, worth: 0.5 };
 
 /// How salt keeps a store (`actors::spoil`).
 pub struct KeepingRules {
@@ -118,12 +122,15 @@ pub struct KeepingRules {
     /// What a civ's store with none wants salt and obsidian at, against a food's 1; it falls to 0 as the
     /// store fills to what it holds (`actors::civ_room`).
     pub civ_want: f64,
+    /// The turns of keeping a full store that a civ's store holds salt for (`actors::civ_holds`).
+    pub civ_turns: f64,
 }
 
 /// A unit of salt keeps 10 food and spares it half its spoiling: half a food saved for a unit of salt,
 /// so salt is worth about half its measure in food to a full store and nothing to an empty one. A clan
 /// at its surplus target loses 0.2 food a person a turn, and wants salt as it wants a food.
-pub const KEEPING: KeepingRules = KeepingRules { keeps: 10.0, slows: 0.5, want_at: 0.2, civ_want: 1.0 };
+/// A civ's store holds four turns of it: a store of 60 holds 24 salt, enough to pay its armies abroad.
+pub const KEEPING: KeepingRules = KeepingRules { keeps: 10.0, slows: 0.5, want_at: 0.2, civ_want: 1.0, civ_turns: 4.0 };
 
 /// How obsidian arms warriors (`units/muster.rs`, `units/fight.rs`).
 pub struct ArmsRules {
@@ -137,5 +144,35 @@ pub struct ArmsRules {
 }
 
 /// A warrior with obsidian blades is worth a quarter more: enough to turn an even fight, not enough to
-/// stand in for numbers. A store holds blades for twenty.
-pub const ARMS: ArmsRules = ArmsRules { each: 0.5, edge: 1.25, hold: 10.0 };
+/// stand in for numbers. A store holds blades for eighty: a civ keeps what its levy brings.
+pub const ARMS: ArmsRules = ArmsRules { each: 0.5, edge: 1.25, hold: 40.0 };
+
+/// How obsidian blades help a clan gather (`clans::reap`, `actors::worths`).
+pub struct ToolRules {
+    /// Obsidian a person's tools take: a clan with this much a person gathers at the full `gain`.
+    pub each: f64,
+    /// What a fully tooled clan's gathering labour is multiplied by.
+    pub gain: f64,
+    /// The share of a clan's tools worn out a turn.
+    pub wear: f64,
+    /// What a clan with no tools wants obsidian at, against a food's 1; it falls to 0 as its tools fill.
+    pub want: f64,
+}
+
+/// A tenth of a unit tools a person, who gathers a fifth more for it, and a tenth of the tools wear out a
+/// turn, so a clan keeps wanting them. A clan wants tools as it wants a food: a hill's obsidian finds buyers
+/// at every festival, and buys food there.
+pub const TOOLS: ToolRules = ToolRules { each: 0.1, gain: 1.2, wear: 0.1, want: 1.0 };
+
+/// How a store remembers where its goods came from (`lots.rs`).
+pub struct LotsRules {
+    /// The most lots a store keeps of one good: past it the smallest are dropped and the rest renormalised.
+    pub most: usize,
+    /// The most markets a lot's chain keeps: past it the oldest market goes, never the source.
+    pub chain: usize,
+}
+
+/// Four lots and six markets show a good's main routes on a page without a store's list growing: the shares
+/// of a mixed store spread thin fast, and a chain longer than six markets is past what a clan's festival
+/// and a camp's march join up in a few turns.
+pub const LOTS: LotsRules = LotsRules { most: 4, chain: 6 };

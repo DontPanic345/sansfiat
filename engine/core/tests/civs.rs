@@ -343,7 +343,7 @@ fn a_real_map_founds_three_civs_that_live_on() {
         w.act(Action::EndTurn).unwrap();
         for c in w.civs.values() {
             assert!(engine::market::total(&c.store) <= CIV.store_cap + 1e-9);
-            assert!(w.markets.contains_key(&c.market));
+            assert!(c.is_out() || w.markets.contains_key(&c.market), "civ {} lost its market", c.id);
         }
         for c in w.clans.values() {
             assert!(c.civ.is_none_or(|id| w.civs.contains_key(&id)));

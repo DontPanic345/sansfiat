@@ -42,6 +42,7 @@ export function legendHtml(country) {
     [sw('background:#3b6fd6;border:2px solid #ff2a2a;width:10px;height:12px;margin:0 4px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)'), 'hungry warrior'],
     [sw('background:transparent;border:0;border-top:3px dashed #fff;height:0;margin:5px 0'), 'route (selected unit)'],
     [sw('background:hsl(120,85%,55%);height:3px;margin:5px 0;border:0'), 'camp line (green: cheap to feed, red: cut off)'],
+    [sw('background:#f4f7fa;height:4px;margin:5px 0;border:0;box-shadow:0 0 0 1px #000'), 'a picked good’s chain from its source to its store (width by share)'],
   ];
   return items.map(([s, name]) => `<span class="item">${s}${name}</span>`).join('');
 }

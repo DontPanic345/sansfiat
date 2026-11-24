@@ -175,9 +175,9 @@ pub fn armed(w: &mut World, civ: u32) {
     }
 }
 
-/// Raises the army of every civ in the world (`armed`), as each civ's own Raises would.
+/// Raises the army of every living civ in the world (`armed`), as each civ's own Raises would.
 pub fn armed_all(w: &mut World) {
-    let ids: Vec<u32> = w.civs.keys().copied().collect();
+    let ids: Vec<u32> = w.civs.values().filter(|c| !c.is_out()).map(|c| c.id).collect();
     for id in ids {
         armed(w, id);
     }

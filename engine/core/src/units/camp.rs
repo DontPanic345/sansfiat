@@ -86,7 +86,13 @@ pub(crate) fn cs_mut(w: &mut World, id: u32) -> &mut CampState {
 /// One camp's march. Returns the labour the march left.
 pub(super) fn camp_march(w: &mut World, id: u32, rivals: &BTreeMap<usize, Vec<u32>>) -> f64 {
     let people = w.units[&id].people;
-    w.units.get_mut(&id).unwrap().spoil();
+    let exchange = w.config.exchange;
+    let u = w.units.get_mut(&id).unwrap();
+    // With exchange on, an army's wares are its pay: they keep none of its food.
+    crate::actors::spoil_keeping(&mut u.actor.store, if exchange { f64::INFINITY } else { 0.0 });
+    if let Some(s) = u.stall.as_mut() {
+        crate::actors::spoil(&mut s.food);
+    }
     // Making bows takes the turn's labour: no march (`bows` is cleared at the turn's end).
     if cs(w, id).bows {
         let c = cs_mut(w, id);
@@ -228,6 +234,14 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
         }
     }
 
+    // With no stall stocked to feed it a turn, its pay comes first.
+    let pays = w.config.exchange && (cs(w, id).auto_supply || cs(w, id).resupply);
+    let eats = people * UNIT.food;
+    if pays && crate::exchange::market_end(w, &w.units[&id]).is_none_or(|(_, food)| food + EPS < eats) {
+        let used = crate::exchange::pay(w, id, ladder.left);
+        ladder.spend(used);
+    }
+
     // The line, and whether it can feed the camp; cut by an army when it could without held ground.
     let line_now = line(w, id);
     let cut = cut_off(w, id);
@@ -302,6 +316,11 @@ pub(super) fn camp_turn(w: &mut World, id: u32, left: f64) {
     // Auto-supply covers what eating needs that foraging didn't, then fills the pack.
     if cs(w, id).auto_supply {
         brought += ladder.supply(w, id, room(&w.units[&id]));
+    }
+    // More pay comes on the labour left.
+    if pays {
+        let used = crate::exchange::pay(w, id, ladder.left);
+        ladder.spend(used);
     }
 
     {

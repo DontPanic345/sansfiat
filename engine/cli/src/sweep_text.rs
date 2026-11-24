@@ -200,6 +200,7 @@ pub(crate) fn print_text(r: &Report) {
     crate::sweep_settling::print_settling(r);
     crate::sweep_settle::print_settle(r);
     crate::sweep_goods::print_goods(r);
+    crate::sweep_trade::print_trade(r);
     let floor = r.floor.as_ref().and_then(|f| f.get("total.led.over_idle").copied());
     crate::sweep_led::print_led(&r.maps, &r.total.led, floor);
     println!("seconds {:.1}", r.seconds);

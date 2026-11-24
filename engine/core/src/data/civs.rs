@@ -14,6 +14,9 @@ pub struct CivRules {
     /// The share of what it brings (its basket) a civ clan pays into the store when it walks to the
     /// capital's market, while the store has room; its harvest drops by the same share.
     pub levy: f64,
+    /// The share of the salt and obsidian it brings a civ clan pays into the store, whatever room the
+    /// store has for food, up to what the store holds of each (`actors::civ_holds`).
+    pub levy_goods: f64,
     /// The most goods, in all, a civ's store holds; the excess is lost.
     pub store_cap: f64,
     /// What a civ clan makes of going to its capital's market over another festival, in days.
@@ -24,6 +27,7 @@ pub const CIV: CivRules = CivRules {
     endowment: [0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     bridge_span: 1,
     levy: 0.2,
+    levy_goods: 1.0,
     store_cap: 60.0,
     pull: 3.0 * DAY,
 };

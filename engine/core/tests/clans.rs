@@ -114,7 +114,7 @@ fn reaping_keeps_to_labour_stock_and_target_on_real_maps() {
                         .takes;
                 let food = total(&std::array::from_fn(|f| takes.iter().map(|t| t[f]).sum()));
                 let labour = (pop * CLAN.work - c.trip()).max(0.0);
-                assert!(CLAN.harvest_labour * food <= labour + EPS);
+                assert!(CLAN.harvest_labour * food <= labour * engine::actors::tool_edge(&store, pop) + EPS);
                 assert!(food <= (CLAN.surplus_target * pop - total(&store)).max(0.0) + EPS);
                 for (&i, t) in c.territory.iter().zip(&takes) {
                     for (x, s) in t.iter().zip(&w.tiles[i].stock) {
@@ -416,7 +416,8 @@ fn a_childs_days_come_out_of_the_next_harvest_as_a_routes_do() {
     let c = &w.clans[&id];
     let (_, yearly) = walks(&w, c.home, &c.territory);
     let all = |nursing: f64| -> f64 {
-        let (work, _, _, _) = engine::fields::jobs(&w, P, &[], &c.territory, &yearly, 0.0, &[true; 3], false, nursing);
+        let (work, _, _, _, _) =
+            engine::fields::jobs(&w, P, &[], &c.territory, &yearly, 0.0, &[true; 3], false, nursing);
         work.iter().sum()
     };
     let days = 2.0 * DAY;

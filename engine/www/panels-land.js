@@ -1,7 +1,8 @@
 // The land's panels: a festival's and a bare tile's shape (spec items 16, Festival and Tile). `panels.js`
 // reads these through `describe`.
 
-import { civName, civOrder, f2, foodOf, heldGoods, hex, reasonsOf, tileKind, wareRows } from './panels.js';
+import { civName, civOrder, f2, foodOf, heldGoods, hex, reasonsOf, tileKind } from './panels.js';
+import { wareRows } from './panels-goods.js';
 
 /** A festival's panel (spec item 16, Festival): its age, traders and activity, its prices in the tooltip, the
  *  clans going, and its walkers drawn on the map (by the view's focus). */
@@ -106,7 +107,7 @@ export function settlementShape(ctx, s) {
     doing: `Founded turn ${s.founded}: ${s.clans.length} clan${s.clans.length === 1 ? '' : 's'}, ${f2(people)} people live here`,
     numbers: [
       { label: 'Store', value: `${f2(total)} of ${f2(s.cap)}`, tip: `${stored.join(', ') || 'Empty'}: filled only by the levy at its market` },
-      ...wareRows(ctx, s.store, false, 'its store'),
+      ...wareRows(ctx, s.store, false, 'its store', s.tile),
       { label: 'Levy', value: `${f2(s.levied)} this turn`, tip: `Food the civ's clans paid into this store at its market this turn` },
       { label: 'Land', value: `${s.land.length} tiles`, tip: "The part of the civ's claim nearer this settlement than the capital or another settlement; lit on the map" },
       { label: 'Founded', value: s.founded, tip: 'The turn a clan settled here' },

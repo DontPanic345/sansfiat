@@ -112,7 +112,8 @@ impl Sim {
     /// unworn]` for every tile with some food worn (each food's wear as a share, `0..=1`, and its cap before
     /// wear, in `goods()` order). `phase` is as `phase()`;
     /// `player` is the civ id the player leads, else null. `civs` is `{id: {id, name, color, market,
-    /// capital, clan (its own clan), founded, store (a basket, in `goods()` order), lost, people, clans, claim (the civ's claimed
+    /// capital, clan (its own clan), founded, store (a basket, in `goods()` order), lots (the store's wares' lots: `{good, source,
+    /// markets, share}`, `lots.rs`), lost, people, clans, claim (the civ's claimed
     /// tiles, sorted, the capital among them), land (its held tiles: its whole claim),
     /// army (its `units::Counters`), keep (the food it keeps
     /// in force, `civs::keep`), keep_set
@@ -133,7 +134,7 @@ impl Sim {
     /// `rules()` gives `join`, the leaning a clan joins a civ at, for the tints. `units` is the camps,
     /// `{id: camp}`, a camp being its engine fields (`kind`, `people` (warriors), `home`, `store` (the
     /// pack, a basket), `dest`, `banked`, `hungry`, `auto_forage`, `auto_supply`, `routes`, ...) and
-    /// `tile`, `draws_on` (`{tile, label, name}`: the store its line ends at, `label` "capital" or "settlement"; null with no line), `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
+    /// `tile`, `lots` (the pack's wares' lots, as the store's), `draws_on` (`{tile, label, name}`: the store its line home ends at, `label` "capital" or "settlement"; null with no line), `buys_at` (`{tile, food}`: the market its line ends at instead, and the food waiting at its stall there; null when its line ends at a store), `pack_cap` (the pack's food when full), `food_turns` (turns the pack feeds it), `line`
     /// (`{path, cost, carry}`: the path after its tile to the capital, its cost, and the food it carries
     /// a turn with all its labour; carry null is without limit, at the capital; `line` itself null when
     /// there is no line), `cut_off`, `cut_by` (the rival whose land cuts its line, `units::cut_by_rival`, else null), `territory` (its zone, sorted, its tile in it), `held` (the zone's
@@ -183,6 +184,7 @@ impl Sim {
                     "clan": c.clan,
                     "founded": c.founded,
                     "store": c.store,
+                    "lots": c.actor.lots,
                     "lost": c.lost,
                     "people": mine.clone().map(|k| k.people).sum::<f64>(),
                     "clans": mine.count(),
@@ -234,6 +236,11 @@ impl Sim {
                         let label = if capital { "capital" } else { "settlement" };
                         serde_json::json!({ "tile": tile, "label": label, "name": settle::store_name(w, u.civ, tile) })
                     })
+                    .into();
+                row["buys_at"] = units::line(w, u.id)
+                    .and_then(|(path, _, _)| path.last().copied().or(Some(u.tile())))
+                    .and_then(|end| w.markets.values().find(|m| m.tile == end && settle::store(w, u.civ, end).is_none()))
+                    .map(|m| serde_json::json!({ "tile": m.tile, "food": engine::exchange::stall_at(u, m.id) }))
                     .into();
                 row["cut_off"] = units::cut_off(w, u.id).into();
                 row["cut_by"] = units::cut_by_rival(w, u.id).into();
