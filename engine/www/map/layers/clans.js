@@ -1,7 +1,7 @@
 // Clans: each clan is drawn where it lives. Above the flat zoom it is its cell from the atlas (a tent that gathers, a hearth
 // when settled, walkers when it came to its home this turn), its cloth in its civ's colour (pale for a clan of no civ),
 // on the leaning disc of an unaligned clan, every cell edged dark and a starving clan's red. Where the terrain is flat or
-// its cell is under `CLAN.from` device px (k 13.6) each is a circle, main's, its
+// its cell is under `CLAN.from` css px (k 13.6) each is a circle, main's, its
 // area by its people, in its civ's colour, a dark square when settled, a red ring when starving. Clans sharing a home
 // stand round its centre in a ring, drawn back to front. Every number of the clans is in `CLAN`.
 
@@ -28,17 +28,17 @@ export const CLAN = {
   walkers: 1.75, // a lone clan of walkers is drawn this much taller than a tent of the same people: three figures read as people only from about 25 px
   walkersShared: 1.3, // and one on a shared home this much, so it doesn't cover the others
   edge: 1.3, // the dark edge every cell has, in css px, as main's circle has its stroke: a pale tent shows on grass by it
-  from: 28, // the terrain cell's device height below which the clans are circles: k 13.6 at 1 device px per css px (a 12 px tent is a brown speck)
+  from: 28, // the terrain cell's height in css px below which the clans are circles: k 13.6 on any screen (a 12 px tent is a brown speck)
 };
 
 /** The circles of main's flat zoom: a lone clan's radius at most 0.75, a shared home's clan at most 0.3, on a ring. */
 const SHARED_MAX = 0.3;
 const RING = 0.34;
 
-/** Whether the clans are circles: the terrain is flat, or its cell is under `CLAN.from` device px. */
+/** Whether the clans are circles: the terrain is flat, or its cell is under `CLAN.from` css px. */
 export const clansFlat = (view) => {
   const H = cellHeight(view);
-  return isFlat(H, view) || H < CLAN.from;
+  return isFlat(H, view) || H / view.dpr < CLAN.from;
 };
 
 /** World to canvas (device) px, as the map's transform maps it. */

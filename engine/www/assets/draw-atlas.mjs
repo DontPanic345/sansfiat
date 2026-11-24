@@ -107,7 +107,7 @@ function asserts() {
     const without = cut(sourceOf(region.file), plain, cell, size);
     if (Buffer.compare(Buffer.from(zero.data), Buffer.from(without.data)) !== 0) bad.push('assert: clan.tent cut with floor 0 differs from the cut without');
   }
-  // A fill's copies seam:the source column read by a sample just left of a copy boundary is the one read just right of it, mirrored.
+  // A fill's copies seam: the source column read by a sample just left of a copy boundary is the one read just right of it, mirrored.
   const fillSource = { width: 200, height: 100, data: new Uint8Array(200 * 100 * 4) };
   for (let i = 0; i < fillSource.width * fillSource.height; i++) {
     fillSource.data[i * 4] = (i % fillSource.width) % 256;
