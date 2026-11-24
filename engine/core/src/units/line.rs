@@ -103,6 +103,20 @@ pub fn store_line(w: &World, unit: u32) -> Option<(Vec<usize>, f64, f64)> {
     line_among(w, unit, w.units.get(&unit)?.home, true, &stores(w, unit))
 }
 
+/// Each store of unit `unit`'s civ, with the days its line runs to that store alone (`None` when cut
+/// off) and whether it holds a turn of the unit's food: the choice `store_line` makes, read store by
+/// store, through `line_among` so it can't disagree with it.
+pub fn store_choice(w: &World, unit: u32) -> Vec<(usize, Option<f64>, bool)> {
+    let Some(u) = w.units.get(&unit) else { return Vec::new() };
+    stores(w, unit)
+        .into_iter()
+        .map(|(s, stocked)| {
+            let days = line_among(w, unit, u.home, true, &[(s, stocked)]).map(|(_, cost, _)| cost);
+            (s, days, stocked)
+        })
+        .collect()
+}
+
 /// Whether a line of civ `civ` may cross tile `i`, reading held ground: walkable, and no rival's.
 pub fn may_cross(w: &World, civ: u32, i: usize) -> bool {
     walkable(w, i) && civs::holder(w, i).is_none_or(|c| c == civ)

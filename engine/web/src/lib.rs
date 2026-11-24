@@ -334,7 +334,7 @@ impl Sim {
             .values()
             .flat_map(|c| c.signposts.iter().map(move |s| (c.id, s)))
             .map(|(civ, s)| {
-                serde_json::json!({ "civ": civ, "tile": s.tile, "turn": s.turn, "worth": engine::settle::worth(w, s.tile) })
+                serde_json::json!({ "civ": civ, "tile": s.tile, "turn": s.turn, "worth": engine::settle::worth(w, s.tile), "idle": engine::settle::idle(w, s.tile) })
             })
             .collect();
         serde_json::json!({

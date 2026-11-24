@@ -6,6 +6,11 @@ use engine::lots::Lots;
 use engine::market::Basket;
 use engine::{settle, Unit, World, GOODS};
 
+/// A store's goods as its line lists them, `food 40.0, salt 0.0, …`, each to one decimal and never `-0.0`.
+pub(crate) fn stock(store: &Basket) -> String {
+    GOODS.iter().zip(store.iter()).map(|(f, v)| format!("{f} {:.1}", v.max(0.0))).collect::<Vec<_>>().join(", ")
+}
+
 /// Where a market is, for a chain: the holder's capital market, a settlement's, or a festival by its hex.
 fn market_name(w: &World, civ: u32, mid: u32) -> String {
     let Some(m) = w.markets.get(&mid) else { return format!("market {mid}") };
@@ -61,4 +66,17 @@ pub(crate) fn pack_wares(u: &Unit) -> String {
 /// The settlement of `civ` on `tile`, for its store's chains (`settle::panels` has no lots).
 pub(crate) fn settlement_lots(w: &World, tile: usize) -> Option<&Lots> {
     w.settlements.values().find(|s| s.tile == tile).map(|s| &s.lots)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::stock;
+
+    #[test]
+    fn a_store_never_prints_negative_zero() {
+        let store = [40.0, 0.0, -0.0, -1e-12, 0.0, 0.0, 0.0];
+        let line = stock(&store);
+        assert!(line.contains("salt 0.0") && line.contains("obsidian 0.0"), "{line}");
+        assert!(!line.contains("-0"), "{line}");
+    }
 }

@@ -79,6 +79,7 @@ export function tileShape(ctx, sel) {
     : [];
   const buttons = [];
   const post = (v.signposts ?? []).find((p) => p.tile === i);
+  let reasons = [];
   if (post) {
     const ago = v.turn - post.turn;
     numbers.push({ label: 'Signpost', value: `${civName(ctx, post.civ)}'s, posted ${ago} turn${ago === 1 ? '' : 's'} ago`, tip: 'A place named for a clan to settle' });
@@ -87,9 +88,10 @@ export function tileShape(ctx, sel) {
       value: `${Math.round(100 * Math.min(post.worth, 1))}%`,
       tip: "The share of a daughter's need the tile feeds: 100% feeds her in full",
     });
+    if (post.idle) reasons = [{ turn: v.turn, text: `It draws nobody: ${post.idle}` }];
     if (post.civ === v.player) buttons.push({ label: 'Remove signpost', action: civOrder(post.civ, { type: 'unpost', tile: i }) });
   }
-  return { name: tileKind(ctx, i), doing, numbers, list, reasons: [], buttons };
+  return { name: tileKind(ctx, i), doing, numbers, list, reasons, buttons };
 }
 
 /** A settlement's panel: its store against the cap and this turn's levy, the clans living on it, the clans that

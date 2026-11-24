@@ -23,6 +23,7 @@ mod sweep_towns;
 mod sweep_trade;
 mod view;
 mod view_goods;
+mod view_land;
 
 use std::{env, process::exit};
 
