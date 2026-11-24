@@ -1,0 +1,6 @@
+== branch
+medium9-clans-edge  tile -1  terrainMs 9.5 8.8 8.6 8.7 8.7  median 8.7  stats.woods 0
+medium9-clans-play  tile -1  terrainMs 8.7 7.4 7.3 7.4 7.4  median 7.4  stats.woods 755
+== main
+medium9-clans-edge  tile -1  terrainMs 9.1 9.4 8.8 8.5 8.7  median 8.8  stats.woods 0
+medium9-clans-play  tile -1  terrainMs 7.5 7.5 7.4 7.4 7.4  median 7.4  stats.woods 755

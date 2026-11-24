@@ -1,0 +1,57 @@
+# The clans on the retro maps (main at f5ea782), leading the first civ and only ending turns
+
+From proto/clans.mjs (clans.jsonl; small 2 printed to the session) and proto/moves.mjs (moves.jsonl). Small 3 and
+small 6 end the led game inside 16 turns, so they have no rows past the pick (as #443 found).
+
+| Map | At | Turn | Clans | Settled | since < 3 | Starving | Of no civ | Homes shared (2/3/4) | Mixed homes (settled + gathering) |
+|---|---|---|---|---|---|---|---|---|---|
+| small 2 | pick | 287 | 148 | 3 | 1 | 0 | 88 | 0 | 0 |
+| small 2 | +8 | 295 | 159 | 3 | 2 | 10 | 85 | 5/0/0 | 0 |
+| small 2 | +16 | 303 | 162 | 10 | 1 | 16 | 76 | 5/3/0 | 4 |
+| small 9 | pick | 226 | 116 | 3 | 1 | 8 | 80 | 0 | 0 |
+| small 9 | +8 | 234 | 138 | 4 | 4 | 15 | 92 | 5/0/0 | 0 |
+| small 9 | +16 | 242 | 138 | 15 | 1 | 11 | 86 | 8/0/0 | 2 |
+| medium 8 | pick | 283 | 266 | 3 | 0 | 8 | 218 | 0 | 0 |
+| medium 8 | +8 | 291 | 293 | 3 | 6 | 13 | 237 | 3/0/1 | 0 |
+| medium 8 | +16 | 299 | 304 | 17 | 8 | 21 | 230 | 4/3/1 | 5 |
+| medium 9 | pick | 467 | 155 | 3 | 2 | 2 | 128 | 0 | 0 |
+| medium 9 | +8 | 475 | 174 | 3 | 8 | 6 | 130 | 4/1/0 | 1 |
+| medium 9 | +16 | 483 | 185 | 6 | 10 | 15 | 128 | 3/1/2 | 2 |
+| large 8 | pick | 362 | 642 | 3 | 0 | 13 | 594 | 0 | 0 |
+| large 8 | +8 | 370 | 684 | 4 | 10 | 26 | 621 | 15/0/0 | 0 |
+| large 8 | +16 | 378 | 691 | 44 | 5 | 29 | 626 | 23/1/0 | 10 |
+
+(moves.mjs lists the clans at since 0 and 1 by name.)
+
+- At the pick every clan has its own home, and the only settled clans are the three civs' own clans, on their
+  capitals (under the capital's house). Settled clans off a capital appear from about +8, mixed homes from +16.
+- No home on any map holds clans of two civs (`mixedCivHomes` 0 everywhere). A shared home holds one civ's clans,
+  or clans of no civ.
+- People: gathering clans 1.4 to 25, settled 2.8 to 17.
+
+## What "moving" is in the live model
+
+A clan's `since` counts turns since it last moved. `clans::move_on` sets it to 0 and the `eat` step adds 1 later in
+the same turn, so a clan that moved on reads `since` 1 in the view that turn. A daughter sent off is born with `since`
+0 after `eat` (moves.jsonl: born rows at since 0), and reads 1 the turn after. A half from a split keeps its
+mother's `since`. A home that drifts a tile to follow its territory's middle keeps `since` too: moves.jsonl shows
+most home changes at since 100 to 400, which are drifts, not a clan walking anywhere. So `since ≤ 1` is "arrived at
+this home this turn (or, for a daughter, last turn)": 0 to 10 clans per map per turn.
+
+## Examples for the views (moves.jsonl)
+
+- medium 9 +16 (turn 483, digest 68a2c856313bf378): tile 734 (forest, a town) holds four of Gold's clans, two settled
+  (410, 755) and two gathering; tile 547 (Red's capital, a town) holds Red's settled clan 43 and three gathering;
+  clan 815 at 874 (forest) and 817 at 919 are at since 0; Gold's gathering clans in the woods round 780; clans of no
+  civ to the south (199 at 921).
+- small 2 +16 (turn 303, 0a19bbf2eb1dce5c): settled 441 at 410 (plains), 163 at 502, 311 at 443; tile 503 holds
+  settled 512 and gathering 305; tile 475 three gathering; tile 505 (forest, a town) three gathering; Red's land
+  with starving clans (red rings in the capture).
+- medium 8 +16 (turn 299, f2bcde40e4686b25): tile 401 (desert) two settled clans of no civ; 865, 867, 871 and 874
+  at since ≤ 1 on screen at 401; clan 87 at 1368 leaning to Red at 0.33 of the way to joining.
+- small 9 +8 (turn 234, a742b8a68f9a8081): clan 223 at 417 (plains) leaning to Gold at 0.57.
+
+## Cameras (proto/scene.mjs, scenes.txt)
+
+Each view below was set on main as shots.mjs sets one (lead the first card, end the turns, camera on the tile or the
+mean of the tiles) and read back: none is clamped.

@@ -88,7 +88,7 @@ export class MapView {
     this.dirty = true;
     this.frame = 0;
     this.anim = null;
-    this.stats = { terrainMs: 0, overlayMs: 0, atlas: false, cells: 0, units: [], labels: [] };
+    this.stats = { terrainMs: 0, overlayMs: 0, atlas: false, cells: 0, units: [], labels: [], clans: [] };
     this.pointers = new Map();
     this.drag = null;
     this.attach();
@@ -290,6 +290,12 @@ export class MapView {
   unitProbe() {
     this.drawNow();
     return units.probe(this.model, this);
+  }
+
+  /** The clans layer's probe (layers/clans.js `probe`): each clan on the map, with the pixels its cloth tints. */
+  clanProbe() {
+    this.drawNow();
+    return clans.probe(this.model, this);
   }
 
   setSelection(i, unit = -1) {

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "build-1",
+    "title": "The clan cells and their masks in the atlas",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 2 (keys, size, anchor, the floor rule and its assert are exact; the first cuts and cloth polygons are read by eye, though they need only read as a tent, a hearth and walkers, from source boxes the spec measured), New 1 (the actor regions, cloth and grey are #443's; the floor is a small new rule in the sprite path), Miss 1 (--check's recut, the new assert, play/art.mjs, the compare with main), Reach 1 (the atlas every map draw reads; only clans.js reads the six cells). An easel at 5: Haiku high, as 443's atlas easel ran. About 7 files, 200 lines plus the PNG: cut.mjs, sources.js, placeholders.js, draw-atlas.mjs, atlas.png/json, engine/CLAUDE.md, atlas.md, cells.png and two protos."
+  },
+  {
+    "id": "build-2",
+    "title": "The clans on the map, the views and the checks",
+    "part": "easel",
+    "model": "haiku",
+    "effort": "high",
+    "points": 5,
+    "why": "Open 1 (the kind, size, place, colour, disc, flat path, stats, probe, the 12 views and the lineup's states are the spec's word for word, each setup run on main in proto/scene.mjs and proto/lineup.mjs; CLAN starts at numbers that run; the legend's swatches are the one choice), New 1 (units.js is the pattern for the table, the pre-scaled cells, the multiply, the outline, stats and probe; the views follow 443's), Miss 1 (play/clans.mjs checks the lineup's kinds, colours, edge, ring, cycle and dots; towns.mjs and goods.mjs stay), Reach 2 (the clans layer draws every frame, and the legend and towns.mjs read it). Haiku high at 5, as 443's map easel. About 10 files, 550 lines: layers/clans.js, layers/leanings.js, map/view.js, legend.js, shots.mjs, play-stage.mjs, play/clans.mjs, maybe play/towns.mjs, engine/CLAUDE.md, easel.md. Kept apart from build-1 by area (atlas, then map) as 443 did. It waits on 12 views shot once, nine of them 8 or 16 turns into a real game."
+  },
+  {
+    "id": "build-3",
+    "title": "The clans on the map, judged beside main",
+    "part": "canvas",
+    "model": "sonnet",
+    "effort": "high",
+    "points": 9,
+    "why": "Open 4 (tent, hearth and walkers told apart at three zooms, four colours told apart on plains and in a wood, the pale not read as hide or Gold, the starving edge on Red's land, shared homes and units readable, the flat threshold: all judged by eye, with a tinted-pixel bar the build sets), New 1 (the cells and drawing are the easels'; a donkey, a second tent or a raised threshold adapts them), Miss 3 (only captures on the retro maps and the lineup show a hearth lost at k 6 or a Gold that reads as ochre), Reach 1 (sources.js and CLAN, drawn every frame, no rule). A canvas at 9: Sonnet high, as 440's to 443's. About 6 files and 14 committed PNGs, 200 lines: sources.js, maybe cut.mjs, atlas.png/json, layers/clans.js, maybe shots.mjs and play/clans.mjs, views.md, shots/."
+  },
+  {
+    "id": "review",
+    "title": "Review the piece",
+    "model": "opus",
+    "effort": "medium",
+    "why": "The goal is judged by eye on identical views of main and the branch, so Opus medium. It checks no Rust moved and the clan views' digests match, repeats the atlas build for identical bytes, runs --clans and play/clans.mjs, shoots both trees and diffs the cameras (the flat view identical), reads the pairs for three shapes, four colours on plains and in a wood, the starving edge, shared homes beside the capital and units, compares --time, checks a clan's click, a shared home's cycle, pan and zoom on the page, and puts the captures in the PR."
+  }
+]

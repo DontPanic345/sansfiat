@@ -42,6 +42,9 @@ export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth
 const UNITS = ['camp', 'scout'];
 /** A unit cell: a figure 96 px square, standing with its feet at the anchor (48, 92), which is the tile's ground. */
 export const UNIT = { w: 96, h: 96, ax: 48, ay: 92 };
+/** A clan cell: a group standing on the ground, its middle at the anchor (56, 90). */
+export const CLAN = { w: 112, h: 96, ax: 56, ay: 90 };
+const CLANS = ['tent', 'hearth', 'walk'];
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
 /** A mountain piece's cell: 224 × 144, its ground point (the anchor) at (112, 128). */
 const MOUNTAIN = { w: 224, h: 144, ax: 112, ay: 128 };
@@ -132,6 +135,16 @@ export function layout() {
     put(`unit.${u}.mask`, UNIT.w, UNIT.h, `${u} mask: its cloth in grey (the civ's colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the figure`, at);
   }
   row();
+  const clanNote = {
+    tent: 'a clan that gathers: a hide tent on the ground, its middle at the anchor, transparent outside: cut from the actor study',
+    hearth: 'a settled clan: a tent by a fire with its smoke, on the ground, its middle at the anchor, transparent outside: cut from the actor study',
+    walk: 'a clan that came to its home this turn: a man, a woman and a child walking, on the ground, its middle at the anchor, transparent outside: cut from the actor study',
+  };
+  for (const k of CLANS) {
+    put(`clan.${k}`, CLAN.w, CLAN.h, clanNote[k], { ax: CLAN.ax, ay: CLAN.ay });
+    put(`clan.${k}.mask`, CLAN.w, CLAN.h, `clan.${k} mask: its cloth in grey (the civ's colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the clan`, { ax: CLAN.ax, ay: CLAN.ay });
+  }
+  row();
   put('icon.capital', 64, 64, "capital: a house with a door, casing and white edge, transparent inside (the civ's colour shows through from the mask)");
   put('icon.capital.mask', 64, 64, "capital silhouette in opaque white: tinted in the civ's colour");
   put('icon.festival', 64, 64, 'festival: a white ring with a dark casing');
@@ -176,6 +189,29 @@ export function layout() {
   row();
   return { width: WIDTH, height: y, cells };
 }
+
+/** A clan's placeholder: a tent (a hearth's fire beside it) or a file of walkers; a mask is the same shape in white. */
+const clanShape = (ctx, w, h, id, mask) => {
+  const base = h * 0.9, cx = w / 2;
+  ctx.fillStyle = mask ? '#fff' : '#8a5a2b';
+  if (id === 'walk') {
+    for (const dx of [-0.3, 0, 0.3]) {
+      const x = cx + dx * w, t = dx === 0 ? 0.42 : 0.3;
+      ctx.fillRect(x - 0.05 * w, base - t * h, 0.1 * w, t * h);
+    }
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(cx, h * 0.12);
+  ctx.lineTo(cx + 0.4 * w, base);
+  ctx.lineTo(cx - 0.4 * w, base);
+  ctx.closePath();
+  ctx.fill();
+  if (id === 'hearth' && !mask) {
+    ctx.fillStyle = '#ffd400';
+    ctx.fillRect(cx + 0.3 * w, base - 0.08 * h, 0.14 * w, 0.08 * h);
+  }
+};
 
 const corners = (cx, cy, r) =>
   [0, 1, 2, 3, 4, 5].map((i) => [cx + r * Math.cos((Math.PI / 3) * i - Math.PI / 6), cy + r * Math.sin((Math.PI / 3) * i - Math.PI / 6)]);
@@ -362,6 +398,8 @@ export function draw(name, ctx, w, h) {
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
+  } else if (kind === 'clan') {
+    clanShape(ctx, w, h, id, name.endsWith('.mask'));
   } else if (name === 'icon.capital.mask') {
     house(ctx, w, h);
     ctx.fillStyle = '#fff';
