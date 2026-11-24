@@ -1,0 +1,23 @@
+== out-preart: node www/shots.mjs --out /tmp/t446/out-preart --only small2-close,medium9-places-close,large8-places-close,medium9-clans-close,lineup-close,small2-play,medium9-play,large8-play,medium9-woods-play,medium9-places-play,large8-places-play,medium9-units-play,medium9-clans-play,medium9-woods-near,medium9-woods-far,small2-edge,medium9-woods-edge,medium9-units-edge,medium9-places-edge,small2-flat,medium9-units-flat
+small2-close  k 35  tile 440  1280×800
+small2-play  k 18  tile 440  1280×800
+small2-edge  k 6  tile 440  390×844
+small2-flat  k 5  tile 440  390×844
+medium9-play  k 18  tile 924  1280×800
+large8-play  k 18  tile 1680  1280×800
+medium9-woods-play  k 18  tile 827  1280×800
+medium9-woods-near  k 12  tile 827  1280×800
+medium9-woods-far  k 11  tile 827  1280×800
+medium9-woods-edge  k 6  tile 827  390×844
+medium9-units-play  k 18  tile -1  1280×800
+medium9-units-edge  k 6  tile -1  390×844
+medium9-units-flat  k 5  tile -1  390×844
+lineup-close  k 35  tile -1  1280×800
+medium9-clans-play  k 18  tile -1  1280×800
+medium9-clans-close  k 35  tile -1  1280×800
+medium9-places-play  k 18  tile -1  1280×800
+medium9-places-close  k 35  tile -1  1280×800
+medium9-places-edge  k 6  tile -1  390×844
+large8-places-close  k 35  tile -1  1280×800
+large8-places-play  k 18  tile 2524  1280×800
+exit 0

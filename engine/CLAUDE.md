@@ -16,10 +16,11 @@ node www/play/all.mjs                        # every touch-point script; check.s
 node www/play/units.mjs                      # the lineup's units: six figures, probe colours, a stack's cycle and numbers
 node www/play/places.mjs                     # the place lineup: roles, cloth, the clans on them
 node www/assets/draw-atlas.mjs [--check]     # atlas.png and atlas.json from placeholders.js and sources.js (--check: no Chrome)
-node www/shots.mjs --out DIR                 # the map's fixed views, as canvases; --diff A B compares two folders
-node www/shots.mjs --cull DIR                # each view with an `on` with the edge, woods and ridge layers' culling on and off: identical, or exit 1
-node www/shots.mjs --time NAME,…             # five static redraws of each view: stats.terrainMs and the median
-node www/shots.mjs --units|--clans|--places DIR  # those views (shots-views.mjs): exit 1 unless each probe is its civ's, state's or tile's
+node www/shots.mjs --out DIR                 # the map's fixed views (--only NAME,…); --diff A B compares two folders
+node www/shots.mjs --cull DIR                # views with an `on`, culling (edge, woods, ridges) on and off: identical, or exit 1
+node www/shots.mjs --time NAME,…|verify      # five static redraws: stats.terrainMs, the median and the frame median
+node www/shots.mjs --units|--clans|--places DIR  # those views: exit 1 unless each probe is its civ's, state's or tile's
+node www/shots-probe.mjs --hits|--pop|--overlays|--layers|--pan|--shift  # the map probes (the head); --hits, --pop exit 1 on a miss
 ```
 
 `cargo test` runs optimised: whole pre-games are too slow otherwise.

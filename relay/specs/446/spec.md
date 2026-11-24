@@ -16,6 +16,8 @@ fixes what the art made worse. It asks each of these against two controls:
   frame** is what `--pan` measures (build-1): twelve `panBy` steps of whole css px ending on the view's camera, each
   `drawNow` timed whole. **Bar:** on every view of the verify set, the branch's median pan frame is at most 1.5× the
   pre-art page's or 8 ms, whichever is larger, and its slowest pan frame is no slower than main's median pan frame.
+  *Build-1 correction:* main's own slowest pan frame is 1.1 to 6.9 times its median (baseline.md §2), so that slowest-frame
+  clause fails on main itself and can't be the bar as written; the planner must restate it before build-2 is judged.
   A full redraw (a zoom, `--time`) is no slower than main's.
 - **Selection.** A click picks the tile under the pointer (`tileAt`), then cycles what is on it. On main a stacked unit's
   second figure stands in the next hex, and a crowded town's outer clans spill out of theirs, so a click on what you see
@@ -30,7 +32,7 @@ fixes what the art made worse. It asks each of these against two controls:
   The View overlays (territories, fertility, country, hidden costs, worn, festival routes) read on both
   (`overlays.txt`). **Bar:** by eye on the verify set at close, play and strategic zoom: every unit, place and clan reads,
   in its civ's colour, as well as on the pre-art page, and every overlay reads over the art; and `--units`, `--clans` and
-  `--places` exit 0 on the branch. On main `--units` exits 1 on `medium9-units-flat` (the open idea below).
+  `--places` exit 0 on the branch. *Build-1 correction:* `--units` exits 0 on main too (baseline.md §8); the claim that main's exits 1 on `medium9-units-flat` doesn't reproduce, so the flat-zoom read is judged by eye.
 - **Zoom and selection behaviour stay.** `MAX_K`, `minK`, the flat-zoom switch (`isFlat`, `CLAN.from`, `PLACE.from`),
   `tileAt`, the click cycle and the panels are main's. The fixes are in the drawing.
 

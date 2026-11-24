@@ -182,7 +182,7 @@ export const VIEWS = [
   { name: 'lineup-edge', window: 'phone', k: 6, stage: 'lineup', on: 'at', between: [125, 170], units: true },
   // The signals: a unit selected (white edge), and a hungry camp selected (white over red).
   { name: 'lineup-selected', window: 'laptop', k: 18, stage: 'lineup', on: 'at', between: [125, 170], select: { kind: 'camp', civ: 'red' }, units: true },
-  { name: 'small2-camps-selected', size: 'small', seed: 2, window: 'laptop', k: 35, turns: 8, on: 'at', at: 527, select: { tile: 527 }, units: true },
+  { name: 'small2-camps-selected', size: 'small', seed: 2, window: 'laptop', k: 35, turns: 8, on: 'at', at: 257, select: { tile: 257 }, units: true }, // the camp on 257 after 8 turns (527 has none)
   // The clan views (#444): the clans as cells, their states and kinds, each set up on main by proto/scene.mjs and lineup.mjs.
   { name: 'medium9-clans-play', size: 'medium', seed: 9, window: 'laptop', k: 18, turns: 16, on: 'at', between: [734, 874], clans: true },
   { name: 'medium9-clans-close', size: 'medium', seed: 9, window: 'laptop', k: 35, turns: 16, on: 'at', between: [734, 874], clans: true },
@@ -207,4 +207,24 @@ export const VIEWS = [
   { name: 'places-lineup-close', window: 'laptop', k: 35, stage: 'places', turns: 1, states: true, on: 'at', between: [47, 140], places: true },
   { name: 'places-lineup-play', window: 'laptop', k: 18, stage: 'places', turns: 1, states: true, on: 'at', between: [47, 140], places: true },
   { name: 'places-lineup-edge', window: 'phone', k: 6, stage: 'places', turns: 1, states: true, on: 'at', between: [47, 140], places: true },
+];
+
+/** The verify set (#446): 21 views at close, play, between and strategic zoom, the ones the spec's bars are judged on. */
+export const VERIFY = [
+  'small2-close', 'medium9-places-close', 'large8-places-close', 'medium9-clans-close', 'lineup-close',
+  'small2-play', 'medium9-play', 'large8-play', 'medium9-woods-play', 'medium9-places-play', 'large8-places-play',
+  'medium9-units-play', 'medium9-clans-play',
+  'medium9-woods-near', 'medium9-woods-far',
+  'small2-edge', 'medium9-woods-edge', 'medium9-units-edge', 'medium9-places-edge', 'small2-flat', 'medium9-units-flat',
+];
+
+/** The pop cases (#446): each view and the tile that stands at its edge; shots-probe.mjs puts the tile 90 and 130 css px past each edge. */
+export const POPS = [
+  { view: 'lineup-close', tile: 126 }, // a two-unit stack
+  { view: 'lineup-play', tile: 126 },
+  { view: 'places-lineup-close', tile: 47 }, // a capital that is a town
+  { view: 'places-lineup-close', tile: 140 }, // a settlement of 3, with Red's army beside it
+  { view: 'large8-places-close', tile: 2787 }, // a town of 8
+  { view: 'medium9-stack-close', tile: 547 }, // the raised stack
+  { view: 'medium9-clans-close', tile: 734 },
 ];

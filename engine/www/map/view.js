@@ -525,6 +525,7 @@ export class MapView {
 
   /** Whether tile `i` is within 80 px of the canvas. */
   onScreen(i) {
+    if (this.noCull) return true;
     const x = (this.px[i] - this.cx) * this.k + this.w / 2, y = (this.py[i] - this.cy) * this.k + this.h / 2;
     return x > -80 && x < this.w + 80 && y > -80 && y < this.h + 80;
   }

@@ -1,0 +1,49 @@
+small2-close  k 35  drawn 84  off their tile 0  
+medium9-places-close  k 35  drawn 57  off their tile 2  clan 679 735->691, clan 720 735->736
+large8-places-close  k 35  drawn 83  off their tile 2  clan 1777 2787->2739, clan 1911 2787->2788
+medium9-clans-close  k 35  drawn 49  off their tile 0  
+lineup-close  k 35  drawn 12  off their tile 1  unit 18 camp 126->142
+small2-play  k 18  drawn 151  off their tile 0  
+medium9-play  k 18  drawn 155  off their tile 0  
+large8-play  k 18  drawn 350  off their tile 0  
+medium9-woods-play  k 18  drawn 162  off their tile 0  
+medium9-places-play  k 18  drawn 128  off their tile 2  clan 679 735->691, clan 720 735->736
+large8-places-play  k 18  drawn 233  off their tile 4  clan 1742 2524->2471, clan 1965 2524->2525, clan 1777 2787->2739, clan 1911 2787->2788
+medium9-units-play  k 18  drawn 112  off their tile 1  unit 596 camp 1510->1539
+medium9-clans-play  k 18  drawn 128  off their tile 0  
+medium9-woods-near  k 12  drawn 188  off their tile 0  
+medium9-woods-far  k 11  drawn 188  off their tile 0  
+small2-edge  k 6  drawn 148  off their tile 0  
+medium9-woods-edge  k 6  drawn 188  off their tile 0  
+medium9-units-edge  k 6  drawn 193  off their tile 1  unit 596 camp 1510->1567
+medium9-places-edge  k 6  drawn 232  off their tile 0  
+small2-flat  k 5  drawn 148  off their tile 3  unit 456 scout 166->192, unit 457 scout 506->536, unit 458 scout 69->90
+medium9-units-flat  k 5  drawn 195  off their tile 6  unit 593 scout 1510->1539, unit 596 camp 1510->1594, unit 594 scout 40->66, unit 595 scout 566->608, unit 602 camp 175->206, unit 603 camp 336->372
+medium9-stack-close  k 35  drawn 29  off their tile 0  
+medium9-wood-close  k 35  drawn 54  off their tile 0  
+medium9-gold-play  k 18  drawn 123  off their tile 1  unit 596 camp 566->608
+medium9-gold-close  k 35  drawn 47  off their tile 1  unit 596 camp 566->608
+medium8-units-play  k 18  drawn 232  off their tile 0  
+small2-camps-play  k 18  drawn 120  off their tile 0  
+small2-camps-close  k 35  drawn 60  off their tile 0  
+lineup-play  k 18  drawn 12  off their tile 1  unit 18 camp 126->142
+lineup-edge  k 6  drawn 9  off their tile 1  unit 18 camp 126->157
+lineup-selected  k 18  drawn 12  off their tile 1  unit 18 camp 126->142
+small2-camps-selected  k 35  drawn 72  off their tile 0  
+medium9-clans-edge  k 6  drawn 206  off their tile 0  
+medium9-clans-flat  k 5  drawn 206  off their tile 5  unit 593 scout 1510->1539, unit 594 scout 40->66, unit 595 scout 566->608, unit 601 camp 145->175, unit 602 camp 447->486
+small2-clans-play  k 18  drawn 134  off their tile 1  unit 466 camp 506->536
+small2-clans-close  k 35  drawn 71  off their tile 1  unit 466 camp 506->536
+medium8-clans-play  k 18  drawn 142  off their tile 0  
+medium8-lean-play  k 18  drawn 120  off their tile 0  
+small9-lean-close  k 35  drawn 59  off their tile 0  
+clans-lineup-close  k 35  drawn 23  off their tile 1  unit 29 camp 126->142
+clans-lineup-play  k 18  drawn 23  off their tile 1  unit 29 camp 126->142
+clans-lineup-edge  k 6  drawn 20  off their tile 1  unit 29 camp 126->157
+medium9-places-flat  k 5  drawn 232  off their tile 5  unit 593 scout 1510->1539, unit 594 scout 40->66, unit 595 scout 566->608, unit 601 camp 116->145, unit 602 camp 447->486
+small2-places-close  k 35  drawn 70  off their tile 0  
+places-lineup-close  k 35  drawn 21  off their tile 0  
+places-lineup-play  k 18  drawn 21  off their tile 0  
+places-lineup-edge  k 6  drawn 16  off their tile 0  
+shots-probe --hits: 42 drawn figures are not on their own tile
+exit 1

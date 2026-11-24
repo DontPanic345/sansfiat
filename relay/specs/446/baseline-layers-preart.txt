@@ -1,0 +1,23 @@
+== layers-preart: node www/shots-probe.mjs --layers
+small2-close  k 35  terrain 1.6
+medium9-places-close  k 35  terrain 0.6
+large8-places-close  k 35  terrain 0.8
+medium9-clans-close  k 35  terrain 0.6
+lineup-close  k 35  terrain 1.0
+small2-play  k 18  terrain 4.1
+medium9-play  k 18  terrain 7.4
+large8-play  k 18  terrain 8.1
+medium9-woods-play  k 18  terrain 7.3
+medium9-places-play  k 18  terrain 4.3
+large8-places-play  k 18  terrain 3.9
+medium9-units-play  k 18  terrain 3.0
+medium9-clans-play  k 18  terrain 4.1
+medium9-woods-near  k 12  terrain 3.8
+medium9-woods-far  k 11  terrain 5.0
+small2-edge  k 6  terrain 2.6
+medium9-woods-edge  k 6  terrain 3.8
+medium9-units-edge  k 6  terrain 2.7
+medium9-places-edge  k 6  terrain 5.3
+small2-flat  k 5  terrain 1.1
+medium9-units-flat  k 5  terrain 2.4
+exit 0
