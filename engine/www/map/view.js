@@ -86,7 +86,7 @@ export class MapView {
     this.dirty = true;
     this.frame = 0;
     this.anim = null;
-    this.stats = { terrainMs: 0, overlayMs: 0, atlas: false, cells: 0 };
+    this.stats = { terrainMs: 0, overlayMs: 0, atlas: false, cells: 0, units: [], labels: [] };
     this.pointers = new Map();
     this.drag = null;
     this.attach();
@@ -276,6 +276,12 @@ export class MapView {
   setRouteStart(mark) {
     this.routeStart = mark;
     this.requestDraw();
+  }
+
+  /** The units layer's probe (layers/units.js `probe`): each unit on the map, with the pixels its civ's colour tints. */
+  unitProbe() {
+    this.drawNow();
+    return units.probe(this.model, this);
   }
 
   setSelection(i, unit = -1) {

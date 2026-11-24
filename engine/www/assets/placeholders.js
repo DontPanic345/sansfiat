@@ -40,6 +40,8 @@ export const TREE = {
 export const ICON_WORLD = { 'icon.festival': 2.5, 'icon.centre': 4, 'icon.hearth': 1.6, 'icon.pass': 1, 'icon.town': 1.1 };
 
 const UNITS = ['camp', 'scout'];
+/** A unit cell: a figure 96 px square, standing with its feet at the anchor (48, 92), which is the tile's ground. */
+export const UNIT = { w: 96, h: 96, ax: 48, ay: 92 };
 const ICONS = ['capital', 'festival', 'centre', 'hearth', 'pass'];
 /** A mountain piece's cell: 224 × 144, its ground point (the anchor) at (112, 128). */
 const MOUNTAIN = { w: 224, h: 144, ax: 112, ay: 128 };
@@ -125,8 +127,9 @@ export function layout() {
   put('overlay.fields', 128, 148, hexNote('field furrows: three short dark ochre strokes in the lower half, translucent, drawn over a tile with fields'));
   row();
   for (const u of UNITS) {
-    put(`unit.${u}`, 64, 64, `${u} figure: dark casing and edge, transparent inside (the civ's colour shows through from the mask)`);
-    put(`unit.${u}.mask`, 64, 64, `${u} silhouette in opaque white: tinted in the civ's colour and drawn under the figure`);
+    const at = { ax: UNIT.ax, ay: UNIT.ay };
+    put(`unit.${u}`, UNIT.w, UNIT.h, `${u} figure, standing, its feet at the anchor, transparent outside: cut from the actor study`, at);
+    put(`unit.${u}.mask`, UNIT.w, UNIT.h, `${u} mask: its cloth in grey (the civ's colour shows through when it is tinted by multiply), transparent elsewhere, drawn over the figure`, at);
   }
   row();
   put('icon.capital', 64, 64, "capital: a house with a door, casing and white edge, transparent inside (the civ's colour shows through from the mask)");
