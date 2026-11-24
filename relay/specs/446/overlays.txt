@@ -1,0 +1,12 @@
+# Each View overlay that starts off, turned on alone over medium9-play (laptop, k 18), on the pre-art control and on main
+# (ab15ef9): the share of pixels it moves by more than 48 in a channel. Read beside the PNGs, the overlays read on both;
+# fertility's tint covers the art's woods as it covered the flat colours. The legibility the eye catches is elsewhere:
+# Gold's scout and army at k 18 on Gold's own olive land (medium9-places-play) are smudges on main and clear shields on
+# the pre-art page, and the capital's hall inside its gold ring is a brown blob.
+overlay          pre-art  main
+territories      6.0%     12.9%
+fertility        45.8%    20.3%
+country          1.0%     1.0%
+hidden-costs     7.9%     7.9%
+worn             0.0%     0.0%
+festival-routes  1.5%     1.3%

@@ -1,0 +1,12 @@
+# proto/hits-tail.mjs on main (ab15ef9), appended to shots.mjs's first 431 lines as www/hits.mjs: per drawn unit, clan and
+# place, the tile under its drawn box's centre (tileAt, what a click there picks) against its own tile.
+medium9-stack-close  k 35  drawn 29  off their tile 0
+medium9-units-play  k 18  drawn 112  off their tile 1  unit 596 camp 1510->1539
+lineup-close  k 35  drawn 12  off their tile 1  unit 18 camp 126->142
+lineup-play  k 18  drawn 12  off their tile 1  unit 18 camp 126->142
+places-lineup-close  k 35  drawn 21  off their tile 0
+medium9-places-close  k 35  drawn 57  off their tile 2  clan 679 735->691, clan 720 735->736
+large8-places-close  k 35  drawn 83  off their tile 2  clan 1777 2787->2739, clan 1911 2787->2788
+clans-lineup-close  k 35  drawn 23  off their tile 1  unit 29 camp 126->142
+medium9-play  k 18  drawn 155  off their tile 0
+large8-play  k 18  drawn 350  off their tile 0
