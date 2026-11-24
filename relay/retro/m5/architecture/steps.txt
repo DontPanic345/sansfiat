@@ -1,0 +1,15 @@
+# Per-step ms a turn, large 8 (seed 8, radius 33), 50 turns past the pick, every civ on the AI
+# (prof.rs built against each tree, one session on the Relay runner; steps under 0.05 ms left out)
+step      M4 end   L       S       C       G       Y       main
+          7417e2d b0aa706 ee70756 da69498 148528b 8d1b4ed 4da574f
+move       8.17    8.00    8.53    8.64   11.28   11.52   11.92
+go         7.84    7.74    7.91      -     8.01    7.92    8.19
+harvest    1.38      -       -       -       -     1.43    1.52
+trade      0.30      -       -       -       -     0.41    0.90
+eat        1.48      -       -       -       -     1.76    2.77
+civs         -       -       -       -       -       -     0.18
+ai         8.38    7.99    8.14      -     7.63    2.97    2.40
+units      1.68      -       -       -       -     0.99    1.23
+total     29.90   28.86   30.40   29.94   32.23   27.66   29.80
+# "-": not printed in that run (only move, go, ai and total were kept for L, S, G; only move and total for C).
+# World size at +50: C 741 clans holding 1,849 tiles, G 722 clans holding 1,847: G's move is code, not a bigger world.

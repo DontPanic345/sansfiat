@@ -1,0 +1,17 @@
+# sansfiat bench --size large 8 --after 50, four builds in turn, twice, one session on the Relay runner: F 929b84a (before #156), M4 end 7417e2d, Y 8d1b4ed (paths cached), main 4da574f
+== 929b84a run 1
+seed 8: world 78.7 ms, pre-game 4004.2 ms, 50 turns past the pick 2798.0 ms (55.960 ms a turn)
+== 7417e2d run 1
+seed 8: world 78.2 ms, pre-game 2400.1 ms, 50 turns past the pick 1478.3 ms (29.566 ms a turn)
+== 8d1b4ed run 1
+seed 8: world 77.5 ms, pre-game 2842.6 ms, 50 turns past the pick 1373.2 ms (27.465 ms a turn)
+== 4da574f run 1
+seed 8: world 77.6 ms, pre-game 2824.1 ms, 50 turns past the pick 1490.4 ms (29.809 ms a turn)
+== 929b84a run 2
+seed 8: world 80.9 ms, pre-game 4011.6 ms, 50 turns past the pick 2802.5 ms (56.049 ms a turn)
+== 7417e2d run 2
+seed 8: world 78.9 ms, pre-game 2450.9 ms, 50 turns past the pick 1476.8 ms (29.536 ms a turn)
+== 8d1b4ed run 2
+seed 8: world 77.5 ms, pre-game 2822.3 ms, 50 turns past the pick 1365.2 ms (27.303 ms a turn)
+== 4da574f run 2
+seed 8: world 78.3 ms, pre-game 2832.5 ms, 50 turns past the pick 1468.6 ms (29.371 ms a turn)
