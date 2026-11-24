@@ -1,0 +1,13 @@
+main keys 157, keys whose pixels differ 0, sheet 1024x2416 (main 1024x2320)
+rectangles moved 123 (the rows below the unit row), sizes changed: 
+new keys 6: clan.tent clan.tent.mask clan.hearth clan.hearth.mask clan.walk clan.walk.mask
+unit.camp 96x96 anchor 48,92 opaque 4639
+unit.camp.mask 96x96 anchor 48,92 opaque 1398
+unit.scout 96x96 anchor 48,92 opaque 6023
+unit.scout.mask 96x96 anchor 48,92 opaque 1071
+clan.tent 112x96 anchor 56,90 opaque 5031
+clan.tent.mask 112x96 anchor 56,90 opaque 2222
+clan.hearth 112x96 anchor 56,90 opaque 3854
+clan.hearth.mask 112x96 anchor 56,90 opaque 835
+clan.walk 112x96 anchor 56,90 opaque 4802
+clan.walk.mask 112x96 anchor 56,90 opaque 1665

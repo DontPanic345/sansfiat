@@ -4,7 +4,8 @@
 // Three kinds of region. A hex region is a hex in the source, cut at the cell's hex size. A fill region
 // (`fill`) is a hex whose samples read a source rectangle repeated, every other copy mirrored. A sprite region
 // (`rect`) is a rectangle of the source with a keep-polygon, cut at a scale into the cell with its ground
-// point on the cell's anchor (turned by `rotate`), and a key that clears what is not the sprite. A cell may add
+// point on the cell's anchor (turned by `rotate`), and a key that clears what is not the sprite (and a `floor`, the
+// source alpha under which a sample is clear). A cell may add
 // sprites over its region (`over`, source-over at each one's ground point) and keep only some samples of them
 // (`cloth`, polygons in source px). Ops then recolour (`ramp`, `grey`) or flip (`mirror`) the cut; a derived cell
 // (`derive`) masks another cell's cut to a fringe.
@@ -273,6 +274,7 @@ function spriteData(source, box, region, cell, size) {
           // polygon, or `{ poly, where }`: the polygon's samples whose colour `where(r, g, b)` accepts.
           if (cell.cloth && !cell.cloth.some((p) => (p.poly ? inside(sx + 0.5, sy + 0.5, p.poly) && p.where(R, G, B) : inside(sx + 0.5, sy + 0.5, p)))) continue;
           const A = source.data[(sy * source.width + sx) * 4 + 3];
+          if (region.floor !== undefined && A < region.floor) continue; // the soft fringe below the floor is clear
           if (key.clears(R, G, B, A)) continue;
           r += R * A;
           g += G * A;

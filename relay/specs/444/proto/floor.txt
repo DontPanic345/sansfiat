@@ -1,0 +1,18 @@
+clan.tent {
+  alphaChangedPx: 2065,
+  redOpaqueFloor: 222,
+  redOpaqueNoFloor: 218,
+  totalAlphaLost: 21332
+}
+clan.hearth {
+  alphaChangedPx: 2352,
+  redOpaqueFloor: 182,
+  redOpaqueNoFloor: 185,
+  totalAlphaLost: 22335
+}
+clan.walk {
+  alphaChangedPx: 2351,
+  redOpaqueFloor: 562,
+  redOpaqueNoFloor: 548,
+  totalAlphaLost: 27057
+}

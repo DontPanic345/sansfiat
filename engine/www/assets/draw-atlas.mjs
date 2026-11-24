@@ -99,7 +99,15 @@ function asserts() {
     const without = cut(sourceOf(plain.file), plain, cell, size);
     if (Buffer.compare(Buffer.from(withY.data), Buffer.from(without.data)) !== 0) bad.push(`assert: tree.big.0 cut with scaleY equal to its scale differs from the cut without`);
   }
-  // A fill's copies seam: the source column read by a sample just left of a copy boundary is the one read just right of it, mirrored.
+  // A sprite region with `floor: 0` cuts the same as the region without it.
+  {
+    const region = REGIONS['clan.tent'], cell = CELLS['clan.tent'], size = sheet.cells['clan.tent'];
+    const { floor, ...plain } = region;
+    const zero = cut(sourceOf(region.file), { ...plain, floor: 0 }, cell, size);
+    const without = cut(sourceOf(region.file), plain, cell, size);
+    if (Buffer.compare(Buffer.from(zero.data), Buffer.from(without.data)) !== 0) bad.push('assert: clan.tent cut with floor 0 differs from the cut without');
+  }
+  // A fill's copies seam:the source column read by a sample just left of a copy boundary is the one read just right of it, mirrored.
   const fillSource = { width: 200, height: 100, data: new Uint8Array(200 * 100 * 4) };
   for (let i = 0; i < fillSource.width * fillSource.height; i++) {
     fillSource.data[i * 4] = (i % fillSource.width) % 256;

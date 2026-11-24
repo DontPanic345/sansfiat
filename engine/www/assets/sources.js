@@ -1,6 +1,6 @@
 // The source art: named regions of the studies in `docs/proposals/map-art/`, and the atlas cells cut
 // from them. `draw-atlas.mjs` reads these; the browser never does.
-import { FRINGE, HEX_R, TREE, UNIT } from './placeholders.js';
+import { CLAN, FRINGE, HEX_R, TREE, UNIT } from './placeholders.js';
 
 /** Source studies, by name: repo paths, outside the site. */
 export const FILES = { terrain: 'docs/proposals/map-art/terrain.png', actors: 'docs/proposals/map-art/actors.png' };
@@ -181,6 +181,23 @@ REGIONS['actor.flag'] = {
   key: 'actor', ground: [1372, 106], scale: 0.2,
   note: "the study's flag, its pole's top at (1372, 106): the cloth hangs to the right of the pole, the pole runs down past it",
 };
+// The clans: the study's second row, each group on transparent ground (key `actor`). Each keep-polygon is its box with a
+// 3 px margin, less what the box holds that is not the group. `floor` 128 clears the row's soft fringe (alpha under 128).
+REGIONS['clan.tent'] = {
+  file: 'actors', rect: [76, 349, 257, 194], keep: [[76, 349], [333, 349], [333, 390], [316, 390], [316, 492], [333, 492], [333, 543], [76, 543]],
+  key: 'actor', ground: [205, 528], scale: 0.43, floor: 128,
+  note: 'the hide tent, a clan that gathers: its basket at the foot kept, the drying rack and the barrel left out, its ground at its middle',
+};
+REGIONS['clan.hearth'] = {
+  file: 'actors', rect: [1169, 335, 286, 221], keep: [[1169, 335], [1452, 335], [1452, 400], [1436, 430], [1412, 468], [1404, 488], [1404, 556], [1169, 556]],
+  key: 'actor', ground: [1320, 540], scale: 0.38, floor: 128,
+  note: 'the left tent, the seated man, the fire with its pot and the smoke, a settled clan: the right tent and the woman left out, its ground at its middle',
+};
+REGIONS['clan.walk'] = {
+  file: 'actors', rect: [614, 383, 255, 157], keep: [[614, 383], [869, 383], [869, 540], [614, 540]],
+  key: 'actor', ground: [742, 534], scale: 0.44, floor: 128,
+  note: 'the man, the woman and the child walking, a clan that came to its home: the donkey left out, its ground at its middle',
+};
 
 // The grounds the source lacks, as ramps between colours the source has: the tree's dark floor and leaf, the grass,
 // the bank's shaded and lit sand and the water. Each end is a source rectangle's mean.
@@ -305,3 +322,24 @@ CELLS['unit.camp'] = { region: 'actor.camp', over: [CAMP_FLAG], ops: [], anchor:
 CELLS['unit.camp.mask'] = { region: 'actor.camp', over: [CAMP_FLAG], cloth: { 'actor.camp': [SHIELD_FACE, CAMP_TUNIC], 'actor.flag': [FLAG_CLOTH] }, ops: [GREY], anchor: UNIT_ANCHOR };
 CELLS['unit.scout'] = { region: 'actor.scout', over: [SCOUT_FLAG], ops: [], anchor: UNIT_ANCHOR };
 CELLS['unit.scout.mask'] = { region: 'actor.scout', over: [SCOUT_FLAG], cloth: { 'actor.scout': [SCOUT_BODY, SCOUT_SHORTS], 'actor.flag': [FLAG_CLOTH] }, ops: [GREY], anchor: UNIT_ANCHOR };
+
+// The clans' cloth, read off 4x crops of the study (source px): the hide's two flaps (the opening's dark, the poles and
+// the basket left out), the hearth's tent canvas (the poles, the man, the fire and the smoke left out), and the walkers'
+// tunics, dress and shawl and the child's tunic (skin, hair, packs, staff and boots left out, by `isCloth`).
+const CLAN_ANCHOR = [CLAN.ax, CLAN.ay];
+const isCloth = (r, g, b) => lit(r, g, b) && b < 0.5 * r; // not skin, which is pinker: its blue is over half its red
+const TENT_LEFT = [[242.5, 387.5], [220, 391.3], [190, 411.3], [152.5, 420], [132.5, 426.3], [130, 470], [132.5, 520], [152.5, 530], [185, 530], [187.5, 490], [210, 490], [230, 500], [230, 415]];
+const TENT_RIGHT = [[250, 400], [260, 422.5], [282.5, 440], [302.5, 457.5], [322.5, 485.5], [310, 488], [290, 483.8], [270, 481.3], [252.5, 481.3]];
+const HEARTH_CANVAS = [[1295, 401.3], [1340, 466.3], [1315, 462], [1290, 462], [1260, 469], [1230.5, 473], [1230.5, 490], [1223, 490], [1223, 470], [1195, 469], [1192.5, 465], [1202.5, 450], [1230, 417.5], [1240, 410], [1285, 402.5]];
+const MAN_TUNIC = [[647.5, 430], [672.5, 428.8], [692.5, 430], [696.3, 445], [697.5, 462.5], [697.5, 497.5], [682.5, 502.5], [667.5, 500], [651.3, 497.5], [647.5, 475]];
+const WOMAN_DRESS = [[735, 442.5], [750, 440], [770, 437.5], [782.5, 438.8], [805, 438.8], [810, 455], [807.5, 480], [805, 500], [802.5, 518.8], [770, 518.8], [745, 518.8], [740, 497.5], [733.8, 475], [732.5, 455]];
+const CHILD_TUNIC = [[817.5, 478.8], [857.5, 478.8], [861.3, 485], [862.5, 507.5], [860, 520], [817.5, 520], [815, 505], [816.3, 487.5]];
+const CLAN_CLOTH = {
+  tent: [{ poly: TENT_LEFT, where: lit }, { poly: TENT_RIGHT, where: lit }],
+  hearth: [{ poly: HEARTH_CANVAS, where: lit }],
+  walk: [{ poly: MAN_TUNIC, where: isCloth }, { poly: WOMAN_DRESS, where: isCloth }, { poly: CHILD_TUNIC, where: isCloth }],
+};
+for (const kind of ['tent', 'hearth', 'walk']) {
+  CELLS[`clan.${kind}`] = { region: `clan.${kind}`, ops: [], anchor: CLAN_ANCHOR };
+  CELLS[`clan.${kind}.mask`] = { region: `clan.${kind}`, cloth: { [`clan.${kind}`]: CLAN_CLOTH[kind] }, ops: [GREY], anchor: CLAN_ANCHOR };
+}

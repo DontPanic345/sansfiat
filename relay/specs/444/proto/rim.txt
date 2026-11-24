@@ -1,0 +1,5 @@
+| cell | opaque, floor 128 | rim, floor 128 | opaque, no floor | rim, no floor | mask covers, floor 128 |
+| --- | --- | --- | --- | --- | --- |
+| clan.tent | 4754 | 621 (61 red) | 4811 | 622 (56 red) | 46.6% |
+| clan.hearth | 3510 | 749 (73 red) | 3579 | 735 (61 red) | 23.2% |
+| clan.walk | 4436 | 755 (148 red) | 4523 | 749 (115 red) | 37.3% |
