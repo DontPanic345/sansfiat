@@ -24,7 +24,7 @@ Measured on main with every civ on the AI (`game.md` §1, `game/sweep.txt`), aga
   89 claimed tiles change hands (M4: 14). Lead changes rise from 8 to 14, but the leader's
   margin at +200 grows from 0.098 to 0.261.
 - **Orders pay more.** A led civ ends 8.0 points of Standing above its idle self (M4: 4.9). It
-  is ahead in 15 of 21 games, and the 6 it loses are the led civ falling early.
+  is ahead in 15 of 21 games, and in 6 of 21 the led civ falls early.
 - **Scouts finish (C).** On your map, small 61288, a led scout builds its route to Gold's
   capital by +21 with fighting on, after one trip home for food (`game/play/scout-61288.*`).
   In M4 it never finished.
