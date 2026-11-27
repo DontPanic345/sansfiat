@@ -124,6 +124,19 @@ pub struct NotesRules {
 
 pub const NOTES: NotesRules = NotesRules { kept: 8, shown: 5 };
 
+/// What `inspect` (the CLI's and the page's query) adds beside a thing's state.
+pub struct InspectRules {
+    /// The most events about it that a query lists, newest first.
+    pub events: usize,
+    pub note: &'static str,
+}
+
+pub const INSPECT: InspectRules = InspectRules {
+    events: 12,
+    note: "A reading for whoever checks a rule, not a rule: a dozen covers a few turns of a busy camp's \
+           events without burying its state.",
+};
+
 /// The judge's numbers (`judge.rs`): how far a civ must lead to take the lead, and the turns between
 /// the samples the swings are counted on.
 pub struct JudgeRules {

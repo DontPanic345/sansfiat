@@ -151,7 +151,7 @@ function chips(v, model, selectedCiv) {
       const mine = c.id === v.player;
       const touch = mine ? 'click to select your civ' : `click to select ${c.name}`;
       const tip = `Standing ${pct(s.total)}: the people of ${c.name}'s clans and units, as a share of everyone; ${ORD(s.rank)} of ${civs.length}; ${touch}`;
-      return `<button type="button" class="chip${mine ? ' mine' : ''}" data-civ="${c.id}" aria-pressed="${selectedCiv === c.id}" title="${esc(tip)}"><i class="sw" style="background:${esc(c.color)}"></i><b>${esc(c.name)}</b> <span>${pct(s.total)}</span>${mine ? '<em>you</em>' : ''}${model.leader === c.id ? '<i class="lead" title="Leads the Standing">▲</i>' : ''}</button>`;
+      return `<button type="button" class="chip${mine ? ' mine' : ''}" data-role="chip" data-civ="${c.id}" aria-pressed="${selectedCiv === c.id}" title="${esc(tip)}"><i class="sw" style="background:${esc(c.color)}"></i><b>${esc(c.name)}</b> <span>${pct(s.total)}</span>${mine ? '<em>you</em>' : ''}${model.leader === c.id ? '<i class="lead" title="Leads the Standing">▲</i>' : ''}</button>`;
     })
     .join('');
 }

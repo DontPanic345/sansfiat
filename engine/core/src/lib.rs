@@ -13,6 +13,7 @@ pub mod exchange;
 pub mod fields;
 pub mod hex;
 pub mod homes;
+pub mod inspect;
 pub mod judge;
 pub mod judge_fields;
 pub mod judge_goods;

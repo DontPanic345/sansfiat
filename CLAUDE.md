@@ -38,3 +38,6 @@ doesn't run it. A piece that moves a score gives the old and new numbers in its 
 
 Play: `sansfiat play --game FILE` plays a game a line at a time through the text view, and
 `sansfiat judge FILE` scores a played game beside the same map on the AI.
+`sansfiat inspect FILE '#ID'` prints one unit, clan, civ or tile as JSON at any turn, and `--diff`
+what changed in it; the page answers the same through `game.inspect`, with `game.ui` and
+`www/play/live.mjs` for what can be pressed.

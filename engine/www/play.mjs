@@ -319,6 +319,24 @@ export const open = async (query = '', { size = 'laptop', path = 'index.html', r
       const { x, y } = await tile(i);
       await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
     },
+    /** Clicks the element `selector` picks (a selector from `game.ui()`) with the pointer at its centre, scrolled into
+     *  view, as a player would: refused when it is missing, hidden, disabled, or under something else. */
+    press: async (selector) => {
+      const p = await evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)});
+        if (!e) return { why: 'nothing matches' };
+        e.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        const r = e.getBoundingClientRect();
+        if (!r.width || !r.height) return { why: 'it is hidden' };
+        if (e.disabled) return { why: 'it is disabled' + (e.title ? ': ' + e.title : '') };
+        const x = r.left + r.width / 2, y = r.top + r.height / 2, top = document.elementFromPoint(x, y);
+        if (top !== e && !e.contains(top) && !(e.labels && [...e.labels].some((l) => l.contains(top)))) return { why: 'it is under ' + (top ? top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') : 'nothing') };
+        return { x, y }; })()`);
+      if (p.why) throw new Error(`can't press ${selector}: ${p.why}`);
+      await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p.x, y: p.y });
+      await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button: 'left', buttons: 1, clickCount: 1 });
+      await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'left', buttons: 0, clickCount: 1 });
+      await sleep(50);
+    },
     /** Clicks the first enabled visible button whose text starts with `label`. */
     button: async (label) => {
       const seen = await evaluate(`(() => {

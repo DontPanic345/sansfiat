@@ -3,6 +3,7 @@ mod clear;
 mod compare;
 mod digest;
 mod game_judge;
+mod inspect;
 mod map;
 mod play;
 mod replay;
@@ -35,6 +36,7 @@ use clear::clear_file;
 use compare::compare_files;
 use digest::digest;
 use game_judge::judge_game;
+use inspect::inspect;
 use map::map;
 use play::play;
 use replay::replay;
@@ -47,6 +49,7 @@ sansfiat run [--seed N] [--turns N] [--radius N | --size small|medium|large] [--
 sansfiat map [--seed N] [--radius N | --size small|medium|large]   (the map as text, with counts)
 sansfiat replay <file.json> [--json | --events-json] [--no-events]
 sansfiat play --game FILE [--seed N --size NAME [--civ K] [--no-fight]]   (a game a line at a time: the file is a save, resumed by each call; without --civ a new game prints the civs' cards; lines on stdin, the view after each accepted one; FILE.lines.jsonl records every line; --no-fight starts a new game with fighting off)
+sansfiat inspect (FILE | --seed N [--size NAME]) [--turn N] (TARGET | --id N | --tile T | --list KIND) [--diff N] [--compact]   (one thing as JSON: TARGET is #ID (a unit, clan, civ, market or settlement), Q,R or a tile index; its place, its state, its reasons and its latest events, at the end of turn N (the save's last by default; a new world needs --turn); --diff N prints what changed in it from that turn to turn N, field by field, with the newer reasons and events; --list units|clans|civs|markets|settlements prints each one's id and place)
 sansfiat judge FILE [--json]   (a played game judged turn by turn, beside the same map with every civ on the AI: Standing, doubt, motion and the player's decisions)
 sansfiat judge --compare A.json B.json [--all]   (two sweep --judge --json reports side by side: each metric's A, B, change and noise floor, flagged with * when the change is past the floor; the totals, or with --all every map's too)
 sansfiat story skirmish|stack|surrender|conquest [--seed N --size NAME --civ K] [--no-fight] [--turns N] --save FILE   (a scripted story of war on a retro map: the led civ K (1-based, id order) gives its orders through the engine's door and the AI plays the rest, until the game ends or N turns pass (0: to the end); the save is a normal save that `judge FILE` scores and `play --game FILE` resumes; --no-fight is the control; --trace prints a line a turn)
@@ -81,6 +84,7 @@ fn main() {
         Some("judge") if args.get(1).map(String::as_str) == Some("--compare") => compare_files(&args[2..]),
         Some("judge") => judge_game(&args[1..]),
         Some("story") => story(&args[1..]),
+        Some("inspect") => inspect(&args[1..]),
         Some("clear") => clear_file(args.get(1).map(String::as_str).unwrap_or("-")),
         Some("goods") => {
             println!("{}", GOODS.join(" "));
