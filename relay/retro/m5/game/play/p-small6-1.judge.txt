@@ -1,0 +1,35 @@
+turn 250 (+0): civ 410 11.5%, civ 411 9.6%, civ 412 10.0%; leader civ 410
+turn 260 (+10): civ 410 16.6%, civ 411 9.7%, civ 412 17.0%; leader civ 410
+turn 270 (+20): civ 410 19.7%, civ 411 13.1%, civ 412 19.1%; leader civ 410
+turn 280 (+30): civ 410 23.1%, civ 411 15.7%, civ 412 21.4%; leader civ 410
+turn 290 (+40): civ 410 24.8%, civ 411 18.3%, civ 412 23.7%; leader civ 410
+turn 300 (+50): civ 410 31.0%, civ 411 21.2%, civ 412 23.7%; leader civ 410
+turn 310 (+60): civ 410 36.1%, civ 411 22.2%, civ 412 24.0%; leader civ 410
+turn 320 (+70): civ 410 39.2%, civ 411 23.7%, civ 412 23.6%; leader civ 410
+turn 330 (+80): civ 410 43.6%, civ 411 23.0%, civ 412 24.4%; leader civ 410
+turn 340 (+90): civ 410 47.6%, civ 411 23.4%, civ 412 23.9%; leader civ 410
+turn 350 (+100): civ 410 50.5%, civ 411 23.0%, civ 412 24.0%; leader civ 410
+turn 360 (+110): civ 410 51.6%, civ 411 23.2%, civ 412 23.7%; leader civ 410
+turn 370 (+120): civ 410 51.6%, civ 411 23.2%, civ 412 23.8%; leader civ 410
+turn 380 (+130): civ 410 51.5%, civ 411 23.2%, civ 412 23.8%; leader civ 410
+turn 390 (+140): civ 410 51.8%, civ 411 23.1%, civ 412 23.6%; leader civ 410
+turn 400 (+150): civ 410 51.4%, civ 411 23.3%, civ 412 23.8%; leader civ 410
+turn 410 (+160): civ 410 51.5%, civ 411 23.3%, civ 412 23.8%; leader civ 410
+turn 420 (+170): civ 410 51.4%, civ 411 23.3%, civ 412 23.8%; leader civ 410
+turn 430 (+180): civ 410 51.6%, civ 411 23.2%, civ 412 23.7%; leader civ 410
+turn 440 (+190): civ 410 51.8%, civ 411 23.1%, civ 412 23.6%; leader civ 410
+turn 450 (+200): civ 410 51.7%, civ 411 23.0%, civ 412 23.8%; leader civ 410
+led civ 410: Standing at +200 51.7% (rank 1) in the game, 26.7% (rank 1) with every civ on the AI, 0.0% (rank 3) idle led civ
+end (game / control / idle): limit +200 rank 1 / conquest +49 rank 1 / fell +4 rank 3
+land (game / control): 125 / 60 tiles claimed
+doubt (game / control): lead changes 0 / 4, spread +200 0.287 / 0.267, swings 4 / 2
+motion (game / control): clans changed 96 / 98, people 498.6 / 519.9, land tiles 233 / 179, clans left 18 / 15, claimed tiles taken 7 / 5
+fight (game / control): people fallen 0.00 / 3.83, tiles taken 0 / 1, armies surrendered 0 / 0
+fight by civ (game): 410: fallen 0.00 taken 0 surrendered 0; 411: fallen 0.00 taken 0 surrendered 0; 412: fallen 0.00 taken 0 surrendered 0
+fields (game / control): farming share at +200 0.086 / 0.090, field tiles at +200 20 / 11, store turns at a pack 199 / 200 of 200
+trade (game): army-turns fed at a foreign market 5 (food 6.6 of 18.0 needed), at its own 0, unit-turns trading 5; trades 24204, largest count share at +200 shellfish 18.9%, by worth grain 30.8%
+settling, led civ (game / control): settled at +100 19/67 clans (112/349 people) / 12/35 clans (71/185 people), at +200 17/67 clans (110/359 people) / 12/36 clans (69/188 people), settles 11 / 11, back to gathering 3 / 5; towns at +200 2 / 2, capital towns 1 / 1
+player orders: 105 (claim 100, raise 5), 52.50 per 100 turns; turns with none 100 of 200, longest run 98
+player lines: 2 refused, 0 noted
+  refused at turn 281: {"type":"claim","tiles":[206,207,232,259,260,285,286,287,308,316,339,345,346,371,372,373,374,378,404,405,406,407,408,409,410,434,437,438,440,441,442,443,465,466,467,468,469,470,471,472,473,475,495,498,499,500,501,502,503,504,505,527,528,529,530,535,558]} (refused: a claim can't cover a rival's land: an army that ends its turn on it takes it)
+  refused at turn 295: {"type":"claim","tiles":[206,207,233,259,260,261,285,286,287,290,291,292,308,316,322,339,345,346,347,370,371,372,373,374,378,402,404,405,406,407,408,409,410,434,437,438,440,441,442,443,465,467,468,469,470,471,472,473,475,495,498,499,500,501,502,503,504,505,525,527,528,529,530,535,554,558,582,609]} (refused: a claim can't cover a rival's land: an army that ends its turn on it takes it)
