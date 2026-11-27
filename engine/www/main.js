@@ -8,6 +8,7 @@ import { loadAtlas } from './atlas.js';
 import { Sound } from './sound.js';
 import { app } from './app.js';
 import { autosave } from './save.js';
+import * as look from './inspect.js';
 import * as start from './screens/start.js';
 import * as play from './screens/play.js';
 import * as end from './screens/end.js';
@@ -61,6 +62,14 @@ window.game = {
   digest: () => play.state().sim.digest(),
   border: (civ) => play.map().border(civ),
   notes: (id) => play.state().sim.notes(id),
+  /** One thing as JSON, as `sansfiat inspect` prints it: `#ID`, `Q,R`, a tile index, `{id}` or `{tile}` (inspect.js). */
+  inspect: (target) => look.inspect(play.state().sim, target),
+  /** Every unit, clan, civ, market or settlement (`kind`, plural): `[{id, at, ...}]`. */
+  list: (kind) => look.list(play.state().sim, kind),
+  /** Where a target stands on the screen: its tile, the client point of its centre and whether it is on the map now. */
+  where: (target) => look.where(play.state().sim, play.map(), target),
+  /** What can be pressed now: each one's unique selector, role, name, state and box; `filter` a string or a function. */
+  ui: (filter) => look.ui(filter),
   terrain: () => app.data.TERRAIN,
   /** Shows a staged game: the world `spec` (a StageSpec, as an object) describes. Not a save. */
   stage: (spec) => app.show('play', { sim: app.data.Sim.stage(JSON.stringify(spec)) }),

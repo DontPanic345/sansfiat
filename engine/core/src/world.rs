@@ -423,6 +423,12 @@ impl World {
     /// Rebuilds the world a save describes; `Err` names why it can't (another version, or the first
     /// action that no longer applies).
     pub fn replay(save: &Save) -> Result<World, String> {
+        World::replay_to(save, None)
+    }
+
+    /// As `replay`, stopped at the end of turn `upto` (with that turn's orders given, before the
+    /// turn ends); `None`, or a turn the save never ends, replays it all.
+    pub fn replay_to(save: &Save, upto: Option<u32>) -> Result<World, String> {
         if save.version != SAVE_VERSION {
             return Err(if save.version == 0 {
                 format!("this save is from an older build (no version); this build reads version {SAVE_VERSION}")
@@ -432,6 +438,9 @@ impl World {
         }
         let mut w = World::new(save.config);
         for (i, a) in save.log.iter().enumerate() {
+            if matches!(a, Action::EndTurn) && upto.is_some_and(|t| w.turn >= t) {
+                break;
+            }
             w.act(a.clone()).map_err(|e| format!("action {i} ({a:?}): {e}"))?;
         }
         Ok(w)

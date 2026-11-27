@@ -1,6 +1,7 @@
 use engine::data::{
     ARMS, CIV, FIELD, FIGHT, FIGHTERS, LEANING, NOTES, PREGAME, SETTLE, SETTLING, SIZES, TENDING, TRAIL, UNIT,
 };
+use engine::inspect;
 use engine::map::Tile;
 use engine::over::{self, Why};
 use engine::script::Lead;
@@ -485,6 +486,18 @@ impl Sim {
             .map(|n| serde_json::json!({ "turn": n.turn, "text": n.text }))
             .collect();
         serde_json::to_string(&rows).unwrap()
+    }
+
+    /// One thing as JSON (`engine::inspect`): `target` is `#ID`, `Q,R` or a tile index, as the CLI's
+    /// `inspect` takes it; `Err` names why there is none.
+    pub fn inspect(&self, target: &str) -> Result<String, String> {
+        let t = inspect::Target::parse(&self.world, target)?;
+        Ok(inspect::inspect(&self.world, t)?.to_string())
+    }
+
+    /// Every subject of `kind` (`units`, `clans`, `civs`, `markets`, `settlements`) as JSON rows.
+    pub fn list(&self, kind: &str) -> Result<String, String> {
+        Ok(inspect::list(&self.world, kind)?.to_string())
     }
 
     /// `{config, log}` as JSON: enough to replay this world.

@@ -32,7 +32,7 @@ export class Pick {
     const rows = cards.map((c) => {
       const terrain = c.terrain.map(([name, share]) => `${name} ${Math.round(share * 100)}%`).join(', ');
       const rival = c.rival_steps == null ? 'no rival' : `${c.rival_steps} steps to the nearest rival`;
-      return `<div class="card" data-civ="${c.civ}"><div class="head"><i class="sw" style="background:${c.color}"></i><b>${c.name}</b> <span class="dim">capital at ${c.q}, ${c.r}</span></div>
+      return `<div class="card" data-role="card" data-civ="${c.civ}"><div class="head"><i class="sw" style="background:${c.color}"></i><b>${c.name}</b> <span class="dim">capital at ${c.q}, ${c.r}</span></div>
 <div>${c.clans} clan${c.clans === 1 ? '' : 's'} · ${Math.round(c.people * 10) / 10} people · ${c.hearths} hearth${c.hearths === 1 ? '' : 's'}</div>
 <div class="dim">${terrain || 'no land'}</div>
 <div class="dim">${rival}${c.rival_by_land ? '' : ' · no land route to a rival'}</div>

@@ -8,8 +8,13 @@
 //   look | lead NAME|watch | click T | right T | drag T1 T2 | key NAME | button LABEL | tip T|SELECTOR
 //   (a bar's chip is a button by its civ's name: `button NAME` selects that civ, as its chip does)
 //   stepper LABEL N [OPTION] [go] | end [N] | shot NAME [SCALE] | save FILE | load FILE | stop
-// A tile T is `q,r` as the panel and tooltip write it, a tile index (the text view's), or `@x,y[,SCALE]` in a screenshot's
-// pixels (SCALE is that shot's, 0.5 by default). After each command it prints the turn, the Standing, the panel, the feed
+//   inspect T | where T | list KIND | ui [FILTER] | press SELECTOR | select #ID
+// A tile T is `q,r` as the panel and tooltip write it, a tile index (the text view's), `@x,y[,SCALE]` in a screenshot's
+// pixels (SCALE is that shot's, 0.5 by default), or `#ID`, the tile a unit, clan, civ, market or settlement stands on.
+// The queries print only their answer: `inspect T` the thing as JSON (as `sansfiat inspect` prints it; `#ID` the subject,
+// else the tile), `where T` its tile and screen point, `list KIND` (units, clans, civs, markets, settlements) a line each,
+// and `ui [FILTER]` what can be pressed now, a line each, its selector first; `press SELECTOR` clicks one with the pointer,
+// and `select #ID` clicks its tile until the stack there comes round to it. After each command it prints the turn, the Standing, the panel, the feed
 // items new since the last command, an open alert and page errors; each command and its printout is a JSON line in
 // D/live.lines.jsonl. `save` writes a file `sansfiat judge FILE` reads. Screenshots are PNGs in D.
 import { createServer, request } from 'node:http';
@@ -66,6 +71,7 @@ async function serve(query) {
   // A tile as the page writes it, an index, or a screenshot pixel, as an index.
   const tileOf = async (t) => {
     if (/^\d+$/.test(t)) return Number(t);
+    if (/^#\d+$/.test(t)) return page.eval(`game.inspect(${JSON.stringify(t)}).at.tile`);
     let m = /^(-?\d+),\s*(-?\d+)$/.exec(t);
     if (m) {
       const i = await page.eval(`game.map.at(${m[1]}, ${m[2]})`);
@@ -120,6 +126,29 @@ async function serve(query) {
     return out.join('\n');
   };
 
+  // A target as `Sim.inspect` takes it: `#ID`, `q,r` or an index as they are, a screenshot pixel as its tile.
+  const targetOf = async (t) => (t.startsWith('@') ? String(await tileOf(t)) : t);
+  const at = (a) => `(${a.q}, ${a.r}) ${a.terrain}`;
+
+  // The queries: they print their answer and not the view, and change nothing.
+  const ask = {
+    inspect: async ([t]) => JSON.stringify(await page.eval(`game.inspect(${JSON.stringify(await targetOf(t))})`), null, 2),
+    where: async ([t]) => {
+      const w = await page.eval(`game.where(${JSON.stringify(await targetOf(t))})`);
+      return `${w.kind}${w.id != null ? ` ${w.id}` : ''} at tile ${w.tile} ${at(w)}: screen ${w.x},${w.y}${w.onScreen ? '' : ' (off the map: click centres it)'}`;
+    },
+    list: async ([kind]) => {
+      const rows = await page.eval(`game.list(${JSON.stringify(kind)})`);
+      const more = (r) => Object.entries(r).filter(([k]) => k !== 'id' && k !== 'at').map(([k, v]) => `${k} ${typeof v === 'number' ? Math.round(v * 10) / 10 : v}`).join(', ');
+      return rows.map((r) => `#${r.id} ${at(r.at)} ${more(r)}`).join('\n') || `no ${kind}`;
+    },
+    ui: async (words) => {
+      const rows = await page.eval(`game.ui(${words.length ? JSON.stringify(words.join(' ')) : ''})`);
+      const line = (r) => `${r.selector}  ${r.role} "${r.name}"${r.pressed != null ? (r.pressed ? ' on' : ' off') : ''}${r.checked != null ? (r.checked ? ' checked' : ' unchecked') : ''}${r.value != null ? ` = ${r.value}` : ''}${r.disabled ? ` greyed${r.why ? `: ${r.why}` : ''}` : ''}`;
+      return rows.map(line).join('\n') || 'nothing to press';
+    },
+  };
+
   const alertIds = () => page.eval(`[...document.querySelectorAll('#alerts li')].map((l) => l.dataset.id)`);
 
   const run = {
@@ -136,6 +165,18 @@ async function serve(query) {
       lastFeed = Math.max(0, ...(await page.eval(`[...document.querySelectorAll('#feed li')].map((l) => Number(l.dataset.id))`)));
     },
     click: async ([t]) => page.click(await tileOf(t)),
+    press: async (words) => page.press(words.join(' ')),
+    select: async ([t]) => {
+      const v = await page.eval(`game.inspect(${JSON.stringify(t)})`);
+      const kind = { camp: 'unit', scout: 'unit', market: 'festival' }[v.kind] ?? v.kind;
+      if (v.id == null) throw new Error('select takes #ID; click selects a tile');
+      const key = `${kind}:${v.id}`;
+      for (let n = 0; n < 12; n++) {
+        if ((await page.data()).selected === key) return;
+        await page.click(v.at.tile);
+      }
+      throw new Error(`clicking tile ${v.at.tile} never came round to ${key}`);
+    },
     right: async ([t]) => page.command(await tileOf(t)),
     drag: async ([a, b]) => page.drag(await tileOf(a), await tileOf(b)),
     key: async ([name]) => page.key(name),
@@ -235,7 +276,8 @@ async function serve(query) {
           if (c === 'stop') {
             text = 'stopped';
             stopping = true;
-          } else if (!run[c]) text = `unknown command "${c}"`;
+          } else if (ask[c]) text = await ask[c](a);
+          else if (!run[c]) text = `unknown command "${c}"`;
           else {
             const said = await run[c](a);
             // The view eases after a click or a selection; what prints and the next pixel are read once it rests.

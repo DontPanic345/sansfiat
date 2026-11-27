@@ -176,6 +176,7 @@ export class Feed {
   row(item) {
     const k = KINDS[item.kind] || { icon: '·', color: '#ccc' };
     const li = document.createElement('li');
+    li.dataset.role = 'feed-item';
     li.dataset.id = item.id;
     li.dataset.kind = item.kind;
     li.dataset.turn = item.turn;
