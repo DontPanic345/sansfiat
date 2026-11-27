@@ -84,3 +84,4 @@ set its target. Debug views stay, but nothing in play needs them.
 
 - Trails, worn or built, make a route cheaper; a marsh trail only bridges its river. (#74, #76)
 - A trail brings plains and coast to three quarters of their bare cost, worn by traffic as on rough ground; marsh and desert gain nothing. The scout builds no flat trail. (#153)
+- A mountain tile a scout has bridged is walked by every actor at its trail cost: a clan, an army and a line, as well as the scout. (#337)

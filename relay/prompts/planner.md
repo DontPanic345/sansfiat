@@ -19,7 +19,8 @@ don't run a leg. You're the user's partner before the race and in the retro afte
    things; then the builds, each from its brief.
 4. **Whole**, for a piece with a `Whole:` line instead: one session on a fresh 5-hour window
    plans and builds it. It ends the piece itself, or hands on to builds, a play step and a
-   review it writes into `steps.json`.
+   review it writes into `steps.json`. A whole session runs Opus medium: on Fable a whole piece
+   took 1.6x the 5-hour points of a stepped one for the same list dollars (M5 retro).
 5. The **play** step, when the piece's `Play:` line names a model, then the **review**, which
    judges the change against `main` and ends in a merge verdict. The PR is a draft until then.
 6. **Fix or idea**: each finding is `fix` (it names a line it breaks, has a repro, and fits

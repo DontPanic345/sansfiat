@@ -49,4 +49,5 @@ CI runs on every push to the PR. After your last push, wait for the CI run of th
 (`gh run list --commit "$(git rev-parse HEAD)"`, then `gh run watch` on it), not the checks
 of an earlier one. Finish `done` when it's green, with `"merge": true` in `result.json` if
 your verdict is merge: the crew then merges the PR, and pieces waiting on this one start from
-it. With `"merge": false`, the owner decides. The crew rewrites the steps table with your row.
+it. With `"merge": false`, the owner decides: a verdict that leaves the merge to the owner is
+`"merge": false`, with the choice in the PR description. Prose in the summary is not a verdict. The crew rewrites the steps table with your row.

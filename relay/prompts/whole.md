@@ -24,7 +24,8 @@ spend the same window.
 
 You always finish by handing on. Write `relay/specs/<piece>/steps.json` as `spec.md` (the
 prompt file) describes it: any `build-N` steps, each with a brief `build-N.md` that carries all
-its build needs, then `review`. The crew makes those steps, and adds a play step before the
+its build needs, then `review`. Score each build on `spec.md`'s ladder, the mismatch rule
+included: a canvas, glaze or clay under 8 is re-cut or re-scored, and its `why` says which. The crew makes those steps, and adds a play step before the
 review when the piece's `Play:` line names a model. A review alone is the usual hand-on: a cold
 reader judges what you built on a different axis than you can, and gives the merge verdict.
 

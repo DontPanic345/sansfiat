@@ -58,15 +58,12 @@ says.
 
 ## Decided
 
-- The levy is a share of the food civ clans bring to the capital's festival, until the store is full. (#72)
 - A civ gives its spare food at its festival to win clans; how much it gives is the player's choice. (#81)
 - A civ can lose clans and people to its rivals. (#58, #63, M3 answer 2)
 - A civ's clans pay its levy at its festival, and no others do. A clan whose home is on a civ's first claim is that civ's from the pick, whichever capital is nearer. (#102, #352)
 - A civ's gifts go to every clan at its festival that isn't its own, a rival's clans included. Trade leaning reaches its own clans too. (#102)
-- A civ may have any number of armies, of warriors and archers. Raising names a kind and a place: a new army at the capital, or into an army. Disbanding names a kind, or takes all kinds in proportion. (#104)
+- A civ may have any number of armies, of warriors and archers. Disbanding names a kind, or takes all kinds in proportion. (#104)
 - A civ starts with its scout alone: no army and no guard. The scout's pack comes from the store, and the rest of the boon year's food stays there. (#152)
 - Winning and losing are in: a civ loses when its capital falls (`vision.md`, Winning). (#152)
-- A settlement is a market that never fades and a store of its own, which only the levy of its civ's clans at that market fills; it holds half the capital's, and nothing draws on it yet. A claim holds where it joins the capital or a settlement, and a settlement a rival army stands on, with no army of its civ there, is taken with its store. (#353)
+- A settlement is a market that never fades and a store of its own, which only the levy of its civ's clans at that market fills; it holds half the capital's. A claim holds where it joins the capital or a settlement, and a settlement a rival army stands on, with no army of its civ there, is taken with its store. (#353)
 - A unit is raised at any store, capital or settlement, from the clans that go to its market, with a pack from it. Warriors added to an army come from the store its line ends at. A settlement's store feeds the units whose line ends there. (#354)
-- The gift's readout is the clans it reaches now (those not the civ's own that trade at its capital market), what it gave, and what was left unspent. (#338)
-- The clan a civ is founded on is settled at founding, whatever its ground; after that it goes back to gathering as any clan does. (#427)

@@ -62,6 +62,9 @@ import {
     withIdeas,
     tickIdeas,
     openIdeas,
+    allIdeas,
+    mergePr,
+    barredTools,
     settledIdeas,
     usageReport,
     logTitle,
@@ -563,6 +566,23 @@ test("ideas are lines on one issue: added once, ticked when taken, and the open 
     assert.match(ticked, /- \[x\] \*\*Ports\*\*: a harbour \(#9 build-1\) Taken by #11 whole\./);
     assert.equal(openIdeas(ticked), "- [ ] **Herds** (#9 build-1)");
     assert.equal(openIdeas("Ideas.\n"), null);
+    assert.equal(allIdeas(ticked).split("\n").length, 2);
+    assert.equal(allIdeas("Ideas.\n"), null);
+});
+
+test("a merge falls back to a merge commit when the repository refuses squash, and only then", async () => {
+    const tried = [];
+    const refuse = async (body) => {
+        tried.push(body.merge_method);
+        if (body.merge_method === "squash") throw new Error("GitHub PUT /pulls/7/merge: HTTP 405 Squash merges are not allowed on this repository.");
+        return { merged: true };
+    };
+    assert.deepEqual(await mergePr({ number: 7 }, "abc", "T (#7)", refuse), { merged: true });
+    assert.deepEqual(tried, ["squash", "merge"]);
+    const conflict = async () => {
+        throw new Error("GitHub PUT /pulls/7/merge: HTTP 405 Pull Request is not mergeable");
+    };
+    await assert.rejects(mergePr({ number: 7 }, "abc", "T (#7)", conflict), /not mergeable/);
 });
 
 test("a merged proposal's Ideas section names the proposed issues it takes or drops", () => {
@@ -604,4 +624,10 @@ test("a session stopped by the usage limit, or by itself past the window's last 
     assert.equal(freeStop({ limited: false, exitOk: true, result: pending, after: { session: 60 } }), null);
     assert.equal(freeStop({ limited: false, exitOk: false, result: pending, after: { session: 90 } }), null);
     assert.equal(freeStop({ limited: false, exitOk: true, result: { status: "blocked" }, after: { session: 90 } }), null);
+});
+
+test("a Haiku session goes without Monitor; the others keep it", () => {
+    assert.deepEqual(barredTools("haiku"), ["--disallowedTools", "Monitor"]);
+    assert.deepEqual(barredTools("sonnet"), []);
+    assert.deepEqual(barredTools(undefined), []);
 });

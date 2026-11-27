@@ -449,9 +449,9 @@ export const sessionPrompt = (piece, step, files) => {
     if (["spec", "whole", "play"].includes(kind) && files.ideas) {
         const what =
             kind === "play"
-                ? "Sessions before you noticed these. A finding that repeats one adds nothing: leave it out."
+                ? "Sessions before you noticed these. A finding that repeats an open line adds nothing: leave it out. A ticked line was taken by a piece: if what it names still happens, say so in a finding that quotes its title and says what you saw."
                 : "Sessions before you noticed these. Take into this piece each one that is obvious to do within its goal, and name its title under `took` in `result.json`.";
-        parts.push(`# The milestone's open ideas\n\n${what}\n\n${files.ideas}`);
+        parts.push(`# The milestone's ${kind === "play" ? "" : "open "}ideas\n\n${what}\n\n${files.ideas}`);
     }
     // The player plays as a player: the piece says what is new, and how it was built isn't its to know.
     const done = kind === "play" ? [] : sortSteps(piece.steps).filter((s) => s.state === "closed" && s.meta.summary);
@@ -566,6 +566,9 @@ export const tickIdeas = (body, took, from) =>
         .join("\n");
 // The open lines, for a designer's prompt; null when there are none.
 export const openIdeas = (body) => (body ?? "").split("\n").filter((l) => IDEA.exec(l)?.[1] === " ").join("\n") || null;
+// Every line, open and ticked, for the play step, so a taken idea that still shows no effect is
+// said against its own line; null when there are none.
+export const allIdeas = (body) => (body ?? "").split("\n").filter((l) => IDEA.exec(l)).join("\n") || null;
 
 // `usage` as the words a session's prompt gives.
 export const usageLine = (u) => `The 5-hour usage window stands at ${Math.round(u.session)}% and the week at ${Math.round(u.weekly)}%`;
@@ -1052,6 +1055,7 @@ const runSession = (piece, step, prompt) =>
                 "--permission-mode", "auto",
                 "--output-format", "stream-json",
                 "--verbose",
+                ...barredTools(step.meta.model),
                 // The hook tells the session its usage windows as it works (usage-hook.mjs).
                 "--settings", JSON.stringify({ hooks: { PostToolUse: [{ hooks: [{ type: "command", command: `node "${path.join(HERE, "usage-hook.mjs")}"`, timeout: 20 }] }] } }),
             ],
@@ -1242,7 +1246,7 @@ const autoMerge = async (piece, pr, result) => {
         if (check_runs.some((c) => c.status === "completed" && !["success", "neutral", "skipped"].includes(c.conclusion))) return "CI failed";
         if (!checksGreen(check_runs)) continue;
         try {
-            await github("PUT", `/pulls/${pr.number}/merge`, { sha: head, merge_method: "squash", commit_title: `${piece.title} (#${pr.number})` });
+            await mergePr(pr, head, `${piece.title} (#${pr.number})`);
             why = null;
             break;
         } catch (e) {
@@ -1253,6 +1257,21 @@ const autoMerge = async (piece, pr, result) => {
     log(`#${piece.number}: merged PR #${pr.number}`);
     await comment(piece.number, `🔀 The review's verdict is merge and CI is green, so ${pr.html_url} is merged.`);
     return null;
+};
+
+// The tools a model's session goes without: Haiku re-arms Monitor instead of waiting (M5: 89 and
+// 124 calls in two builds, 28% of Haiku's spend), so it waits in the foreground.
+export const barredTools = (model) => (/haiku/i.test(model ?? "") ? ["--disallowedTools", "Monitor"] : []);
+
+// Merges a PR by squash, or by a merge commit when the repository refuses squash (405).
+export const mergePr = async (pr, sha, title, put = (body) => github("PUT", `/pulls/${pr.number}/merge`, body)) => {
+    try {
+        return await put({ sha, merge_method: "squash", commit_title: title });
+    } catch (e) {
+        if (!/\b405\b/.test(e.message) || !/squash/i.test(e.message)) throw e;
+        log(`squash refused on PR #${pr.number}, merging with a merge commit`);
+        return put({ sha, merge_method: "merge", commit_title: title });
+    }
 };
 
 // A piece's PR is a draft until its verdict, so nothing asks for the owner's eyes before then.
@@ -1365,7 +1384,11 @@ const milestoneCheck = async (milestone, { early = false } = {}) => {
     const tag = milestoneTag(milestone);
     if (!tag) return null;
     if (!early) {
-        const open = (await allPages(`/issues?state=open&labels=kind:piece&milestone=${milestone.number}`)).filter((i) => !i.pull_request);
+        // A piece opened with no milestone holds every milestone open until it closes or pauses.
+        const open = [
+            ...(await allPages(`/issues?state=open&labels=kind:piece&milestone=${milestone.number}`)),
+            ...(await allPages("/issues?state=open&labels=kind:piece&milestone=none")),
+        ].filter((i) => !i.pull_request);
         if (!isBuilt(open.map((i) => ({ labels: i.labels.map((l) => l.name) })))) return null;
         try {
             const main = await github("GET", "/git/ref/heads/main");
@@ -1456,7 +1479,8 @@ const runStep = async (piece, step, before) => {
     await setStatus(piece, { review: "Review", build: "Building", play: "Building", retro: "Building", whole: "Building" }[kind] ?? "Spec");
     let prompt;
     try {
-        const ideas = ["spec", "whole", "play"].includes(kind) ? openIdeas((await ideasIssue(piece.milestone, { open: false }))?.body) : null;
+        const body = ["spec", "whole", "play"].includes(kind) ? (await ideasIssue(piece.milestone, { open: false }))?.body : null;
+        const ideas = kind === "play" ? allIdeas(body) : openIdeas(body);
         prompt = stepPrompt(piece, step, { usage: before, ideas });
     } catch (e) {
         // The spec can't brief the session; only a spec edit fixes that.
