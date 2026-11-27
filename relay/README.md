@@ -31,7 +31,8 @@ these lines from its body, in any order:
 
 `Spec` and `Spec-review` each name a model and an effort, and the piece runs stepped. A piece
 with a `Whole` line instead runs whole: its first session, on the model and effort it names,
-plans and builds it (below). A piece with neither is held.
+plans and builds it (below); it runs Opus medium, since on Fable a whole piece took 1.6x the
+5-hour points of a stepped one for the same list dollars. A piece with neither is held.
 `Play` names the play step's model (medium unless it names an effort, and "three seeds" plays
 three maps), or `none`.
 `Shape` is a suggestion the designer may change. A
@@ -110,8 +111,8 @@ build with nothing new. Everything else is an `ask`.
 The crew files them:
 
 - A `fix` goes on its milestone's **fixes piece**, "Fixes for M<n>", which the crew opens the first
-  time and keeps (`relay:fixes`). It runs after the milestone's other pieces, on Sonnet medium,
-  each repro becoming a test. A `fix` that comes after the fixes piece has started is an `ask`.
+  time and keeps (`relay:fixes`). It runs after the milestone's other pieces, on Sonnet medium
+  for its spec and spec-review too, since its findings are settled, each repro becoming a test. A `fix` that comes after the fixes piece has started is an `ask`.
 - An `ask` becomes a line on the milestone's one ideas issue, "Ideas from M<n>" (`kind:idea`).
   A spec, whole or play session's prompt lists the open lines; a designer takes the obvious
   ones into its piece and names them under `took`, and the crew ticks them. A title already
@@ -124,7 +125,7 @@ The crew files them:
 ## The milestone and its retro
 
 A milestone is built when none of its pieces can run: each merged, closed or paused, the fixes
-piece included. The crew then tags main `m<n>` and opens a `kind:retro` issue, "M<n> retro". The
+piece included, and so are pieces opened with no milestone. The crew then tags main `m<n>` and opens a `kind:retro` issue, "M<n> retro". The
 retro runs as a piece does, under the same pacing, from fixed steps (`prompts/retro.md`): the
 play check and the ladder, architecture and relay angles; a wait of up to 72 hours for the owner's
 notes, a comment on the retro issue, or `/relay retro go`; the game and players angles; the retro;

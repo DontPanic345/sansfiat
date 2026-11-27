@@ -1,0 +1,10 @@
+# guard.diff on main 4da574f: sansfiat digest --turns 300, watched and led (--lead); main and the guard identical
+# bench --size large 8 --after 50 with the guard: 26.410, 26.036 ms a turn (main 29.809, 29.371 the same session); prof: move 8.84 (main 11.92), total 26.16
+small 2 ai: 300 7e5f0865dd440b15
+small 2 --lead: 300 0ac01217023a61e5
+small 6 ai: 300 ee7b343203be9433
+small 6 --lead: 300 a20dafbf334e53dc
+medium 8 ai: 300 20a55bbc8fe7c4fe
+medium 8 --lead: 300 12c9ae73ab487075
+large 8 ai: 300 902ec5024355c78d
+large 8 --lead: 300 902ec5024355c78d

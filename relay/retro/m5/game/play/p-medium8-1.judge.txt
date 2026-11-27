@@ -1,0 +1,38 @@
+turn 280 (+0): civ 744 5.9%, civ 745 3.8%, civ 746 4.2%; leader civ 744
+turn 290 (+10): civ 744 9.2%, civ 745 3.7%, civ 746 5.9%; leader civ 744
+turn 300 (+20): civ 744 11.9%, civ 745 3.5%, civ 746 6.4%; leader civ 744
+turn 310 (+30): civ 744 14.2%, civ 745 3.5%, civ 746 6.6%; leader civ 744
+turn 320 (+40): civ 744 15.6%, civ 745 3.4%, civ 746 6.9%; leader civ 744
+turn 330 (+50): civ 744 18.0%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 340 (+60): civ 744 19.5%, civ 745 3.4%, civ 746 7.3%; leader civ 744
+turn 350 (+70): civ 744 20.7%, civ 745 3.4%, civ 746 7.3%; leader civ 744
+turn 360 (+80): civ 744 22.0%, civ 745 3.5%, civ 746 7.2%; leader civ 744
+turn 370 (+90): civ 744 23.7%, civ 745 3.5%, civ 746 7.1%; leader civ 744
+turn 380 (+100): civ 744 25.5%, civ 745 3.5%, civ 746 7.0%; leader civ 744
+turn 390 (+110): civ 744 26.9%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 400 (+120): civ 744 28.7%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 410 (+130): civ 744 30.0%, civ 745 3.4%, civ 746 7.0%; leader civ 744
+turn 420 (+140): civ 744 31.9%, civ 745 3.4%, civ 746 7.0%; leader civ 744
+turn 430 (+150): civ 744 33.1%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 440 (+160): civ 744 34.5%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 450 (+170): civ 744 36.2%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 460 (+180): civ 744 37.5%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 470 (+190): civ 744 38.6%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 480 (+200): civ 744 40.1%, civ 745 3.4%, civ 746 7.1%; leader civ 744
+turn 490 (+210): civ 744 41.9%, civ 745 3.4%, civ 746 7.2%; leader civ 744
+turn 500 (+220): civ 744 43.1%, civ 745 3.4%, civ 746 7.2%; leader civ 744
+turn 510 (+230): civ 744 44.1%, civ 745 3.3%, civ 746 7.2%; leader civ 744
+turn 520 (+240): civ 744 46.0%, civ 745 3.3%, civ 746 7.2%; leader civ 744
+turn 530 (+250): civ 744 51.9%, civ 745 3.3%, civ 746 7.2%; leader civ 744
+led civ 744: Standing at +250 51.9% (rank 1) in the game, 16.3% (rank 1) with every civ on the AI, 10.7% (rank 1) idle led civ
+end (game / control / idle): limit +250 rank 1 / limit +250 rank 1 / limit +250 rank 1
+land (game / control): 219 / 61 tiles claimed
+doubt (game / control): lead changes 0 / 0, spread +250 0.486 / 0.131, swings 0 / 0
+motion (game / control): clans changed 136 / 21, people 744.5 / 103.6, land tiles 332 / 39, clans left 0 / 0, claimed tiles taken 0 / 0
+fight (game / control): people fallen 0.00 / 0.00, tiles taken 0 / 0, armies surrendered 0 / 0
+fight by civ (game): 744: fallen 0.00 taken 0 surrendered 0; 745: fallen 0.00 taken 0 surrendered 0; 746: fallen 0.00 taken 0 surrendered 0
+fields (game / control): farming share at +200 0.042 / 0.099, field tiles at +200 20 / 14, store turns at a pack 250 / 250 of 250
+trade (game): army-turns fed at a foreign market 0 (food 0.0 of 0.0 needed), at its own 0, unit-turns trading 0; trades 55537, largest count share at +200 fish 18.9%, by worth grain 35.2%
+settling, led civ (game / control): settled at +100 13/74 clans (88/424 people) / 17/44 clans (105/267 people), at +200 13/125 clans (91/685 people) / 16/45 clans (103/275 people), settles 7 / 12, back to gathering 0 / 1; towns at +200 1 / 2, capital towns 0 / 1
+player orders: 255 (claim 250, raise 5), 102.00 per 100 turns; turns with none 0 of 250, longest run 0
+player lines: 0 refused, 0 noted

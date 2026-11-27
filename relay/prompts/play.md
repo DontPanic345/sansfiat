@@ -8,8 +8,8 @@ the whole step.
 
 - Build the game once: `cargo build --release -p sansfiat --manifest-path engine/Cargo.toml`.
   BINARY is `engine/target/release/sansfiat`.
-- The maps are the retro maps the spec names for play, else in this order: small 2, medium 8,
-  small 6. Play the first one, or as many as your step says. CIV is the piece's number modulo
+- The maps are the retro maps the spec names for play: the one where the piece's rule bites
+  most. When it names none, play medium 8, then small 6, then small 2. Play the first one, or as many as your step says. CIV is the piece's number modulo
   three, plus one, so the pieces of a milestone play different civs.
 - GAME for each is `relay/specs/<piece>/play/<size>-<seed>.json`. Its lines file sits beside it.
 - Split your time: about 45 minutes of play for one map, and less each for more, with 15 left for

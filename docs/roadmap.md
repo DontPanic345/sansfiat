@@ -17,7 +17,7 @@ motion comes from people, land and what they learn, not from the weather.
 | The day as the yardstick everything is priced in                                  | M4; the clock closed as built in M5 |
 | A loop that closes: settlements, reach, goods that are wanted, units that trade   | M5                             |
 | New ways to feed a civ: fields, herds, beer                                       | M4, M6, M6                     |
-| Knowledge that spreads                                                            | M6                             |
+| Knowledge that spreads                                                            | M7                             |
 | A world worth crossing: biomes, deserts, ranges, steppe, the routes across them   | M7                             |
 | Goods worth the walk                                                              | M5, then M8                    |
 | Surplus: cloth, the steward, great works                                          | M9                             |
@@ -57,34 +57,27 @@ drawn from its source. `proposals/m5.md` has the pieces, and `proposals/m4-retro
 answered. You play: a small map where you settle toward a rival and a capital falls. Vision:
 `design/goods.md`, to draft before the goods pieces.
 
-### M6: Herding and knowing
+### M6: A claim in doubt, and herds
 
-First what M5 set aside: the page played and its worst faults fixed; every staged test listed
-and watched on the page; herds as a store that walks and breeds, pastoral clans with wide,
-thin land, pack animals that carry a line further, and horsemen. Vision: `design/animals.md`,
-drafted.
-
-Then beer, from grain: a good that isn't eaten, which draws clans to a feast and feeds people
-put to a work. Vision: `design/goods.md`.
-
-Jobs and trade: a clan's days split into named jobs (gathering, fields, digging, trading),
-each a share of its people with a place, the shares following what each job returns a day.
-Trading is a route between two markets that carries the clan's spare wares out and what it
-values more back, and produces nothing; a clan that trades with all its people is a trader.
-Its route is cut as a line is. Vision: `design/clans.md`, `design/actors.md`.
-
-Technology as drift (`design/technology.md`): knacks that grow by practice, luck and contact,
-so an advantage leaks and lagging is a strategy. The camel is one: a knack that turns up
-among clans at a desert's edge and spreads. You play: a civ that lags on purpose and
-copies. Needs: unit kinds and fighting (M3), herds (M5).
+First what the M5 retro found: one bound on every civ's claim, the player's as the AI's, and an
+opening a civ can survive, with warriors at the founding and a card that names the nearest
+rival army. Then the clay (named jobs, one store), the rules a player sees proved on the stage,
+herds rebuilt from H's spec, pack animals and horsemen, and the page played. Then beer, from
+grain, which draws clans to a feast, and jobs and trade: trading as a route between two markets.
+`proposals/m6.md` has the pieces, and `proposals/m5-retro.md` what M5 answered. Vision:
+`design/animals.md`, and `design/goods.md` for beer.
 
 ### M7: The wide world
+
+Technology as drift (`design/technology.md`), moved from M6: knacks that grow by practice, luck
+and contact, so an advantage leaks and lagging is a strategy. The camel is one: a knack that
+turns up among clans at a desert's edge and spreads.
 
 A new map: larger biomes; deserts no one crosses until the camel; alpine ranges with few
 passes; steppe that feeds herds and little else. Routes with rests: campsites a line can
 stage through, caches an army leaves behind it, caravanserai where routes cross. A line
 reaches as far as its rests do. You play: a steppe civ reaching across a desert. Needs:
-knacks (M6), pack animals (M5). Vision: `design/map.md` grows, and `design/routes.md`, to
+knacks, pack animals (M6). Vision: `design/map.md` grows, and `design/routes.md`, to
 write.
 
 ### M8: Things worth the walk

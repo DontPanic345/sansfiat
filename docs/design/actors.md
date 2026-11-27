@@ -58,4 +58,3 @@ territory the player has fixed; the actor divides its labour around it as any ac
 - Every actor's store spoils the same way, and the civ is an actor whose store is its store. (#100)
 - An actor pays its routes first, then splits its days between its jobs by share, and each job divides over its own tiles. (#154)
 - A unit walks together: each of its people pays every step, so a scout walks at one person's pace, as a camp does. Its searching and trail work are not walking, and its people's labour for them is pooled. (#154)
-- An army trades at the market its stall is at, or one it stands on, that isn't a rival civ's or on a store of its civ: it brings the wares in its pack, only as many as buy its pack's room less what its stall holds, and the food it buys waits at its stall. (#356)

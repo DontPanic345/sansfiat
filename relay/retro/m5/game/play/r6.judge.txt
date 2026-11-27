@@ -1,0 +1,14 @@
+turn 250 (+0): civ 410 11.5%, civ 411 9.6%, civ 412 10.0%; leader civ 410
+led civ 410: Standing at +5 0.0% (rank 3) in the game, 13.1% (rank 1) with every civ on the AI, 0.0% (rank 3) idle led civ
+end (game / control / idle): fell +4 rank 3 / goes on +5 rank 1 / fell +4 rank 3
+land (game / control): 0 / 41 tiles claimed
+doubt (game / control): lead changes 1 / 0, spread +5 0.118 / 0.131, swings 0 / 0
+motion (game / control): clans changed 17 / 16, people 104.2 / 74.6, land tiles 47 / 40, clans left 0 / 0, claimed tiles taken 2 / 1
+fight (game / control): people fallen 0.68 / 0.00, tiles taken 1 / 0, armies surrendered 0 / 0
+fight by civ (game): 410: fallen 0.40 taken 0 surrendered 0; 411: fallen 0.28 taken 1 surrendered 0; 412: fallen 0.00 taken 0 surrendered 0
+fields (game / control): farming share at +200 - / -, field tiles at +200 - / -, store turns at a pack 2 / 5 of 5
+trade (game): army-turns fed at a foreign market 0 (food 0.0 of 0.0 needed), at its own 0, unit-turns trading 0; trades 532, largest count share at +200 obsidian 0.0%, by worth obsidian 0.0%
+settling, led civ (game / control): settled at +100 - / -, at +200 - / -, settles 0 / 0, back to gathering 0 / 0; towns at +200 0 / 0, capital towns 0 / 0
+player orders: 5 (claim 4, raise 1), 100.00 per 100 turns; turns with none 1 of 5, longest run 1
+player lines: 1 refused, 0 noted
+  refused at turn 254: {"type":"claim","tiles":[314,345,346,372,373,374,377,378,404,405,406,407,408,409,410,437,438,440,441,442,443,467,468,469,470,471,472,473,474,475,498,499,500,501,502,503,504,527,528,529,530,558]} (refused: the game is over)

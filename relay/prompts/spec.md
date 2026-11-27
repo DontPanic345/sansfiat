@@ -124,7 +124,7 @@ The points add up, and the sum climbs the ladder:
 - Haiku takes the lower half, judgement work included: it's more capable than its training
   data shows.
 - A `magnum` step runs Opus medium.
-- Haiku's cost is its turns: a step that waits on long runs costs as much as its waiting.
+- Haiku's cost is its turns: a step that waits on long runs costs as much as its waiting, and a Haiku session has no Monitor tool.
 - How many files a step touches costs minutes, not a bigger model. Don't go off the ladder
   for it.
 - Opus medium is the top.
@@ -145,7 +145,8 @@ The review isn't scored. It runs Sonnet high, or Opus medium when `main` has mov
 piece or the goal is judged by play. Nothing that judges runs at low effort.
 
 The crew adds a `play` step before the review when the piece's `Play:` line names a model; it
-isn't in `steps.json`.
+isn't in `steps.json`. Name in the spec the retro map it plays: the one where the piece's
+rule bites most, such as a settlement near a front or a source on the civ's land.
 
 ## The ideas before you
 
@@ -163,12 +164,13 @@ every later session and every CI run pays for.
 
 Each build step carries its `part`. Its `why` gives its scores, what you expect of the model,
 any mismatch with the part and what you did about it, and its size (files, rough lines,
-counting tests, pins and `engine/CLAUDE.md`), so the retro can read cost against size.
+counting tests, pins, the page scripts it retunes and `engine/CLAUDE.md`; a move counts its
+lines twice), so the retro can read cost against size.
 
 ```json
 [
   { "id": "build-1", "title": "…", "part": "easel", "model": "…", "effort": "…", "points": 7, "why": "Open 2, New 1, Miss 1, Reach 2; about 4 files, 300 lines: …" },
-  { "id": "build-2", "title": "…", "part": "canvas", "model": "opus", "effort": "low", "points": 10, "why": "…" },
+  { "id": "build-2", "title": "…", "part": "canvas", "model": "sonnet", "effort": "high", "points": 9, "why": "…" },
   { "id": "review", "title": "Review the piece", "model": "sonnet", "effort": "high", "why": "…" }
 ]
 ```
